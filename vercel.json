@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/admin/backups/cron-trigger",
+      "schedule": "0 2 * * *"
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Task {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  title           String
+  parentTaskId    String?  
+  status          String
+  tags            String[] @default([])
+  highlightColor  String?
+
+  dueDate         DateTime?
+  priority        String?
+  projectId       String?
+  isHidden        Boolean  @default(false)
+
+  assignerEmail   String?
+  assigneeEmail   String?
+  assignerName    String?
+  assignerId      String?
+  assigneeName    String?
+  assigneeId      String?
+  assigneeIds     String[] @default([])
+
+  createdByClerkId String
+  createdByName    String?      
+  createdByEmail   String?      
+
+  attachments     String[] @default([])
+  paymentProofs   String[] @default([])
+
+  amount          Float?
+  received        Float?
+
+  paymentHistory  Json[] @default([]) // keep for transaction logs
+  customFields    Json?
+
+  phone           String?
+  email           String?
+  shopName        String?
+  location        String?
+  accountNumber   String?
+  ifscCode        String?
+  restId          String?
+  customerName    String?
+  outletName      String?
+  packageAmount   String?
+  startDate       String?
+  endDate         String?
+  timeline        String?
+
+  aadhaarUrl      String?
+  panUrl          String?
+  selfieUrl       String?
+  chequeUrl       String?
+  menuCardUrls    String[] @default([])
+
+  // Relations
+  notes           Note[]
+  subtasks        Subtask[]       @relation("TaskSubtasks")
+  paymentRemarks  PaymentRemark[] // 👈 NEW relation for multiple remarks
+  activities      Activity[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime?
+}
+
+model Subtask {
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  completed Boolean @default(false)
+
+  taskId    String @db.ObjectId
+  task      Task   @relation("TaskSubtasks", fields: [taskId], references: [id])
+}
+
+model Note {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  content      String
+  createdAt    DateTime @default(now())
+
+  authorName   String?
+  authorEmail  String?
+  mentions     String[] @default([]) // Array of Clerk user IDs
+
+  taskId       String @db.ObjectId
+  task         Task   @relation(fields: [taskId], references: [id])
+}
+
+model PaymentRemark {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  remark         String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime? @updatedAt
+
+  // 👤 Author Info (from Clerk)
+  authorName     String?
+  authorEmail    String?
+  createdById    String?   // Clerk userId of creator
+
+  // 💰 Payment Details (linked to Task)
+  paymentStatus     String?   // e.g. "pending", "partial", "paid"
+  amountDiscussed   Float?    // from Task.amount (negotiated)
+  amountReceived    Float?    // from Task.received or this remark
+
+  // ⏰ Follow-ups & Deadlines
+  nextFollowUpDate  DateTime? // next recovery follow-up
+  followUpStatus    String?   // "scheduled", "completed", "missed"
+  pendingDeadline      DateTime?
+  pendingDeadlineSet   Boolean  @default(false)
+
+  // 📞 Communication
+  contactMethod     String?   // "call", "visit", "email", "whatsapp"
+  contactedBy       String?   // who contacted the client
+  contactOutcome    String?   // "not reachable", "negotiated", "promised date", etc.
+
+  // ⚠️ Priority & Reasoning
+  priorityLevel     String?   // "high", "medium", "low"
+  pendingReason     String?   // why payment is pending (e.g., "cash flow", "dispute", "invoice issue")
+  customerFeedback  String?   // any remarks from customer
+  internalNotes     String?   // internal analysis or notes
+
+  // 🔗 Relation to Task
+  taskId            String   @db.ObjectId
+  task              Task     @relation(fields: [taskId], references: [id])
+
+  // 🔍 Analytics & tracking
+  overdueDays       Int?      // auto-calculated: days overdue past pendingDeadline
+  followUpCount     Int?      @default(0) // number of follow-ups done
+  reminderSent      Boolean   @default(false) // whether reminder sent
+}
+
+
+model Goal {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  period          String   @unique
+  revenueGoal     Float
+  leadsGoal       Int
+  collectionGoal  Float
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model User {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  clerkId   String   @unique
+  email     String   @unique
+  name      String?
+  role      String   // "ADMIN", "MASTER", "SELLER"
+
+  isTeamLeader Boolean @default(false)
+  leaderId     String? // Clerk ID of the Team Leader
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Attendance {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String
+  employeeName   String?
+  faceImage      String?
+  location       Json?
+  deviceInfo     String?
+
+  checkIn        DateTime?
+  checkOut       DateTime?
+
+  checkInReason  String?
+  checkOutReason String?
+
+  date           DateTime        // ✅ NO default
+  status         String?
+  verified       Boolean   @default(false)
+
+  workingHours   Float?
+  overtimeHours  Float?
+  remarks        String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+ 
+}
+
+model AttendanceSummary {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String   @unique
+  totalDays      Int      @default(0)
+  presentDays    Int      @default(0)
+  leaveDays      Int      @default(0)
+  overtimeHours  Float    @default(0)
+  updatedAt      DateTime @updatedAt
+}
+
+model DeletedPayment {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  originalTask String   // taskId from Task
+  paymentData  Json     // the actual payment entry that was deleted
+  deletedBy    String?  // userId / email of the person who deleted
+  deletedAt    DateTime @default(now())
+}
+
+model Customer {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  phone       String   @unique
+  email       String?
+  remark      String?
+  remarks     String[]  @default([]) 
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Activity {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  type      String   // "STATUS_CHANGE", "NOTE_ADDED", "PAYMENT_ADDED", "SUBTASK_TOGGLED", "TASK_UPDATED"
+  content   String
+  author    String
+  authorId  String   // Clerk userId
+
+  taskId    String   @db.ObjectId
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String   // Clerk user ID of the recipient
+  type            String   // "MENTION", "TASK_COMPLETED", "PAYMENT_ADDED", "CRM_FOLLOWUP"
+  title           String?  // Notification title
+  content         String   // The notification message
+  taskId          String?  @db.ObjectId
+  formId          String?  @db.ObjectId
+  responseId      String?  @db.ObjectId
+  isRead          Boolean  @default(false)
+  isSystem        Boolean  @default(false) // For automated alerts
+  scheduledAt     DateTime? @default(now()) // When this notification should become visible
+  createdAt       DateTime @default(now())
+}
+
+model DynamicForm {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  title           String
+  description     String?
+  isPublished     Boolean  @default(false)
+  
+  createdBy       String   // Clerk userId
+  createdByName   String?
+
+  visibleToRoles  String[] @default([])
+  visibleToUsers  String[] @default([])
+  
+  columnPermissions Json? // { "roles": { "ADMIN": { "col1": "edit", ... } }, "users": { "clerkId": { "col1": "view", ... } } }
+  
+  fields          FormField[]
+  responses       FormResponse[]
+  internalColumns InternalColumn[]
+
+  pinnedBy        String[] @default([]) // Array of Clerk User IDs who pinned this form
+
+  defaultColumnOrder String[] @default([])
+  defaultHiddenColumns String[] @default([])
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model FormField {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  label       String
+  type        String      // "text", "number", "date", "dropdown", etc.
+  placeholder String?
+  required    Boolean     @default(false)
+  options     String[]    @default([]) // For dropdowns/radios
+  order       Int         @default(0)
+
+  formId      String      @db.ObjectId
+  form        DynamicForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  
+  responseValues ResponseValue[]
+}
+
+model FormResponse {
+  id              String      @id @default(auto()) @map("_id") @db.ObjectId
+  formId          String      @db.ObjectId
+  form            DynamicForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  submittedBy     String?     // Clerk userId (if logged in)
+  submittedByName String?
+  
+  values          ResponseValue[]
+  internalValues  InternalValue[]
+  remarks         FormRemark[]
+  payments        FormPayment[]
+
+  // Permission Controls
+  visibleToRoles  String[]    @default([])
+  visibleToUsers  String[]    @default([])
+  assignedTo      String[]    @default([]) // Array of Clerk User IDs assigned to this lead/response
+  rowColor        String?     // Custom highlight color for the row
+
+  submittedAt     DateTime    @default(now())
+  isTouched       Boolean     @default(false)
+
+  @@index([formId])
+  @@index([submittedAt])
+  @@index([submittedBy])
+  @@index([isTouched])
+}
+
+model ResponseValue {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  
+  responseId  String      @db.ObjectId
+  response    FormResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+
+  fieldId     String      @db.ObjectId
+  field       FormField   @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  
+  value       String      // Store as string
+
+  @@index([responseId])
+  @@index([fieldId])
+  @@index([value])
+}
+
+model InternalColumn {
+  id              String      @id @default(auto()) @map("_id") @db.ObjectId
+  label           String
+  type            String      // text, number, currency, date, dropdown, user, formula, checkbox, etc.
+  options         Json?       // For dropdown colors and options [{label: "New", color: "#eee"}]
+  order           Int         @default(0)
+  
+  // Advanced Settings
+  isRequired      Boolean     @default(false)
+  isUnique        Boolean     @default(false)
+  isLocked        Boolean     @default(false)
+  showInPublic    Boolean     @default(false)
+  formula         String?     // For dynamic calculations
+  defaultValue    String?
+  settings        Json?       // Any other type-specific settings
+
+  // Permission Controls
+  visibleToRoles  String[]    @default([])
+  visibleToUsers  String[]    @default([])
+  
+  formId          String      @db.ObjectId
+  form            DynamicForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  
+  values          InternalValue[]
+
+  @@index([formId])
+}
+
+model InternalValue {
+  id              String      @id @default(auto()) @map("_id") @db.ObjectId
+  responseId      String      @db.ObjectId
+  response        FormResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  columnId        String      @db.ObjectId
+  column          InternalColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  value           String      @default("")
+  
+  // Metadata
+  updatedBy       String?     // UserID
+  updatedByName   String?
+  updatedAt       DateTime    @updatedAt
+
+  @@unique([responseId, columnId])
+  @@index([responseId])
+  @@index([columnId])
+  @@index([value])
+}
+
+model FormActivity {
+  id              String      @id @default(auto()) @map("_id") @db.ObjectId
+  responseId      String      @db.ObjectId
+  userId          String
+  userName        String
+  type            String      // "CELL_UPDATE", "STATUS_CHANGE", "NOTE_ADDED", "CONVERTED"
+  columnName      String?
+  oldValue        String?
+  newValue        String?
+  createdAt       DateTime    @default(now())
+
+  @@index([responseId])
+}
+
+model SavedView {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  formId          String   @db.ObjectId
+  conditions      Json     // Array of { colId, op, val, val2 }
+  conjunction     String   // "AND" | "OR"
+  createdBy       String   // Clerk userId
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model AIAnalysis {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  formId          String   @db.ObjectId
+  query           String?  // The original prompt/request
+  analysisData    Json?    // Optional structured JSON
+  htmlReport      String   // The cached HTML content
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([formId])
+}
+
+model FormRemark {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  remark            String
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime? @updatedAt
+
+  authorName        String?
+  authorEmail       String?
+  createdById       String?   // Clerk userId of creator
+
+  nextFollowUpDate  DateTime? 
+  followUpStatus    String?   
+  leadStatus        String?   // NEW: Track specific lead status in remarks history
+
+  responseId        String    @db.ObjectId
+  response          FormResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  
+  columnId          String?   // Link to InternalColumn for specific status tracking
+  
+  @@index([responseId])
+  @@index([columnId])
+}
+
+model FormPayment {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  responseId  String    @db.ObjectId
+  response    FormResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  formId      String    @db.ObjectId
+
+  amount      Float     // Total amount (entered by user)
+  received    Float     @default(0) // Amount received
+  // pending = amount - received (calculated on client)
+
+  note        String?   // Optional payment note
+  paymentDate DateTime  @default(now()) // Date of payment entry
+
+  createdById   String?  // Clerk userId
+  createdByName String?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([responseId])
+  @@index([formId])
+  @@index([paymentDate])
+}
+
+model SidebarPermission {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  role            String   @unique
+  sidebarItems    String[] // List of sidebar item labels visible for this role
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Backup {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  fileName  String
+  date      DateTime @default(now())
+  sizeMB    Float
+  status    String   // "success", "failed"
+  s3Url     String?
+  error     String?
+
+  createdAt DateTime @default(now())
+}
+

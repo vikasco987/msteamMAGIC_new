@@ -1,0 +1,20 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/@prisma/client-customer"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("CUSTOMER_DATABASE_URL") // separate DB or same Mongo URI
+}
+
+model Customer {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  phone       String   @unique
+  email       String?
+  remark      String?   // single remark text
+  remarks     String[]  @default([]) // optional multiple remarks
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
