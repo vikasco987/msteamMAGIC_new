@@ -388,8 +388,7 @@ export default function FormRemarkModal({ formId, responseId, columnId, userRole
                 setForm({ remark: "", nextFollowUpDate: "", followUpStatus: "", leadStatus: "" });
                 setIsAdding(false);
                 if (onSave) onSave();
-                if (columnId) onClose();
-                await fetchRemarks(); // Wait for sync
+                onClose(); // Always close on success for clear confirmation
             } else {
                 const errorData = await res.json();
                 toast.error(errorData.error || "Failed to save interaction", { id: "save-interaction-main" });
