@@ -74,6 +74,9 @@ export async function GET() {
 
     // 4. Identify 'Active' users who have NOT checked in today
     activeUserMap.forEach((name, userId) => {
+      // Exclude 'Vishal Sood' from absent list as per user request
+      if (name.toLowerCase() === "vishal sood") return;
+      
       if (!presentUserIds.has(userId)) {
         lateMap.set(userId, { name, latenessStr: "ABSENT", minutesTotal: 9999 });
       }

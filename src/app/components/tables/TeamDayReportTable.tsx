@@ -25,9 +25,11 @@ interface TeamDayReportTableProps {
   memberId?: string;
   startDate?: string;
   endDate?: string;
+  month?: number;
+  year?: number;
 }
 
-export default function TeamDayReportTable({ tlId, memberId, startDate, endDate }: TeamDayReportTableProps) {
+export default function TeamDayReportTable({ tlId, memberId, startDate, endDate, month, year }: TeamDayReportTableProps) {
   const router = useRouter();
   const [data, setData] = useState<DayReport[]>([]);
   const [page, setPage] = useState(1);
@@ -45,6 +47,8 @@ export default function TeamDayReportTable({ tlId, memberId, startDate, endDate 
       else if (tlId) url += `&tlId=${tlId}`;
       if (startDate) url += `&startDate=${startDate}`;
       if (endDate) url += `&endDate=${endDate}`;
+      if (month !== undefined) url += `&month=${month}`;
+      if (year !== undefined) url += `&year=${year}`;
       
       const res = await fetch(url);
       const json = await res.json();
@@ -59,7 +63,7 @@ export default function TeamDayReportTable({ tlId, memberId, startDate, endDate 
 
   useEffect(() => {
     fetchData();
-  }, [page, limit, tlId, memberId, startDate, endDate]);
+  }, [page, limit, tlId, memberId, startDate, endDate, month, year]);
 
   const processedData = useMemo(() => {
     const dataWithCalculations = data.map(day => ({

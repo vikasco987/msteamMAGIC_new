@@ -104,6 +104,8 @@ export default function TLDashboard() {
   const [tlList, setTlList] = useState<TL[]>([]);
   const [selectedTlId, setSelectedTlId] = useState<string>("");
   const [selectedMemberId, setSelectedMemberId] = useState<string>("");
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [isPrivileged, setIsPrivileged] = useState(false);
 
   useEffect(() => {
@@ -142,7 +144,13 @@ export default function TLDashboard() {
   const fetchTeamStats = async (tlId?: string) => {
     try {
       setLoading(true);
-      const url = tlId ? `/api/stats/team/performance?tlId=${tlId}` : "/api/stats/team/performance";
+      const params = new URLSearchParams({
+        month: selectedMonth.toString(),
+        year: selectedYear.toString()
+      });
+      if (tlId) params.append("tlId", tlId);
+      
+      const url = `/api/stats/team/performance?${params.toString()}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to fetch team stats");
       const data = await res.json();
@@ -165,6 +173,23 @@ export default function TLDashboard() {
   const handleMemberChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedMemberId(e.target.value);
   };
+
+  const handleMonthChange = (month: number) => {
+    setSelectedMonth(month);
+    // State updates are async, but fetchTeamStats uses current state if we don't pass anything
+    // Better to handle refresh via useEffect or direct call with new value
+  };
+
+  const handleYearChange = (year: number) => {
+    setSelectedYear(year);
+  };
+
+  // Auto-refresh when dates change
+  useEffect(() => {
+    if (isLoaded && user) {
+        fetchTeamStats(selectedTlId);
+    }
+  }, [selectedMonth, selectedYear]);
 
   if (loading && !stats) {
     return (
@@ -240,9 +265,28 @@ export default function TLDashboard() {
             </div>
           )}
           
-          <div className="flex items-center gap-2 px-5 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm font-black text-slate-700 dark:text-slate-300 shadow-sm">
+          <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:border-indigo-500/50 transition-all">
             <Calendar size={18} className="text-indigo-500" /> 
-            <span>Current Month</span>
+            <select 
+              value={selectedMonth}
+              onChange={(e) => handleMonthChange(parseInt(e.target.value))}
+              className="bg-transparent text-sm font-black text-slate-700 dark:text-slate-300 outline-none cursor-pointer"
+            >
+              {Array.from({ length: 12 }).map((_, i) => (
+                <option key={i} value={i}>
+                  {new Date(2024, i, 1).toLocaleString('en-US', { month: 'long' })}
+                </option>
+              ))}
+            </select>
+            <select 
+              value={selectedYear}
+              onChange={(e) => handleYearChange(parseInt(e.target.value))}
+              className="bg-transparent text-sm font-black text-slate-700 dark:text-slate-300 outline-none cursor-pointer border-l border-slate-200 dark:border-slate-800 ml-2 pl-2"
+            >
+              {[2024, 2025, 2026].map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
           </div>
 
           <button 

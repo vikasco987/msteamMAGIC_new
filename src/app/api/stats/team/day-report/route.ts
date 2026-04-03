@@ -15,6 +15,8 @@ export async function GET(req: Request) {
     const targetMemberId = searchParams.get("memberId");
     const startDateParam = searchParams.get("startDate");
     const endDateParam = searchParams.get("endDate");
+    const selectedMonth = searchParams.get("month");
+    const selectedYear = searchParams.get("year");
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
 
@@ -75,6 +77,13 @@ export async function GET(req: Request) {
     if (startDateParam) dateFilter.gte = new Date(startDateParam);
     if (endDateParam) dateFilter.lte = endOfDay(new Date(endDateParam));
 
+    if (selectedMonth && selectedYear) {
+        const start = new Date(parseInt(selectedYear), parseInt(selectedMonth), 1);
+        const end = endOfDay(new Date(parseInt(selectedYear), parseInt(selectedMonth) + 1, 0));
+        dateFilter.gte = start;
+        dateFilter.lte = end;
+    }
+
     const tasks = await prisma.task.findMany({
       where: {
         AND: [
@@ -91,7 +100,7 @@ export async function GET(req: Request) {
                     { assigneeIds: { hasSome: teamUserIds } }
                 ]
             },
-            startDateParam || endDateParam ? { createdAt: dateFilter } : {}
+            startDateParam || endDateParam || (selectedMonth && selectedYear) ? { createdAt: dateFilter } : {}
         ]
       },
       select: {

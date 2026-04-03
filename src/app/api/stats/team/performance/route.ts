@@ -21,6 +21,8 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const targetTlId = searchParams.get("tlId");
     const getTlList = searchParams.get("getTlList") === "true";
+    const selectedMonth = searchParams.get("month"); // 0-indexed
+    const selectedYear = searchParams.get("year");
 
     const client = await clerkClient();
     const clerkUser = await client.users.getUser(userId);
@@ -114,7 +116,17 @@ export async function GET(req: Request) {
 
     // --- DATE RANGES ---
     const now = new Date();
-    const startOfCurrentMonth = startOfMonth(now);
+    
+    let startOfCurrentMonth: Date;
+    let endOfCurrentMonth: Date;
+
+    if (selectedMonth && selectedYear) {
+        startOfCurrentMonth = new Date(parseInt(selectedYear), parseInt(selectedMonth), 1);
+        endOfCurrentMonth = endOfDay(new Date(parseInt(selectedYear), parseInt(selectedMonth) + 1, 0));
+    } else {
+        startOfCurrentMonth = startOfMonth(now);
+        endOfCurrentMonth = endOfDay(now);
+    }
     
     // Today
     const todayS = startOfDay(now);
@@ -163,7 +175,7 @@ export async function GET(req: Request) {
         
         if (member) {
             // Month-to-date stats (for the matrix/table)
-            if (createdDate >= startOfCurrentMonth) {
+            if (createdDate >= startOfCurrentMonth && createdDate <= endOfCurrentMonth) {
                 member.revenue += amount;
                 member.received += received;
                 member.sales += 1;
@@ -192,9 +204,9 @@ export async function GET(req: Request) {
     // 4. Calculate Team Totals (Current Month)
     const teamStats = {
         leaderName,
-        totalRevenue: tasks.filter(t => t.createdAt >= startOfCurrentMonth).reduce((sum, t) => sum + (t.amount || 0), 0),
-        totalReceived: tasks.filter(t => t.createdAt >= startOfCurrentMonth).reduce((sum, t) => sum + (t.received || 0), 0),
-        totalSales: tasks.filter(t => t.createdAt >= startOfCurrentMonth).length,
+        totalRevenue: tasks.filter(t => t.createdAt >= startOfCurrentMonth && t.createdAt <= endOfCurrentMonth).reduce((sum, t) => sum + (t.amount || 0), 0),
+        totalReceived: tasks.filter(t => t.createdAt >= startOfCurrentMonth && t.createdAt <= endOfCurrentMonth).reduce((sum, t) => sum + (t.received || 0), 0),
+        totalSales: tasks.filter(t => t.createdAt >= startOfCurrentMonth && t.createdAt <= endOfCurrentMonth).length,
         memberPerformance: Object.values(memberMap).sort((a: any, b: any) => b.revenue - a.revenue)
     };
 

@@ -21,9 +21,11 @@ interface TeamWeekReportTableProps {
   memberId?: string;
   startDate?: string;
   endDate?: string;
+  month?: number;
+  year?: number;
 }
 
-export default function TeamWeekReportTable({ tlId, memberId, startDate, endDate }: TeamWeekReportTableProps) {
+export default function TeamWeekReportTable({ tlId, memberId, startDate, endDate, month, year }: TeamWeekReportTableProps) {
   const router = useRouter();
   const [data, setData] = useState<WeekReport[]>([]);
   const [page, setPage] = useState(1);
@@ -39,6 +41,8 @@ export default function TeamWeekReportTable({ tlId, memberId, startDate, endDate
       else if (tlId) url += `&tlId=${tlId}`;
       if (startDate) url += `&startDate=${startDate}`;
       if (endDate) url += `&endDate=${endDate}`;
+      if (month !== undefined) url += `&month=${month}`;
+      if (year !== undefined) url += `&year=${year}`;
       
       const res = await fetch(url);
       const json = await res.json();
@@ -53,7 +57,7 @@ export default function TeamWeekReportTable({ tlId, memberId, startDate, endDate
 
   useEffect(() => {
     fetchData();
-  }, [page, limit, tlId, memberId, startDate, endDate]);
+  }, [page, limit, tlId, memberId, startDate, endDate, month, year]);
 
   const getTrendIndicator = (currentValue: number, previousValue?: number, reverse?: boolean) => {
     if (previousValue === undefined) return null;

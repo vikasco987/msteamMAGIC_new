@@ -70,6 +70,7 @@ export default function LeadDistributionTerminal() {
     
     // Selection & Assignment
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [bulkSelectCount, setBulkSelectCount] = useState<string>("");
     const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
@@ -183,6 +184,19 @@ export default function LeadDistributionTerminal() {
         setSelectedAssignee("");
         setActiveStatus("");
         setSearch("");
+    };
+
+    const handleSelectSpecificCount = () => {
+        const count = parseInt(bulkSelectCount);
+        if (isNaN(count) || count <= 0) {
+            toast.error("Please enter a valid number");
+            return;
+        }
+        
+        // Take the first N leads from the current view
+        const toSelect = leads.slice(0, count).map(l => l.id);
+        setSelectedIds(toSelect);
+        toast.success(`Selected ${toSelect.length} leads`);
     };
 
     return (
@@ -340,6 +354,22 @@ export default function LeadDistributionTerminal() {
                                 <div className="flex flex-col"><p className="text-[14px] font-black text-slate-900 tabular-nums leading-none mb-1">{total.toLocaleString()}</p><span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Global Matrix Signals</span></div>
                                 <div className="h-8 w-px bg-slate-200" />
                                 <div className="flex flex-col"><p className="text-[14px] font-black text-indigo-600 uppercase leading-none mb-1">{selectedIds.length}</p><span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Active Selections</span></div>
+                                <div className="h-8 w-px bg-slate-200" />
+                                <div className="flex items-center gap-2">
+                                    <input 
+                                        type="number" 
+                                        placeholder="Qty" 
+                                        value={bulkSelectCount}
+                                        onChange={(e) => setBulkSelectCount(e.target.value)}
+                                        className="w-20 px-3 py-2 bg-white border border-slate-200 rounded-xl text-[11px] font-black outline-none focus:border-indigo-600"
+                                    />
+                                    <button 
+                                        onClick={handleSelectSpecificCount}
+                                        className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+                                    >
+                                        Select
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="flex items-center gap-4 bg-white p-2 rounded-3xl border border-slate-200 shadow-sm">

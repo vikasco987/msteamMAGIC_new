@@ -44,6 +44,8 @@ function WeekReportContent() {
   const [memberId, setMemberId] = useState(searchParams.get("memberId") || "");
   const [startDate, setStartDate] = useState(searchParams.get("startDate") || "");
   const [endDate, setEndDate] = useState(searchParams.get("endDate") || "");
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   const [tls, setTls] = useState<TL[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -62,7 +64,7 @@ function WeekReportContent() {
   useEffect(() => {
     fetchMembers();
     fetchChartData();
-  }, [tlId, memberId, startDate, endDate]);
+  }, [tlId, memberId, startDate, endDate, selectedMonth, selectedYear]);
 
   const fetchTlList = async () => {
     try {
@@ -99,6 +101,8 @@ function WeekReportContent() {
       else if (tlId) url += `&tlId=${tlId}`;
       if (startDate) url += `&startDate=${startDate}`;
       if (endDate) url += `&endDate=${endDate}`;
+      if (selectedMonth !== undefined) url += `&month=${selectedMonth}`;
+      if (selectedYear !== undefined) url += `&year=${selectedYear}`;
       
       const res = await fetch(url);
       const json = await res.json();
@@ -155,22 +159,32 @@ function WeekReportContent() {
             </div>
           )}
 
-          <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
-              <Users size={18} className="text-purple-500" />
-              <select 
-                  value={memberId}
-                  onChange={(e) => setMemberId(e.target.value)}
-                  className="bg-transparent text-sm font-black text-slate-700 dark:text-slate-300 outline-none cursor-pointer"
-              >
-                  <option value="">Full Team View</option>
-                  {members.map(m => (
-                      <option key={m.clerkId} value={m.clerkId}>{m.name}</option>
-                  ))}
-              </select>
+          <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:border-indigo-500/50 transition-all">
+            <Calendar size={18} className="text-indigo-500" /> 
+            <select 
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+              className="bg-transparent text-sm font-black text-slate-700 dark:text-slate-300 outline-none cursor-pointer"
+            >
+              {Array.from({ length: 12 }).map((_, i) => (
+                <option key={i} value={i}>
+                  {new Date(2024, i, 1).toLocaleString('en-US', { month: 'long' })}
+                </option>
+              ))}
+            </select>
+            <select 
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+              className="bg-transparent text-sm font-black text-slate-700 dark:text-slate-300 outline-none cursor-pointer border-l border-slate-200 dark:border-slate-800 ml-2 pl-2"
+            >
+              {[2024, 2025, 2026].map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
           </div>
 
           <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
-              <Calendar size={18} className="text-emerald-500" />
+              <Activity size={18} className="text-emerald-500" />
               <input 
                 type="date" 
                 value={startDate}
@@ -276,6 +290,8 @@ function WeekReportContent() {
         memberId={memberId} 
         startDate={startDate}
         endDate={endDate}
+        month={selectedMonth}
+        year={selectedYear}
       />
     </div>
   );
