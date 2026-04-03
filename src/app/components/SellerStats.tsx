@@ -295,10 +295,13 @@ const StatCard = ({
   icon,
   color,
   variant,
+  onAction,
+  actionLabel,
+  actionLoading,
 }: {
   title: string;
   value: string;
-  icon: React.ReactNode;
+  icon: any;
   color: string;
   variant: any;
   onAction?: () => void;
