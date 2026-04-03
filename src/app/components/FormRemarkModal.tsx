@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { FaTimes, FaSave, FaTrash, FaPlus, FaCalendarAlt, FaMicrophone } from "react-icons/fa";
+import { FaTimes, FaSave, FaTrash, FaPlus, FaCalendarAlt, FaMicrophone, FaSpinner } from "react-icons/fa";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
 
@@ -373,20 +373,7 @@ export default function FormRemarkModal({ formId, responseId, columnId, userRole
             columnId 
         };
 
-        toast.success("Update recorded!", { id: "save-interaction" });
-        setIsAdding(false);
-
-        if (!navigator.onLine) {
-            const offlineItem = { id: `offline-${Date.now()}`, formId, responseId, data: payload, remark: payload.remark, authorName: "You (Offline)", createdAt: new Date().toISOString(), nextFollowUpDate: payload.nextFollowUpDate, followUpStatus: payload.followUpStatus, columnId: payload.columnId };
-            const queue = JSON.parse(localStorage.getItem("offline_remarks_queue") || "[]");
-            localStorage.setItem("offline_remarks_queue", JSON.stringify([...queue, offlineItem]));
-            setRemarks(prev => [offlineItem as any, ...prev]);
-            setForm({ remark: "", nextFollowUpDate: "", followUpStatus: "", leadStatus: "" });
-            return;
-        }
-
         setLoading(true);
-        // Background Save
         try {
             const res = await fetch(`/api/crm/forms/${formId}/responses/${responseId}/remarks`, {
                 method: "POST",
@@ -394,12 +381,18 @@ export default function FormRemarkModal({ formId, responseId, columnId, userRole
                 body: JSON.stringify(payload)
             });
             if (res.ok) {
+                toast.success("Interaction saved successfully!", { id: "save-interaction" });
+                setForm({ remark: "", nextFollowUpDate: "", followUpStatus: "", leadStatus: "" });
+                setIsAdding(false);
                 if (onSave) onSave();
                 if (columnId) onClose();
                 fetchRemarks(); // Silently refresh local history
+            } else {
+                const errorData = await res.json();
+                toast.error(errorData.error || "Failed to save interaction");
             }
         } catch (error) {
-            toast.error("Background sync failed. Data cached locally.");
+            toast.error("Connection failed. Data cached locally.");
         } finally {
             setLoading(false);
         }
@@ -537,8 +530,13 @@ export default function FormRemarkModal({ formId, responseId, columnId, userRole
                                     </div>
                                     <div className="flex gap-2 pt-2">
                                         <button type="button" onClick={() => setIsAdding(false)} className="flex-1 py-2.5 text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all">Cancel</button>
-                                        <button disabled={loading} type="submit" className="flex-[2] py-2.5 bg-indigo-600 text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-indigo-700 shadow-md transition-all flex items-center justify-center gap-2">
-                                            {loading ? "Saving..." : (columnId ? "Update Status" : "Save Interaction")}
+                                        <button disabled={loading} type="submit" className={`flex-[2] py-2.5 text-white text-xs font-black uppercase tracking-widest rounded-xl shadow-md transition-all flex items-center justify-center gap-2 ${loading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+                                            {loading ? (
+                                                <>
+                                                    <FaSpinner className="animate-spin" />
+                                                    Saving...
+                                                </>
+                                            ) : (columnId ? "Update Status" : "Save Interaction")}
                                         </button>
                                     </div>
                                 </form>
