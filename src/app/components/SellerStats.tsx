@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  MdOutlineAttachMoney,
-  MdCheckCircleOutline,
-  MdPendingActions,
-  MdShoppingCart,
-} from "react-icons/md";
-import { FiLoader, FiHistory, FiCalendar, FiTrendingUp } from "react-icons/fi";
+import { 
+  DollarSign, 
+  CheckCircle, 
+  Clock, 
+  ShoppingCart, 
+  Loader2, 
+  History, 
+  Calendar, 
+  TrendingUp 
+} from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { format } from "date-fns";
 
@@ -115,7 +118,7 @@ export default function SellerStats() {
               exit={{ opacity: 0 }}
               className="text-center text-blue-600 py-6"
             >
-              <FiLoader className="inline-block animate-spin text-3xl" />
+              <Loader2 className="inline-block animate-spin text-3xl" />
               <p className="mt-2 text-base">Loading your data...</p>
             </motion.div>
           )}
@@ -147,28 +150,28 @@ export default function SellerStats() {
               <StatCard
                 title="Total Revenue"
                 value={formatCurrency(stats.totalRevenue)}
-                icon={<MdOutlineAttachMoney />}
+                icon={<DollarSign />}
                 color="from-green-400 to-green-600"
                 variant={cardVariants}
               />
               <StatCard
                 title="Received"
                 value={formatCurrency(stats.totalReceived)}
-                icon={<MdCheckCircleOutline />}
+                icon={<CheckCircle />}
                 color="from-blue-400 to-blue-600"
                 variant={cardVariants}
               />
               <StatCard
                 title="Pending"
                 value={formatCurrency(stats.pendingRevenue)}
-                icon={<MdPendingActions />}
+                icon={<Clock />}
                 color="from-yellow-400 to-yellow-600"
                 variant={cardVariants}
               />
               <StatCard
                 title="Total Sales"
                 value={stats.totalSales.toLocaleString()}
-                icon={<MdShoppingCart />}
+                icon={<ShoppingCart />}
                 color="from-purple-400 to-purple-600"
                 variant={cardVariants}
                 onAction={fetchHistory}
@@ -200,7 +203,7 @@ export default function SellerStats() {
                 <div className="p-6 bg-gradient-to-r from-purple-600 to-indigo-700 text-white flex justify-between items-center">
                   <div>
                     <h3 className="text-xl font-bold flex items-center gap-2">
-                       <FiHistory /> My Growth History
+                       <History className="w-5 h-5" /> My Growth History
                     </h3>
                     <p className="text-xs text-purple-100 mt-1 opacity-80 uppercase tracking-widest font-black">
                       {format(new Date(month + "-01"), "MMMM yyyy")} Breakdown
@@ -210,7 +213,7 @@ export default function SellerStats() {
                     onClick={() => setShowHistory(false)}
                     className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
                   >
-                    <FiLoader className="rotate-45" />
+                    <Loader2 className="w-5 h-5 rotate-45" />
                   </button>
                 </div>
 
@@ -218,16 +221,16 @@ export default function SellerStats() {
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
                   {historyData.length === 0 ? (
                     <div className="text-center py-20 text-gray-500">
-                      <FiLoader className="inline-block animate-spin text-3xl mb-2" />
+                      <Loader2 className="inline-block animate-spin text-3xl mb-2" />
                       <p>No sales history for this month.</p>
                     </div>
                   ) : (
-                    historyData.map((day, idx) => (
+                    historyData.map((day: any) => (
                       <div key={day.date} className="space-y-3">
                         <div className="flex items-center gap-3">
                           <div className="h-px flex-1 bg-gray-100"></div>
                           <span className="text-[11px] font-black text-gray-400 uppercase tracking-tighter flex items-center gap-1.5">
-                            <FiCalendar /> {format(new Date(day.date), "EEE, d MMMM")}
+                            <Calendar className="w-3.5 h-3.5" /> {format(new Date(day.date), "EEE, d MMMM")}
                           </span>
                           <div className="h-px flex-1 bg-gray-100"></div>
                         </div>
@@ -257,7 +260,7 @@ export default function SellerStats() {
                         {/* Day Footer / Summary */}
                         <div className="flex justify-between items-center px-2 py-1">
                            <div className="flex items-center gap-1.5 text-xs text-gray-500 font-bold">
-                             <FiTrendingUp className="text-blue-500" /> +{day.count} New Sale
+                             <TrendingUp className="w-3.5 h-3.5 text-blue-500" /> +{day.count} New Sale
                            </div>
                            <div className="text-xs font-black text-purple-600 bg-purple-50 px-3 py-1 rounded-full">
                               Day Total: ₹{day.revenue.toLocaleString()}
@@ -325,7 +328,7 @@ const StatCard = ({
             disabled={actionLoading}
             className="text-[10px] text-blue-500 hover:text-blue-700 font-black uppercase tracking-widest mt-1 flex items-center gap-1"
           >
-            {actionLoading ? <FiLoader className="animate-spin" /> : <FiHistory />}
+            {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <History className="w-3.5 h-3.5" />}
             {actionLabel}
           </button>
         )}
