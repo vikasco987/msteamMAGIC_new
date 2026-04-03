@@ -2,80 +2,19 @@
 
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
-    Database,
-    UploadCloud,
-    ArrowLeft,
-    ArrowRight,
-    Download,
-    ChevronLeft,
-    ChevronRight,
-    User,
-    Calendar,
-    Search,
-    Filter,
-    ArrowUpRight,
-    X,
-    MoreHorizontal,
-    Table,
-    FileSpreadsheet,
-    Smartphone,
-    Plus,
-    LayoutGrid,
-    CheckCircle2,
-    Clock,
-    UserPlus,
-    Type,
-    ChevronDown,
-    Save,
-    Maximize2,
-    ExternalLink,
-    ShieldCheck,
-    History,
-    FileText,
-    Hash,
-    IndianRupee,
-    Percent,
-    ListFilter,
-    Layers,
-    CalendarDays,
-    CheckSquare,
-    Users,
-    Paperclip,
-    FunctionSquare,
-    Star,
-    Link,
-    Phone,
-    Mail,
-    Zap,
-    Layout,
-    Trash2,
-    Settings,
-    Activity,
-    Eye,
-    EyeOff,
-    Check,
-    GripVertical,
-    Lock,
-    ArrowUp,
-    ArrowDown,
-    ArrowUpDown,
-    Minimize2,
-    Sparkles,
-    Bot,
-    RefreshCw,
-    Palette,
-    Send,
-    BarChart3,
-    CloudOff,
-    Wifi,
-    Pin,
-    PinOff,
-    Target,
-    Quote,
-    TrendingUp,
-    AlertCircle,
-    Settings2
+    Database, UploadCloud, ArrowLeft, ArrowRight, Download, ChevronLeft, ChevronRight,
+    User, Calendar, Search, Filter, ArrowUpRight, X, MoreHorizontal, Table,
+    FileSpreadsheet, Smartphone, Plus, LayoutGrid, CheckCircle2, Clock, UserPlus,
+    Type, ChevronDown, Save, Maximize2, ExternalLink, ShieldCheck, History,
+    FileText, Hash, IndianRupee, Percent, ListFilter, Layers, CalendarDays,
+    CheckSquare, Users, Paperclip, FunctionSquare, Star, Link, Phone, Mail,
+    Zap, Layout, CloudOff, Lock, Pin, PinOff, BarChart3, Activity, Sparkles,
+    Palette, Eye, EyeOff, GripVertical, ArrowUp, ArrowDown, ArrowUpDown,
+    Minimize2, Bot, RefreshCw, Send, Wifi, Target, Quote, TrendingUp, AlertCircle,
+    Settings2, ClipboardList
 } from "lucide-react";
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 import FormRemarkModal from "@/app/components/FormRemarkModal";
 import { createPortal } from "react-dom";
 import PaymentHubModal from "@/app/components/PaymentHubModal";
@@ -3024,6 +2963,114 @@ export default function CRMSpreadsheetPage() {
         }
     };
 
+    const handleBulkCopyNumbers = () => {
+        // Use selectedRows if any, otherwise use all current paginated/filtered data
+        const sourceResponses = selectedRows.length > 0 
+            ? (data?.responses || []).filter((r: any) => selectedRows.includes(r.id))
+            : (data?.responses || []);
+
+        if (sourceResponses.length === 0) return toast.error("No numbers to copy");
+
+        const phoneField = data?.form?.fields?.find((f: any) => 
+            f.label.toLowerCase().includes("phone") || 
+            f.label.toLowerCase().includes("number") || 
+            f.label.toLowerCase().includes("contact")
+        );
+
+        if (!phoneField) return toast.error("Phone column not found");
+
+        const numbers = sourceResponses.map((res: any) => {
+            const val = res.values?.find((v: any) => v.fieldId === phoneField.id)?.value;
+            return val ? val.toString().trim() : null;
+        }).filter(Boolean);
+
+        if (numbers.length === 0) return toast.error("No numbers found in these records");
+
+        navigator.clipboard.writeText(numbers.join("\n"));
+        toast.success(`${numbers.length} numbers copied to clipboard!`);
+    };
+
+    const handleExcelExport = async () => {
+        if (!data) return toast.error("No data to export");
+        
+        const loadingToast = toast.loading("Fetching entire matrix for export...");
+
+        try {
+            // 🚀 Fetch EVERYTHING matching current filters (up to 5000 records for safety)
+            const searchParams = new URLSearchParams({
+                page: "1",
+                limit: "5000", 
+                search: searchTerm,
+                sortBy: sortBy,
+                sortOrder: sortOrder,
+                conditions: JSON.stringify(conditions),
+                conjunction: filterConjunction,
+                today: new Date().toISOString().split('T')[0]
+            });
+
+            const response = await fetch(`/api/crm/forms/${params.id}/responses?${searchParams.toString()}`);
+            const fullData = await response.json();
+
+            if (!fullData.responses || fullData.responses.length === 0) {
+                toast.error("No data found to export", { id: loadingToast });
+                return;
+            }
+
+            toast.loading(`Generating Excel for ${fullData.responses.length} records...`, { id: loadingToast });
+
+            const fields = fullData.form.fields;
+            const internalCols = fullData.internalColumns;
+
+            const excelData = fullData.responses.map((res: any) => {
+                const row: any = {
+                    "ID": res.id,
+                    "Submitted At": res.submittedAt,
+                    "Submitted By": res.submittedByName,
+                    "Assigned To": res.assignedToNames?.join(", ") || "Unassigned"
+                };
+
+                // Dynamic Fields
+                fields.forEach((f: any) => {
+                    const val = res.values.find((v: any) => v.fieldId === f.id)?.value || "";
+                    row[f.label] = val;
+                });
+
+                // Internal Columns (Data Hub)
+                internalCols.forEach((col: any) => {
+                    const val = fullData.internalValues?.find((iv: any) => iv.responseId === res.id && iv.columnId === col.id)?.value || "";
+                    row[col.label] = val;
+                });
+
+                // Latest Remark
+                if (res.remarks && res.remarks.length > 0) {
+                    row["Latest Remark"] = res.remarks[0].remark;
+                    row["Remark Author"] = res.remarks[0].authorName;
+                    row["Last Interaction"] = res.remarks[0].createdAt;
+                }
+
+                return row;
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(excelData);
+            
+            // Auto-size columns slightly
+            const max_width = excelData.reduce((w: any, r: any) => Math.max(w, Object.values(r).join("").length / Object.keys(r).length), 10);
+            worksheet["!cols"] = Object.keys(excelData[0]).map(() => ({ wch: Math.min(max_width * 1.5, 50) }));
+
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Master Export");
+
+            const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+            const finalBlob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            
+            saveAs(finalBlob, `${fullData.form.title}_Full_Export_${safeFormat(new Date(), "yyyy-MM-dd")}.xlsx`);
+            toast.success(`Succesfully exported ${fullData.responses.length} records!`, { id: loadingToast });
+        } catch (error) {
+            console.error("Export Error:", error);
+            toast.error("Failed to export Excel", { id: loadingToast });
+        }
+    };
+
     if (loading) return (
         <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center">
             <div className="w-16 h-16 border-4 border-slate-900 border-t-indigo-600 rounded-full animate-spin mb-8 shadow-xl" />
@@ -3198,6 +3245,29 @@ export default function CRMSpreadsheetPage() {
                             >
                                 <Calendar size={12} />
                                 Follow-up Board
+                            </button>
+
+                            <button
+                                onClick={handleBulkCopyNumbers}
+                                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg shadow-indigo-100 group relative"
+                                title="Copy all phone numbers from current view"
+                            >
+                                <ClipboardList size={12} />
+                                {selectedRows.length > 0 ? `Copy ${selectedRows.length} Numbers` : "Copy All Numbers"}
+                                {selectedRows.length > 0 && (
+                                    <span className="absolute -top-2 -right-2 bg-rose-500 text-white text-[8px] px-1.5 py-0.5 rounded-full animate-bounce">
+                                        Active
+                                    </span>
+                                )}
+                            </button>
+
+                            <button
+                                onClick={handleExcelExport}
+                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg shadow-emerald-100"
+                                title="Export complete data to Excel"
+                            >
+                                <FileText size={12} />
+                                Export Excel
                             </button>
 
                             <button
