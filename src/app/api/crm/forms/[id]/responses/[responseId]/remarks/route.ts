@@ -32,7 +32,7 @@ export async function POST(
         if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
         const body = await req.json();
-        const { remark, nextFollowUpDate, followUpStatus, leadStatus, columnId } = body;
+        const { remark, nextFollowUpDate, followUpStatus, leadStatus, columnId, requestId } = body;
 
         if (!remark) {
             return NextResponse.json({ error: "Remark text is required" }, { status: 400 });
@@ -41,12 +41,24 @@ export async function POST(
         const cleanedFormId = id.trim();
         const cleanedResponseId = responseId.trim();
 
+        // 🛡️ IDEMPOTENCY CHECK: Prevention of double entries via requestId
+        if (requestId) {
+            const existingRequest = await (prisma as any).formRemark.findFirst({
+                where: { requestId: String(requestId) }
+            });
+            if (existingRequest) {
+                console.log("⚡ IDEMPOTENCY HIT: Returning existing remark");
+                return NextResponse.json({ success: true, remark: existingRequest, idempotent: true });
+            }
+        }
+
         let newRemark;
         try {
             newRemark = await (prisma as any).formRemark.create({
                 data: {
                     responseId: cleanedResponseId,
                     remark,
+                    requestId: requestId ? String(requestId) : null, // 🛡️ STORE IDEMPOTENCY KEY
                     nextFollowUpDate: nextFollowUpDate ? new Date(nextFollowUpDate) : null,
                     followUpStatus: followUpStatus || null,
                     leadStatus: leadStatus || null,
@@ -57,11 +69,12 @@ export async function POST(
                 }
             });
         } catch (e: any) {
-            if (e.message.includes("columnId")) {
+            if (e.message.includes("columnId") || e.message.includes("requestId")) {
                 newRemark = await (prisma as any).formRemark.create({
                     data: {
                         responseId: cleanedResponseId,
                         remark,
+                        requestId: requestId ? String(requestId) : null, // 🛡️ STORE IDEMPOTENCY KEY
                         nextFollowUpDate: nextFollowUpDate ? new Date(nextFollowUpDate) : null,
                         followUpStatus: followUpStatus || null,
                         authorName: user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.emailAddresses[0].emailAddress.split('@')[0],

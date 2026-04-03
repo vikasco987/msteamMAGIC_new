@@ -418,6 +418,7 @@ model AIAnalysis {
 
 model FormRemark {
   id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  requestId         String?   // ⚡ IDEMPOTENCY KEY (Prevents Double Saving via Code Check)
   remark            String
   createdAt         DateTime  @default(now())
   updatedAt         DateTime? @updatedAt

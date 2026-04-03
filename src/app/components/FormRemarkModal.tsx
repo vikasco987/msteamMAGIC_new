@@ -356,7 +356,7 @@ export default function FormRemarkModal({ formId, responseId, columnId, userRole
         }
         localStorage.setItem("offline_remarks_queue", JSON.stringify(newQueue));
         if (newQueue.length === 0) {
-            toast.success("All follow-ups synced!", { id: "sync-toast" });
+            toast.success("Matrix Synchronized!", { id: "sync-toast" });
             fetchRemarks();
             if (onSave) onSave();
         }
@@ -365,47 +365,86 @@ export default function FormRemarkModal({ formId, responseId, columnId, userRole
     const handleSubmit = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
         
-        // 🛡️ CRITICAL LOCK: Prevent multiple in-flight submissions
+        // 🔒 MULTI-PHASE LOCKING
         if (loading || submittingRef.current) return;
         
         const finalRemark = form.remark || (form.followUpStatus ? `Status interaction: ${form.followUpStatus}` : "");
         if (!finalRemark && !columnId) {
             return toast.error("Please enter a remark or select a status.");
         }
-        
-        const payload = { 
+
+        // 🆔 GENERATE IDEMPOTENCY KEY
+        const requestId = `rem_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+        const data = { 
             remark: finalRemark,
             nextFollowUpDate: form.nextFollowUpDate || null,
             followUpStatus: form.followUpStatus || null,
             leadStatus: form.leadStatus || null,
-            columnId 
+            columnId,
+            requestId 
         };
+
+        // 🌐 NETWORK GUARD & OFFLINE QUEUE (PRO LEVEL)
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            const queue = JSON.parse(localStorage.getItem("offline_remarks_queue") || "[]");
+            const offlinePayload = { formId, responseId, data, timestamp: Date.now() };
+            
+            // Avoid duplicate offline entries for same interaction
+            if (!queue.find((item: any) => item.data.requestId === requestId)) {
+                queue.push(offlinePayload);
+                localStorage.setItem("offline_remarks_queue", JSON.stringify(queue));
+            }
+
+            toast.success("Disconnected. Remark queued for auto-sync.", { 
+                icon: "📡", 
+                duration: 5000,
+                id: "offline-queue-toast"
+            });
+            
+            // Optimistic UI update
+            const optimisticRemark: FormRemark = {
+                id: requestId,
+                remark: finalRemark,
+                authorName: "You (Offline)",
+                createdAt: new Date().toISOString(),
+                ...data
+            };
+            setRemarks(prev => [optimisticRemark, ...prev]);
+            setForm({ remark: "", nextFollowUpDate: "", followUpStatus: "", leadStatus: "" });
+            setIsAdding(false);
+            return;
+        }
 
         submittingRef.current = true;
         setLoading(true);
-        const saveToastId = toast.loading("Saving interaction...", { id: "save-interaction-main" });
+        const saveToastId = toast.loading("Syncing Matrix...", { id: "save-interaction-main" });
         try {
             const res = await fetch(`/api/crm/forms/${formId}/responses/${responseId}/remarks`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(data)
             });
             if (res.ok) {
-                toast.success("Interaction saved successfully!", { id: "save-interaction-main" });
+                toast.success("Interaction Verified!", { id: "save-interaction-main" });
                 setForm({ remark: "", nextFollowUpDate: "", followUpStatus: "", leadStatus: "" });
                 setIsAdding(false);
                 if (onSave) onSave();
-                onClose(); // Always close on success for clear confirmation
+                onClose();
             } else {
                 const errorData = await res.json();
-                toast.error(errorData.error || "Failed to save interaction", { id: "save-interaction-main" });
+                toast.error(errorData.error || "Matrix Sync Failed", { id: "save-interaction-main" });
             }
         } catch (error) {
             console.error("Submission failed:", error);
-            toast.error("Connection failed. Data preserved.", { id: "save-interaction-main" });
+            // Fallback to offline queue on silent network crash
+            const queue = JSON.parse(localStorage.getItem("offline_remarks_queue") || "[]");
+            queue.push({ formId, responseId, data, timestamp: Date.now() });
+            localStorage.setItem("offline_remarks_queue", JSON.stringify(queue));
+            toast.error("Network Hiccup: Remark Queued Locally", { id: "save-interaction-main" });
+            onClose();
         } finally {
             setLoading(false);
-            // Persistent lock to ensure modal closure is handled before another click
             setTimeout(() => { submittingRef.current = false; }, 1000);
         }
     };
