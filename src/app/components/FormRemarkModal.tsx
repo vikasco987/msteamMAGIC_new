@@ -40,6 +40,7 @@ export default function FormRemarkModal({ formId, responseId, columnId, userRole
 
     const [isAdding, setIsAdding] = useState(false);
     const [isListening, setIsListening] = useState(false);
+    const submittingRef = React.useRef(false); // 🔒 Anti-Duplicate Lock System
     const recognitionRef = React.useRef<any>(null);
 
     // Stop recognition on unmount
@@ -263,10 +264,11 @@ export default function FormRemarkModal({ formId, responseId, columnId, userRole
                 
                 if (ACTIONS.SAVE) {
                     speakResponse("Saving interaction matrix now.");
-                    toast.loading("AI Pulse: Saving...");
+                    toast.loading("AI Pulse: Saving...", { id: "save-interaction-main" });
                     recognitionRef.current?.stop();
                     setIsListening(false);
-                    setTimeout(() => (document.querySelector('button[type="submit"]') as HTMLButtonElement)?.click(), 800);
+                    // ⚡ Use direct logic call instead of direct DOM manipulation for state-awareness
+                    setTimeout(() => handleSubmit(), 800);
                 } else if (ACTIONS.CLOSE) {
                     speakResponse("Terminating session.");
                     recognitionRef.current?.stop();
@@ -362,10 +364,14 @@ export default function FormRemarkModal({ formId, responseId, columnId, userRole
 
     const handleSubmit = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
-        if (loading) return;
-
-        const finalRemark = form.remark || `Status interaction: ${form.followUpStatus}`;
-        if (!finalRemark && !columnId) return toast.error("Please enter a remark.");
+        
+        // 🛡️ CRITICAL LOCK: Prevent multiple in-flight submissions
+        if (loading || submittingRef.current) return;
+        
+        const finalRemark = form.remark || (form.followUpStatus ? `Status interaction: ${form.followUpStatus}` : "");
+        if (!finalRemark && !columnId) {
+            return toast.error("Please enter a remark or select a status.");
+        }
         
         const payload = { 
             remark: finalRemark,
@@ -375,6 +381,7 @@ export default function FormRemarkModal({ formId, responseId, columnId, userRole
             columnId 
         };
 
+        submittingRef.current = true;
         setLoading(true);
         const saveToastId = toast.loading("Saving interaction...", { id: "save-interaction-main" });
         try {
@@ -394,9 +401,12 @@ export default function FormRemarkModal({ formId, responseId, columnId, userRole
                 toast.error(errorData.error || "Failed to save interaction", { id: "save-interaction-main" });
             }
         } catch (error) {
-            toast.error("Connection failed. Data cached locally.", { id: "save-interaction-main" });
+            console.error("Submission failed:", error);
+            toast.error("Connection failed. Data preserved.", { id: "save-interaction-main" });
         } finally {
             setLoading(false);
+            // Persistent lock to ensure modal closure is handled before another click
+            setTimeout(() => { submittingRef.current = false; }, 1000);
         }
     };
 

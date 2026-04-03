@@ -75,8 +75,11 @@ import {
     TrendingUp,
     AlertCircle,
     Settings2,
-    Globe
+    Globe,
+    ClipboardList
 } from "lucide-react";
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 import FormRemarkModal from "@/app/components/FormRemarkModal";
 import { createPortal } from "react-dom";
 import PaymentHubModal from "@/app/components/PaymentHubModal";
@@ -366,6 +369,126 @@ export default function CRMSpreadsheetPage() {
     const [selectedResponse, setSelectedResponse] = useState<FormResponse | null>(null);
     const [highlightedRowId, setHighlightedRowId] = useState<string | null>(null);
     const [openColorPicker, setOpenColorPicker] = useState<string | null>(null);
+
+    const handleBulkCopyNumbers = () => {
+        // Diagnostic log
+        console.log("🚀 [MATRIX-ACTION] Copy Numbers Triggered!");
+        
+        // Use selectedRows if any, otherwise use all current paginated/filtered data
+        const sourceResponses = selectedRows.length > 0 
+            ? (data?.responses || []).filter((r: any) => selectedRows.includes(r.id))
+            : (data?.responses || []);
+
+        if (sourceResponses.length === 0) {
+            toast.error("No numbers to copy. Filter or select rows first.");
+            return;
+        }
+
+        // Logic to find phone numbers: Check form fields first, then internal columns
+        const phoneFieldIds = (data?.form?.fields || [])
+            .filter((f: any) => f.type === "phone" || f.label.toLowerCase().includes("phone") || f.label.toLowerCase().includes("mobile") || f.label.toLowerCase().includes("number"))
+            .map((f: any) => f.id);
+
+        const numbers: string[] = [];
+        sourceResponses.forEach((res: any) => {
+            // Check formatted values
+            phoneFieldIds.forEach(fid => {
+                const valObj = res.values?.find((v: any) => v.fieldId === fid);
+                if (valObj?.value) {
+                    const clean = String(valObj.value).replace(/\D/g, '');
+                    if (clean.length >= 10) numbers.push(clean);
+                }
+            });
+            // Also check internal values if relevant (standard field used in some schemas)
+            const phoneInternal = data?.internalValues?.find((iv: any) => iv.responseId === res.id && (iv.columnId === "phone" || iv.columnId === "mobile"));
+            if (phoneInternal?.value) {
+                const clean = String(phoneInternal.value).replace(/\D/g, '');
+                if (clean.length >= 10) numbers.push(clean);
+            }
+        });
+
+        const uniqueNumbers = Array.from(new Set(numbers));
+        if (uniqueNumbers.length === 0) {
+            toast.error("Could not find any 10-digit phone numbers in the current view.");
+            return;
+        }
+
+        const copyText = uniqueNumbers.join("\n");
+        navigator.clipboard.writeText(copyText).then(() => {
+            toast.success(`${uniqueNumbers.length} numbers copied to clipboard!`, {
+                icon: "📋",
+                style: { borderRadius: '10px', background: '#333', color: '#fff' }
+            });
+        }).catch(err => {
+            console.error("Copy failed", err);
+            toast.error("Clipboard access denied.");
+        });
+    };
+
+    const handleExcelExport = async () => {
+        // Diagnostic log
+        console.log("🚀 [MATRIX-ACTION] Excel Export Triggered!");
+        const loadingToast = toast.loading("Generating High-Performance Export (Full Dataset)...");
+
+        try {
+            // Fetch the ENTIRE dataset for this form matching current filters (up to 5000 for efficiency)
+            const conditionsParam = conditions.length > 0 ? `&conditions=${encodeURIComponent(JSON.stringify(conditions))}&conjunction=${filterConjunction}` : "";
+            const res = await fetch(`/api/crm/forms/${params.id}/responses?page=1&limit=5000&search=${encodeURIComponent(debouncedSearchTerm)}&sortBy=${sortBy}&sortOrder=${sortOrder}${conditionsParam}&_t=${Date.now()}`);
+            
+            if (!res.ok) throw new Error("Export Fetch Failed");
+            const fullData = await res.json();
+            const exportResponses = fullData.responses || [];
+
+            if (exportResponses.length === 0) {
+                toast.dismiss(loadingToast);
+                toast.error("No data available to export.");
+                return;
+            }
+
+            // Map columns for Excel header
+            const fields = data?.form?.fields || [];
+            const internals = data?.internalColumns || [];
+            
+            const excelData = exportResponses.map((r: any) => {
+                const row: any = {
+                    "System ID": r.id,
+                    "Submission Date": safeFormat(r.submittedAt, "MMM dd, yyyy HH:mm"),
+                    "Submitter": r.submittedByName || "System"
+                };
+
+                // Form Fields
+                fields.forEach((f: any) => {
+                    const val = r.values?.find((v: any) => v.fieldId === f.id)?.value || "";
+                    row[f.label] = val;
+                });
+
+                // Internal Columns
+                internals.forEach((ic: any) => {
+                    const iVal = fullData.internalValues?.find((iv: any) => iv.responseId === r.id && iv.columnId === ic.id)?.value || "";
+                    row[`[M] ${ic.label}`] = iVal;
+                });
+
+                return row;
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(excelData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Matrix Export");
+
+            const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+            const finalData = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
+            
+            saveAs(finalData, `Matrix_Export_${data?.form?.title || "Data"}_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+            
+            toast.dismiss(loadingToast);
+            toast.success(`Exported ${exportResponses.length} records to Excel!`, { icon: "📊" });
+
+        } catch (err) {
+            console.error("Export Error:", err);
+            toast.dismiss(loadingToast);
+            toast.error("Failed to generate Excel file.");
+        }
+    };
 
     // ⚡ Performance Fix: Debounce Search to prevent re-filtering on every keystroke
     useEffect(() => {
@@ -5330,87 +5453,111 @@ export default function CRMSpreadsheetPage() {
                 }
             </AnimatePresence >
 
-            {/* Bulk Action Bar — Floating Permission Lab */}
-            <AnimatePresence>
-                {
-                    selectedRows.length > 0 && (
-                        <motion.div initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }} className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[80] flex items-center gap-6 bg-slate-900 border border-slate-800 p-4 px-8 rounded-[40px] shadow-[0_30px_60px_rgba(0,0,0,0.4)]">
-                            <div className="flex items-center gap-4 border-r border-slate-800 pr-6 mr-2">
-                                <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px] font-black">{selectedRows.length}</div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Records Selected</span>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                <span className="text-[9px] font-black uppercase text-indigo-400 mr-2 tracking-tighter">Assign Leads:</span>
-
-                                <div className="relative">
-                                    <input
-                                        className="bg-slate-800 border-none rounded-xl px-4 py-2 text-[9px] font-black uppercase text-white outline-none w-[150px] focus:ring-1 ring-indigo-500"
-                                        placeholder="Search User..."
-                                        value={userSearchQuery}
-                                        onChange={(e) => searchUsers(e.target.value)}
-                                        onClick={(e) => e.stopPropagation()}
-                                    />
-                                    {userResults.length > 0 && (
-                                        <div
-                                            onMouseDown={(e) => e.preventDefault()}
-                                            className="absolute bottom-full mb-4 left-0 w-[200px] bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl py-2 overflow-hidden max-h-[200px] overflow-y-auto"
-                                        >
-                                            {userResults.map(u => (
-                                                <button
-                                                    key={u.clerkId}
-                                                    onClick={() => {
-                                                        fetch(`/api/crm/forms/${params.id}/responses/assign`, {
-                                                            method: "PATCH",
-                                                            headers: { "Content-Type": "application/json" },
-                                                            body: JSON.stringify({ responseIds: selectedRows, assignedTo: [u.clerkId] })
-                                                        }).then(() => {
-                                                            toast.success(`Assigned to ${u.email.split('@')[0]}`);
-                                                            setSelectedRows([]);
-                                                            fetchData();
-                                                        });
-                                                        setUserResults([]);
-                                                        setUserSearchQuery("");
-                                                    }}
-                                                    className="w-full px-4 py-2 text-left hover:bg-indigo-600 text-[9px] font-black uppercase text-slate-300 hover:text-white"
-                                                >
-                                                    {u.email}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
+            {/* Matrix Hub - Floating Dynamic Actions */}
+            <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-4">
+                <AnimatePresence>
+                    {selectedRows.length > 0 && (
+                        <motion.div
+                            initial={{ y: 100, opacity: 0, scale: 0.8 }}
+                            animate={{ y: 0, opacity: 1, scale: 1 }}
+                            exit={{ y: 100, opacity: 0, scale: 0.8 }}
+                            className="flex items-center gap-6 bg-slate-900 border border-slate-700 p-4 px-8 rounded-[40px] shadow-[0_30px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl"
+                        >
+                            <div className="flex items-center gap-4 pr-6 border-r border-slate-700">
+                                <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-black shadow-lg shadow-indigo-500/20">
+                                    {selectedRows.length}
                                 </div>
-                                <button onClick={() => {
-                                    fetch(`/api/crm/forms/${params.id}/responses/assign`, {
-                                        method: "PATCH",
-                                        headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify({ responseIds: selectedRows, assignedTo: [] })
-                                    }).then(() => {
-                                        toast.success(`Leads Unassigned`);
-                                        setSelectedRows([]);
-                                        fetchData();
-                                    });
-                                }} className="px-4 py-2 bg-emerald-900/40 text-emerald-400 hover:bg-emerald-900 rounded-xl text-[9px] font-black uppercase tracking-widest border border-emerald-900/50 transition-all">Make Unassigned</button>
-                                <button onClick={() => handleBulkVisibilityUpdate("ROW", [])} className="px-4 py-2 bg-emerald-900/40 text-emerald-400 hover:bg-emerald-900 rounded-xl text-[9px] font-black uppercase tracking-widest border border-emerald-900/50 transition-all">Make Public</button>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Matrix Active</span>
+                                    <span className="text-[12px] font-bold text-white tracking-tight">{selectedRows.length} of {data?.responses?.length || 0} Locked</span>
+                                </div>
                             </div>
 
-                            <div className="h-6 w-[1px] bg-slate-800 mx-2" />
-
-                            {(isMaster || isPureMaster) && (
+                            <div className="flex items-center gap-3">
                                 <button
-                                    onClick={handleBulkDelete}
-                                    className="px-6 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2"
+                                    onClick={handleBulkCopyNumbers}
+                                    className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg shadow-indigo-600/20 active:scale-95"
                                 >
-                                    <Trash2 size={14} />
-                                    Delete Selected
+                                    <ClipboardList size={14} />
+                                    Copy {selectedRows.length} Numbers
                                 </button>
-                            )}
 
-                            <button onClick={() => setSelectedRows([])} className="p-3 text-slate-400 hover:text-white transition-colors"><X size={20} /></button>
+                                <button
+                                    onClick={() => setIsLeadAssignHubOpen(true)}
+                                    className="px-5 py-2.5 bg-indigo-900/50 hover:bg-indigo-900 text-indigo-100 rounded-full text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 border border-indigo-700/50 active:scale-95"
+                                >
+                                    <Users size={14} />
+                                    Distribute
+                                </button>
+
+                                <button
+                                    onClick={handleExcelExport}
+                                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg shadow-emerald-600/20 active:scale-95"
+                                >
+                                    <FileText size={14} />
+                                    Export Excel
+                                </button>
+
+                                {(isMaster || isPureMaster) && (
+                                    <div className="w-[1px] h-6 bg-slate-700 mx-2" />
+                                )}
+
+                                {(isMaster || isPureMaster) && (
+                                    <button
+                                        disabled={isBulkDeleting}
+                                        onClick={() => {
+                                            if (window.confirm(`Are you sure you want to execute a bulk purge on ${selectedRows.length} records? This action is irreversible.`)) {
+                                                handleBulkDelete();
+                                            }
+                                        }}
+                                        className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-full text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg shadow-rose-600/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group"
+                                    >
+                                        {isBulkDeleting ? (
+                                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        ) : (
+                                            <Trash2 size={14} className="group-hover:rotate-12 transition-transform" />
+                                        )}
+                                        Bulk Delete Task
+                                    </button>
+                                )}
+
+                                <button
+                                    onClick={() => setSelectedRows([])}
+                                    className="p-2.5 bg-rose-900/30 hover:bg-rose-900 text-rose-400 hover:text-white rounded-full transition-all border border-rose-900/50"
+                                    title="Release Sector"
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
                         </motion.div>
-                    )
-                }
-            </AnimatePresence >
+                    )}
+                </AnimatePresence>
+
+                {/* Persistent Mini Tools - Matrix Explorer Hub */}
+                <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 p-2 px-3 rounded-[30px] shadow-2xl backdrop-blur-md">
+                    <button
+                        onClick={handleExcelExport}
+                        className="p-2 text-emerald-400 hover:bg-emerald-500/10 rounded-full transition-all border border-transparent hover:border-emerald-500/20"
+                        title="Export Entire Matrix to Excel"
+                    >
+                        <FileText size={18} />
+                    </button>
+                    <button
+                        onClick={handleBulkCopyNumbers}
+                        className="p-2 text-indigo-400 hover:bg-indigo-500/10 rounded-full transition-all border border-transparent hover:border-indigo-500/20"
+                        title="Copy All Phone Numbers"
+                    >
+                        <ClipboardList size={18} />
+                    </button>
+                    <div className="w-[1px] h-4 bg-slate-700 mx-1" />
+                    <div className="flex flex-col items-center px-1">
+                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] leading-none mb-1">Matrix v2</span>
+                        <div className="text-[10px] font-bold text-slate-300 tabular-nums">
+                            {data?.responses?.length || 0} Leads
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             {/* Column Manager Modal */}
             <AnimatePresence>
@@ -6656,70 +6803,8 @@ export default function CRMSpreadsheetPage() {
                     onSuccess={() => fetchData(currentPage, rowsPerPage, searchTerm, sortBy, sortOrder, conditions, filterConjunction)}
                 />
             )}
-            {/* PREMIUM FLOATING BATCH ACTION DOCK */}
-            <AnimatePresence>
-                {selectedRows.length > 0 && (
-                    <motion.div
-                        initial={{ y: 100, x: "-50%", opacity: 0 }}
-                        animate={{ y: 0, x: "-50%", opacity: 1 }}
-                        exit={{ y: 100, x: "-50%", opacity: 0 }}
-                        className="fixed bottom-12 left-1/2 z-[1000] flex items-center gap-8 px-10 py-6 bg-slate-900/90 backdrop-blur-3xl border border-white/20 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.6)] rounded-[40px] min-w-[500px]"
-                    >
-                        <div className="flex items-center gap-4 pr-10 border-r border-white/10 group">
-                            <motion.div
-                                animate={selectedRows.length > 0 ? { scale: [1, 1.1, 1], rotate: [0, -5, 5, 0] } : {}}
-                                transition={{ repeat: Infinity, duration: 4 }}
-                                className="w-14 h-14 rounded-3xl bg-indigo-600 flex items-center justify-center text-white text-xl font-black shadow-[0_12px_24px_rgba(79,70,229,0.4)] border border-indigo-400/30 overflow-hidden relative"
-                            >
-                                <span className="relative z-10">{selectedRows.length}</span>
-                                <motion.div
-                                    className="absolute bottom-0 left-0 right-0 bg-white/20"
-                                    initial={{ height: 0 }}
-                                    animate={{ height: `${(selectedRows.length / (filteredResponses?.length || 1)) * 100}%` }}
-                                />
-                            </motion.div>
-                            <div>
-                                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400 mb-1">Matrix Active</p>
-                                <p className="text-lg font-black text-white tracking-tight leading-none">
-                                    {selectedRows.length} <span className="text-slate-500 text-sm font-bold uppercase tracking-widest ml-1">of {filteredResponses?.length} locked</span>
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-4">
-                            <button
-                                disabled={isBulkDeleting}
-                                onClick={() => {
-                                    if (window.confirm(`Are you sure you want to execute a bulk purge on ${selectedRows.length} records?`)) {
-                                        handleBulkDelete();
-                                        setSelectedRows([]);
-                                    }
-                                }}
-                                className="group px-8 py-3.5 bg-rose-500 hover:bg-rose-600 disabled:bg-slate-800 disabled:text-slate-500 text-white rounded-2xl text-[12px] font-black uppercase tracking-widest transition-all flex items-center gap-3 shadow-[0_12px_24px_rgba(244,63,94,0.3)] hover:shadow-[0_20px_40px_rgba(244,63,94,0.4)] active:scale-95 border border-rose-400/20"
-                            >
-                                {isBulkDeleting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Trash2 size={16} />}
-                                Execute Purge Cycle
-                            </button>
-
-                            <button
-                                onClick={() => setIsLeadAssignHubOpen(true)}
-                                className="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-[12px] font-black uppercase tracking-widest transition-all flex items-center gap-3 shadow-[0_12px_24px_rgba(79,70,229,0.3)] hover:shadow-[0_20px_40px_rgba(79,70,229,0.4)] active:scale-95 border border-indigo-400/20"
-                            >
-                                <Sparkles size={16} />
-                                Lead Distribute
-                            </button>
-
-                            <button
-                                onClick={() => setSelectedRows([])}
-                                className="px-8 py-3.5 bg-white/5 hover:bg-white/10 text-white rounded-2xl text-[12px] font-black uppercase tracking-widest transition-all flex items-center gap-3 border border-white/10 hover:border-white/20 active:scale-95"
-                            >
-                                <X size={16} />
-                                Release Sector
-                            </button>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {/* Matrix Hub defined above at Line 5337 */}
+            <div className="h-24 px-10" />
 
             {/* PREMIUN FLOATING MAXIMIZE TOGGLE */}
 

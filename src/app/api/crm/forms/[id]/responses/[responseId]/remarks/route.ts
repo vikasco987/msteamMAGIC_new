@@ -104,15 +104,33 @@ export async function POST(
             }
         });
 
+        // 🚀 BATCH FETCH EXISTING VALUES TO PREVENT N+1 LOOKUPS (HUGE PERFORMANCE WIN)
+        const existingValues = await (prisma as any).internalValue.findMany({
+            where: {
+                responseId: cleanedResponseId,
+                columnId: { in: remarkCols.map((c: any) => c.id) }
+            }
+        });
+
         const syncToValue = async (colLabel: string, val: string) => {
             if (!val) return;
             const col = remarkCols.find(c => c.label.toUpperCase().trim() === colLabel.toUpperCase().trim());
             if (!col) return;
-            const existing = await (prisma as any).internalValue.findFirst({ where: { responseId: cleanedResponseId, columnId: col.id } });
+
+            // Use the pre-fetched list to avoid DB call within loop
+            const existing = existingValues.find((v: any) => v.columnId === col.id);
+            const valueContent = val.trim();
+
             if (existing) {
-                await (prisma as any).internalValue.update({ where: { id: existing.id }, data: { value: val.trim(), updatedByName: user.firstName || "System" } });
+                if (existing.value === valueContent) return; // Skip if no change to reduce DB load
+                await (prisma as any).internalValue.update({ 
+                    where: { id: existing.id }, 
+                    data: { value: valueContent, updatedByName: user.firstName || "System" } 
+                });
             } else {
-                await (prisma as any).internalValue.create({ data: { responseId: cleanedResponseId, columnId: col.id, value: val.trim(), updatedByName: user.firstName || "System" } });
+                await (prisma as any).internalValue.create({ 
+                    data: { responseId: cleanedResponseId, columnId: col.id, value: valueContent, updatedByName: user.firstName || "System" } 
+                });
             }
         };
 
@@ -136,13 +154,16 @@ export async function POST(
         await Promise.all(syncTasks);
 
         // 🚀 THE FINALE: BROADCAST TO MATRIX ⚡⚡⚡
-        console.log("🔥 API HIT HOI");
-        // Don't await matrix update if it's not critical for the response return
-        emitMatrixUpdate({ 
-            formId: cleanedFormId, 
-            responseId: cleanedResponseId, 
-            type: "REMARK_ADDED" 
-        }); 
+        console.log("🔥 API COMPLETED SUCCESSFULLY - MATRIX READY");
+        try {
+            emitMatrixUpdate({ 
+                formId: cleanedFormId, 
+                responseId: cleanedResponseId, 
+                type: "REMARK_ADDED" 
+            }); 
+        } catch (e) {
+            console.error("Matrix Broadcast Error:", e);
+        }
 
         return NextResponse.json({ success: true, remark: newRemark });
     } catch (error: any) {

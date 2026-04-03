@@ -2963,7 +2963,13 @@ export default function CRMSpreadsheetPage() {
         }
     };
 
+    useEffect(() => {
+        console.log("🚀 [MATRIX-DIAGNOSTIC] Matrix v2 Component Loaded Successfully");
+        console.log("🚀 [MATRIX-DIAGNOSTIC] handleBulkCopyNumbers is defined:", typeof handleBulkCopyNumbers);
+    }, [handleBulkCopyNumbers]);
+
     const handleBulkCopyNumbers = () => {
+        console.log("📋 [MATRIX-ACTION] Copy Numbers Triggered!");
         // Use selectedRows if any, otherwise use all current paginated/filtered data
         const sourceResponses = selectedRows.length > 0 
             ? (data?.responses || []).filter((r: any) => selectedRows.includes(r.id))
@@ -5616,87 +5622,88 @@ export default function CRMSpreadsheetPage() {
                 }
             </AnimatePresence >
 
-            {/* Bulk Action Bar — Floating Permission Lab */}
-            <AnimatePresence>
-                {
-                    selectedRows.length > 0 && (
-                        <motion.div initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }} className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[80] flex items-center gap-6 bg-slate-900 border border-slate-800 p-4 px-8 rounded-[40px] shadow-[0_30px_60px_rgba(0,0,0,0.4)]">
-                            <div className="flex items-center gap-4 border-r border-slate-800 pr-6 mr-2">
-                                <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px] font-black">{selectedRows.length}</div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Records Selected</span>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                <span className="text-[9px] font-black uppercase text-indigo-400 mr-2 tracking-tighter">Assign Leads:</span>
-
-                                <div className="relative">
-                                    <input
-                                        className="bg-slate-800 border-none rounded-xl px-4 py-2 text-[9px] font-black uppercase text-white outline-none w-[150px] focus:ring-1 ring-indigo-500"
-                                        placeholder="Search User..."
-                                        value={userSearchQuery}
-                                        onChange={(e) => searchUsers(e.target.value)}
-                                        onClick={(e) => e.stopPropagation()}
-                                    />
-                                    {userResults.length > 0 && (
-                                        <div
-                                            onMouseDown={(e) => e.preventDefault()}
-                                            className="absolute bottom-full mb-4 left-0 w-[200px] bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl py-2 overflow-hidden max-h-[200px] overflow-y-auto"
-                                        >
-                                            {userResults.map(u => (
-                                                <button
-                                                    key={u.clerkId}
-                                                    onClick={() => {
-                                                        fetch(`/api/crm/forms/${params.id}/responses/assign`, {
-                                                            method: "PATCH",
-                                                            headers: { "Content-Type": "application/json" },
-                                                            body: JSON.stringify({ responseIds: selectedRows, assignedTo: [u.clerkId] })
-                                                        }).then(() => {
-                                                            toast.success(`Assigned to ${u.email.split('@')[0]}`);
-                                                            setSelectedRows([]);
-                                                            fetchData();
-                                                        });
-                                                        setUserResults([]);
-                                                        setUserSearchQuery("");
-                                                    }}
-                                                    className="w-full px-4 py-2 text-left hover:bg-indigo-600 text-[9px] font-black uppercase text-slate-300 hover:text-white"
-                                                >
-                                                    {u.email}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
+            {/* Matrix Hub - Floating Dynamic Actions */}
+            <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-4">
+                <AnimatePresence>
+                    {selectedRows.length > 0 && (
+                        <motion.div
+                            initial={{ y: 100, opacity: 0, scale: 0.8 }}
+                            animate={{ y: 0, opacity: 1, scale: 1 }}
+                            exit={{ y: 100, opacity: 0, scale: 0.8 }}
+                            className="flex items-center gap-6 bg-slate-900 border border-slate-700 p-4 px-8 rounded-[40px] shadow-[0_30px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl"
+                        >
+                            <div className="flex items-center gap-4 pr-6 border-r border-slate-700">
+                                <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-black shadow-lg shadow-indigo-500/20">
+                                    {selectedRows.length}
                                 </div>
-                                <button onClick={() => {
-                                    fetch(`/api/crm/forms/${params.id}/responses/assign`, {
-                                        method: "PATCH",
-                                        headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify({ responseIds: selectedRows, assignedTo: [] })
-                                    }).then(() => {
-                                        toast.success(`Leads Unassigned`);
-                                        setSelectedRows([]);
-                                        fetchData();
-                                    });
-                                }} className="px-4 py-2 bg-emerald-900/40 text-emerald-400 hover:bg-emerald-900 rounded-xl text-[9px] font-black uppercase tracking-widest border border-emerald-900/50 transition-all">Make Unassigned</button>
-                                <button onClick={() => handleBulkVisibilityUpdate("ROW", [])} className="px-4 py-2 bg-emerald-900/40 text-emerald-400 hover:bg-emerald-900 rounded-xl text-[9px] font-black uppercase tracking-widest border border-emerald-900/50 transition-all">Make Public</button>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Matrix Active</span>
+                                    <span className="text-[12px] font-bold text-white tracking-tight">{selectedRows.length} of {data?.responses?.length || 0} Locked</span>
+                                </div>
                             </div>
 
-                            <div className="h-6 w-[1px] bg-slate-800 mx-2" />
-
-                            {(isMaster || isPureMaster) && (
+                            <div className="flex items-center gap-3">
                                 <button
-                                    onClick={handleBulkDelete}
-                                    className="px-6 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2"
+                                    onClick={handleBulkCopyNumbers}
+                                    className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg shadow-indigo-600/20 active:scale-95"
                                 >
-                                    <Trash2 size={14} />
-                                    Delete Selected
+                                    <ClipboardList size={14} />
+                                    Copy {selectedRows.length} Numbers
                                 </button>
-                            )}
 
-                            <button onClick={() => setSelectedRows([])} className="p-3 text-slate-400 hover:text-white transition-colors"><X size={20} /></button>
+                                <button
+                                    onClick={() => setIsLeadAssignHubOpen(true)}
+                                    className="px-5 py-2.5 bg-indigo-900/50 hover:bg-indigo-900 text-indigo-100 rounded-full text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 border border-indigo-700/50 active:scale-95"
+                                >
+                                    <Users size={14} />
+                                    Distribute
+                                </button>
+
+                                <button
+                                    onClick={handleExcelExport}
+                                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg shadow-emerald-600/20 active:scale-95"
+                                >
+                                    <FileText size={14} />
+                                    Export Excel
+                                </button>
+
+                                <button
+                                    onClick={() => setSelectedRows([])}
+                                    className="p-2.5 bg-rose-900/30 hover:bg-rose-900 text-rose-400 hover:text-white rounded-full transition-all border border-rose-900/50"
+                                    title="Release Sector"
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
                         </motion.div>
-                    )
-                }
-            </AnimatePresence >
+                    )}
+                </AnimatePresence>
+
+                {/* Persistent Mini Tools - Matrix Explorer Hub */}
+                <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 p-2 px-3 rounded-[30px] shadow-2xl backdrop-blur-md">
+                    <button
+                        onClick={handleExcelExport}
+                        className="p-2 text-emerald-400 hover:bg-emerald-500/10 rounded-full transition-all border border-transparent hover:border-emerald-500/20"
+                        title="Export Entire Matrix to Excel"
+                    >
+                        <FileText size={18} />
+                    </button>
+                    <button
+                        onClick={handleBulkCopyNumbers}
+                        className="p-2 text-indigo-400 hover:bg-indigo-500/10 rounded-full transition-all border border-transparent hover:border-indigo-500/20"
+                        title="Copy All Phone Numbers"
+                    >
+                        <ClipboardList size={18} />
+                    </button>
+                    <div className="w-[1px] h-4 bg-slate-700 mx-1" />
+                    <div className="flex flex-col items-center px-1">
+                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] leading-none mb-1">Matrix v2</span>
+                        <div className="text-[10px] font-bold text-slate-300 tabular-nums">
+                            {data?.responses?.length || 0} Leads
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             {/* Column Manager Modal */}
             <AnimatePresence>
