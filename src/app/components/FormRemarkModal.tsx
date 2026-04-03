@@ -362,6 +362,8 @@ export default function FormRemarkModal({ formId, responseId, columnId, userRole
 
     const handleSubmit = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
+        if (loading) return;
+
         const finalRemark = form.remark || `Status interaction: ${form.followUpStatus}`;
         if (!finalRemark && !columnId) return toast.error("Please enter a remark.");
         
@@ -374,6 +376,7 @@ export default function FormRemarkModal({ formId, responseId, columnId, userRole
         };
 
         setLoading(true);
+        const saveToastId = toast.loading("Saving interaction...", { id: "save-interaction-main" });
         try {
             const res = await fetch(`/api/crm/forms/${formId}/responses/${responseId}/remarks`, {
                 method: "POST",
@@ -381,18 +384,18 @@ export default function FormRemarkModal({ formId, responseId, columnId, userRole
                 body: JSON.stringify(payload)
             });
             if (res.ok) {
-                toast.success("Interaction saved successfully!", { id: "save-interaction" });
+                toast.success("Interaction saved successfully!", { id: "save-interaction-main" });
                 setForm({ remark: "", nextFollowUpDate: "", followUpStatus: "", leadStatus: "" });
                 setIsAdding(false);
                 if (onSave) onSave();
                 if (columnId) onClose();
-                fetchRemarks(); // Silently refresh local history
+                await fetchRemarks(); // Wait for sync
             } else {
                 const errorData = await res.json();
-                toast.error(errorData.error || "Failed to save interaction");
+                toast.error(errorData.error || "Failed to save interaction", { id: "save-interaction-main" });
             }
         } catch (error) {
-            toast.error("Connection failed. Data cached locally.");
+            toast.error("Connection failed. Data cached locally.", { id: "save-interaction-main" });
         } finally {
             setLoading(false);
         }
