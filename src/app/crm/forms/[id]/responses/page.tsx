@@ -11,7 +11,7 @@ import {
     Zap, Layout, CloudOff, Lock, Pin, PinOff, BarChart3, Activity, Sparkles,
     Palette, Eye, EyeOff, GripVertical, ArrowUp, ArrowDown, ArrowUpDown,
     Minimize2, Bot, RefreshCw, Send, Wifi, Target, Quote, TrendingUp, AlertCircle,
-    Settings2, ClipboardList
+    Settings2, ClipboardList, Trash2
 } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
@@ -5604,7 +5604,7 @@ export default function CRMSpreadsheetPage() {
                                                     </div>
                                                 ) : (
                                                     <div className="p-10 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[40px] flex flex-col items-center justify-center text-center opacity-40">
-                                                        <Settings size={30} className="mb-4 text-slate-400 animate-spin-slow" />
+                                                        <Settings2 size={30} className="mb-4 text-slate-400 animate-spin-slow" />
                                                         <p className="text-[10px] font-black uppercase tracking-widest leading-relaxed">Dynamic Logic Enabled <br />For {newColType} Type</p>
                                                     </div>
                                                 )}
@@ -5658,6 +5658,17 @@ export default function CRMSpreadsheetPage() {
                                     <Users size={14} />
                                     Distribute
                                 </button>
+
+                                {(isMaster || isPureMaster) && (
+                                    <button
+                                        onClick={handleBulkDelete}
+                                        disabled={isBulkDeleting}
+                                        className="px-5 py-2.5 bg-rose-900/50 hover:bg-rose-900 text-rose-100 rounded-full text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 border border-rose-700/50 active:scale-95 disabled:opacity-50"
+                                    >
+                                        {isBulkDeleting ? <RefreshCw size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                                        Purge Selected
+                                    </button>
+                                )}
 
                                 <button
                                     onClick={handleExcelExport}

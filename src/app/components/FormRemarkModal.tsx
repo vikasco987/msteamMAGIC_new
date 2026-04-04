@@ -26,6 +26,17 @@ interface Props {
     initialData?: { remark?: string, nextFollowUpDate?: string, followUpStatus?: string, leadStatus?: string };
 }
 
+const safeFormat = (dateStr: string | null | undefined, formatStr: string) => {
+    try {
+        if (!dateStr) return "—";
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return dateStr;
+        return format(date, formatStr);
+    } catch (e) {
+        return dateStr || "—";
+    }
+};
+
 export default function FormRemarkModal({ formId, responseId, columnId, userRole, onClose, onSave, initialData }: Props) {
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(false); // ⚡ Instant Launch Protocol
@@ -408,7 +419,10 @@ export default function FormRemarkModal({ formId, responseId, columnId, userRole
                 remark: finalRemark,
                 authorName: "You (Offline)",
                 createdAt: new Date().toISOString(),
-                ...data
+                nextFollowUpDate: data.nextFollowUpDate || undefined,
+                followUpStatus: data.followUpStatus || undefined,
+                leadStatus: data.leadStatus || undefined,
+                columnId: data.columnId
             };
             setRemarks(prev => [optimisticRemark, ...prev]);
             setForm({ remark: "", nextFollowUpDate: "", followUpStatus: "", leadStatus: "" });
@@ -603,7 +617,7 @@ export default function FormRemarkModal({ formId, responseId, columnId, userRole
                                                 </div>
                                                 <div>
                                                     <p className="text-[10px] font-black text-slate-700 uppercase tracking-tighter leading-none">{r.authorName}</p>
-                                                    <p className="text-[9px] text-slate-400 font-bold">{format(new Date(r.createdAt), "MMM d, h:mm a")}</p>
+                                                    <p className="text-[9px] text-slate-400 font-bold">{safeFormat(r.createdAt, "MMM d, h:mm a")}</p>
                                                 </div>
                                             </div>
                                             {canDelete && (
@@ -621,7 +635,7 @@ export default function FormRemarkModal({ formId, responseId, columnId, userRole
                                                 )}
                                                 {r.nextFollowUpDate && (
                                                     <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-[9px] font-black border border-indigo-100">
-                                                        📅 NEXT: {format(new Date(r.nextFollowUpDate), "MMM d, yyyy")}
+                                                        📅 NEXT: {safeFormat(r.nextFollowUpDate, "MMM d, yyyy")}
                                                     </span>
                                                 )}
                                             </div>
