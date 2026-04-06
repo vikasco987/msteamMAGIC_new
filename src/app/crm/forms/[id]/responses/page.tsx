@@ -2963,10 +2963,7 @@ export default function CRMSpreadsheetPage() {
         }
     };
 
-    useEffect(() => {
-        console.log("🚀 [MATRIX-DIAGNOSTIC] Matrix v2 Component Loaded Successfully");
-        console.log("🚀 [MATRIX-DIAGNOSTIC] handleBulkCopyNumbers is defined:", typeof handleBulkCopyNumbers);
-    }, [handleBulkCopyNumbers]);
+
 
     const handleBulkCopyNumbers = () => {
         console.log("📋 [MATRIX-ACTION] Copy Numbers Triggered!");
@@ -3076,6 +3073,11 @@ export default function CRMSpreadsheetPage() {
             toast.error("Failed to export Excel", { id: loadingToast });
         }
     };
+
+    useEffect(() => {
+        console.log("🚀 [MATRIX-DIAGNOSTIC] Matrix v2 Component Loaded Successfully");
+        console.log("🚀 [MATRIX-DIAGNOSTIC] handleBulkCopyNumbers is defined:", typeof handleBulkCopyNumbers);
+    }, [handleBulkCopyNumbers]);
 
     if (loading) return (
         <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center">
