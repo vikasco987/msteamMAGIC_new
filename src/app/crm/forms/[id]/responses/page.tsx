@@ -3023,13 +3023,30 @@ export default function CRMSpreadsheetPage() {
 
             const fields = fullData.form.fields;
             const internalCols = fullData.internalColumns;
+            const collaborators = fullData.form.visibleToUsersData || [];
+
+            // 💎 O(1) LOOKUP OPTIMIZATION: Convert Internal Values to a fast-access Map
+            const internalMap = new Map();
+            (fullData.internalValues || []).forEach((iv: any) => {
+                internalMap.set(`${iv.responseId}_${iv.columnId}`, iv.value);
+            });
+
+            // 💎 O(1) LOOKUP OPTIMIZATION: Convert Collaborators to a Map for names
+            const userNamesMap = new Map();
+            collaborators.forEach((u: any) => {
+                userNamesMap.set(u.id, u.name);
+            });
 
             const excelData = fullData.responses.map((res: any) => {
+                const assignedToNames = (res.assignedTo || [])
+                    .map((uid: string) => userNamesMap.get(uid) || uid)
+                    .join(", ");
+
                 const row: any = {
                     "ID": res.id,
                     "Submitted At": res.submittedAt,
                     "Submitted By": res.submittedByName,
-                    "Assigned To": res.assignedToNames?.join(", ") || "Unassigned"
+                    "Assigned To": assignedToNames || "Unassigned"
                 };
 
                 // Dynamic Fields
@@ -3040,7 +3057,7 @@ export default function CRMSpreadsheetPage() {
 
                 // Internal Columns (Data Hub)
                 internalCols.forEach((col: any) => {
-                    const val = fullData.internalValues?.find((iv: any) => iv.responseId === res.id && iv.columnId === col.id)?.value || "";
+                    const val = internalMap.get(`${res.id}_${col.id}`) || "";
                     row[col.label] = val;
                 });
 
