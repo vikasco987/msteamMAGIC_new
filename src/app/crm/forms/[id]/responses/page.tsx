@@ -2996,48 +2996,62 @@ export default function CRMSpreadsheetPage() {
     const handleExcelExport = async () => {
         if (!data) return toast.error("No data to export");
         
-        const loadingToast = toast.loading("Fetching entire matrix for export...");
+        const loadingToast = toast.loading(`${selectedRows.length > 0 ? `Exporting ${selectedRows.length} selected records...` : "Fetching entire matrix for export..."}`);
 
         try {
-            // 🚀 Fetch EVERYTHING matching current filters (up to 5000 records for safety)
-            const searchParams = new URLSearchParams({
-                page: "1",
-                limit: "5000", 
-                search: searchTerm,
-                sortBy: sortBy,
-                sortOrder: sortOrder,
-                conditions: JSON.stringify(conditions),
-                conjunction: filterConjunction,
-                today: new Date().toISOString().split('T')[0]
-            });
+            let responsesToExport = [];
+            let formTitle = "CRM_Export";
+            let exportFields = data?.form?.fields || [];
+            let exportInternalCols = data?.internalColumns || [];
+            let sourceInternalValues = data?.internalValues || [];
 
-            const response = await fetch(`/api/crm/forms/${params.id}/responses?${searchParams.toString()}`);
-            const fullData = await response.json();
+            if (selectedRows.length > 0) {
+                // 💎 SELECTIVE EXPORT: Use currently loaded selected data
+                responsesToExport = (data?.responses || []).filter((r: any) => selectedRows.includes(r.id));
+                formTitle = data?.form?.title || "CRM_Export";
+            } else {
+                // 🚀 FULL EXPORT: Fetch EVERYTHING matching current filters (up to 5000 records for safety)
+                const searchParams = new URLSearchParams({
+                    page: "1",
+                    limit: "5000",
+                    search: searchTerm,
+                    sortBy: sortBy,
+                    sortOrder: sortOrder,
+                    conditions: JSON.stringify(conditions),
+                    conjunction: filterConjunction,
+                    today: new Date().toISOString().split('T')[0]
+                });
 
-            if (!fullData.responses || fullData.responses.length === 0) {
-                toast.error("No data found to export", { id: loadingToast });
-                return;
+                const response = await fetch(`/api/crm/forms/${params.id}/responses?${searchParams.toString()}`);
+                if (!response.ok) throw new Error(`Server unstable (Status: ${response.status})`);
+                
+                const fullData = await response.json();
+                if (!fullData.responses || fullData.responses.length === 0) {
+                    toast.error("No data found to export", { id: loadingToast });
+                    return;
+                }
+                responsesToExport = fullData.responses;
+                formTitle = fullData.form?.title || "CRM_Export";
+                exportFields = fullData.form?.fields || exportFields;
+                exportInternalCols = fullData.internalColumns || exportInternalCols;
+                sourceInternalValues = fullData.internalValues || [];
             }
 
-            toast.loading(`Generating Excel for ${fullData.responses.length} records...`, { id: loadingToast });
-
-            const fields = fullData.form.fields;
-            const internalCols = fullData.internalColumns;
-            const collaborators = fullData.form.visibleToUsersData || [];
+            toast.loading(`Generating Excel for ${responsesToExport.length} records...`, { id: loadingToast });
 
             // 💎 O(1) LOOKUP OPTIMIZATION: Convert Internal Values to a fast-access Map
             const internalMap = new Map();
-            (fullData.internalValues || []).forEach((iv: any) => {
+            sourceInternalValues.forEach((iv: any) => {
                 internalMap.set(`${iv.responseId}_${iv.columnId}`, iv.value);
             });
 
             // 💎 O(1) LOOKUP OPTIMIZATION: Convert Collaborators to a Map for names
             const userNamesMap = new Map();
-            collaborators.forEach((u: any) => {
+            (data?.form?.visibleToUsersData || []).forEach((u: any) => {
                 userNamesMap.set(u.id, u.name);
             });
 
-            const excelData = fullData.responses.map((res: any) => {
+            const excelData = responsesToExport.map((res: any) => {
                 const assignedToNames = (res.assignedTo || [])
                     .map((uid: string) => userNamesMap.get(uid) || uid)
                     .join(", ");
@@ -3050,13 +3064,13 @@ export default function CRMSpreadsheetPage() {
                 };
 
                 // Dynamic Fields
-                fields.forEach((f: any) => {
-                    const val = res.values.find((v: any) => v.fieldId === f.id)?.value || "";
+                exportFields.forEach((f: any) => {
+                    const val = res.values?.find((v: any) => v.fieldId === f.id)?.value || "";
                     row[f.label] = val;
                 });
 
                 // Internal Columns (Data Hub)
-                internalCols.forEach((col: any) => {
+                exportInternalCols.forEach((col: any) => {
                     const val = internalMap.get(`${res.id}_${col.id}`) || "";
                     row[col.label] = val;
                 });
@@ -3083,11 +3097,16 @@ export default function CRMSpreadsheetPage() {
             const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
             const finalBlob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
             
-            saveAs(finalBlob, `${fullData.form.title}_Full_Export_${safeFormat(new Date(), "yyyy-MM-dd")}.xlsx`);
-            toast.success(`Succesfully exported ${fullData.responses.length} records!`, { id: loadingToast });
-        } catch (error) {
-            console.error("Export Error:", error);
-            toast.error("Failed to export Excel", { id: loadingToast });
+            // 🛡️ FILENAME SANITIZATION: Remove illegal characters
+            const sanitizedTitle = formTitle.replace(/[/\\?%*:|"<>]/g, '-').trim();
+            const dateStr = safeFormat(new Date().toISOString(), "yyyy-MM-dd");
+            const fileName = `${sanitizedTitle}_${selectedRows.length > 0 ? 'Selection' : 'Full'}_Export_${dateStr}.xlsx`;
+            
+            saveAs(finalBlob, fileName);
+            toast.success(`Succesfully exported ${responsesToExport.length} records!`, { id: loadingToast });
+        } catch (error: any) {
+            console.error("Export Error Detail:", error);
+            toast.error(`Matrix Guard: ${error.message || "Export failed"}`, { id: loadingToast });
         }
     };
 
