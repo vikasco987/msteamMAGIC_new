@@ -99,7 +99,7 @@ export async function GET(
 
         const isFormOwner = form.createdBy === userId;
         const isMasterRole = userRole === "MASTER"; // Ultimate Authority
-        const isMaster = isMasterRole || userRole === "ADMIN" || userRole === "TL" || isFormOwner;
+        const isMaster = isMasterRole || userRole === "ADMIN" || userRole === "TL"; // 🛡️ Role-based authority strictly strictly matching user request
 
         const { searchParams } = new URL(req.url);
         const page = parseInt(searchParams.get("page") || "1");
@@ -146,7 +146,17 @@ export async function GET(
         const permissionWhere: any = isMaster ? {} : {
             OR: [
                 { assignedTo: { has: userId } },
-                // 🛡️ SUBMITTER SHIELD: Submitter sees it ONLY if it hasn't been reassigned to someone else
+                // 🛡️ FORM OWNER: Sees everything in their own form if not reassigned, or if reassigned to them
+                ...(isFormOwner ? [
+                    { 
+                        OR: [
+                            { assignedTo: { isEmpty: true } },
+                            { assignedTo: { equals: [] } },
+                            { assignedTo: { has: userId } }
+                        ]
+                    }
+                ] : []),
+                // 🛡️ SUBMITTER SHIELD: Submitter sees it ONLY if it hasn't been reassigned to someone else (or assigned back to them)
                 {
                     AND: [
                         { submittedBy: userId },
@@ -159,17 +169,19 @@ export async function GET(
                         }
                     ]
                 },
-                // 🛡️ POOL ACCESS: Restricted for SELLERS
-                ...(!isSeller ? [
-                    { assignedTo: { isEmpty: true } },
-                    { assignedTo: { equals: [] } }
-                ] : []),
-                { visibleToRoles: { has: userRole } },
-                { visibleToUsers: { has: userId } },
-                ...(isTL && teamMemberIds.length > 0 ? [
-                    { assignedTo: { hasSome: teamMemberIds } },
-                    { AND: [{ assignedTo: { isEmpty: true } }, { submittedBy: { in: teamMemberIds } }] }
-                ] : [])
+                // 🛡️ POOL ACCESS & OVERRIDES: Only valid for UNASSIGNED leads
+                {
+                    AND: [
+                        { OR: [{ assignedTo: { isEmpty: true } }, { assignedTo: { equals: [] } }] },
+                        {
+                            OR: [
+                                ...(!isSeller ? [{ id: { not: "" } }] : []), // Non-sellers see unassigned pool
+                                { visibleToRoles: { has: userRole } },
+                                { visibleToUsers: { has: userId } }
+                            ]
+                        }
+                    ]
+                }
             ]
         };
 
