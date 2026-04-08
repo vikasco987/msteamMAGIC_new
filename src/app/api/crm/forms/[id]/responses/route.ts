@@ -145,8 +145,18 @@ export async function GET(
         const isSeller = userRole === "SELLER";
         const permissionWhere: any = isMaster ? {} : {
             OR: [
+                // 1️⃣ SUCCESS: You are the explicitly assigned handler
                 { assignedTo: { has: userId } },
-                // 🛡️ FORM OWNER: Sees everything in their own form if not reassigned, or if reassigned to them
+                
+                // 2️⃣ SUBMITTER: You see it ONLY IF it's unassigned (pool) or assigned to you
+                {
+                    AND: [
+                        { submittedBy: userId },
+                        { OR: [{ assignedTo: { isEmpty: true } }, { assignedTo: { equals: [] } }, { assignedTo: { has: userId } }] }
+                    ]
+                },
+
+                // 3️⃣ OWNER: You see it ONLY IF it's unassigned or assigned to you
                 ...(isFormOwner ? [
                     { 
                         OR: [
@@ -156,20 +166,8 @@ export async function GET(
                         ]
                     }
                 ] : []),
-                // 🛡️ SUBMITTER SHIELD: Submitter sees it ONLY if it hasn't been reassigned to someone else (or assigned back to them)
-                {
-                    AND: [
-                        { submittedBy: userId },
-                        {
-                            OR: [
-                                { assignedTo: { has: userId } },
-                                { assignedTo: { isEmpty: true } },
-                                { assignedTo: { equals: [] } }
-                            ]
-                        }
-                    ]
-                },
-                // 🛡️ POOL ACCESS & OVERRIDES: Only valid for UNASSIGNED leads
+
+                // 4️⃣ POOL & OVERRIDES: Only valid for UNASSIGNED leads
                 {
                     AND: [
                         { OR: [{ assignedTo: { isEmpty: true } }, { assignedTo: { equals: [] } }] },

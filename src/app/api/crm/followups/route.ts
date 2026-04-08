@@ -54,10 +54,18 @@ export async function GET(req: NextRequest) {
             const isAssignedToMe = assignees.includes(userId);
             const isSubmittedByMe = res.submittedBy === userId;
 
+            // 🛡️ REASSIGNMENT PROTECTION: If assigned to others (and NOT me), submitter loses access
+            const isReassignedToOthers = assignees.length > 0 && !isAssignedToMe;
+            
             const isAssignedToTeam = isTL && teamMemberIds.some(id => assignees.includes(id));
             const isSubmittedByTeam = isTL && teamMemberIds.includes(res.submittedBy || "");
 
-            return isAssignedToMe || isSubmittedByMe || isAssignedToTeam || isSubmittedByTeam;
+            if (isAssignedToMe) return true;
+            if (isSubmittedByMe && !isReassignedToOthers) return true;
+            if (isAssignedToTeam) return true;
+            if (isSubmittedByTeam && !isReassignedToOthers) return true;
+            
+            return false;
         });
 
         return NextResponse.json({
