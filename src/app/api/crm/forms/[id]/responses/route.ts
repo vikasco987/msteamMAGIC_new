@@ -604,35 +604,96 @@ export async function GET(
         ]);
         console.timeEnd("FetchAssociations");
 
-        // Stitch manual arrays (Fixes Prisma `$or` aggregation bug on large includes)
+        // 🚀 HIGH-PERFORMANCE STITCHING: Use Maps instead of nested .filter()
+        console.time("Stitching");
+        const valuesMap = new Map<string, any[]>();
+        const remarksMap = new Map<string, any[]>();
+        const paymentsMap = new Map<string, any[]>();
+
+        allValues.forEach(v => {
+            if (!valuesMap.has(v.responseId)) valuesMap.set(v.responseId, []);
+            valuesMap.get(v.responseId)?.push(v);
+        });
+        allRemarks.forEach(rm => {
+            if (!remarksMap.has(rm.responseId)) remarksMap.set(rm.responseId, []);
+            remarksMap.get(rm.responseId)?.push(rm);
+        });
+        allPayments.forEach(p => {
+            if (!paymentsMap.has(p.responseId)) paymentsMap.set(p.responseId, []);
+            paymentsMap.get(p.responseId)?.push(p);
+        });
+
         allResponses = allResponses.map(r => ({
             ...r,
-            values: allValues.filter((v: any) => v.responseId === r.id),
-            remarks: allRemarks.filter((rm: any) => rm.responseId === r.id),
-            payments: allPayments.filter((p: any) => p.responseId === r.id)
+            values: valuesMap.get(r.id) || [],
+            remarks: remarksMap.get(r.id) || [],
+            payments: paymentsMap.get(r.id) || []
         }));
+        console.timeEnd("Stitching");
 
-        // Resolve user data for UI mapping
-        const allUserIds = form.visibleToUsers || [];
+
+        // Resolve user data for UI mapping (Submitters, Assignees, and Form-level specific users)
+        const allUserIds = [...new Set([
+            ...(form.visibleToUsers || []),
+            ...allResponses.map(r => r.submittedBy).filter(Boolean),
+            ...allResponses.flatMap(r => r.assignedTo || []).filter(Boolean)
+        ])].filter((id): id is string => typeof id === "string" && id.startsWith("user_"));
+
         const usersMap: Record<string, { email: string; name: string; imageUrl: string }> = {};
 
         if (allUserIds.length > 0) {
             try {
-                const clerk = await clerkClient();
-                const usersList = await clerk.users.getUserList({ userId: allUserIds, limit: 100 });
-                usersList.data
-                    .filter((u: any) => !u.banned)
-                    .forEach(u => {
-                        usersMap[u.id] = {
-                            email: u.emailAddresses[0]?.emailAddress || "Unknown",
-                            name: `${u.firstName || ""} ${u.lastName || ""}`.trim() || "Unknown User",
-                            imageUrl: u.imageUrl || ""
-                        };
+                // 🏎️ FAST MAPPING: Check local DB first
+                const dbUsers = await prisma.user.findMany({
+                    where: { clerkId: { in: allUserIds } },
+                    select: { clerkId: true, email: true, name: true }
+                });
+
+                dbUsers.forEach(u => {
+                    usersMap[u.clerkId] = {
+                        email: u.email || "Unknown",
+                        name: u.name || "System User",
+                        imageUrl: "" 
+                    };
+                });
+
+                // 🕒 Only fetch from Clerk if IDs are missing from local DB
+                const missingIds = allUserIds.filter(id => !usersMap[id]);
+                
+                if (missingIds.length > 0) {
+                    const clerk = await clerkClient();
+                    const chunkSize = 80;
+                    const chunks = [];
+                    for (let i = 0; i < missingIds.length; i += chunkSize) {
+                        chunks.push(missingIds.slice(i, i + chunkSize));
+                    }
+
+                    // 🚀 Parallelized Fetch for missing users
+                    const results = await Promise.allSettled(
+                        chunks.map(chunk => clerk.users.getUserList({ userId: chunk, limit: 100 }))
+                    );
+
+                    results.forEach((result, idx) => {
+                        if (result.status === "fulfilled") {
+                            result.value.data
+                                .filter((u: any) => !u.banned)
+                                .forEach(u => {
+                                    usersMap[u.id] = {
+                                        email: u.emailAddresses[0]?.emailAddress || "Unknown",
+                                        name: `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.username || "Unknown User",
+                                        imageUrl: u.imageUrl || ""
+                                    };
+                                });
+                        } else {
+                            console.error(`[API] Clerk fetch error for chunk ${idx}:`, result.reason);
+                        }
                     });
+                }
             } catch (err) {
                 console.error("Clerk fetch users mapping error:", err);
             }
         }
+
 
         const enrichedForm: any = {
             ...form,

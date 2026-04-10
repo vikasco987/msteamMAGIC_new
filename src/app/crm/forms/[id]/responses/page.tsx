@@ -32,7 +32,9 @@ import Pusher from "pusher-js";
 import { io } from "socket.io-client";
 
 const CALL_STATUS_OPTIONS = [
-    "CALL AGAIN", "CALL DONE", "RNR", "INVALID NUMBER", "SWITCH OFF", "RNR 2", "RNR3", "INCOMING NOT AVAIABLE", "MEETING", "DUPLICATE", "WRONG NUMBER"
+    "CALL AGAIN", "CALL DONE", "RNR", "INVALID NUMBER", "SWITCH OFF", "SWITCHED OFF", "RNR 2", "RNR3", 
+    "INCOMING NOT AVAILABLE", "INCOMING NOT AVAIABLE", "MEETING", "DUPLICATE", "WRONG NUMBER", "BUSY",
+    "NOT ANSWERED", "NOT REACHABLE", "INTERESTED", "NOT INTERESTED", "FOLLOW UP", "ONBOARDED", "CLOSED"
 ];
 
 const getExcelLabel = (index: number): string => {
@@ -3909,7 +3911,6 @@ export default function CRMSpreadsheetPage() {
                                                                             <button onClick={() => setActiveColumnFilter(null)} className={`p-1 rounded-lg transition-all ${['dark', 'midnight', 'ocean', 'sunset', 'aurora'].includes(canvasTheme) ? 'text-slate-500 hover:text-white hover:bg-white/10' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-200'}`}>
                                                                                 <X size={10} />
                                                                             </button>
-                                                                        </div>
                                                                         <div className={`px-4 py-2.5 border-b sticky top-0 z-10 ${['dark', 'midnight', 'ocean', 'sunset', 'aurora'].includes(canvasTheme) ? 'bg-slate-900/50 border-white/10' : 'bg-white border-slate-100'}`}>
                                                                             <div className="relative">
                                                                                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" size={10} />
@@ -3918,11 +3919,19 @@ export default function CRMSpreadsheetPage() {
                                                                                     placeholder="Find value..."
                                                                                     value={activeColumnFilterSearch}
                                                                                     onChange={(e) => setActiveColumnFilterSearch(e.target.value)}
-                                                                                    className={`w-full pl-7 pr-3 py-1.5 rounded-lg text-[10px] font-bold outline-none transition-all border ${['dark', 'midnight', 'ocean', 'sunset', 'aurora'].includes(canvasTheme)
+                                                                                    className={`w-full pl-7 pr-7 py-1.5 rounded-lg text-[10px] font-bold outline-none transition-all border ${['dark', 'midnight', 'ocean', 'sunset', 'aurora'].includes(canvasTheme)
                                                                                         ? 'bg-white/5 border-white/10 text-white focus:bg-white/10 focus:border-indigo-500'
                                                                                         : 'bg-slate-100/50 border-slate-200 text-slate-900 focus:bg-white focus:border-indigo-300 shadow-inner'
                                                                                         }`}
                                                                                 />
+                                                                                {activeColumnFilterSearch && (
+                                                                                    <button 
+                                                                                        onClick={(e) => { e.stopPropagation(); setActiveColumnFilterSearch(""); }}
+                                                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-500 transition-colors"
+                                                                                    >
+                                                                                        <X size={10} />
+                                                                                    </button>
+                                                                                )}
                                                                             </div>
                                                                         </div>
                                                                         <div className="overflow-y-auto custom-scrollbar flex-1 py-1">
@@ -4005,7 +4014,19 @@ export default function CRMSpreadsheetPage() {
                                                                                 })}
                                                                             </div>
                                                                             {(() => {
+                                                                                // 🛡️ Standardized Interaction Hierarchy
+                                                                                const MASTER_STATUS_LIST = [
+                                                                                    "CALL AGAIN", "CALL DONE", "RNR", "INVALID NUMBER", "SWITCH OFF", "SWITCHED OFF", "RNR 2", "RNR3", "BUSY", "AGENT BUSY",
+                                                                                    "INCOMING NOT AVAILABLE", "INCOMING NOT AVAIABLE", "MEETING", "DUPLICATE", "WRONG NUMBER", 
+                                                                                    "NOT ANSWERED", "NOT PICKED", "NOT REACHABLE", "OUT OF SERVICE", "CONNECTED",
+                                                                                    "INTERESTED", "NOT INTERESTED", "Onboarded", "FOLLOW UP", "REJECTED", "CLOSED"
+                                                                                ];
+
                                                                                 let availableValues: { label: string, value: string }[] = [];
+                                                                                const colLabel = (col.label || col.id || "").toString();
+                                                                                const upLabel = colLabel.toUpperCase();
+                                                                                const isCallingCol = upLabel.includes("CALLING") || upLabel.includes("STATUS") || upLabel.includes("LEAD") || upLabel.includes("RESULT") || 
+                                                                                                   col.id === "__followUpStatus" || col.id === "__followup" || col.id === "__recentRemark";
 
                                                                                 if (col.id === "__assigned") {
                                                                                     availableValues = teamMembers.map(m => {
@@ -4039,50 +4060,34 @@ export default function CRMSpreadsheetPage() {
                                                                                         { label: "Reassigned to Me 🎯", value: "__REASSIGNED_TO_ME__" }
                                                                                     );
 
-                                                                                } else if (
-                                                                                    col.id === "__followUpStatus" || 
-                                                                                    col.id === "__followup" || 
-                                                                                    col.id === "__recentRemark" || 
-                                                                                    col.id === "__nextFollowUpDate" ||
-                                                                                    (col.label && (
-                                                                                        col.label.toUpperCase().includes("STATUS") || 
-                                                                                        col.label.toUpperCase().includes("CALLING") ||
-                                                                                        col.label.toUpperCase().includes("LEAD") ||
-                                                                                        col.label.toUpperCase().includes("RESULT")
-                                                                                    ))
-                                                                                ) {
-                                                                                    // 🛡️ Standardized Interaction Hierarchy (Trimmed & Unified)
-                                                                                    const MASTER_STATUS_LIST = [
-                                                                                        "CALL AGAIN", "CALL DONE", "RNR", "INVALID NUMBER", "SWITCH OFF", "SWITCHED OFF", "RNR 2", "RNR3", 
-                                                                                        "INCOMING NOT AVAIABLE", "MEETING", "DUPLICATE", "WRONG NUMBER", "BUSY", "AGENT BUSY", 
-                                                                                        "NOT ANSWERED", "NOT PICKED", "NOT REACHABLE", "OUT OF SERVICE",
-                                                                                        "Will Share today", "Will let me know in 2 days", "Not Interested", "INTERESTED", "Onboarded", 
-                                                                                        "Will Let me know 7 days", "Customer Will Call", "Meeting Fix", "already applyed", 
-                                                                                        "language barrier", "Already Done", "Delivery Partners", "CUSTOMER WILL LET ME KNOW", "FOLLOW UP", "REJECTED", "CONNECTED",
-                                                                                        "CLOSED", "ONBOARDING", "SCHEDULED", "PAID WORK", "PAYMENT PENDING"
-                                                                                    ];
-                                                                                    
-                                                                                    const statusMap = new Map<string, string>(); // Normalized Upper -> Display Case
-                                                                                    
-                                                                                    // Feed from Master List
-                                                                                    MASTER_STATUS_LIST.forEach(s => {
-                                                                                        const norm = s.trim();
-                                                                                        if (norm) statusMap.set(norm.toUpperCase(), norm);
-                                                                                    });
-                                                                                    
-                                                                                    // Feed from existing data (Auto-normalize)
-                                                                                    const dataSource = allResponsesForFollowUps.length > 0 ? allResponsesForFollowUps : (data?.responses || []);
-                                                                                    dataSource.forEach(res => {
-                                                                                        const v = getCellValue(res.id, col.id, col.isInternal);
-                                                                                        if (v) {
-                                                                                            const norm = v.toString().trim();
-                                                                                            if (norm) statusMap.set(norm.toUpperCase(), norm);
+                                                                                    } else if (isCallingCol) {
+                                                                                        const sMap = new Map<string, string>();
+                                                                                        
+                                                                                        // 1. Mandatory Seeding
+                                                                                        MASTER_STATUS_LIST.forEach(s => sMap.set(s.trim().toUpperCase(), s.trim()));
+
+                                                                                        // 2. Extra Options
+                                                                                        if (Array.isArray(col.options)) {
+                                                                                            col.options.forEach((o: any) => {
+                                                                                                const l = typeof o === 'string' ? o : o.label;
+                                                                                                if (l) sMap.set(l.trim().toUpperCase(), l.trim());
+                                                                                            });
                                                                                         }
-                                                                                    });
-                                                                                    
-                                                                                    availableValues = Array.from(statusMap.values())
-                                                                                        .sort((a, b) => a.localeCompare(b))
-                                                                                        .map(s => ({ label: s, value: s }));
+                                                                                        
+                                                                                        // 3. Data Integration
+                                                                                        const dSource = allResponsesForFollowUps.length > 0 ? allResponsesForFollowUps : (data?.responses || []);
+                                                                                        dSource.forEach(res => {
+                                                                                            const v = getCellValue(res.id, col.id, col.isInternal);
+                                                                                            if (v && v !== "-" && v.toLowerCase() !== "null") {
+                                                                                                sMap.set(v.toString().trim().toUpperCase(), v.toString().trim());
+                                                                                            }
+                                                                                        });
+                                                                                        
+                                                                                        availableValues = Array.from(sMap.values())
+                                                                                            .sort((a, b) => a.localeCompare(b))
+                                                                                            .map(s => ({ label: s, value: s }));
+                                                                                        
+                                                                                        console.log(`🔍 [DIAG] ${colLabel} Filter: ${availableValues.length} options ready.`);
 
                                                                                 } else if ((col.type === "dropdown" || col.type === "multi_select" || col.type === "user") && Array.isArray(col.options) && col.options.length > 0) {
                                                                                     availableValues = col.options.map((o: any) => {
@@ -4137,7 +4142,8 @@ export default function CRMSpreadsheetPage() {
                                                                                 }
 
                                                                                 // 🛡️ Filter & Deduplicate the display options
-                                                                                const isUserCol = col.id === "__assigned" || col.id === "__contributor" || col.type === "user";
+                                                                                const isStatusCol = isCallingCol || col.id === "__followUpStatus" || col.id === "__followup" || (col.label && (col.label.toUpperCase().includes("STATUS") || col.label.toUpperCase().includes("CALLING")));
+                                                                                const isUserCol = (col.id === "__assigned" || col.id === "__contributor" || col.type === "user") && !isStatusCol;
 
                                                                                 // 1. First, pass through whitelists and active filters
                                                                                 const filteredOptions = availableValues.filter(opt => {
@@ -4170,11 +4176,69 @@ export default function CRMSpreadsheetPage() {
                                                                                     }
                                                                                 });
 
+                                                                                if (isStatusCol) {
+                                                                                    console.log(`🔍 [DIAG] ${colLabel} Final options to render: ${displayValues.length}`);
+                                                                                }
+
                                                                                 const finalDisplayOptions = activeColumnFilterSearch
                                                                                     ? displayValues.filter(o => o.label.toLowerCase().includes(activeColumnFilterSearch.toLowerCase()))
                                                                                     : displayValues;
 
+                                                                                if (isStatusCol) {
+                                                                                    return (
+                                                                                        <>
+                                                                                            <div className="px-3 py-1 mb-1 border-b border-indigo-500/20 bg-indigo-500/5">
+                                                                                                <span className="text-[9px] font-black text-indigo-500 uppercase tracking-tighter">
+                                                                                                    DEBUG: {displayValues.length} total | {finalDisplayOptions.length} visible
+                                                                                                </span>
+                                                                                            </div>
+                                                                                            {finalDisplayOptions.map(opt => {
+                                                                                                const isSelected = conditions.some(c => 
+                                                                                                    c.colId === col.id && 
+                                                                                                    c.val.toString().trim().toUpperCase() === opt.value.toString().trim().toUpperCase()
+                                                                                                );
+                                                                                                return (
+                                                                                                    <button
+                                                                                                        key={opt.value}
+                                                                                                        onClick={() => {
+                                                                                                            if (autoApply) setIsSyncing(true);
+                                                                                                            setCurrentPage(1);
+                                                                                                            if (isSelected) {
+                                                                                                                setConditions(prev => prev.filter(c => 
+                                                                                                                    !(c.colId === col.id && c.val.toString().trim().toUpperCase() === opt.value.toString().trim().toUpperCase())
+                                                                                                                ));
+                                                                                                            } else {
+                                                                                                                let autoOp = 'equals';
+                                                                                                                if (col.type === "multi_select" || col.type === "user") autoOp = 'contains';
+                                                                                                                setConditions(prev => [
+                                                                                                                    ...prev.filter(c => c.colId !== col.id || c.val.toString().trim().toUpperCase() !== opt.value.toString().trim().toUpperCase()), 
+                                                                                                                    { colId: col.id, op: autoOp, val: opt.value }
+                                                                                                                ]);
+                                                                                                            }
+                                                                                                        }}
+                                                                                                        className={`w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 flex items-center gap-2 group/btn transition-all ${['dark', 'midnight', 'ocean', 'sunset', 'aurora'].includes(canvasTheme) ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}
+                                                                                                    >
+                                                                                                        <div className={`w-3.5 h-3.5 shrink-0 rounded flex items-center justify-center border transition-all ${isSelected ? 'bg-indigo-600 border-indigo-600 shadow-sm' : (['dark', 'midnight', 'ocean', 'sunset', 'aurora'].includes(canvasTheme) ? 'bg-white/5 border-white/20' : 'bg-slate-100 border-slate-300 group-hover/btn:border-indigo-400')}`}>
+                                                                                                            {isSelected && <Check size={8} className="text-white relative top-[0.5px]" strokeWidth={3} />}
+                                                                                                        </div>
+                                                                                                        <span className={`text-[11px] truncate tracking-normal normal-case transition-colors ${isSelected ? 'font-black text-indigo-500' : (['dark', 'midnight', 'ocean', 'sunset', 'aurora'].includes(canvasTheme) ? 'font-bold text-slate-300 group-hover/btn:text-white' : 'font-bold text-slate-600')}`} title={opt.label}>
+                                                                                                            {opt.label}
+                                                                                                        </span>
+                                                                                                    </button>
+                                                                                                );
+                                                                                            })}
+                                                                                        </>
+                                                                                    );
+                                                                                }
+
                                                                                 if (!finalDisplayOptions || finalDisplayOptions.length === 0) {
+                                                                                    if (col.id === "__followUpStatus" || (col.label && col.label.toUpperCase().includes("CALLING"))) {
+                                                                                        console.warn("⚠️ [PRO-DIAGNOSTIC] No filter options found for Calling Status!", {
+                                                                                            colId: col.id,
+                                                                                            search: activeColumnFilterSearch,
+                                                                                            availableCount: availableValues.length
+                                                                                        });
+                                                                                    }
                                                                                     return <div className={`px-4 py-8 text-center text-[10px] font-bold uppercase tracking-widest ${['dark', 'midnight', 'ocean', 'sunset', 'aurora'].includes(canvasTheme) ? 'text-slate-600' : 'text-slate-400'}`}>
                                                                                         {activeColumnFilterSearch ? `No match found` : 'No data to filter'}
                                                                                     </div>;
