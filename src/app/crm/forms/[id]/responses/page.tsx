@@ -3911,6 +3911,7 @@ export default function CRMSpreadsheetPage() {
                                                                             <button onClick={() => setActiveColumnFilter(null)} className={`p-1 rounded-lg transition-all ${['dark', 'midnight', 'ocean', 'sunset', 'aurora'].includes(canvasTheme) ? 'text-slate-500 hover:text-white hover:bg-white/10' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-200'}`}>
                                                                                 <X size={10} />
                                                                             </button>
+                                                                        </div>
                                                                         <div className={`px-4 py-2.5 border-b sticky top-0 z-10 ${['dark', 'midnight', 'ocean', 'sunset', 'aurora'].includes(canvasTheme) ? 'bg-slate-900/50 border-white/10' : 'bg-white border-slate-100'}`}>
                                                                             <div className="relative">
                                                                                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" size={10} />
