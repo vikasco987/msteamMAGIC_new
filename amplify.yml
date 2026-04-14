@@ -3,11 +3,13 @@ frontend:
   phases:
     preBuild:
       commands:
+        - rm -rf .next
         - npm install
     build:
       commands:
         - npx prisma generate
         - npm run build
+        - du -sh .next
   artifacts:
     baseDirectory: .next
     files:
