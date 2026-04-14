@@ -55,17 +55,27 @@ export async function GET(
         console.log(`[API] Fetching responses for ${formId}, user: ${userId}`);
         if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-        const user = await currentUser();
-        const metaRole = (user?.publicMetadata?.role as string || "").toUpperCase();
-
-        const dbUser = await prisma.user.findUnique({
+        // 🏎️ OPTIMIZATION: Check local DB first for faster role resolution
+        let dbUser = await prisma.user.findUnique({
             where: { clerkId: userId }
         });
 
-        const dbRole = (dbUser?.role || "").toUpperCase();
-        const userRole = (metaRole || dbRole || "GUEST").toUpperCase();
+        let userRole = (dbUser?.role || "GUEST").toUpperCase();
+        let metaRole = "";
 
-        console.log(`[API] Resolved Role: ${userRole} (Clerk: ${metaRole}, DB: ${dbRole})`);
+        // Only fetch full user from Clerk if needed or as a secondary check
+        // Wrap in try-catch to prevent Clerk API outages from crashing the app
+        try {
+            if (userRole === "GUEST") {
+                const user = await currentUser();
+                metaRole = (user?.publicMetadata?.role as string || "").toUpperCase();
+                if (metaRole) userRole = metaRole;
+            }
+        } catch (e) {
+            console.error("[CLERK ERROR] Skipping remote user fetch:", e);
+        }
+
+        console.log(`[API] Resolved Role: ${userRole} (DB: ${dbUser?.role}, Meta: ${metaRole})`);
         const rawFormResult: any = await (prisma as any).$runCommandRaw({
             find: "DynamicForm",
             filter: { _id: { $oid: formId } },
@@ -746,11 +756,18 @@ export async function PATCH(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const user = await currentUser();
-        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const { userId } = await auth();
+        if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+        // Get user name from DB or fallback
+        const actingUser = await prisma.user.findUnique({
+            where: { clerkId: userId },
+            select: { name: true }
+        });
+        
+        const userName = actingUser?.name || "System User";
 
         const { responseId, columnId, value, isInternal, formId, rowColor, assignedTo } = await req.json();
-        const userName = `${user.firstName} ${user.lastName}`;
 
         // 🟢 ROW LEVEL UPDATE (Like Background Color)
         if (rowColor !== undefined) {
@@ -766,30 +783,70 @@ export async function PATCH(
             const resp = await prisma.formResponse.findUnique({ where: { id: responseId } });
             if (!resp) return NextResponse.json({ error: "Response not found" }, { status: 404 });
 
+            // 🚀 SINGLE ASSIGNEE ENFORCEMENT
+            const singleAssignee = Array.isArray(assignedTo) && assignedTo.length > 0 
+                ? [assignedTo[assignedTo.length - 1]] 
+                : assignedTo;
+
             await prisma.formResponse.update({
                 where: { id: responseId },
-                data: { assignedTo: { set: assignedTo } }
+                data: { assignedTo: { set: singleAssignee } }
             });
+
+            // 🔍 RESOLVE NAMES FOR LOGGING & SYNC
+            const allLoggedIds = [...new Set([...(resp.assignedTo || []), ...singleAssignee])].filter(id => id.startsWith("user_"));
+            
+            // Fetch names from local DB
+            let dbUsers = await prisma.user.findMany({
+                where: { clerkId: { in: allLoggedIds } },
+                select: { clerkId: true, name: true }
+            });
+
+            // If some are missing, fetch from Clerk and sync to local DB
+            const missingIds = allLoggedIds.filter(id => !dbUsers.some(u => u.clerkId === id));
+            if (missingIds.length > 0) {
+                const clerk = await clerkClient();
+                const clerkResults = await clerk.users.getUserList({ userId: missingIds });
+                
+                await Promise.all(clerkResults.data.map(async (u) => {
+                    const fullName = `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.username || "Unknown User";
+                    const synced = await prisma.user.upsert({
+                        where: { clerkId: u.id },
+                        update: { name: fullName, email: u.emailAddresses[0]?.emailAddress },
+                        create: { clerkId: u.id, name: fullName, email: u.emailAddresses[0]?.emailAddress || "", role: "SELLER" }
+                    });
+                    dbUsers.push({ clerkId: synced.clerkId, name: synced.name });
+                }));
+            }
+
+            const nameMap: Record<string, string> = {};
+            dbUsers.forEach(u => nameMap[u.clerkId] = u.name || "Unknown");
+
+            const oldNames = (resp.assignedTo || []).map(id => nameMap[id] || id).join(", ");
+            const newNames = singleAssignee.map(id => nameMap[id] || id).join(", ");
 
             // Activity Log
             await prisma.formActivity.create({
                 data: {
                     responseId,
-                    userId: user.id,
+                    userId: userId,
                     userName: userName,
                     type: "ASSIGNMENT_CHANGE",
                     columnName: "Assigned Users",
-                    oldValue: (resp.assignedTo || []).join(", "),
-                    newValue: (assignedTo as string[]).join(", ")
+                    oldValue: oldNames || "None",
+                    newValue: newNames || "None"
                 }
             });
+
 
             return NextResponse.json({ success: true, message: "Assignments updated" });
         }
 
         // Permissions Check
+        const user = await currentUser();
+        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         const metaRole = (user?.publicMetadata?.role as string || "").toUpperCase();
-        const dbUser = await prisma.user.findUnique({ where: { clerkId: user.id } });
+        const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
         const dbRole = (dbUser?.role || "").toUpperCase();
         const userRole = (metaRole || dbRole || "GUEST").toUpperCase();
 
@@ -848,7 +905,7 @@ export async function PATCH(
                     where: { id: existing.id },
                     data: {
                         value,
-                        updatedBy: user.id,
+                        updatedBy: userId,
                         updatedByName: userName
                     }
                 });
@@ -858,7 +915,7 @@ export async function PATCH(
                         responseId,
                         columnId,
                         value,
-                        updatedBy: user.id,
+                        updatedBy: userId,
                         updatedByName: userName
                     }
                 });
@@ -901,7 +958,7 @@ export async function PATCH(
             await prisma.formActivity.create({
                 data: {
                     responseId,
-                    userId: user.id,
+                    userId: userId,
                     userName: userName,
                     type: "CELL_UPDATE",
                     columnName: colName,

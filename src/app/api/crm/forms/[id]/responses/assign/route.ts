@@ -35,13 +35,19 @@ export async function PATCH(
         }
 
         // Update multiple responses in one shot
+        // 🚀 SINGLE ASSIGNEE ENFORCEMENT
+        const singleAssignee = Array.isArray(assignedTo) && assignedTo.length > 0 
+            ? [assignedTo[assignedTo.length - 1]] 
+            : assignedTo;
+
+        // Update multiple responses in one shot
         const updated = await prisma.formResponse.updateMany({
             where: {
                 id: { in: responseIds },
                 formId: formId
             },
             data: {
-                assignedTo: assignedTo
+                assignedTo: singleAssignee
             }
         });
 

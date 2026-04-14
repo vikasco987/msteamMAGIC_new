@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { X, Search, UserMinus, UserPlus, Filter, CheckCircle2, Users, Loader2, Sparkles, Phone, Mail, Clock } from "lucide-react";
+import { X, Search, UserMinus, UserPlus, Filter, CheckCircle2, Users, Loader2, Sparkles, Phone, Mail, Clock, EyeOff, Eye } from "lucide-react";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
 
@@ -34,7 +34,35 @@ export default function LeadAssignHub({ formId, onClose, responses, selectedIds 
     const [isBulkAssigning, setIsBulkAssigning] = useState<boolean>(false);
     const [allHubLeads, setAllHubLeads] = useState<any[] | null>(null);
     const [isLoadingFull, setIsLoadingFull] = useState(false);
+    const [selectedTeamIds, setSelectedTeamIds] = useState<Set<string>>(new Set());
+    const [hiddenTeamMembers, setHiddenTeamMembers] = useState<Set<string>>(() => {
+        if (typeof window !== "undefined") {
+            const saved = localStorage.getItem(`hidden_ops_${formId}`);
+            return saved ? new Set(JSON.parse(saved)) : new Set();
+        }
+        return new Set();
+    });
+    const [showHiddenView, setShowHiddenView] = useState(false);
     const [customSelectCount, setCustomSelectCount] = useState<string>("");
+
+    // Sync hidden members to localStorage
+    const hideMember = (clerkId: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        const next = new Set(hiddenTeamMembers);
+        next.add(clerkId);
+        setHiddenTeamMembers(next);
+        localStorage.setItem(`hidden_ops_${formId}`, JSON.stringify(Array.from(next)));
+        toast.success("Operative hidden");
+    };
+
+    const unhideMember = (clerkId: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        const next = new Set(hiddenTeamMembers);
+        next.delete(clerkId);
+        setHiddenTeamMembers(next);
+        localStorage.setItem(`hidden_ops_${formId}`, JSON.stringify(Array.from(next)));
+        toast.success("Operative restored");
+    };
 
     // Filter leads based on selection from main table
     const filteredLeads = useMemo(() => {
@@ -77,14 +105,26 @@ export default function LeadAssignHub({ formId, onClose, responses, selectedIds 
 
     // Filter team members for quick picker
     const filteredTeam = useMemo(() => {
-        if (!assigneeSearch) return teamMembers.slice(0, 10);
+        let members = teamMembers;
+        
+        // Exclude permanently hidden members from this view unless we are in management mode
+        if (hiddenTeamMembers.size > 0 && !showHiddenView) {
+            members = members.filter(m => !hiddenTeamMembers.has(m.clerkId));
+        }
+
+        // If in hidden view, ONLY show hidden members to make it easier to restore
+        if (showHiddenView) {
+            members = members.filter(m => hiddenTeamMembers.has(m.clerkId));
+        }
+
+        if (!assigneeSearch) return members.slice(0, 100);
         const s = assigneeSearch.toLowerCase();
-        return teamMembers.filter(m =>
+        return members.filter(m =>
             m.firstName?.toLowerCase().includes(s) ||
             m.lastName?.toLowerCase().includes(s) ||
             m.email?.toLowerCase().includes(s)
-        ).slice(0, 10);
-    }, [teamMembers, assigneeSearch]);
+        ).slice(0, 100);
+    }, [teamMembers, assigneeSearch, hiddenTeamMembers, showHiddenView]);
 
     const handleToggleAssignment = async (responseId: string, currentAssigned: string[], targetClerkId: string) => {
         const isAssigned = currentAssigned.includes(targetClerkId);
@@ -142,7 +182,9 @@ export default function LeadAssignHub({ formId, onClose, responses, selectedIds 
                 // Add the user if not already assigned
                 if (currentAssigned.includes(targetUserId)) return "skip";
 
-                const newAssigned = [...currentAssigned, targetUserId];
+                // 🚀 SINGLE ASSIGNEE ENFORCEMENT
+                // Replace everything with only the target user
+                const newAssigned = [targetUserId];
                 const res = await fetch(`/api/crm/forms/${formId}/responses`, {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
@@ -154,11 +196,84 @@ export default function LeadAssignHub({ formId, onClose, responses, selectedIds 
             const successCount = results.filter(r => r === true).length;
             const skippedCount = results.filter(r => r === "skip").length;
 
-            toast.success(`${successCount} Leads Matrix Enforced. ${skippedCount > 0 ? skippedCount + ' Skipped (Already Assigned)' : ''}`, { id: tid });
+            toast.success(`${successCount} Leads Matrix Enforced. ${skippedCount > 0 ? skippedCount + ' Skipped' : ''}`, { id: tid });
             if (successCount > 0) onSuccess();
             setSelectedBulkIds(new Set());
         } catch (error) {
             toast.error("Sector Reassignment Failure", { id: tid });
+        } finally {
+            setIsBulkAssigning(false);
+        }
+    };
+
+    const toggleTeamSelection = (clerkId: string) => {
+        setSelectedTeamIds(prev => {
+            const next = new Set(prev);
+            if (next.has(clerkId)) next.delete(clerkId);
+            else next.add(clerkId);
+            return next;
+        });
+    };
+
+    const handleSequentialSync = async () => {
+        if (selectedBulkIds.size === 0 || selectedTeamIds.size === 0) return;
+        setIsBulkAssigning(true);
+        const tid = toast.loading(`Executing Sequential Sync for ${selectedBulkIds.size} leads...`);
+        
+        const teamIds = Array.from(selectedTeamIds);
+        const leadIds = Array.from(selectedBulkIds);
+
+        try {
+            // Process in chunks or parallel with index mapping
+            const results = await Promise.all(leadIds.map(async (id, index) => {
+                // Round Robin: Pick user based on lead index
+                const targetUserId = teamIds[index % teamIds.length];
+                const res = await fetch(`/api/crm/forms/${formId}/responses`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ 
+                        responseId: id, 
+                        assignedTo: [targetUserId] 
+                    })
+                });
+                return res.ok;
+            }));
+
+            const successCount = results.filter(r => r === true).length;
+            toast.success(`Sequential Sync Complete: ${successCount} Leads Distributed across ${teamIds.length} agents`, { id: tid });
+            if (successCount > 0) onSuccess();
+            setSelectedBulkIds(new Set());
+            setSelectedTeamIds(new Set());
+        } catch (error) {
+            toast.error("Sequential sync failed", { id: tid });
+        } finally {
+            setIsBulkAssigning(false);
+        }
+    };
+
+    const handleBulkUnassign = async () => {
+        if (selectedBulkIds.size === 0) return;
+        setIsBulkAssigning(true);
+        const tid = toast.loading(`Unassigning ${selectedBulkIds.size} leads...`);
+
+        try {
+            const idsArray = Array.from(selectedBulkIds);
+            const res = await fetch(`/api/crm/forms/${formId}/responses/assign`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                    responseIds: idsArray, 
+                    assignedTo: [] 
+                })
+            });
+
+            if (!res.ok) throw new Error("Failed to unassign");
+
+            toast.success(`${selectedBulkIds.size} Leads Unassigned Successfully`, { id: tid });
+            onSuccess();
+            setSelectedBulkIds(new Set());
+        } catch (error) {
+            toast.error("Bulk Unassignment Failure", { id: tid });
         } finally {
             setIsBulkAssigning(false);
         }
@@ -273,6 +388,18 @@ export default function LeadAssignHub({ formId, onClose, responses, selectedIds 
                                     >
                                         Selected: {selectedBulkIds.size}
                                     </button>
+                                    
+                                    {selectedBulkIds.size > 0 && (
+                                        <button
+                                            onClick={handleBulkUnassign}
+                                            disabled={isBulkAssigning}
+                                            className="px-5 py-2.5 bg-rose-50 text-rose-600 border border-rose-100 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] hover:bg-rose-600 hover:text-white transition-all shadow-sm flex items-center gap-2"
+                                            title="Unassign All Selected"
+                                        >
+                                            {isBulkAssigning ? <Loader2 size={12} className="animate-spin" /> : <UserMinus size={14} />}
+                                            Unassign
+                                        </button>
+                                    )}
                                     <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-2xl border border-slate-200 shadow-inner">
                                         <input
                                             type="number"
@@ -388,12 +515,25 @@ export default function LeadAssignHub({ formId, onClose, responses, selectedIds 
                     {/* 🕵️ RIGHT: TARGET AGENT MATRIX */}
                     <div className="w-[420px] bg-white flex flex-col z-10 shadow-[-40px_0_80px_-20px_rgba(0,0,0,0.08)]">
                         <div className="p-10 border-b border-slate-50">
-                            <h3 className="text-xs font-black text-indigo-500 uppercase tracking-[0.4em] mb-6">Elite Channel Managers</h3>
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xs font-black text-indigo-500 uppercase tracking-[0.4em]">
+                                    {showHiddenView ? 'Hidden Operatives' : 'Elite Channel Managers'}
+                                </h3>
+                                {hiddenTeamMembers.size > 0 && (
+                                    <button 
+                                        onClick={() => setShowHiddenView(!showHiddenView)}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${showHiddenView ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-white'}`}
+                                    >
+                                        {showHiddenView ? <Eye size={12} /> : <EyeOff size={12} />}
+                                        {showHiddenView ? 'View Active' : `Manage Hidden (${hiddenTeamMembers.size})`}
+                                    </button>
+                                )}
+                            </div>
                             <div className="relative">
                                 <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                                 <input
                                     type="text"
-                                    placeholder="Search by operative name..."
+                                    placeholder={showHiddenView ? "Search hidden operatives..." : "Search by operative name..."}
                                     className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[12px] font-black outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-300"
                                     value={assigneeSearch}
                                     onChange={(e) => setAssigneeSearch(e.target.value)}
@@ -402,54 +542,102 @@ export default function LeadAssignHub({ formId, onClose, responses, selectedIds 
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-8 space-y-4 scrollbar-none">
-                            {filteredTeam.map((member) => {
-                                const memberLeads = responses.filter(r => (r.assignedTo || []).includes(member.clerkId)).length;
-
-                                return (
-                                    <div key={member.clerkId}
-                                        className="p-6 bg-slate-50/50 hover:bg-white rounded-[32px] border border-transparent hover:border-indigo-100 hover:shadow-2xl hover:shadow-indigo-500/5 transition-all group/agent flex items-center gap-6"
-                                    >
-                                        <div className="relative">
-                                            <div className="w-16 h-16 rounded-[28px] bg-white border border-slate-200 flex items-center justify-center overflow-hidden shadow-xl ring-4 ring-transparent group-hover/agent:ring-indigo-50 transition-all">
-                                                {member.imageUrl ? <img src={member.imageUrl} className="w-full h-full object-cover" /> : <Users className="text-slate-200" size={32} />}
-                                            </div>
-                                            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 border-4 border-white rounded-full" />
-                                        </div>
-
-                                        <div className="flex-1">
-                                            <h6 className="text-base font-black text-slate-900 leading-none mb-1 shadow-indigo-600 transition-colors">
-                                                {member.firstName || member.email.split('@')[0]}
-                                            </h6>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">{memberLeads} Portfolio Depth</span>
-                                                <div className="h-1 w-1 bg-slate-300 rounded-full" />
-                                                <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest leading-none">Online</span>
-                                            </div>
-                                        </div>
-
-                                        {selectedBulkIds.size > 0 && (
-                                            <button
-                                                onClick={() => handleBulkAssign(member.clerkId)}
-                                                disabled={isBulkAssigning}
-                                                className="px-4 py-2 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:scale-110 active:scale-95 transition-all shadow-xl shadow-indigo-200 flex items-center gap-2"
-                                            >
-                                                {isBulkAssigning ? <Loader2 size={12} className="animate-spin" /> : "Deploy Leads"}
-                                            </button>
-                                        )}
+                            {filteredTeam.length === 0 && showHiddenView ? (
+                                <div className="h-full flex flex-col items-center justify-center text-center py-10">
+                                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4 text-slate-200">
+                                        <Eye size={32} />
                                     </div>
-                                );
-                            })}
+                                    <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest leading-none">Clean Roster</h4>
+                                    <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mt-2">No hidden operative assets identified.</p>
+                                    <button onClick={() => setShowHiddenView(false)} className="mt-6 text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline">Return to active matrix</button>
+                                </div>
+                            ) : (
+                                filteredTeam.map((member) => {
+                                    const memberLeads = (allHubLeads || responses).filter(r => (r.assignedTo || []).includes(member.clerkId)).length;
+                                    const isSelected = selectedTeamIds.has(member.clerkId);
+                                    const isHidden = hiddenTeamMembers.has(member.clerkId);
+
+                                    return (
+                                        <div key={member.clerkId}
+                                            onClick={() => !isHidden && toggleTeamSelection(member.clerkId)}
+                                            className={`p-6 rounded-[32px] border transition-all group/agent flex items-center gap-6 ${isHidden ? 'bg-slate-50/30 border-dashed border-slate-200 opacity-60' : isSelected ? 'bg-indigo-600 border-indigo-500 shadow-2xl shadow-indigo-200 cursor-pointer' : 'bg-slate-50/50 hover:bg-white border-transparent hover:border-indigo-100 cursor-pointer'}`}
+                                        >
+                                            <div className="relative">
+                                                <div className={`w-16 h-16 rounded-[28px] bg-white border flex items-center justify-center overflow-hidden shadow-xl ring-4 ring-transparent transition-all ${isSelected ? 'border-white' : 'border-slate-200'}`}>
+                                                    {member.imageUrl ? <img src={member.imageUrl} className="w-full h-full object-cover" /> : <Users className={isSelected ? "text-indigo-600" : isHidden ? "text-slate-100" : "text-slate-200"} size={32} />}
+                                                </div>
+                                                <div className={`absolute -bottom-1 -right-1 w-6 h-6 border-4 border-white rounded-full ${isSelected ? 'bg-white text-indigo-600 flex items-center justify-center' : isHidden ? 'bg-slate-200' : 'bg-emerald-500'}`}>
+                                                    {isSelected && <CheckCircle2 size={12} />}
+                                                </div>
+                                            </div>
+
+                                            <div className="flex-1">
+                                                <div className="flex items-center justify-between gap-2 mb-1">
+                                                    <h6 className={`text-base font-black leading-none transition-colors ${isSelected ? 'text-white' : isHidden ? 'text-slate-400' : 'text-slate-900 group-hover/agent:text-indigo-600'}`}>
+                                                        {member.firstName || member.email.split('@')[0]}
+                                                    </h6>
+                                                    {!isSelected && (
+                                                        isHidden ? (
+                                                            <button
+                                                                onClick={(e) => unhideMember(member.clerkId, e)}
+                                                                className="p-1.5 bg-white text-indigo-600 border border-slate-200 rounded-lg hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                                                                title="Restore Operative"
+                                                            >
+                                                                <Eye size={14} />
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                onClick={(e) => hideMember(member.clerkId, e)}
+                                                                className="p-1.5 opacity-0 group-hover/agent:opacity-100 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                                                                title="Hide Permanente"
+                                                            >
+                                                                <EyeOff size={14} />
+                                                            </button>
+                                                        )
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-[9px] font-black uppercase tracking-widest leading-none ${isSelected ? 'text-indigo-100' : isHidden ? 'text-slate-300' : 'text-slate-400'}`}>{memberLeads} Portfolio Depth</span>
+                                                    <div className={`h-1 w-1 rounded-full ${isSelected ? 'bg-indigo-300' : 'bg-slate-300'}`} />
+                                                    <span className={`text-[9px] font-black uppercase tracking-widest leading-none ${isSelected ? 'text-white' : isHidden ? 'text-slate-300' : 'text-emerald-500'}`}>
+                                                        {isHidden ? 'Deactivated' : 'Online'}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {selectedBulkIds.size > 0 && selectedTeamIds.size === 0 && !isHidden && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleBulkAssign(member.clerkId); }}
+                                                    disabled={isBulkAssigning}
+                                                    className="px-4 py-2 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:scale-110 active:scale-95 transition-all shadow-xl shadow-indigo-200 flex items-center gap-2"
+                                                >
+                                                    {isBulkAssigning ? <Loader2 size={12} className="animate-spin" /> : "Deploy Leads"}
+                                                </button>
+                                            )}
+                                        </div>
+                                    );
+                                })
+                            )}
                         </div>
                         
-                        <div className="p-10">
-                            <div className="p-10 bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-[40px] shadow-2xl shadow-indigo-200/50 relative overflow-hidden group cursor-pointer active:scale-[0.98] transition-all">
-                                <div className="absolute top-0 right-0 p-6 opacity-20 transition-transform duration-700">
-                                    <Sparkles size={120} className="text-white" />
-                                </div>
-                                <h6 className="text-white font-black text-lg uppercase tracking-widest mb-2">Smart Sector Sync</h6>
-                                <p className="text-indigo-100 text-[11px] font-bold leading-relaxed opacity-80">Autonomous equilibrium distribution across all active operatives.</p>
+                        {selectedBulkIds.size > 0 && selectedTeamIds.size > 1 && (
+                            <div className="p-10 border-t border-slate-100 bg-indigo-50/30">
+                                <button
+                                    onClick={handleSequentialSync}
+                                    disabled={isBulkAssigning}
+                                    className="w-full p-8 bg-indigo-600 hover:bg-slate-900 text-white rounded-[40px] shadow-2xl shadow-indigo-200 relative overflow-hidden group active:scale-[0.98] transition-all flex flex-col items-center justify-center gap-2"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <Sparkles size={24} className={isBulkAssigning ? "animate-spin" : "animate-pulse"} />
+                                        <span className="font-black text-lg uppercase tracking-[0.2em]">Sequential Sync</span>
+                                    </div>
+                                    <span className="text-[10px] font-bold text-indigo-100 uppercase tracking-widest">
+                                        Distribute {selectedBulkIds.size} Leads among {selectedTeamIds.size} Agents
+                                    </span>
+                                </button>
                             </div>
-                        </div>
+                        )}
+
                     </div>
                 </div>
 

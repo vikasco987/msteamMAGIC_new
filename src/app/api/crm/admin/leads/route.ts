@@ -176,11 +176,18 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
     try {
         const { userId: currentUserId } = await auth();
-        if (!currentUserId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        const { ids, assignedTo } = await req.json();
+        const body = await req.json();
+        const { ids, assignedTo } = body;
         if (!ids || !Array.isArray(ids)) return NextResponse.json({ error: "Invalid IDs" }, { status: 400 });
-        await prisma.formResponse.updateMany({ where: { id: { in: ids } }, data: { assignedTo: assignedTo } });
+
+        // 🚀 SINGLE ASSIGNEE ENFORCEMENT
+        const singleAssignee = Array.isArray(assignedTo) && assignedTo.length > 0 
+            ? [assignedTo[assignedTo.length - 1]] 
+            : assignedTo;
+
+        await prisma.formResponse.updateMany({ where: { id: { in: ids } }, data: { assignedTo: singleAssignee } });
         return NextResponse.json({ success: true, count: ids.length });
+
     } catch (e) {
         return NextResponse.json({ error: "Internal Error" }, { status: 500 });
     }
