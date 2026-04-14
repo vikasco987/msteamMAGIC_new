@@ -13,7 +13,7 @@ frontend:
     files:
       - '**/*'
       - '!cache/**/*'
+      - '!*.map'
   cache:
     paths:
       - node_modules/**/*
-      - .next/cache/**/*
