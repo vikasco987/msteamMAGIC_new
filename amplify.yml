@@ -3,11 +3,16 @@ frontend:
   phases:
     preBuild:
       commands:
+        - rm -rf .next
+        - rm -rf node_modules/.prisma
         - npm install
     build:
       commands:
         - npx prisma generate
         - npm run build
+        - echo "Final .next directory size check:"
+        - du -sh .next
+        - du -sh .next/* | sort -rh
   artifacts:
     baseDirectory: .next
     files:
