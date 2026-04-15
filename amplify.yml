@@ -3,20 +3,23 @@ frontend:
   phases:
     preBuild:
       commands:
+        - rm -rf .next
         - npm install
     build:
       commands:
         - npx prisma generate
         - npm run build
+        - rm -rf .next/cache
+        - rm -rf .next/standalone
   artifacts:
     baseDirectory: .next
     files:
       - 'server/**/*'
       - 'static/**/*'
-      - 'standalone/**/*'
       - '*-manifest.json'
       - 'required-server-files.json'
       - 'BUILD_ID'
+      - 'routes-manifest.json'
   cache:
     paths:
       - node_modules/**/*
