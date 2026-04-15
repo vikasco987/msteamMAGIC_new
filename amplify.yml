@@ -5,12 +5,14 @@ frontend:
       commands:
         - rm -rf .next
         - npm install
+        - npx prisma generate
+        # Delete redundant prisma engines BEFORE next build to prevent them from being traced
+        - find node_modules/.prisma/client -name "libquery_engine-*" ! -name "libquery_engine-rhel-openssl-3.0.x.so.node" -delete
     build:
       commands:
-        - npx prisma generate
         - npm run build
-        - rm -rf .next/cache
-        - rm -rf .next/standalone
+        - find .next/static -name "*.map" -delete
+        - find .next/server -name "*.map" -delete
   artifacts:
     baseDirectory: .next
     files:
@@ -19,7 +21,6 @@ frontend:
       - '*-manifest.json'
       - 'required-server-files.json'
       - 'BUILD_ID'
-      - 'routes-manifest.json'
   cache:
     paths:
       - node_modules/**/*
