@@ -8,12 +8,12 @@ frontend:
       commands:
         - npx prisma generate
         - npm run build
-        - cp -r .next/static .next/standalone/.next/static
-        - cp -r public .next/standalone/public
   artifacts:
-    baseDirectory: .next/standalone
+    baseDirectory: .next
     files:
       - '**/*'
+      - '!cache/**/*'
+      - '!*.map'
   cache:
     paths:
       - node_modules/**/*
