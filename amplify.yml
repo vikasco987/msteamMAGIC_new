@@ -3,19 +3,17 @@ frontend:
   phases:
     preBuild:
       commands:
-        - rm -rf .next
         - npm install
     build:
       commands:
         - npx prisma generate
         - npm run build
-        - du -sh .next
+        - cp -r .next/static .next/standalone/.next/static
+        - cp -r public .next/standalone/public
   artifacts:
-    baseDirectory: .next
+    baseDirectory: .next/standalone
     files:
       - '**/*'
-      - '!cache/**/*'
-      - '!*.map'
   cache:
     paths:
       - node_modules/**/*
