@@ -10,12 +10,15 @@ frontend:
       commands:
         - npm run build
         - npm prune --production
-        # Micro-pruning node_modules to save final 60MB
+        # Final Slimming Phase: Remove bulky non-critical assets
+        - rm -rf public/confidentiality.png
+        - rm -rf public/calendars.png
+        - rm -rf public/fghj.png
+        - rm -rf public/fonts/Merriweather-Regular.ttf
+        - rm -rf public/fonts/Arial.ttf
+        # Micro-pruning node_modules
         - find node_modules -type f -name "*.map" -delete
         - find node_modules -type f -name "*.d.ts" -delete
-        - find node_modules -type f -name "*.md" -delete
-        - find node_modules -type d -name "test" -exec rm -rf {} +
-        - find node_modules -type d -name "docs" -exec rm -rf {} +
         - rm -rf node_modules/electron
         - rm -rf node_modules/electron-builder
         - rm -rf node_modules/typescript
