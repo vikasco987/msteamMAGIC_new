@@ -9,10 +9,12 @@ frontend:
         - npx prisma generate
     build:
       commands:
+        # Exporting env vars to .env.production for Next.js 15+ runtime stability
+        - env | grep -E "CLERK_|DATABASE_|NEXT_PUBLIC_" > .env.production
         - npm run build
         - npm prune --production
         
-        # Final Surgical Slimming: Remove bulky assets to save ~15MB
+        # Surgical Slimming
         - rm -rf public/confidentiality.png
         - rm -rf public/calendars.png
         - rm -rf public/fghj.png
