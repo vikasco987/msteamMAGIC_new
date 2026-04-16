@@ -4,18 +4,25 @@ frontend:
     preBuild:
       commands:
         - npm install
+        - npx prisma generate
+        # Remove extra engines before build to prevent tracing
+        - find node_modules/.prisma/client -name "libquery_engine-*" ! -name "libquery_engine-rhel-openssl-3.0.x.so.node" -delete
     build:
       commands:
-        - npx prisma generate
         - npm run build
-        # Nuclear prune: Remove non-runtime dependencies to shrink the SSR bundle
+        # Phase 2 Nuclear Prune: Target the biggest production node_modules
         - npm prune --production
         - rm -rf node_modules/electron
         - rm -rf node_modules/electron-builder
         - rm -rf node_modules/@types
         - rm -rf node_modules/typescript
         - rm -rf node_modules/prisma
-        - find node_modules/.prisma/client -name "libquery_engine-*" ! -name "libquery_engine-rhel-openssl-3.0.x.so.node" -delete
+        - rm -rf node_modules/xlsx/dist/xlsx.full.min.js # Keep only needed parts if possible
+        - rm -rf node_modules/framer-motion/dist/framer-motion.js.map
+        # Deep clean .next artifact
+        - find .next -name "*.map" -delete
+        - rm -rf .next/cache
+        - rm -rf .next/standalone
   artifacts:
     baseDirectory: .next
     files:
