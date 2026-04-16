@@ -5,24 +5,21 @@ frontend:
       commands:
         - npm install
         - npx prisma generate
-        # Remove extra engines before build to prevent tracing
         - find node_modules/.prisma/client -name "libquery_engine-*" ! -name "libquery_engine-rhel-openssl-3.0.x.so.node" -delete
     build:
       commands:
         - npm run build
-        # Phase 2 Nuclear Prune: Target the biggest production node_modules
         - npm prune --production
+        # Micro-pruning node_modules to save final 60MB
+        - find node_modules -type f -name "*.map" -delete
+        - find node_modules -type f -name "*.d.ts" -delete
+        - find node_modules -type f -name "*.md" -delete
+        - find node_modules -type d -name "test" -exec rm -rf {} +
+        - find node_modules -type d -name "docs" -exec rm -rf {} +
         - rm -rf node_modules/electron
         - rm -rf node_modules/electron-builder
-        - rm -rf node_modules/@types
         - rm -rf node_modules/typescript
         - rm -rf node_modules/prisma
-        - rm -rf node_modules/xlsx/dist/xlsx.full.min.js # Keep only needed parts if possible
-        - rm -rf node_modules/framer-motion/dist/framer-motion.js.map
-        # Deep clean .next artifact
-        - find .next -name "*.map" -delete
-        - rm -rf .next/cache
-        - rm -rf .next/standalone
   artifacts:
     baseDirectory: .next
     files:
