@@ -11,7 +11,19 @@ frontend:
       commands:
         - npm run build
         - npm prune --production
-        # Prune only redundant heavy binaries, keep all source/types for safety
+        
+        # Final Surgical Slimming: Remove bulky assets to save ~15MB
+        - rm -rf public/confidentiality.png
+        - rm -rf public/calendars.png
+        - rm -rf public/fghj.png
+        - rm -rf public/alert1.mp3
+        - rm -rf public/alert2.mp3
+        - rm -rf public/videos/backgrounda.mp4
+        - rm -rf public/avatars/*.png
+        - rm -rf public/fonts/Merriweather-Regular.ttf
+        - rm -rf public/fonts/Arial.ttf
+        
+        # Binary Pruning
         - rm -rf node_modules/electron
         - rm -rf node_modules/electron-builder
         - rm -rf node_modules/typescript
