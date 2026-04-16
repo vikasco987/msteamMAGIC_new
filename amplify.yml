@@ -5,24 +5,31 @@ frontend:
       commands:
         - npm install
         - npx prisma generate
-        - find node_modules/.prisma/client -name "libquery_engine-*" ! -name "libquery_engine-rhel-openssl-3.0.x.so.node" -delete
     build:
       commands:
+        # 1. Standard Build (Must have all types/devDeps here)
         - npm run build
+        
+        # 2. Post-build Pruning (Once .next is ready)
         - npm prune --production
-        # Final Slimming Phase: Remove bulky non-critical assets
+        
+        # 3. Nuclear Prune only non-runtime assets to hit the limit
+        - rm -rf node_modules/electron
+        - rm -rf node_modules/electron-builder
+        - rm -rf node_modules/typescript
+        - rm -rf node_modules/prisma
+        
+        # 4. Remove heavy assets from public to save ~30MB
         - rm -rf public/confidentiality.png
         - rm -rf public/calendars.png
         - rm -rf public/fghj.png
         - rm -rf public/fonts/Merriweather-Regular.ttf
         - rm -rf public/fonts/Arial.ttf
-        # Micro-pruning node_modules
+        
+        # 5. Clean up node_modules internals
         - find node_modules -type f -name "*.map" -delete
         - find node_modules -type f -name "*.d.ts" -delete
-        - rm -rf node_modules/electron
-        - rm -rf node_modules/electron-builder
-        - rm -rf node_modules/typescript
-        - rm -rf node_modules/prisma
+        - find node_modules/.prisma/client -name "libquery_engine-*" ! -name "libquery_engine-rhel-openssl-3.0.x.so.node" -delete
   artifacts:
     baseDirectory: .next
     files:
