@@ -3,33 +3,21 @@ frontend:
   phases:
     preBuild:
       commands:
+        - rm -rf node_modules
+        - rm -rf .next
         - npm install --include=dev
         - npx prisma generate
     build:
       commands:
-        # 1. Standard Build (Must have all types/devDeps here)
         - npm run build
-        
-        # 2. Post-build Pruning (Once .next is ready)
         - npm prune --production
-        
-        # 3. Nuclear Prune only non-runtime assets to hit the limit
+        # Prune only redundant heavy binaries, keep all source/types for safety
         - rm -rf node_modules/electron
         - rm -rf node_modules/electron-builder
         - rm -rf node_modules/typescript
         - rm -rf node_modules/prisma
-        
-        # 4. Remove heavy assets from public to save ~30MB
-        - rm -rf public/confidentiality.png
-        - rm -rf public/calendars.png
-        - rm -rf public/fghj.png
-        - rm -rf public/fonts/Merriweather-Regular.ttf
-        - rm -rf public/fonts/Arial.ttf
-        
-        # 5. Clean up node_modules internals
-        - find node_modules -type f -name "*.map" -delete
-        - find node_modules -type f -name "*.d.ts" -delete
         - find node_modules/.prisma/client -name "libquery_engine-*" ! -name "libquery_engine-rhel-openssl-3.0.x.so.node" -delete
+        - find .next -name "*.map" -delete
   artifacts:
     baseDirectory: .next
     files:
@@ -38,6 +26,3 @@ frontend:
       - '*-manifest.json'
       - 'required-server-files.json'
       - 'BUILD_ID'
-  cache:
-    paths:
-      - node_modules/**/*
