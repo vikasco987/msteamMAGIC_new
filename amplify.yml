@@ -3,40 +3,24 @@ frontend:
   phases:
     preBuild:
       commands:
-        - rm -rf node_modules
-        - rm -rf .next
-        - npm install --include=dev
+        - npm install
         - npx prisma generate
     build:
       commands:
-        # Exporting env vars to .env.production for Next.js 15+ runtime stability
+        # Pre-injecting environment variables for runtime
         - env | grep -E "CLERK_|DATABASE_|NEXT_PUBLIC_" > .env.production
         - npm run build
-        - npm prune --production
         
-        # Surgical Slimming
-        - rm -rf public/confidentiality.png
-        - rm -rf public/calendars.png
-        - rm -rf public/fghj.png
-        - rm -rf public/alert1.mp3
-        - rm -rf public/alert2.mp3
-        - rm -rf public/videos/backgrounda.mp4
-        - rm -rf public/avatars/*.png
-        - rm -rf public/fonts/Merriweather-Regular.ttf
-        - rm -rf public/fonts/Arial.ttf
+        # Post-build Cleanup (Only non-essential assets)
+        - rm -rf public/videos
+        - rm -rf public/avatars
+        - rm -rf .next/cache
+        - rm -rf node_modules/.cache
         
-        # Binary Pruning
-        - rm -rf node_modules/electron
-        - rm -rf node_modules/electron-builder
-        - rm -rf node_modules/typescript
-        - rm -rf node_modules/prisma
-        - find node_modules/.prisma/client -name "libquery_engine-*" ! -name "libquery_engine-rhel-openssl-3.0.x.so.node" -delete
-        - find .next -name "*.map" -delete
   artifacts:
     baseDirectory: .next
     files:
-      - 'server/**/*'
-      - 'static/**/*'
-      - '*-manifest.json'
-      - 'required-server-files.json'
-      - 'BUILD_ID'
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
