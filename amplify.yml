@@ -4,6 +4,7 @@ frontend:
     preBuild:
       commands:
         - npm install --legacy-peer-deps
+        - npm install @types/react @types/react-dom @types/node --save-dev --force
         - npx prisma generate
     build:
       commands:
