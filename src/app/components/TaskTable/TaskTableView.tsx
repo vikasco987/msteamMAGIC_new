@@ -453,7 +453,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Task } from "../../../types/task";
 import { Note } from "../../../../types/note";
 import { useUser, UserResource } from "@clerk/nextjs";
-import { format, isToday, subDays, startOfMonth } from "date-fns";
+import { format, isToday, subDays, startOfMonth, subMonths, endOfMonth } from "date-fns";
 import { FaEye, FaEyeSlash, FaArrowUp, FaArrowDown } from "react-icons/fa";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
@@ -535,6 +535,11 @@ export default function TaskTableView({ tasks, user, onTasksUpdate }: Props) {
     setCurrentPage(1);
   }, [tasks, user, currentUserId, role]);
 
+  // Reset to first page when standard filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [query, statusFilter, assigneeFilter, dateFilter, sourceFilter]);
+
   const refetchTasks = async () => {
     try {
       const res = await fetch("/api/tasks");
@@ -606,8 +611,9 @@ export default function TaskTableView({ tasks, user, onTasksUpdate }: Props) {
             const startOfCurrentMonth = startOfMonth(now);
             return taskDate >= startOfCurrentMonth && taskDate <= now;
           case "last_month":
-            const startOfLastMonth = startOfMonth(subDays(now, 30));
-            const endOfLastMonth = subDays(startOfMonth(now), 1);
+            const lastMonth = subMonths(now, 1);
+            const startOfLastMonth = startOfMonth(lastMonth);
+            const endOfLastMonth = endOfMonth(lastMonth);
             return taskDate >= startOfLastMonth && taskDate <= endOfLastMonth;
           case "this_year":
             const startOfCurrentYear = new Date(now.getFullYear(), 0, 1);

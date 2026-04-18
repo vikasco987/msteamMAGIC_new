@@ -1161,6 +1161,8 @@ export async function GET(req: NextRequest) {
             break;
         }
 
+        console.log(`[Tasks API Debug] Date Filter: ${dateFilter}, Range: ${startDate?.toISOString()} to ${endDate?.toISOString()}`);
+
         if (startDate) {
           where.AND.push({
             createdAt: {

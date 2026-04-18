@@ -6679,6 +6679,8 @@ interface Props {
   onQueryChange: (query: string) => void;
   status: string | null;
   onStatusChange: (status: string | null) => void;
+  dateFilter: string | null;
+  onDateFilterChange: (dateFilter: string | null) => void;
 }
 
 export default function TaskTableView({
@@ -6694,7 +6696,9 @@ export default function TaskTableView({
   query,
   onQueryChange,
   status,
-  onStatusChange
+  onStatusChange,
+  dateFilter,
+  onDateFilterChange
 }: Props) {
   const [editMode, setEditMode] = useState(false);
   const [editedValues, setEditedValues] = useState<{ [key: string]: number }>(
@@ -7122,6 +7126,8 @@ export default function TaskTableView({
         onQueryChange={onQueryChange}
         status={status}
         onStatusChange={onStatusChange}
+        dateFilter={dateFilter}
+        onDateFilterChange={onDateFilterChange}
       />
 
       <div className="overflow-x-auto">

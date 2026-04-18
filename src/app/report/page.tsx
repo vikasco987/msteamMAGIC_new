@@ -116,6 +116,7 @@ export default function ReportPage() {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [status, setStatus] = useState<string | null>(null);
+  const [dateFilter, setDateFilter] = useState<string | null>(null);
 
   // Debouncing Search Query
   useEffect(() => {
@@ -128,7 +129,7 @@ export default function ReportPage() {
   // Reset to page 1 when search or filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedQuery, status, limit]);
+  }, [debouncedQuery, status, dateFilter, limit]);
 
   // Re-fetch when page, limit, debouncedQuery, or status changes
   useEffect(() => {
@@ -136,7 +137,7 @@ export default function ReportPage() {
     if (isLoaded && user && (normalizedRole === "admin" || normalizedRole === "seller" || normalizedRole === "master" || normalizedRole === "tl")) {
       fetchTasks();
     }
-  }, [isLoaded, user, currentPage, limit, debouncedQuery, status]);
+  }, [isLoaded, user, currentPage, limit, debouncedQuery, status, dateFilter]);
 
   const fetchTasks = async () => {
     setLoading(true);
@@ -148,6 +149,7 @@ export default function ReportPage() {
         limit: limit.toString(),
         query: debouncedQuery,
         status: status || "",
+        dateFilter: dateFilter || "",
       });
 
       const res = await fetch(`/api/tasks?${params.toString()}`);
@@ -213,6 +215,8 @@ export default function ReportPage() {
         onQueryChange={setQuery}
         status={status}
         onStatusChange={setStatus}
+        dateFilter={dateFilter}
+        onDateFilterChange={setDateFilter}
       />
     </main>
   );

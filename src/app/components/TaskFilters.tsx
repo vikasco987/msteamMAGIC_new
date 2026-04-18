@@ -1227,7 +1227,7 @@ import {
   FaCaretDown,
   FaCaretUp,
 } from "react-icons/fa";
-import { format, isToday, subDays, startOfMonth } from "date-fns";
+import { format, isToday, subDays, startOfMonth, subMonths, endOfMonth } from "date-fns";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import toast from "react-hot-toast";
@@ -1244,6 +1244,8 @@ interface TaskFiltersProps {
   onQueryChange: (query: string) => void;
   status: string | null;
   onStatusChange: (status: string | null) => void;
+  dateFilter: string | null;
+  onDateFilterChange: (dateFilter: string | null) => void;
 }
 
 const ALL_COLUMNS = [
@@ -1299,9 +1301,10 @@ export const TaskFilters = ({
   onQueryChange,
   status,
   onStatusChange,
+  dateFilter,
+  onDateFilterChange,
 }: TaskFiltersProps) => {
   // Local states for other filters
-  const [dateFilter, setDateFilter] = useState<string | null>(null);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
   const [columns, setColumns] = useState<string[]>(ALL_COLUMNS);
 
@@ -1405,6 +1408,10 @@ export const TaskFilters = ({
       );
     }
 
+    // Only apply client-side date filtering if it's NOT handled by the server (i.e., when onDateFilterChange isn't used or we are in a non-server-paged view)
+    // For the ReportPage, we assume the server has already filtered the tasks.
+    // So we avoid redundant (and potentially conflicting) client-side filtering.
+    /*
     if (dateFilter) {
       currentFilteredTasks = currentFilteredTasks.filter((t) => {
         const taskDate = new Date(t.createdAt);
@@ -1421,8 +1428,9 @@ export const TaskFilters = ({
             const startOfCurrentMonth = startOfMonth(now);
             return taskDate >= startOfCurrentMonth && taskDate <= now;
           case "last_month":
-            const startOfLastMonth = startOfMonth(subDays(now, 30));
-            const endOfLastMonth = subDays(startOfMonth(now), 1);
+            const lastMonth = subMonths(now, 1);
+            const startOfLastMonth = startOfMonth(lastMonth);
+            const endOfLastMonth = endOfMonth(lastMonth);
             return taskDate >= startOfLastMonth && taskDate <= endOfLastMonth;
           case "this_year":
             const startOfCurrentYear = new Date(now.getFullYear(), 0, 1);
@@ -1432,6 +1440,7 @@ export const TaskFilters = ({
         }
       });
     }
+    */
 
     // Apply sales filter
     if (salesFilter === "withSales") {
@@ -1812,8 +1821,8 @@ export const TaskFilters = ({
         {/* Date Filter */}
         <select
           value={dateFilter || ""}
-          onChange={(e) => setDateFilter(e.target.value || null)}
-          className="p-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+          onChange={(e) => onDateFilterChange(e.target.value || null)}
+          className="flex-1 md:flex-none p-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 bg-white"
         >
           <option value="">All Dates</option>
           <option value="today">Today</option>
