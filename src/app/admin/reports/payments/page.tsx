@@ -168,6 +168,7 @@ export default function FinancialReportPage() {
               <tr className="bg-slate-50/30">
                 <th className="pl-10 pr-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[200px]">Project</th>
                 <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[150px]">Customer</th>
+                <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[130px]">Phone No</th>
                 <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[180px]">Shop Name</th>
                 <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[200px]">Location</th>
                 <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[150px]">UTR / Ref</th>
@@ -208,6 +209,14 @@ export default function FinancialReportPage() {
                     <span className="text-xs font-bold text-slate-500 whitespace-nowrap">
                       {item.customerName || "—"}
                     </span>
+                  </td>
+                  <td className="px-4 py-6">
+                    <div className="flex items-center gap-2">
+                       <FaPhoneAlt className="text-indigo-400 text-[10px]" />
+                       <span className="text-xs font-black text-slate-700 whitespace-nowrap">
+                         {item.phone || "—"}
+                       </span>
+                    </div>
                   </td>
                   <td className="px-4 py-6">
                     <span className="text-sm font-black text-slate-700 whitespace-nowrap">
