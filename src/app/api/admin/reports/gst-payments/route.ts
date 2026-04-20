@@ -23,67 +23,43 @@ export async function GET(req: NextRequest) {
   const search = searchParams.get("search");
 
   try {
-    const tasks = await prisma.task.findMany({
-      where: {
-        AND: [
-          search ? {
+    const where: any = {
+      AND: [
+        startDate ? { updatedAt: { gte: new Date(startDate) } } : {},
+        endDate ? { updatedAt: { lte: new Date(endDate) } } : {},
+        search ? {
+          task: {
             OR: [
               { title: { contains: search, mode: 'insensitive' } },
               { shopName: { contains: search, mode: 'insensitive' } },
               { customerName: { contains: search, mode: 'insensitive' } },
             ]
-          } : {},
-        ]
-      },
-      select: {
-        id: true,
-        title: true,
-        shopName: true,
-        customerName: true,
-        amount: true,
-        received: true,
-        paymentHistory: true,
-        createdAt: true,
-        updatedAt: true,
-        phone: true,
-        location: true
-      },
-      orderBy: { updatedAt: 'desc' }
+          }
+        } : {},
+      ]
+    };
+
+    const payments = await prisma.payment.findMany({
+      where,
+      include: { task: true },
+      orderBy: { updatedAt: 'desc' },
     });
 
-    const reportData: any[] = [];
-
-    tasks.forEach(task => {
-      const history = Array.isArray(task.paymentHistory) ? task.paymentHistory : [];
-      
-      if (history.length === 0) {
-        return;
-      }
-
-      history.forEach((entry: any, index: number) => {
-        const entryDate = entry.updatedAt ? new Date(entry.updatedAt) : null;
-        
-        // Date range filter
-        if (startDate && entryDate && entryDate < new Date(startDate)) return;
-        if (endDate && entryDate && entryDate > new Date(endDate)) return;
-
-        reportData.push({
-          "Date": entryDate ? entryDate.toLocaleDateString('en-IN') : "N/A",
-          "Task ID": task.id,
-          "Project Name": task.title,
-          "Shop Name": task.shopName || "N/A",
-          "Customer Name": task.customerName || "N/A",
-          "Phone No.": (task as any).phone || "N/A",
-          "Address": (task as any).location || "N/A",
-          "Total Budget": task.amount || 0,
-          "Transaction Amount": entry.received || 0,
-          "UTR / Transaction No.": entry.utr || "N/A",
-          "Updated By": entry.updatedBy || "System",
-          "Proof URL": entry.fileUrl || "No Proof",
-          "Payment #": index + 1
-        });
-      });
-    });
+    const reportData = payments.map((p, idx) => ({
+      "Date": p.updatedAt ? p.updatedAt.toLocaleDateString('en-IN') : "N/A",
+      "Task ID": p.taskId,
+      "Project Name": p.task.title,
+      "Shop Name": p.task.shopName || "N/A",
+      "Customer Name": p.task.customerName || "N/A",
+      "Phone No.": (p.task as any).phone || "N/A",
+      "Address": (p.task as any).location || "N/A",
+      "Total Budget": p.task.amount || 0,
+      "Transaction Amount": p.received || 0,
+      "UTR / Transaction No.": p.utr || "N/A",
+      "Updated By": p.updatedBy || "System",
+      "Proof URL": p.fileUrl || "No Proof",
+      "Payment #": idx + 1
+    }));
 
     if (reportData.length === 0) {
       return NextResponse.json({ error: "No payment data found" }, { status: 404 });

@@ -20,60 +20,63 @@ export async function GET(req: NextRequest) {
   const limit = parseInt(searchParams.get("limit") || "10");
 
   try {
-    const tasks = await prisma.task.findMany({
-      where: {
-        AND: [
-          search ? {
+    // 🛡️ Build Filter
+    const where: any = {
+      AND: [
+        startDate ? { updatedAt: { gte: new Date(startDate) } } : {},
+        endDate ? { updatedAt: { lte: new Date(endDate) } } : {},
+        search ? {
+          task: {
             OR: [
               { title: { contains: search, mode: 'insensitive' } },
               { shopName: { contains: search, mode: 'insensitive' } },
               { customerName: { contains: search, mode: 'insensitive' } },
             ]
-          } : {},
-        ]
-      },
-      orderBy: { updatedAt: 'desc' }
+          }
+        } : {},
+      ]
+    };
+
+    // 🛡️ Fetch Paginated Payments
+    const [payments, totalEntries] = await Promise.all([
+      prisma.payment.findMany({
+        where,
+        include: { task: true },
+        orderBy: { updatedAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.payment.count({ where })
+    ]);
+
+    // 🛡️ Calculate Total Received (for stats)
+    // For large datasets, this could be a prisma.payment.aggregate, 
+    // but for 1000s it's fine to do a quick sum or a separate aggregate call.
+    const statsResult = await prisma.payment.aggregate({
+      where,
+      _sum: { received: true }
     });
 
-    const fullReportData: any[] = [];
-    let totalReceived = 0;
+    const reportData = payments.map(p => ({
+      id: p.id,
+      taskId: p.taskId,
+      date: p.updatedAt,
+      title: p.task.title,
+      shopName: p.task.shopName,
+      customerName: p.task.customerName,
+      phone: (p.task as any).phone,
+      location: (p.task as any).location,
+      totalBudget: p.task.amount || 0,
+      received: p.received || 0,
+      utr: p.utr,
+      updatedBy: p.updatedBy,
+      proof: p.fileUrl
+    }));
 
-    tasks.forEach(task => {
-      const history = Array.isArray(task.paymentHistory) ? task.paymentHistory : [];
-      
-      history.forEach((entry: any) => {
-        const entryDate = entry.updatedAt ? new Date(entry.updatedAt) : null;
-        
-        // Date range filter
-        if (startDate && entryDate && entryDate < new Date(startDate)) return;
-        if (endDate && entryDate && entryDate > new Date(endDate)) return;
-
-        totalReceived += (entry.received || 0);
-        
-        fullReportData.push({
-          id: task.id,
-          date: entryDate,
-          title: task.title,
-          shopName: task.shopName,
-          customerName: task.customerName,
-          phone: (task as any).phone,
-          location: (task as any).location,
-          totalBudget: task.amount || 0,
-          received: entry.received || 0,
-          utr: entry.utr,
-          updatedBy: entry.updatedBy,
-          proof: entry.fileUrl
-        });
-      });
-    });
-
-    // Pagination slice
-    const totalEntries = fullReportData.length;
     const totalPages = Math.ceil(totalEntries / limit);
-    const paginatedData = fullReportData.slice((page - 1) * limit, page * limit);
 
     return NextResponse.json({
-      data: paginatedData,
+      data: reportData,
       pagination: {
         totalEntries,
         totalPages,
@@ -81,7 +84,7 @@ export async function GET(req: NextRequest) {
         limit
       },
       stats: {
-        totalReceived: totalReceived,
+        totalReceived: statsResult._sum.received || 0,
         count: totalEntries
       }
     });

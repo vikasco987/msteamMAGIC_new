@@ -106,6 +106,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       uploadedFileUrl = uploadRes.secure_url;
     }
 
+    // 💰 New Amount Calculation
     const updatedAmount = (existingTask.amount === null || existingTask.amount === 0) ? (newAmount ?? existingTask.amount) : existingTask.amount;
     const updatedReceived = (existingTask.received ?? 0) + (newReceived ?? 0);
 
@@ -116,29 +117,61 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       }, { status: 400 });
     }
 
-    const updateData: any = {
-      amount: updatedAmount,
-      received: updatedReceived,
-      updatedAt: new Date(),
-    };
+    const cleanUtr = utr?.trim() || null;
 
-    if (uploadedFileUrl) {
-      updateData.paymentProofs = [...(existingTask.paymentProofs || []), uploadedFileUrl];
+    // 🛡️ Step 1: Create Payment record (Enforce UTR uniqueness)
+    try {
+      if (cleanUtr) {
+        await prisma.payment.create({
+          data: {
+            taskId: originalTaskId,
+            utr: cleanUtr,
+            amount: updatedAmount ?? 0,
+            received: newReceived ?? 0,
+            fileUrl: uploadedFileUrl || null,
+            updatedBy: userName,
+          }
+        });
+      } else {
+        // If no UTR provided, just create without uniqueness check
+        await prisma.payment.create({
+          data: {
+            taskId: originalTaskId,
+            amount: updatedAmount ?? 0,
+            received: newReceived ?? 0,
+            fileUrl: uploadedFileUrl || null,
+            updatedBy: userName,
+          }
+        });
+      }
+    } catch (err: any) {
+      if (err.code === "P2002") {
+        return NextResponse.json({ 
+          error: "❌ Duplicate UTR! This transaction is already registered in the system." 
+        }, { status: 400 });
+      }
+      throw err;
     }
 
+    // 🛡️ Step 2: Update Task (keep JSON backup as requested)
     const paymentEntry = {
       amount: updatedAmount ?? 0,
-      received: updatedReceived,
+      received: newReceived ?? 0,
       fileUrl: uploadedFileUrl || null,
       updatedAt: new Date(),
       updatedBy: userName,
-      utr: utr || null,
+      utr: cleanUtr,
     };
-    updateData.paymentHistory = [...(existingTask.paymentHistory as any[] || []), paymentEntry];
 
     const updatedTask = await prisma.task.update({
       where: { id: originalTaskId },
-      data: updateData,
+      data: {
+        amount: updatedAmount,
+        received: updatedReceived,
+        updatedAt: new Date(),
+        paymentHistory: [...(existingTask.paymentHistory as any[] || []), paymentEntry],
+        ...(uploadedFileUrl ? { paymentProofs: [...(existingTask.paymentProofs || []), uploadedFileUrl] } : {})
+      },
     });
 
     await logActivity({

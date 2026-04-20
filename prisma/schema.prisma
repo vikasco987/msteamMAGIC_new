@@ -65,7 +65,8 @@ model Task {
   // Relations
   notes           Note[]
   subtasks        Subtask[]       @relation("TaskSubtasks")
-  paymentRemarks  PaymentRemark[] // 👈 NEW relation for multiple remarks
+  paymentRemarks  PaymentRemark[] 
+  payments        Payment[]       // 👈 NEW relation for separate payments
   activities      Activity[]
 
   createdAt       DateTime @default(now())
@@ -137,6 +138,20 @@ model PaymentRemark {
   reminderSent      Boolean   @default(false) // whether reminder sent
 }
 
+model Payment {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  utr       String?  @unique // Unique index for fast lookup and duplicate prevention
+  amount    Float    @default(0)
+  received  Float    @default(0)
+  fileUrl   String?
+  updatedBy String?
+  updatedAt DateTime @default(now())
+
+  taskId    String   @db.ObjectId
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+}
 
 model Goal {
   id              String   @id @default(auto()) @map("_id") @db.ObjectId
