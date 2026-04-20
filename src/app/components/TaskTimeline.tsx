@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
+
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Paintbrush } from "lucide-react";
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { format, differenceInCalendarDays, addDays, isToday, parseISO, startOfMonth, endOfMonth } from "date-fns";
 import Image from "next/image";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -36,6 +38,7 @@ interface PaymentEntry {
   updatedAt: string;
   updatedBy: string;
   fileUrl?: string | null;
+  utr?: string | null;
 }
 
 interface Task {
@@ -185,12 +188,14 @@ export default function TaskTimeline() {
   const [assigneeMap, setAssigneeMap] = useState<Record<string, { name: string; imageUrl: string; email: string }>>({});
   const [currentAmountInput, setCurrentAmountInput] = useState("");
   const [currentReceivedInput, setCurrentReceivedInput] = useState("");
+  const [currentUtrInput, setCurrentUtrInput] = useState("");
   const [showPaymentHistory, setShowPaymentHistory] = useState(false);
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [mentionSearch, setMentionSearch] = useState("");
   const [showMentions, setShowMentions] = useState(false);
   const [cursorPos, setCursorPos] = useState(0);
   const [showDocs, setShowDocs] = useState(false);
+  const paymentFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const fetchAllUsers = async () => {
@@ -355,6 +360,7 @@ export default function TaskTimeline() {
     if (selectedTask) {
       setCurrentAmountInput(selectedTask.amount?.toString() || "");
       setCurrentReceivedInput(""); // Always empty for incremental "Add Payment"
+      setCurrentUtrInput(""); 
     }
   }, [selectedTaskId]); // Only reset when switching tasks
 
@@ -656,6 +662,11 @@ export default function TaskTimeline() {
     e.preventDefault();
     if (!selectedTask) return;
 
+    if (!currentReceivedInput.trim() && !(e.target as HTMLFormElement).paymentFile.files?.[0]) {
+      toast.error("Please enter an amount or upload a proof!");
+      return;
+    }
+
     const newReceive = Number(currentReceivedInput) || 0;
     const currentTotalReceived = selectedTask.received || 0;
     const totalAmount = Number(currentAmountInput) || 0;
@@ -669,9 +680,17 @@ export default function TaskTimeline() {
     const formData = new FormData();
     formData.append("amount", currentAmountInput);
     formData.append("received", currentReceivedInput);
+    formData.append("utr", currentUtrInput);
 
     const fileInput = (e.target as HTMLFormElement).paymentFile as HTMLInputElement;
     const hasFile = fileInput?.files?.[0];
+
+    // 🔒 UTR Validation: Mandatory if proof is uploaded
+    if (hasFile && !currentUtrInput.trim()) {
+      toast.error("UTR No is mandatory when uploading payment proof!");
+      return;
+    }
+
     if (hasFile) {
       formData.append("file", hasFile);
       setPaymentUploadStatus("Uploading file...");
@@ -697,7 +716,8 @@ export default function TaskTimeline() {
       received: newTotalReceived,
       updatedAt: new Date().toISOString(),
       updatedBy: user?.firstName || "You",
-      fileUrl: null 
+      fileUrl: null,
+      utr: currentUtrInput || null
     };
 
     const updatedTask = {
@@ -713,7 +733,8 @@ export default function TaskTimeline() {
     
     // Clear inputs immediately for "Instant" feel
     setCurrentReceivedInput(""); 
-    toast.success("Balance updated!");
+    setCurrentUtrInput("");
+    toast.success(hasFile ? "Payment & Proof uploaded!" : "Balance updated!");
 
     try {
       const token = await getToken();
@@ -731,7 +752,10 @@ export default function TaskTimeline() {
       setTasks(prev => prev.map(t => t.id === selectedTask.id ? data.task : t));
       setCurrentAmountInput(data.task.amount?.toString() || "");
       
-      // ✅ SUCCESS is now silent for a cleaner feel (Toast handles it)
+      // ✅ SUCCESS: Reset file input and show history if proof was uploaded
+      if (paymentFileRef.current) paymentFileRef.current.value = "";
+      if (hasFile) setShowPaymentHistory(true);
+
       setPaymentUploadStatus(""); // Clear it instantly
     } catch (err: any) {
       console.error("Payment failed:", err);
@@ -879,6 +903,16 @@ export default function TaskTimeline() {
             <FaHistory className="text-purple-500" />
             HOW TO USE?
           </button>
+
+          {isAdmin && (
+            <Link
+              href="/admin/reports/payments"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-50 text-green-700 border border-green-100 hover:bg-green-100 text-xs font-black transition-all"
+            >
+              📊 Financial Reports
+            </Link>
+          )}
+          
           <span className="text-sm font-medium text-gray-600">Assignees:</span>
           {allAssignees.map((id) => (
             <Image
@@ -1184,12 +1218,15 @@ export default function TaskTimeline() {
                   setAmount={setCurrentAmountInput}
                   received={currentReceivedInput}
                   setReceived={setCurrentReceivedInput}
+                  utr={currentUtrInput}
+                  setUtr={setCurrentUtrInput}
                   paymentUploadStatus={paymentUploadStatus}
                   setPaymentUploadStatus={setPaymentUploadStatus}
                   handlePaymentSubmit={handlePaymentSubmit}
                   showPaymentHistory={showPaymentHistory}
                   setShowPaymentHistory={setShowPaymentHistory}
                   handleTogglePaymentHistory={handleTogglePaymentHistory}
+                  fileInputRef={paymentFileRef}
                 />
 
                 <TaskActivityFeed taskId={selectedTask.id} />

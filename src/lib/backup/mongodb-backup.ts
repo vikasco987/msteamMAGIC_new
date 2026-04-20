@@ -11,8 +11,8 @@ export async function runBackup() {
     console.log('🚀 Starting Kravy POS Serverless-Safe Backup...');
 
     const MONGODB_URI = process.env.DATABASE_URL;
-    const S3_BUCKET_NAME = process.env.AWS_S3_BACKUP_BUCKET;
-    const AWS_REGION = process.env.AWS_REGION || 'ap-south-1';
+    const S3_BUCKET_NAME = process.env.MY_AWS_S3_BACKUP_BUCKET;
+    const AWS_REGION = process.env.MY_AWS_REGION || 'ap-south-1';
     
     // In serverless, we MUST use /tmp
     const BACKUP_DIR = '/tmp/temp-backups';
@@ -22,15 +22,15 @@ export async function runBackup() {
     }
 
     if (!S3_BUCKET_NAME) {
-        throw new Error('AWS_S3_BACKUP_BUCKET is not defined');
+        throw new Error('MY_AWS_S3_BACKUP_BUCKET is not defined');
     }
 
     // Initialize S3 Client
     const s3Client = new S3Client({
         region: AWS_REGION,
         credentials: {
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+            accessKeyId: process.env.MY_AWS_ACCESS_KEY_ID!,
+            secretAccessKey: process.env.MY_AWS_SECRET_ACCESS_KEY!,
         }
     });
 

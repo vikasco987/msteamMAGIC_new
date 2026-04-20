@@ -60,6 +60,7 @@ const NAVIGATION_GROUPS = [
       { label: 'Lead Terminal', icon: ShieldCheck, href: '/crm/admin/leads', roles: ['admin', 'master', 'tl'] },
       { label: 'Follow-up Board', icon: Calendar, href: '/dashboard/followups', roles: ['admin', 'master', 'seller', 'tl', 'manager'] },
       { label: 'Call Report', icon: PhoneCall, href: '/call-report', roles: ['admin', 'master', 'seller', 'tl'] },
+      { label: 'Financial Reports', icon: FileSpreadsheet, href: '/admin/reports/payments', roles: ['admin', 'master'] },
     ]
   },
   {
@@ -345,7 +346,8 @@ export default function Sidebar() {
               // If we have dynamic permissions, they override or restrict
               if (dynamicPermissions && dynamicPermissions.length > 0) {
                 // If the item is in the dynamic list, show it. 
-                if (userRole === 'master' && (i.label === 'Access Control' || i.label === 'DB Backups' || i.label === 'Team Management')) return true;
+                if ((userRole === 'master' || userRole === 'admin') && 
+                    (i.label === 'Access Control' || i.label === 'DB Backups' || i.label === 'Team Management' || i.label === 'Financial Reports')) return true;
                 return dynamicPermissions.includes(i.label);
               }
 

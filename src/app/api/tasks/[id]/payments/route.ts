@@ -18,6 +18,7 @@ interface PaymentHistoryEntry {
   updatedAt: Date;
   updatedBy: string;
   assignerName?: string;
+  utr?: string | null;
 }
 
 async function getEffectiveTaskId(taskId: string): Promise<string> {
@@ -64,6 +65,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const file = formData.get("file") as File | null;
     const newAmount = formData.get("amount") ? Number(formData.get("amount")) : undefined;
     const newReceived = formData.get("received") ? Number(formData.get("received")) : undefined;
+    const utr = formData.get("utr") as string | null;
 
     const existingTask = await prisma.task.findUnique({
       where: { id: originalTaskId },
@@ -110,6 +112,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       fileUrl: uploadedFileUrl || null,
       updatedAt: new Date(),
       updatedBy: userName,
+      utr: utr || null,
     };
     updateData.paymentHistory = [...(existingTask.paymentHistory as any[] || []), paymentEntry];
 
@@ -121,7 +124,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     await logActivity({
       taskId: originalTaskId,
       type: "PAYMENT_ADDED",
-      content: `₹${newReceived || 0} added. Total: ₹${updatedReceived}`,
+      content: `₹${newReceived || 0} added ${uploadedFileUrl ? "with Proof" : ""}. Total: ₹${updatedReceived}`,
       author: userName,
       authorId: userId
     });

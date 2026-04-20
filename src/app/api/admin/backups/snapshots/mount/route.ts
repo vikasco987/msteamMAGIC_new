@@ -12,10 +12,10 @@ const execPromise = promisify(exec);
 const { EJSON } = BSON;
 
 const s3Client = new S3Client({
-  region: process.env.AWS_REGION || "us-east-1",
+  region: process.env.MY_AWS_REGION || "us-east-1",
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
+    accessKeyId: process.env.MY_AWS_ACCESS_KEY_ID || "",
+    secretAccessKey: process.env.MY_AWS_SECRET_ACCESS_KEY || "",
   },
 });
 
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   try {
     const { fileName } = await req.json();
     const MONGODB_URI = process.env.DATABASE_URL;
-    const S3_BUCKET = process.env.AWS_S3_BACKUP_BUCKET;
+    const S3_BUCKET = process.env.MY_AWS_S3_BACKUP_BUCKET;
 
     if (!MONGODB_URI || !S3_BUCKET || !fileName) {
       return NextResponse.json({ error: "Missing configuration or filename" }, { status: 400 });
