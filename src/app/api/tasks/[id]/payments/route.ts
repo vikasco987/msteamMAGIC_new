@@ -73,24 +73,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     });
     if (!existingTask) return NextResponse.json({ error: "Task not found" }, { status: 404 });
 
-    // 🛡️ Global UTR Duplicate Check
+    // 🛡️ Step 0: Initial Validation
     if (utr && utr.trim().length > 0) {
-      // We check all tasks to see if any paymentHistory entry contains this UTR
-      const duplicateUtrTask = await prisma.task.findFirst({
-        where: {
-          paymentHistory: {
-            path: ["$[*]", "utr"],
-            array_contains: utr.trim()
-          } as any
-        },
-        select: { title: true, id: true }
-      });
-
-      if (duplicateUtrTask) {
-        return NextResponse.json({ 
-          error: `Duplicate UTR! This transaction is already registered in task: "${duplicateUtrTask.title}"` 
-        }, { status: 400 });
-      }
+       // Uniqueness is now enforced by the Payment table's unique index
+       // The try-catch block below handles the duplicate error gracefully
     }
 
     let uploadedFileUrl: string | undefined;
