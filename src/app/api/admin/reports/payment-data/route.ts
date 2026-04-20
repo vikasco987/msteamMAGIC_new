@@ -16,6 +16,8 @@ export async function GET(req: NextRequest) {
   const startDate = searchParams.get("startDate");
   const endDate = searchParams.get("endDate");
   const search = searchParams.get("search");
+  const page = parseInt(searchParams.get("page") || "1");
+  const limit = parseInt(searchParams.get("limit") || "10");
 
   try {
     const tasks = await prisma.task.findMany({
@@ -28,14 +30,12 @@ export async function GET(req: NextRequest) {
               { customerName: { contains: search, mode: 'insensitive' } },
             ]
           } : {},
-          // Date filtering is tricky because history is JSON
-          // We'll filter in-memory if needed or filter by Task updatedAt
         ]
       },
       orderBy: { updatedAt: 'desc' }
     });
 
-    const reportData: any[] = [];
+    const fullReportData: any[] = [];
     let totalReceived = 0;
 
     tasks.forEach(task => {
@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
 
         totalReceived += (entry.received || 0);
         
-        reportData.push({
+        fullReportData.push({
           id: task.id,
           date: entryDate,
           title: task.title,
@@ -67,18 +67,22 @@ export async function GET(req: NextRequest) {
       });
     });
 
-    // Recalculate unique total budget across filtered tasks
-    const uniqueTaskIds = new Set(reportData.map(r => r.id));
-    const uniqueTasks = tasks.filter(t => uniqueTaskIds.has(t.id));
-    const calculatedTotalBudget = uniqueTasks.reduce((acc, t) => acc + (t.amount || 0), 0);
+    // Pagination slice
+    const totalEntries = fullReportData.length;
+    const totalPages = Math.ceil(totalEntries / limit);
+    const paginatedData = fullReportData.slice((page - 1) * limit, page * limit);
 
     return NextResponse.json({
-      data: reportData,
+      data: paginatedData,
+      pagination: {
+        totalEntries,
+        totalPages,
+        currentPage: page,
+        limit
+      },
       stats: {
-        totalBudget: calculatedTotalBudget,
         totalReceived: totalReceived,
-        totalPending: calculatedTotalBudget - totalReceived,
-        count: reportData.length
+        count: totalEntries
       }
     });
 

@@ -6,31 +6,36 @@ import { format } from "date-fns";
 import { 
   FaDollarSign, FaWallet, FaClock, FaDownload, 
   FaSearch, FaSyncAlt, FaFileExcel, FaMapMarkerAlt,
-  FaPhoneAlt, FaUser, FaBuilding, FaChevronRight, FaHistory
+  FaPhoneAlt, FaUser, FaBuilding, FaChevronRight, FaHistory,
+  FaEye, FaCopy, FaCheck, FaTimes, FaExternalLinkAlt
 } from "react-icons/fa";
 import toast from "react-hot-toast";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function FinancialReportPage() {
   const [data, setData] = useState<any[]>([]);
-  const [stats, setStats] = useState<any>({
-    totalBudget: 0,
-    totalReceived: 0,
-    totalPending: 0,
-    count: 0
-  });
   const [loading, setLoading] = useState(true);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalEntries: 0
+  });
   const [filters, setFilters] = useState({
     startDate: "",
     endDate: "",
     search: ""
   });
+  
+  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = async (page = 1) => {
     setLoading(true);
     try {
-      const res = await axios.get("/api/admin/reports/payment-data", { params: filters });
+      const params = { ...filters, page, limit: 10 };
+      const res = await axios.get("/api/admin/reports/payment-data", { params });
       setData(res.data.data);
-      setStats(res.data.stats);
+      setPagination(res.data.pagination);
     } catch (err: any) {
       toast.error("Failed to fetch report data");
     } finally {
@@ -39,11 +44,23 @@ export default function FinancialReportPage() {
   };
 
   useEffect(() => {
-    fetchData();
+    fetchData(1);
   }, [filters.startDate, filters.endDate]);
 
+  const handleSearch = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') fetchData(1);
+  };
+
+  const handleCopy = (text: string, field: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    toast.success(`${field} copied!`);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
+
   const handleDownloadExcel = () => {
-    const params = new URLSearchParams(filters).toString();
+    const params = new URLSearchParams(filters as any).toString();
     window.location.href = `/api/admin/reports/gst-payments?${params}`;
   };
 
@@ -53,42 +70,18 @@ export default function FinancialReportPage() {
     
     try {
       const decoded = decodeURIComponent(url);
-      
-      // Pattern 1: /place/Name or /search/Name
       const placeMatch = decoded.match(/\/(place|search)\/([^/@?]+)/);
       if (placeMatch && placeMatch[2]) {
         const name = placeMatch[2].replace(/\+/g, " ").trim();
-        // If it looks like a coordinate in the name slot, skip to next pattern
         if (!/^\d+\.\d+,\d+\.\d+$/.test(name)) return name;
       }
-      
-      // Pattern 2: q=Name or query=Name
       const queryMatch = decoded.match(/[?&](q|query)=([^&]+)/);
       if (queryMatch && queryMatch[2]) {
         const q = queryMatch[2].replace(/\+/g, " ").trim();
-        // Check if it's a coordinate (Decimal or DMS)
         const isCoord = /^-?\d+\.\d+,-?\d+\.\d+$/.test(q) || /^\d+°\d+'[\d.]+"[NS]\s*\d+°\d+'[\d.]+"[EW]$/.test(q);
         if (!isCoord) return q;
         return "Pinned Location (" + q.split(",")[0].slice(0, 5) + "...)";
       }
-
-      // Pattern 3: Fallback for any path segment after /maps/
-      if (decoded.includes("/maps/")) {
-        const parts = decoded.split("/");
-        const mapsIndex = parts.indexOf("maps");
-        if (mapsIndex !== -1 && parts[mapsIndex + 1]) {
-          const segment = parts[mapsIndex + 1];
-          if (!segment.startsWith("@") && segment.length > 3 && !segment.includes(",")) {
-            return segment.replace(/\+/g, " ").trim();
-          }
-        }
-      }
-
-      // Short links
-      if (url.includes("goo.gl") || url.includes("maps.app")) {
-        return "Map Link (Short)";
-      }
-
       return "View on Map";
     } catch (e) {
       return "Map Link";
@@ -112,7 +105,7 @@ export default function FinancialReportPage() {
           
           <div className="flex items-center gap-3">
             <button 
-              onClick={fetchData}
+              onClick={() => fetchData(pagination.currentPage)}
               className="p-4 bg-white text-slate-400 rounded-2xl shadow-sm border border-slate-100 hover:text-indigo-600 hover:shadow-md transition-all"
             >
               <FaSyncAlt className={loading ? "animate-spin" : ""} />
@@ -136,11 +129,11 @@ export default function FinancialReportPage() {
             <FaSearch className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 text-lg" />
             <input
               type="text"
-              placeholder="Search by shop, customer, or project..."
+              placeholder="Search and press Enter..."
               className="w-full pl-16 pr-8 py-5 rounded-3xl bg-slate-50 border-none ring-1 ring-slate-100 focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-bold text-slate-600 placeholder:text-slate-300"
               value={filters.search}
               onChange={(e) => setFilters({...filters, search: e.target.value})}
-              onKeyDown={(e) => e.key === 'Enter' && fetchData()}
+              onKeyDown={handleSearch}
             />
           </div>
           
@@ -161,7 +154,9 @@ export default function FinancialReportPage() {
                 />
              </div>
              <div className="bg-slate-50 px-6 py-4 rounded-3xl ring-1 ring-slate-100">
-               <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">SHOWING {data.length} ENTRIES</span>
+               <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                 {pagination.totalEntries} ENTRIES FOUND
+               </span>
              </div>
           </div>
         </div>
@@ -176,7 +171,6 @@ export default function FinancialReportPage() {
                 <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[180px]">Shop Name</th>
                 <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[200px]">Location</th>
                 <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[150px]">UTR / Ref</th>
-                <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[120px]">Collected By</th>
                 <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[120px]">Amount</th>
                 <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[120px]">Date</th>
                 <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right pr-10">Actions</th>
@@ -185,7 +179,7 @@ export default function FinancialReportPage() {
             <tbody className="divide-y divide-slate-50">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="py-32 text-center">
+                  <td colSpan={8} className="py-32 text-center">
                     <div className="flex flex-col items-center gap-4">
                       <div className="w-16 h-16 border-8 border-indigo-600 border-t-transparent rounded-full animate-spin shadow-xl shadow-indigo-100"></div>
                       <p className="text-slate-400 font-black text-xl tracking-tight">Syncing ecosystem data...</p>
@@ -194,7 +188,7 @@ export default function FinancialReportPage() {
                 </tr>
               ) : data.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-32 text-center">
+                  <td colSpan={8} className="py-32 text-center">
                     <p className="text-slate-300 font-black text-2xl">No data found in this ecosystem</p>
                   </td>
                 </tr>
@@ -205,7 +199,7 @@ export default function FinancialReportPage() {
                       <div className="w-10 h-10 bg-slate-100 text-slate-500 rounded-xl flex items-center justify-center text-sm font-black shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-all">
                         {item.title.charAt(0)}
                       </div>
-                      <span className="text-sm font-black text-slate-800 group-hover:text-indigo-600 transition-colors whitespace-nowrap" title={item.title}>
+                      <span className="text-sm font-black text-slate-800 group-hover:text-indigo-600 transition-colors whitespace-nowrap">
                         {item.title}
                       </span>
                     </div>
@@ -223,7 +217,7 @@ export default function FinancialReportPage() {
                   <td className="px-4 py-6">
                     <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
                         <FaMapMarkerAlt className="text-rose-400 shrink-0" />
-                        <span className="whitespace-nowrap" title={item.location}>
+                        <span className="whitespace-nowrap">
                           {formatLocation(item.location)}
                         </span>
                     </div>
@@ -231,11 +225,6 @@ export default function FinancialReportPage() {
                   <td className="px-4 py-6">
                     <span className="text-xs font-black text-indigo-600 font-mono tracking-tight whitespace-nowrap">
                       {item.utr || "N/A"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-6">
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">
-                      {item.updatedBy || "SYSTEM"}
                     </span>
                   </td>
                   <td className="px-4 py-6">
@@ -251,18 +240,23 @@ export default function FinancialReportPage() {
                     </div>
                   </td>
                   <td className="px-4 py-6 text-right pr-10">
-                    <div className="flex items-center justify-end">
-                      {item.proof ? (
+                    <div className="flex items-center justify-end gap-2">
+                      <button 
+                        onClick={() => setSelectedTask(item)}
+                        className="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                        title="Quick View"
+                      >
+                        <FaEye size={14} />
+                      </button>
+                      {item.proof && (
                         <a 
                           href={item.proof} 
                           target="_blank"
                           className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
                           title="View Proof"
                         >
-                          <FaChevronRight size={12} />
+                          <FaExternalLinkAlt size={12} />
                         </a>
-                      ) : (
-                        <span className="text-[9px] font-black text-slate-300">NO PROOF</span>
                       )}
                     </div>
                   </td>
@@ -271,7 +265,152 @@ export default function FinancialReportPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        {!loading && pagination.totalPages > 1 && (
+          <div className="p-8 border-t border-slate-50 flex items-center justify-between bg-slate-50/30">
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+              Page {pagination.currentPage} of {pagination.totalPages}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                disabled={pagination.currentPage === 1}
+                onClick={() => fetchData(pagination.currentPage - 1)}
+                className="px-6 py-3 rounded-2xl bg-white border border-slate-200 text-sm font-black text-slate-600 disabled:opacity-50 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-sm"
+              >
+                PREVIOUS
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                  let pageNum = i + 1;
+                  if (pagination.currentPage > 3 && pagination.totalPages > 5) {
+                    pageNum = pagination.currentPage - 3 + i + 1;
+                  }
+                  if (pageNum > pagination.totalPages) return null;
+                  
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => fetchData(pageNum)}
+                      className={`w-10 h-10 rounded-xl text-xs font-black transition-all ${
+                        pagination.currentPage === pageNum 
+                          ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' 
+                          : 'bg-white text-slate-400 border border-slate-200 hover:bg-indigo-50 hover:text-indigo-600'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                disabled={pagination.currentPage === pagination.totalPages}
+                onClick={() => fetchData(pagination.currentPage + 1)}
+                className="px-6 py-3 rounded-2xl bg-white border border-slate-200 text-sm font-black text-slate-600 disabled:opacity-50 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-sm"
+              >
+                NEXT
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Details Modal */}
+      <AnimatePresence>
+        {selectedTask && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedTask(null)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden"
+            >
+              <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-indigo-600">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-white text-xl">
+                    <FaEye />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-black text-white tracking-tight">Task Details</h2>
+                    <p className="text-indigo-100 text-[10px] font-bold uppercase tracking-widest">Ref: {selectedTask.id.slice(-8)}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setSelectedTask(null)}
+                  className="w-10 h-10 bg-white/10 text-white rounded-xl flex items-center justify-center hover:bg-white/20 transition-all"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+
+              <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
+                {[
+                  { label: "Project Title", value: selectedTask.title, icon: <FaBuilding /> },
+                  { label: "Shop Name", value: selectedTask.shopName, icon: <FaBuilding /> },
+                  { label: "Customer Name", value: selectedTask.customerName, icon: <FaUser /> },
+                  { label: "UTR / Transaction Ref", value: selectedTask.utr, icon: <FaHistory />, isMono: true },
+                  { label: "Phone Number", value: selectedTask.phone, icon: <FaPhoneAlt /> },
+                  { label: "Location Link", value: selectedTask.location, icon: <FaMapMarkerAlt />, isLink: true },
+                ].map((field, i) => (
+                  <div key={i} className="group p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:border-indigo-200 transition-all">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        {field.icon}
+                        {field.label}
+                      </div>
+                      <button 
+                        onClick={() => handleCopy(field.value, field.label)}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${
+                          copiedField === field.label 
+                            ? 'bg-emerald-500 text-white' 
+                            : 'bg-white text-slate-400 hover:text-indigo-600 shadow-sm'
+                        }`}
+                      >
+                        {copiedField === field.label ? <FaCheck /> : <FaCopy />}
+                        {copiedField === field.label ? 'COPIED' : 'COPY'}
+                      </button>
+                    </div>
+                    {field.isLink ? (
+                      <a href={field.value} target="_blank" className="text-sm font-bold text-indigo-600 hover:underline break-all flex items-center gap-2">
+                        {field.value || "N/A"}
+                        <FaExternalLinkAlt size={10} />
+                      </a>
+                    ) : (
+                      <p className={`text-sm font-black text-slate-800 ${field.isMono ? 'font-mono' : ''}`}>
+                        {field.value || "—"}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-8 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                <div className="flex flex-col">
+                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">AMOUNT RECEIVED</span>
+                   <span className="text-2xl font-black text-slate-800">₹{selectedTask.received.toLocaleString()}</span>
+                </div>
+                {selectedTask.proof && (
+                  <a 
+                    href={selectedTask.proof}
+                    target="_blank"
+                    className="flex items-center gap-3 bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all"
+                  >
+                    VIEW PROOF
+                    <FaExternalLinkAlt size={14} />
+                  </a>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
