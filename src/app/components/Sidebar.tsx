@@ -60,7 +60,7 @@ const NAVIGATION_GROUPS = [
       { label: 'Lead Terminal', icon: ShieldCheck, href: '/crm/admin/leads', roles: ['admin', 'master', 'tl'] },
       { label: 'Follow-up Board', icon: Calendar, href: '/dashboard/followups', roles: ['admin', 'master', 'seller', 'tl', 'manager'] },
       { label: 'Call Report', icon: PhoneCall, href: '/call-report', roles: ['admin', 'master', 'seller', 'tl'] },
-      { label: 'Financial Reports', icon: FileSpreadsheet, href: '/admin/reports/payments', roles: ['admin', 'master'] },
+      { label: 'Financial Ecosystem', icon: FileSpreadsheet, href: '/admin/reports/payments', roles: ['admin', 'master', 'tl'] },
     ]
   },
   {
