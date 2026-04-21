@@ -59,6 +59,7 @@ export default function PaymentsTodayPage() {
 
   const today = new Date().toISOString().split("T")[0];
   const [selectedDate, setSelectedDate] = useState(today);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const fetchPayments = async (date: string) => {
     setLoading(true);
@@ -277,13 +278,12 @@ export default function PaymentsTodayPage() {
                         </td>
                         <td className="px-8 py-6">
                           {p.fileUrl ? (
-                            <a
-                              href={p.fileUrl}
-                              target="_blank"
+                            <button
+                              onClick={() => setPreviewImage(p.fileUrl)}
                               className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-sm"
                             >
                               View Proof <ExternalLink size={12} />
-                            </a>
+                            </button>
                           ) : (
                             <span className="text-slate-200 text-[9px] font-black uppercase tracking-widest italic pt-2 block">No Attachment</span>
                           )}
@@ -306,6 +306,69 @@ export default function PaymentsTodayPage() {
           </div>
         </div>
       </div>
+
+      {/* 🖼️ Premium Image Preview Modal */}
+      {previewImage && (
+        <div 
+          className="fixed inset-0 z-[1000] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div 
+            className="bg-white rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] overflow-hidden relative shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)] flex flex-col animate-in zoom-in-95 duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
+                  <ExternalLink size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-800 tracking-tight">Payment Proof Preview</h3>
+                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Transaction Verification</p>
+                </div>
+              </div>
+              
+              <button
+                onClick={() => setPreviewImage(null)}
+                className="w-10 h-10 rounded-2xl bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all flex items-center justify-center group"
+              >
+                <Trash2 size={20} className="group-hover:hidden" />
+                <span className="hidden group-hover:block font-bold">X</span>
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-auto p-4 md:p-8 bg-slate-50/50 flex items-center justify-center">
+              {previewImage.toLowerCase().endsWith('.pdf') ? (
+                <iframe
+                  src={previewImage}
+                  className="w-full h-[60vh] rounded-[2rem] border-4 border-white shadow-xl"
+                  title="PDF Proof"
+                />
+              ) : (
+                <div className="relative w-full h-[60vh] rounded-[2rem] border-4 border-white shadow-xl overflow-hidden bg-white">
+                  <img
+                    src={previewImage}
+                    alt="Payment Proof"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-8 py-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => setPreviewImage(null)}
+                className="px-6 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all active:scale-95"
+              >
+                Close Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
