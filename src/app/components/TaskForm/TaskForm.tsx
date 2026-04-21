@@ -798,5 +798,4 @@ export default function TaskForm() {
       </form>
     </div>
   );
-  );
 }
