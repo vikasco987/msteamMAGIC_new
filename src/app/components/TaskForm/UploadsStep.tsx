@@ -2263,4 +2263,3 @@ export default function UploadsStep(props: UploadsStepProps) {
     </div>
   );
 }
-}
