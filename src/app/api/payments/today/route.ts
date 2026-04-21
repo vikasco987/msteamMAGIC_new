@@ -69,9 +69,8 @@ export async function GET(req: NextRequest) {
         const updatedAt = new Date(p.updatedAt);
         if (updatedAt < startOfDay || updatedAt > endOfDay) continue;
 
-        const previousReceived = i > 0 ? Number(history[i - 1].received || 0) : 0;
         const currentReceived = Number(p.received || 0);
-        const amountUpdated = i === 0 ? currentReceived : currentReceived - previousReceived;
+        const amountUpdated = currentReceived; // Fix: Use the actual added amount directly
         const assigner = p.assignerName || task.assignerName || "Unknown";
 
         paymentsToday.push({
