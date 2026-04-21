@@ -1949,6 +1949,34 @@ export default function UploadsStep(props: UploadsStepProps) {
     return () => clearTimeout(timer);
   }, [customerName]);
 
+  // 📍 Pincode Auto-fill logic
+  useEffect(() => {
+    const lookupPincode = async () => {
+      if (pincode.length === 6) {
+        try {
+          const res = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+          const data = await res.json();
+          
+          if (data && data[0]?.Status === "Success") {
+            const postOffice = data[0].PostOffice[0];
+            if (postOffice) {
+              setCity(postOffice.District);
+              setState(postOffice.State);
+              setCountry("India");
+              toast.success(`Location detected: ${postOffice.District}, ${postOffice.State}`, {
+                icon: "📍",
+                style: { borderRadius: "10px", background: "#333", color: "#fff", fontSize: "12px" }
+              });
+            }
+          }
+        } catch (error) {
+          console.error("Pincode lookup failed:", error);
+        }
+      }
+    };
+    lookupPincode();
+  }, [pincode]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
