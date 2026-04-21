@@ -11,8 +11,10 @@ import {
   Filter,
   IndianRupee,
   Search,
-  MapPin
+  MapPin,
+  Copy
 } from "lucide-react";
+import toast from "react-hot-toast";
 
 interface PaymentEntry {
   paymentId: string;
@@ -83,6 +85,19 @@ export default function PaymentsTodayPage() {
     } catch (err) {
       console.error("Delete failed", err);
     }
+  };
+  
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Address copied to clipboard!", {
+      style: {
+        borderRadius: '10px',
+        background: '#333',
+        color: '#fff',
+        fontSize: '12px',
+        fontWeight: 'bold'
+      },
+    });
   };
 
   useEffect(() => {
@@ -230,6 +245,13 @@ export default function PaymentsTodayPage() {
                                   <div className="flex items-start gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest leading-relaxed">
                                     <MapPin size={14} className="text-slate-300 shrink-0 mt-0.5" />
                                     <span className="max-w-[180px] line-clamp-2">{p.address}</span>
+                                    <button 
+                                      onClick={() => copyToClipboard(p.address || "")}
+                                      className="p-1 hover:bg-slate-200 rounded-md text-slate-400 hover:text-indigo-600 transition-all shrink-0"
+                                      title="Copy Full Address"
+                                    >
+                                      <Copy size={12} />
+                                    </button>
                                   </div>
                                 )}
                               </div>
