@@ -2187,6 +2187,14 @@ export default function UploadsStep(props: UploadsStepProps) {
                   <input className={inputClass} placeholder="Enter Restaurant Name" value={shopName} onChange={e => setShopName(e.target.value)} />
                 </div>
                 <div>
+                  <label className={labelClass}>📞 Phone Number</label>
+                  <input className={inputClass} placeholder="Contact number" value={phone} onChange={e => setPhone(e.target.value)} />
+                </div>
+                <div>
+                  <label className={labelClass}>📧 Email</label>
+                  <input className={inputClass} placeholder="Official email" value={email} onChange={e => setEmail(e.target.value)} />
+                </div>
+                <div>
                   <label className={labelClass}>📅 Start Date</label>
                   <input className={inputClass} type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
                 </div>
