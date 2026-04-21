@@ -14,7 +14,10 @@ export async function GET() {
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { name, address, gstin, phone, email, website, logo } = body;
+        const { 
+            name, address, gstin, phone, email, website, logo,
+            bankName, bankBranch, accountName, accountNumber, ifscCode, terms 
+        } = body;
 
         const existing = await prisma.businessSettings.findFirst();
 
@@ -22,11 +25,17 @@ export async function POST(req: NextRequest) {
         if (existing) {
             settings = await prisma.businessSettings.update({
                 where: { id: existing.id },
-                data: { name, address, gstin, phone, email, website, logo }
+                data: { 
+                    name, address, gstin, phone, email, website, logo,
+                    bankName, bankBranch, accountName, accountNumber, ifscCode, terms
+                }
             });
         } else {
             settings = await prisma.businessSettings.create({
-                data: { name, address, gstin, phone, email, website, logo }
+                data: { 
+                    name, address, gstin, phone, email, website, logo,
+                    bankName, bankBranch, accountName, accountNumber, ifscCode, terms
+                }
             });
         }
 

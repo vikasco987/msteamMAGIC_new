@@ -11,7 +11,10 @@ import {
   Save, 
   Image as ImageIcon,
   Loader2,
-  ChevronLeft
+  ChevronLeft,
+  Banknote,
+  FileText,
+  CreditCard
 } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -26,7 +29,13 @@ export default function BusinessSettingsPage() {
     phone: "",
     email: "",
     website: "",
-    logo: ""
+    logo: "",
+    bankName: "",
+    bankBranch: "",
+    accountName: "",
+    accountNumber: "",
+    ifscCode: "",
+    terms: ""
   });
 
   useEffect(() => {
@@ -45,7 +54,13 @@ export default function BusinessSettingsPage() {
           phone: data.phone || "",
           email: data.email || "",
           website: data.website || "",
-          logo: data.logo || ""
+          logo: data.logo || "",
+          bankName: data.bankName || "",
+          bankBranch: data.bankBranch || "",
+          accountName: data.accountName || "",
+          accountNumber: data.accountNumber || "",
+          ifscCode: data.ifscCode || "",
+          terms: data.terms || ""
         });
       }
     } catch (error) {
@@ -89,7 +104,7 @@ export default function BusinessSettingsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50/50 p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         {/* Back Link */}
         <Link 
           href="/" 
@@ -108,17 +123,23 @@ export default function BusinessSettingsPage() {
               </div>
               <div>
                 <h1 className="text-4xl font-black text-slate-900 tracking-tight">Business Setup</h1>
-                <p className="text-slate-400 font-medium mt-1">Configure your corporate identity for invoices and reports</p>
+                <p className="text-slate-400 font-medium mt-1">Configure your corporate and banking identity for invoices</p>
               </div>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-10 space-y-10">
-            {/* Identity Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="md:col-span-2">
-                <label className={labelClass}>🏢 Registered Business Name</label>
-                <div className="relative group">
+          <form onSubmit={handleSubmit} className="p-10 space-y-12">
+            
+            {/* 🏢 Section 1: Core Identity */}
+            <div className="space-y-8">
+              <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+                <Building2 size={18} className="text-indigo-500" />
+                <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">Business Identity</h2>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="md:col-span-2">
+                  <label className={labelClass}>🏢 Registered Business Name</label>
                   <input
                     className={inputClass}
                     placeholder="Enter Business Name"
@@ -126,39 +147,30 @@ export default function BusinessSettingsPage() {
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
                   />
-                  <Building2 size={18} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors" />
                 </div>
-              </div>
 
-              <div>
-                <label className={labelClass}>🆔 GSTIN / Registration Number</label>
-                <div className="relative group">
+                <div>
+                  <label className={labelClass}>🆔 GSTIN / Registration Number</label>
                   <input
                     className={inputClass}
                     placeholder="Enter GSTIN"
                     value={formData.gstin}
                     onChange={(e) => setFormData({ ...formData, gstin: e.target.value })}
                   />
-                  <ShieldCheck size={18} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors" />
                 </div>
-              </div>
 
-              <div>
-                <label className={labelClass}>📞 Business Phone</label>
-                <div className="relative group">
+                <div>
+                  <label className={labelClass}>📞 Business Phone</label>
                   <input
                     className={inputClass}
                     placeholder="Enter Contact Number"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   />
-                  <Phone size={18} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors" />
                 </div>
-              </div>
 
-              <div>
-                <label className={labelClass}>📧 Business Email</label>
-                <div className="relative group">
+                <div>
+                  <label className={labelClass}>📧 Business Email</label>
                   <input
                     className={inputClass}
                     type="email"
@@ -166,71 +178,138 @@ export default function BusinessSettingsPage() {
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   />
-                  <Mail size={18} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors" />
                 </div>
-              </div>
 
-              <div>
-                <label className={labelClass}>🌐 Website URL</label>
-                <div className="relative group">
+                <div>
+                  <label className={labelClass}>🌐 Website URL</label>
                   <input
                     className={inputClass}
                     placeholder="https://example.com"
                     value={formData.website}
                     onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                   />
-                  <Globe size={18} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors" />
                 </div>
-              </div>
 
-              <div className="md:col-span-2">
-                <label className={labelClass}>📍 Office Address</label>
-                <div className="relative group">
+                <div className="md:col-span-2">
+                  <label className={labelClass}>📍 Office Address</label>
                   <textarea
                     className={`${inputClass} h-32 resize-none pt-4`}
                     placeholder="Enter Full Business Address"
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   />
-                  <MapPin size={18} className="absolute right-5 top-5 text-slate-300 group-focus-within:text-indigo-500 transition-colors" />
                 </div>
-              </div>
 
-              <div className="md:col-span-2">
-                <label className={labelClass}>🖼️ Logo URL</label>
-                <div className="relative group">
+                <div className="md:col-span-2">
+                  <label className={labelClass}>🖼️ Logo URL</label>
                   <input
                     className={inputClass}
                     placeholder="Paste Cloudinary/Image URL"
                     value={formData.logo}
                     onChange={(e) => setFormData({ ...formData, logo: e.target.value })}
                   />
-                  <ImageIcon size={18} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors" />
+                  {formData.logo && (
+                    <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200 flex items-center justify-center">
+                      <img src={formData.logo} alt="Logo Preview" className="h-16 object-contain" />
+                    </div>
+                  )}
                 </div>
-                {formData.logo && (
-                  <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200 flex items-center justify-center">
-                    <img src={formData.logo} alt="Logo Preview" className="h-16 object-contain grayscale hover:grayscale-0 transition-all duration-500" />
-                  </div>
-                )}
+              </div>
+            </div>
+
+            {/* 🏦 Section 2: Banking Details */}
+            <div className="space-y-8">
+              <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+                <Banknote size={18} className="text-emerald-500" />
+                <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">Banking Details</h2>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-emerald-50/20 p-8 rounded-[2.5rem] border border-emerald-100/50">
+                <div>
+                  <label className={labelClass}>🏦 Bank Name</label>
+                  <input
+                    className={inputClass}
+                    placeholder="e.g. Yes Bank"
+                    value={formData.bankName}
+                    onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClass}>📍 Branch Name</label>
+                  <input
+                    className={inputClass}
+                    placeholder="e.g. Rajokari Branch"
+                    value={formData.bankBranch}
+                    onChange={(e) => setFormData({ ...formData, bankBranch: e.target.value })}
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className={labelClass}>👤 Account Holder Name</label>
+                  <input
+                    className={inputClass}
+                    placeholder="Name as per Bank Records"
+                    value={formData.accountName}
+                    onChange={(e) => setFormData({ ...formData, accountName: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClass}>🔢 Account Number</label>
+                  <input
+                    className={inputClass}
+                    placeholder="Enter Account Number"
+                    value={formData.accountNumber}
+                    onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClass}>🏛️ IFSC Code</label>
+                  <input
+                    className={inputClass}
+                    placeholder="Enter 11-digit IFSC"
+                    value={formData.ifscCode}
+                    onChange={(e) => setFormData({ ...formData, ifscCode: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 📄 Section 3: Terms & Conditions */}
+            <div className="space-y-8">
+              <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+                <FileText size={18} className="text-amber-500" />
+                <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">Terms & Conditions</h2>
+              </div>
+              
+              <div>
+                <label className={labelClass}>📝 Invoice Terms</label>
+                <textarea
+                  className={`${inputClass} h-48 resize-none pt-4 font-mono text-xs leading-relaxed`}
+                  placeholder="Enter your standard terms and conditions here..."
+                  value={formData.terms}
+                  onChange={(e) => setFormData({ ...formData, terms: e.target.value })}
+                />
+                <p className="mt-3 text-[9px] text-slate-400 font-bold uppercase tracking-widest ml-1">
+                  These will appear at the bottom of every generated invoice.
+                </p>
               </div>
             </div>
 
             {/* Action Bar */}
-            <div className="pt-10 flex justify-end items-center gap-6">
+            <div className="pt-10 flex justify-end items-center gap-6 border-t border-slate-100">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                 <ShieldCheck size={14} className="text-emerald-500" />
-                Your data is stored securely
+                Secure Corporate Vault
               </p>
               <button
                 type="submit"
                 disabled={saving}
                 className="bg-slate-900 text-white px-10 py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-indigo-600 transition-all shadow-2xl shadow-indigo-200 active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center gap-3"
               >
-                {saving ? (
-                  <Loader2 className="animate-spin" size={18} />
-                ) : (
-                  <Save size={18} />
-                )}
+                {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                 {saving ? "Deploying Details..." : "Commit Changes"}
               </button>
             </div>
