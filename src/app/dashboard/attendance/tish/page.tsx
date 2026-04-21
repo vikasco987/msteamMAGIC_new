@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import AttendanceTable from "../../../components/AttendanceTable";
 import {
   Zap,
@@ -47,7 +47,9 @@ export default function TishPage() {
           </div>
         </div>
         <div className="p-4">
-          <AttendanceTable all={true} />
+          <Suspense fallback={<div className="p-10 text-center font-bold text-slate-400">Loading Intelligence...</div>}>
+            <AttendanceTable all={true} />
+          </Suspense>
         </div>
       </div>
     </div>

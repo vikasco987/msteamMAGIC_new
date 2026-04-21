@@ -68,6 +68,7 @@ const NAVIGATION_GROUPS = [
     items: [
       { label: 'Attendance', icon: CalendarCheck, href: '/dashboard/attendance', roles: ['admin', 'master', 'seller', 'tl'] },
       { label: 'Tish Control', icon: ShieldCheck, href: '/dashboard/attendance/tish', roles: ['admin', 'master', 'tl'] },
+      { label: 'Employee Insights', icon: UserSquare2, href: '/dashboard/attendance/tish?view=analytics', roles: ['admin', 'master', 'tl'] },
       { label: 'Activity Log', icon: History, href: '/activities', roles: ['admin', 'master', 'seller', 'tl', 'user'] },
       { label: 'Lifecycle Report', icon: LineChart, href: '/activities/report', roles: ['admin', 'master', 'tl'] },
       { label: 'Customers', icon: UserSquare2, href: '/customers', roles: ['admin', 'master', 'seller', 'tl'] },

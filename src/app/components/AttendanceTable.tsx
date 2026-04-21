@@ -321,12 +321,17 @@ function EditAttendanceModal({
   );
 }
 
+import { useSearchParams } from "next/navigation";
+
 // -------------------- Component --------------------
 export default function AttendanceTable({ all = false }: AttendanceTableProps) {
   const { user, isLoaded } = useUser();
+  const searchParams = useSearchParams();
+  const initialView = (searchParams.get("view") as any) || "daily";
+
   const [data, setData] = useState<Attendance[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"daily" | "monthly" | "analytics" | "pivot">("daily");
+  const [view, setView] = useState<"daily" | "monthly" | "analytics" | "pivot">(initialView);
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split("T")[0]
   );
@@ -400,8 +405,8 @@ export default function AttendanceTable({ all = false }: AttendanceTableProps) {
             <SelectContent>
               <SelectItem value="daily">Daily View</SelectItem>
               <SelectItem value="monthly">Monthly View</SelectItem>
-              <SelectItem value="analytics">Analytics View</SelectItem>
-              <SelectItem value="pivot">Pivot View</SelectItem>
+              <SelectItem value="analytics">Employee Insights (Deep Report)</SelectItem>
+              <SelectItem value="pivot">Salary Matrix (Pivot)</SelectItem>
             </SelectContent>
           </Select>
           <Button onClick={() => window.print()}>Export</Button>
