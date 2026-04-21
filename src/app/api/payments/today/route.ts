@@ -16,44 +16,32 @@ export async function GET(req: NextRequest) {
     const endOfDay = new Date(baseDate);
     endOfDay.setUTCHours(23, 59, 59, 999);
 
-    // 🚀 STEP 1: Find Activity logs for payments on this date to get Task IDs
-    // This is MUCH faster than fetching ALL tasks and then filtering locally.
-    const activities = await prisma.activity.findMany({
+    // 🚀 NEW STEP 1: Fetch all payments for this date from the Payment collection
+    const payments = await prisma.payment.findMany({
       where: {
-        type: "PAYMENT_ADDED",
-        createdAt: {
+        updatedAt: {
           gte: startOfDay,
           lte: endOfDay,
         }
       },
-      select: {
-        taskId: true,
+      include: {
+        task: {
+          select: {
+            id: true,
+            title: true,
+            assignerName: true,
+            assignerId: true,
+            customerName: true,
+            shopName: true,
+            phone: true,
+            location: true,
+            customFields: true
+          }
+        }
       }
     });
 
-    const taskIds = activities.map(a => a.taskId);
-    const uniqueTaskIds = Array.from(new Set(taskIds));
-
-    // 🚀 STEP 2: Fetch ONLY those specific tasks
-    const tasks = await prisma.task.findMany({
-      where: {
-        id: { in: uniqueTaskIds }
-      },
-      select: {
-        id: true,
-        title: true,
-        assignerName: true,
-        assignerId: true,
-        paymentHistory: true,
-        customFields: true,
-        location: true,
-        customerName: true,
-        shopName: true,
-        phone: true,
-      },
-    });
-
-    // 🚀 STEP 3: Fetch all Users to get Full Names
+    // 🚀 STEP 2: Fetch all Users to get Full Names
     const users = await prisma.user.findMany({
       select: { clerkId: true, name: true }
     });
@@ -66,52 +54,36 @@ export async function GET(req: NextRequest) {
     const summaryByAssigner: Record<string, number> = {};
     let totalUpdatedAmount = 0;
 
-    for (const task of tasks) {
-      if (!Array.isArray(task.paymentHistory)) continue;
+    for (const p of payments) {
+      const task = p.task;
+      const cf = (task.customFields as any) || {};
+      
+      // Get Full Name from Map, fallback to task.assignerName
+      const assigner = (task.assignerId ? userMap[task.assignerId] : null) || task.assignerName || "Unknown";
+      
+      const fullAddr = [cf.fullAddress, cf.city, cf.state, cf.country, cf.pincode].filter(Boolean).join(", ") || task.location;
 
-      const history = task.paymentHistory as any[];
+      const entry = {
+        paymentId: p.id, // 👈 Now using REAL MongoDB ID
+        taskId: task.id,
+        taskTitle: task.title,
+        assignerName: assigner,
+        received: p.received,
+        amountUpdated: p.received,
+        updatedAt: p.updatedAt,
+        updatedBy: p.updatedBy || "Unknown",
+        fileUrl: p.fileUrl,
+        invoiceUrl: p.invoiceUrl, // 👈 New field!
+        utr: p.utr,
+        phone: cf.phone || task.phone,
+        shopName: cf.shopName || task.shopName,
+        customerName: task.customerName,
+        address: fullAddr || null,
+      };
 
-      // Extract phone and shopName from customFields for UI reporting
-      const phone = (task.customFields as any)?.phone || null;
-      const shopName = (task.customFields as any)?.shopName || null;
-
-      for (let i = 0; i < history.length; i++) {
-        const p = history[i];
-        if (!p?.updatedAt) continue;
-
-        const updatedAt = new Date(p.updatedAt);
-        if (updatedAt < startOfDay || updatedAt > endOfDay) continue;
-
-        const currentReceived = Number(p.received || 0);
-        const amountUpdated = currentReceived; // Fix: Use the actual added amount directly
-        
-        // Get Full Name from Map, fallback to task.assignerName
-        const assigner = (task.assignerId ? userMap[task.assignerId] : null) || p.assignerName || task.assignerName || "Unknown";
-
-        const cf = (task.customFields as any) || {};
-        const fullAddr = [cf.fullAddress, cf.city, cf.state, cf.country, cf.pincode].filter(Boolean).join(", ") || task.location;
-
-        paymentsToday.push({
-          paymentId: `${task.id}_${updatedAt.getTime()}`,
-          taskId: task.id,
-          taskTitle: task.title,
-          assignerName: assigner,
-          received: currentReceived,
-          amountUpdated,
-          updatedAt,
-          updatedBy: p.updatedBy || "Unknown",
-          fileUrl: p.fileUrl || null,
-          utr: p.utr || null,
-          phone,
-          shopName,
-          customerName: task.customerName,
-          address: fullAddr || null,
-        });
-
-        // Overall aggregates
-        summaryByAssigner[assigner] = (summaryByAssigner[assigner] || 0) + amountUpdated;
-        totalUpdatedAmount += amountUpdated;
-      }
+      paymentsToday.push(entry);
+      summaryByAssigner[assigner] = (summaryByAssigner[assigner] || 0) + p.received;
+      totalUpdatedAmount += p.received;
     }
 
     return NextResponse.json({

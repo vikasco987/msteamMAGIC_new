@@ -144,6 +144,7 @@ model Payment {
   amount    Float    @default(0)
   received  Float    @default(0)
   fileUrl   String?
+  invoiceUrl String?  // 👈 Link to Cloudinary stored PDF
   updatedBy String?
   updatedAt DateTime @default(now())
 
