@@ -1887,6 +1887,16 @@ interface UploadsStepProps {
   setStartDate: (value: string) => void;
   setEndDate: (value: string) => void;
   setTimeline: (value: string) => void;
+  fullAddress: string;
+  city: string;
+  state: string;
+  country: string;
+  pincode: string;
+  setFullAddress: (value: string) => void;
+  setCity: (value: string) => void;
+  setState: (value: string) => void;
+  setCountry: (value: string) => void;
+  setPincode: (value: string) => void;
 }
 
 const timelineOptions = [
@@ -1904,7 +1914,9 @@ export default function UploadsStep(props: UploadsStepProps) {
     setSelfieFile, setChequeFile, setMenuCardFiles,
     restId, setRestId, customerName, setCustomerName,
     packageAmount, setPackageAmount, startDate, setStartDate,
-    endDate, setEndDate, timeline, setTimeline
+    endDate, setEndDate, timeline, setTimeline,
+    fullAddress, setFullAddress, city, setCity, state, setState,
+    country, setCountry, pincode, setPincode
   } = props;
 
   const inputClass = "w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-purple-400";
@@ -1921,6 +1933,37 @@ export default function UploadsStep(props: UploadsStepProps) {
     <div className="space-y-8">
       <div className="mb-6 bg-purple-50 border border-purple-200 p-4 rounded-lg">
         <h3 className="font-bold text-lg text-purple-800 mb-3 border-b pb-2">📄 Fill Information</h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div className="col-span-full">
+            <label className="block text-sm font-bold text-purple-700 mb-1">👤 Customer Name *</label>
+            <input className={inputClass} placeholder="Enter Full Customer Name" value={customerName} onChange={e => setCustomerName(e.target.value)} />
+          </div>
+          <div className="col-span-full">
+            <label className="block text-sm font-bold text-purple-700 mb-1">🏠 Full Address (House No, Street, Area) *</label>
+            <textarea className={`${inputClass} h-20 resize-none`} placeholder="Enter Detailed Address for Invoice" value={fullAddress} onChange={e => setFullAddress(e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-purple-700 mb-1">🏙️ City *</label>
+            <input className={inputClass} placeholder="City" value={city} onChange={e => setCity(e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-purple-700 mb-1">📍 Pincode *</label>
+            <input className={inputClass} placeholder="6-digit Pincode" value={pincode} onChange={e => setPincode(e.target.value)} maxLength={6} />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-purple-700 mb-1">🏳️ State *</label>
+            <input className={inputClass} placeholder="State" value={state} onChange={e => setState(e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-purple-700 mb-1">🌍 Country *</label>
+            <input className={inputClass} placeholder="Country" value={country} onChange={e => setCountry(e.target.value)} />
+          </div>
+        </div>
+
+        <div className="border-t border-purple-200 pt-4 mt-4">
+          <p className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mb-4">Service Specific Details</p>
+        </div>
 
         {/* Note: The 'other' tab can use these fields if needed. If 'other' has unique fields, create a separate block. */}
         {(activeTab === "license" || activeTab === "other") && (
@@ -1964,7 +2007,6 @@ export default function UploadsStep(props: UploadsStepProps) {
         {activeTab === "account" && (
           <>
             <input className={inputClass} placeholder="🏪 Restaurant Name" value={shopName} onChange={e => setShopName(e.target.value)} />
-            <input className={inputClass} placeholder="👤 Customer Name" value={customerName} onChange={e => setCustomerName(e.target.value)} />
             <input className={inputClass} type="date" placeholder="📅 Start Date" value={startDate} onChange={e => setStartDate(e.target.value)} />
             <input className={inputClass} type="date" placeholder="📅 End Date" value={endDate} onChange={e => setEndDate(e.target.value)} />
             <input className={inputClass} placeholder="💰 Package Amount" value={packageAmount} onChange={e => setPackageAmount(e.target.value)} />

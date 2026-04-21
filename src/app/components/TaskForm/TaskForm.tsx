@@ -424,6 +424,11 @@ const initialFormState = {
   selfieFile: [] as File[],
   chequeFile: [] as File[],
   menuCardFiles: [] as File[],
+  fullAddress: "",
+  city: "",
+  state: "",
+  country: "India",
+  pincode: "",
 };
 
 export default function TaskForm() {
@@ -468,6 +473,11 @@ export default function TaskForm() {
           timeline: parsed.timeline || initialFormState.timeline,
           restId: parsed.restId || initialFormState.restId,
           endDate: parsed.endDate || initialFormState.endDate,
+          fullAddress: parsed.fullAddress || initialFormState.fullAddress,
+          city: parsed.city || initialFormState.city,
+          state: parsed.state || initialFormState.state,
+          country: parsed.country || initialFormState.country,
+          pincode: parsed.pincode || initialFormState.pincode,
         });
         setStep(parsed.step || 0);
       } catch (e) {
@@ -497,6 +507,27 @@ export default function TaskForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+
+    if (step === 1) {
+      // Compulsory fields validation for Step 2
+      const requiredFields = {
+        "Customer Name": formData.customerName,
+        "Shop/Outlet Name": formData.shopName,
+        "Phone": formData.phone,
+        "Full Address": formData.fullAddress,
+        "City": formData.city,
+        "State": formData.state,
+        "Pincode": formData.pincode,
+      };
+
+      for (const [label, value] of Object.entries(requiredFields)) {
+        if (!value || value.trim() === "") {
+          alert(`⚠️ ${label} is compulsory for invoice generation.`);
+          return;
+        }
+      }
+    }
 
     if (step < 2) {
       setStep(step + 1);
@@ -572,6 +603,11 @@ export default function TaskForm() {
           endDate: formData.endDate,
           packageAmount: formData.packageAmount.trim(),
           timeline: formData.timeline.trim(),
+          fullAddress: formData.fullAddress.trim(),
+          city: formData.city.trim(),
+          state: formData.state.trim(),
+          country: formData.country.trim(),
+          pincode: formData.pincode.trim(),
           fields: uploadedCustomFields,
         },
       };
@@ -662,6 +698,16 @@ export default function TaskForm() {
           startDate={formData.startDate}
           endDate={formData.endDate}
           timeline={formData.timeline}
+          fullAddress={formData.fullAddress}
+          city={formData.city}
+          state={formData.state}
+          country={formData.country}
+          pincode={formData.pincode}
+          setFullAddress={(val) => updateFormData("fullAddress", val)}
+          setCity={(val) => updateFormData("city", val)}
+          setState={(val) => updateFormData("state", val)}
+          setCountry={(val) => updateFormData("country", val)}
+          setPincode={(val) => updateFormData("pincode", val)}
           setAadhaarFile={(files) => updateFormData("aadhaarFile", files)}
           setPanFile={(files) => updateFormData("panFile", files)}
           setSelfieFile={(files) => updateFormData("selfieFile", files)}
