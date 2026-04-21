@@ -140,7 +140,7 @@ model PaymentRemark {
 
 model Payment {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  utr       String?  @unique // Unique index for fast lookup and duplicate prevention
+  utr       String?
   amount    Float    @default(0)
   received  Float    @default(0)
   fileUrl   String?
@@ -501,3 +501,16 @@ model Backup {
   createdAt DateTime @default(now())
 }
 
+model BusinessSettings {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String?
+  address     String?
+  gstin       String?
+  phone       String?
+  email       String?
+  website     String?
+  logo        String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
