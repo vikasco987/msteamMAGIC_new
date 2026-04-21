@@ -748,6 +748,11 @@ interface CustomFieldsInput {
   timeline?: string;
   amount?: string; // ✅ Added
   amountReceived?: string; // ✅ Added
+  fullAddress?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pincode?: string;
   fields?: Field[];
   // Also include file URLs if they are part of customFields in the body
   aadhaarUrl?: string;
@@ -803,6 +808,11 @@ export async function POST(req: NextRequest) {
       timeline,
       amount, // ✅ ADDED HERE
       amountReceived, // ✅ ADDED HERE
+      fullAddress,
+      city,
+      state,
+      country,
+      pincode,
       fields = [],
       aadhaarUrl,
       panUrl,
@@ -877,6 +887,11 @@ export async function POST(req: NextRequest) {
           timeline: toNullableString(timeline),
           amount: toNullableString(amount), // ✅ ADDED HERE
           amountReceived: toNullableString(amountReceived), // ✅ ADDED HERE
+          fullAddress: toNullableString(fullAddress),
+          city: toNullableString(city),
+          state: toNullableString(state),
+          country: toNullableString(country),
+          pincode: toNullableString(pincode),
           assignerId: userId,
           assignerName: assignerName,
           assignerEmail: assignerEmail,

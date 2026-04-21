@@ -1982,18 +1982,31 @@ export default function UploadsStep(props: UploadsStepProps) {
     }
   };
 
-  return (
-    <div className="space-y-8">
-      <div className="mb-6 bg-purple-50 border border-purple-200 p-4 rounded-lg">
-        <h3 className="font-bold text-lg text-purple-800 mb-3 border-b pb-2">📄 Fill Information</h3>
+  const inputClass = "w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white text-sm font-medium text-slate-700 placeholder:text-slate-400";
+  const labelClass = "block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1";
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div className="col-span-full relative" ref={dropdownRef}>
-            <label className="block text-sm font-bold text-purple-700 mb-1">👤 Customer Name *</label>
-            <div className="relative">
+  return (
+    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* 🏛️ Section 1: Customer Identity & Address */}
+      <section className="relative">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
+            <User size={20} />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-800 tracking-tight">Customer Information</h3>
+            <p className="text-xs text-slate-400 font-medium">Identify the merchant and their location</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-6 bg-slate-50/30 p-6 rounded-[2rem] border border-slate-100">
+          {/* Customer Name Search */}
+          <div className="md:col-span-6 relative" ref={dropdownRef}>
+            <label className={labelClass}>👤 Customer Name *</label>
+            <div className="relative group">
               <input 
-                className={`${inputClass} pr-10`}
-                placeholder="Type name to see suggestions..." 
+                className={`${inputClass} pr-12 group-hover:border-indigo-300`}
+                placeholder="Search historical customers..." 
                 value={customerName} 
                 onChange={e => {
                   setCustomerName(e.target.value);
@@ -2001,155 +2014,253 @@ export default function UploadsStep(props: UploadsStepProps) {
                 }}
                 onFocus={() => setShowSuggestions(true)}
               />
-              <div className="absolute right-3 top-2.5 text-slate-400">
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-indigo-500 transition-colors">
                 {isSearching ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
               </div>
             </div>
 
             {/* Suggestions Dropdown */}
             {showSuggestions && (suggestions.length > 0 || isSearching) && (
-              <div className="absolute z-50 w-full bg-white border border-slate-200 rounded-xl shadow-2xl mt-1 max-h-60 overflow-y-auto overflow-x-hidden">
+              <div className="absolute z-50 w-full bg-white/80 backdrop-blur-xl border border-slate-200 rounded-[2rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.15)] mt-2 max-h-60 overflow-y-auto overflow-x-hidden p-2">
                 {isSearching && suggestions.length === 0 && (
-                  <div className="p-4 text-center text-slate-500 text-sm">Searching...</div>
+                  <div className="p-4 text-center text-slate-400 text-xs font-medium">Searching our ecosystem...</div>
                 )}
                 {suggestions.map((cust, idx) => (
                   <div
                     key={idx}
                     onClick={() => handleSelectCustomer(cust)}
-                    className="p-3 hover:bg-purple-50 cursor-pointer border-b border-slate-50 last:border-0 transition-colors"
+                    className="p-4 hover:bg-indigo-600 group cursor-pointer rounded-2xl transition-all duration-300 mb-1 last:mb-0"
                   >
-                    <div className="flex items-center gap-2 mb-1">
-                      <User size={14} className="text-purple-600" />
-                      <span className="font-bold text-slate-800 text-sm">{cust.customerName}</span>
-                      {cust.shopName && (
-                        <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded uppercase font-bold tracking-tight">
-                          {cust.shopName}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-start gap-1.5">
-                      <MapPin size={12} className="text-slate-400 shrink-0 mt-0.5" />
-                      <span className="text-[11px] text-slate-500 truncate italic">
-                        {[cust.fullAddress, cust.city, cust.pincode].filter(Boolean).join(", ")}
-                      </span>
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:bg-white/20 group-hover:text-white transition-colors">
+                        <User size={14} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-800 text-sm group-hover:text-white transition-colors truncate">{cust.customerName}</span>
+                          {cust.shopName && (
+                            <span className="text-[9px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-lg uppercase font-black group-hover:bg-white/20 group-hover:text-white">
+                              {cust.shopName}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[10px] text-slate-400 group-hover:text-indigo-100">
+                          <MapPin size={10} />
+                          <span className="truncate italic">
+                            {[cust.fullAddress, cust.city].filter(Boolean).join(", ")}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
-          <div className="col-span-full">
-            <label className="block text-sm font-bold text-purple-700 mb-1">🏠 Full Address (House No, Street, Area) *</label>
-            <textarea className={`${inputClass} h-20 resize-none`} placeholder="Enter Detailed Address for Invoice" value={fullAddress} onChange={e => setFullAddress(e.target.value)} />
+
+          {/* Detailed Address */}
+          <div className="md:col-span-6">
+            <label className={labelClass}>🏠 Full Address (House No, Street, Area) *</label>
+            <textarea 
+              className={`${inputClass} h-24 resize-none leading-relaxed`} 
+              placeholder="Enter detailed address for invoice generation..." 
+              value={fullAddress} 
+              onChange={e => setFullAddress(e.target.value)} 
+            />
           </div>
-          <div>
-            <label className="block text-sm font-bold text-purple-700 mb-1">🏙️ City *</label>
-            <input className={inputClass} placeholder="City" value={city} onChange={e => setCity(e.target.value)} />
+
+          <div className="md:col-span-3">
+            <label className={labelClass}>🏙️ City *</label>
+            <input className={inputClass} placeholder="Enter City" value={city} onChange={e => setCity(e.target.value)} />
           </div>
-          <div>
-            <label className="block text-sm font-bold text-purple-700 mb-1">📍 Pincode *</label>
+
+          <div className="md:col-span-3">
+            <label className={labelClass}>📍 Pincode *</label>
             <input className={inputClass} placeholder="6-digit Pincode" value={pincode} onChange={e => setPincode(e.target.value)} maxLength={6} />
           </div>
-          <div>
-            <label className="block text-sm font-bold text-purple-700 mb-1">🏳️ State *</label>
-            <input className={inputClass} placeholder="State" value={state} onChange={e => setState(e.target.value)} />
+
+          <div className="md:col-span-3">
+            <label className={labelClass}>🏳️ State *</label>
+            <input className={inputClass} placeholder="Enter State" value={state} onChange={e => setState(e.target.value)} />
+          </div>
+
+          <div className="md:col-span-3">
+            <label className={labelClass}>🌍 Country *</label>
+            <input className={inputClass} placeholder="India" value={country} onChange={e => setCountry(e.target.value)} />
+          </div>
+        </div>
+      </section>
+
+      {/* 🚀 Section 2: Service Specific Details */}
+      <section>
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-600 shadow-sm">
+            <Loader2 size={20} className="animate-spin-slow" />
           </div>
           <div>
-            <label className="block text-sm font-bold text-purple-700 mb-1">🌍 Country *</label>
-            <input className={inputClass} placeholder="Country" value={country} onChange={e => setCountry(e.target.value)} />
+            <h3 className="font-bold text-slate-800 tracking-tight">Service Details</h3>
+            <p className="text-xs text-slate-400 font-medium">Metadata specific to {activeTab || "selected service"}</p>
           </div>
         </div>
 
-        <div className="border-t border-purple-200 pt-4 mt-4">
-          <p className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mb-4">Service Specific Details</p>
+        <div className="space-y-4 bg-amber-50/30 p-6 rounded-[2rem] border border-amber-100/50">
+          {(activeTab === "license" || activeTab === "other") && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label className={labelClass}>🏪 Shop Name</label>
+                <input className={inputClass} placeholder="Enter Shop Name" value={shopName} onChange={e => setShopName(e.target.value)} />
+              </div>
+              <div className="md:col-span-2">
+                <label className={labelClass}>📍 Location Link</label>
+                <input className={inputClass} placeholder="Paste Google Maps URL" value={location} onChange={e => setLocation(e.target.value)} />
+                {isValidUrl(location) && (
+                  <a href={location} target="_blank" rel="noopener noreferrer" className="mt-2 flex items-center gap-1.5 text-[10px] text-indigo-600 font-black uppercase tracking-widest hover:underline">
+                    🔗 Verify on Maps
+                  </a>
+                )}
+              </div>
+              <div>
+                <label className={labelClass}>📞 Contact Phone</label>
+                <input className={inputClass} placeholder="10-digit number" value={phone} onChange={e => setPhone(e.target.value)} />
+              </div>
+              <div>
+                <label className={labelClass}>📧 Contact Email</label>
+                <input className={inputClass} placeholder="email@example.com" value={email} onChange={e => setEmail(e.target.value)} />
+              </div>
+            </div>
+          )}
+
+          {activeTab === "photo" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>🏷️ Outlet Name</label>
+                <input className={inputClass} placeholder="Enter Outlet Name" value={shopName} onChange={(e) => setShopName(e.target.value)} />
+              </div>
+              <div>
+                <label className={labelClass}>🆔 Restaurant ID</label>
+                <input className={inputClass} placeholder="Swiggy/Zomato ID" value={restId} onChange={(e) => setRestId(e.target.value)} />
+              </div>
+              <div className="md:col-span-2">
+                <label className={labelClass}>📞 Phone Number</label>
+                <input className={inputClass} placeholder="Contact number" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              </div>
+            </div>
+          )}
+
+          {(activeTab === "zomato" || activeTab === "swiggy" || activeTab === "combo") && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label className={labelClass}>🏷️ Outlet Name</label>
+                <input className={inputClass} placeholder="Brand/Outlet Name" value={shopName} onChange={e => setShopName(e.target.value)} />
+              </div>
+              <div>
+                <label className={labelClass}>📞 Phone</label>
+                <input className={inputClass} placeholder="Primary contact" value={phone} onChange={e => setPhone(e.target.value)} />
+              </div>
+              <div>
+                <label className={labelClass}>📧 Email</label>
+                <input className={inputClass} placeholder="Official email" value={email} onChange={e => setEmail(e.target.value)} />
+              </div>
+              <div className="md:col-span-2">
+                <label className={labelClass}>📍 Maps Location</label>
+                <input className={inputClass} placeholder="Google Maps link" value={location} onChange={e => setLocation(e.target.value)} />
+                {isValidUrl(location) && (
+                  <a href={location} target="_blank" rel="noopener noreferrer" className="mt-2 flex items-center gap-1.5 text-[10px] text-indigo-600 font-black uppercase tracking-widest hover:underline">
+                    🔗 View Location
+                  </a>
+                )}
+              </div>
+              <div className="md:col-span-2">
+                <label className={labelClass}>🏦 Bank Account Number</label>
+                <input className={inputClass} placeholder="Enter Account Number" value={accountNumber} onChange={e => setAccountNumber(e.target.value)} />
+              </div>
+              <div className="md:col-span-2">
+                <label className={labelClass}>🔢 IFSC Code</label>
+                <input className={inputClass} placeholder="11-character IFSC" value={ifscCode} onChange={e => setIfscCode(e.target.value)} />
+              </div>
+            </div>
+          )}
+
+          {activeTab === "account" && (
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className={labelClass}>🏪 Restaurant Name</label>
+                  <input className={inputClass} placeholder="Enter Restaurant Name" value={shopName} onChange={e => setShopName(e.target.value)} />
+                </div>
+                <div>
+                  <label className={labelClass}>📅 Start Date</label>
+                  <input className={inputClass} type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                </div>
+                <div>
+                  <label className={labelClass}>📅 End Date</label>
+                  <input className={inputClass} type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+                </div>
+                <div>
+                  <label className={labelClass}>💰 Package Amount</label>
+                  <input className={inputClass} placeholder="Total Amount" value={packageAmount} onChange={e => setPackageAmount(e.target.value)} />
+                </div>
+                <div>
+                  <label className={labelClass}>⏳ Timeline</label>
+                  <select className={inputClass} value={timeline} onChange={e => setTimeline(e.target.value)}>
+                    <option value="">Select duration...</option>
+                    {timelineOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
+                </div>
+             </div>
+          )}
+        </div>
+      </section>
+
+      {/* 📁 Section 3: Document Repository */}
+      <section>
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-600 shadow-sm">
+            <Loader2 size={20} className="animate-spin-slow" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-800 tracking-tight">Document Repository</h3>
+            <p className="text-xs text-slate-400 font-medium">Upload necessary KYC and service documents</p>
+          </div>
         </div>
 
-        {/* Note: The 'other' tab can use these fields if needed. If 'other' has unique fields, create a separate block. */}
-        {(activeTab === "license" || activeTab === "other") && (
-          <>
-            <input className={inputClass} placeholder="🏪 Shop Name" value={shopName} onChange={e => setShopName(e.target.value)} />
-            <input className={inputClass} placeholder="📍 Location" value={location} onChange={e => setLocation(e.target.value)} />
-            {isValidUrl(location) && (
-              <a href={location} target="_blank" rel="noopener noreferrer" className="block text-blue-600 mb-4 underline">🔗 View on Map</a>
-            )}
-            <input className={inputClass} placeholder="📞 Phone" value={phone} onChange={e => setPhone(e.target.value)} />
-            <input className={inputClass} placeholder="📧 Email" value={email} onChange={e => setEmail(e.target.value)} />
-          </>
-        )}
-
-        {activeTab === "photo" && (
-          <div className="mb-6 bg-purple-50 border border-purple-200 p-6 rounded-xl shadow-sm">
-            <h3 className="font-bold text-xl text-purple-800 mb-4 border-b pb-3">📄 Fill Information</h3>
-            <label className="block mb-2 text-sm font-medium text-purple-700">🏷️ Outlet Name</label>
-            <input className={inputClass} placeholder="Enter Outlet Name" value={shopName} onChange={(e) => setShopName(e.target.value)} />
-            <label className="block mb-2 text-sm font-medium text-purple-700">🆔 Restaurant ID</label>
-            <input className={inputClass} placeholder="Enter Restaurant ID" value={restId} onChange={(e) => setRestId(e.target.value)} />
-            <label className="block mb-2 text-sm font-medium text-purple-700">📞 Phone Number</label>
-            <input className={inputClass} placeholder="Enter Phone Number" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-emerald-50/20 p-6 rounded-[2rem] border border-emerald-100/50">
+          <div className="space-y-6">
+            <div className="bg-white p-4 rounded-2xl border border-emerald-100">
+               <label className={labelClass}>🪪 Aadhaar Card</label>
+               <FileDropzone acceptedFiles={aadhaarFile} onDrop={setAadhaarFile} label="Select or drop Aadhaar" />
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-emerald-100">
+               <label className={labelClass}>💳 PAN Card</label>
+               <FileDropzone acceptedFiles={panFile} onDrop={setPanFile} label="Select or drop PAN" />
+            </div>
           </div>
-        )}
-
-        {(activeTab === "zomato" || activeTab === "swiggy" || activeTab === "combo") && (
-          <>
-            <input className={inputClass} placeholder="🏷️ Outlet Name" value={shopName} onChange={e => setShopName(e.target.value)} />
-            <input className={inputClass} placeholder="📞 Phone" value={phone} onChange={e => setPhone(e.target.value)} />
-            <input className={inputClass} placeholder="📧 Email" value={email} onChange={e => setEmail(e.target.value)} />
-            <input className={inputClass} placeholder="📍 Address (Google Maps link allowed)" value={location} onChange={e => setLocation(e.target.value)} />
-            {isValidUrl(location) && (
-              <a href={location} target="_blank" rel="noopener noreferrer" className="block text-blue-600 mb-4 underline">🔗 View on Map</a>
+          <div className="space-y-6">
+            <div className="bg-white p-4 rounded-2xl border border-emerald-100">
+               <label className={labelClass}>📄 Service Menu / Catalog</label>
+               <FileDropzone acceptedFiles={menuCardFiles} onDrop={setMenuCardFiles} label="Upload Menu PDF/Images" />
+            </div>
+            {(activeTab === "license" || activeTab === "combo") && (
+              <div className="bg-white p-4 rounded-2xl border border-emerald-100">
+                <label className={labelClass}>🍔 Food License</label>
+                <FileDropzone acceptedFiles={aadhaarFile} onDrop={setAadhaarFile} label="Upload FSSAI License" />
+              </div>
             )}
-            <input className={inputClass} placeholder="🏦 Bank Account Number" value={accountNumber} onChange={e => setAccountNumber(e.target.value)} />
-            <input className={inputClass} placeholder="🔢 IFSC Code" value={ifscCode} onChange={e => setIfscCode(e.target.value)} />
-          </>
-        )}
-
-        {activeTab === "account" && (
-          <>
-            <input className={inputClass} placeholder="🏪 Restaurant Name" value={shopName} onChange={e => setShopName(e.target.value)} />
-            <input className={inputClass} type="date" placeholder="📅 Start Date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-            <input className={inputClass} type="date" placeholder="📅 End Date" value={endDate} onChange={e => setEndDate(e.target.value)} />
-            <input className={inputClass} placeholder="💰 Package Amount" value={packageAmount} onChange={e => setPackageAmount(e.target.value)} />
-            <select className={inputClass} value={timeline} onChange={e => setTimeline(e.target.value)}>
-              <option value="">⏳ Select Timeline</option>
-              {timelineOptions.map((opt) => <option key={opt}>{opt}</option>)}
-            </select>
-          </>
-        )}
-      </div>
-
-      <div className="bg-purple-50 border border-purple-200 p-4 rounded-lg">
-        <h3 className="font-bold text-lg text-purple-800 mb-3 border-b pb-2">📤 Upload Documents</h3>
-
-        {(activeTab === "license" || activeTab === "other") && (
-          <>
-            <FileDropzone label="🆔 Aadhaar Card" onDrop={setAadhaarFile} acceptedFiles={aadhaarFile} />
-            <FileDropzone label="💳 PAN Card" onDrop={setPanFile} acceptedFiles={panFile} />
-            <FileDropzone label="🤳 Selfie Photo" onDrop={setSelfieFile} acceptedFiles={selfieFile} />
-            <FileDropzone label="🏦 Cancelled Cheque" onDrop={setChequeFile} acceptedFiles={chequeFile} />
-          </>
-        )}
-
-        {(activeTab === "zomato" || activeTab === "swiggy" || activeTab === "combo") && (
-          <>
-            <FileDropzone label="💳 PAN Card" onDrop={setPanFile} acceptedFiles={panFile} />
-            <FileDropzone label="📄 Menu Card (PDF or Image)" onDrop={setMenuCardFiles} acceptedFiles={menuCardFiles} />
-            <FileDropzone label="🍔 Food License" onDrop={setAadhaarFile} acceptedFiles={aadhaarFile} />
-          </>
-        )}
-
-        {activeTab === "photo" && (
-          <>
-            <FileDropzone label="🤳 Selfie Photo" onDrop={setSelfieFile} acceptedFiles={selfieFile} />
-            <FileDropzone label="📎 Attachments" onDrop={setMenuCardFiles} acceptedFiles={menuCardFiles} />
-          </>
-        )}
-
-        {activeTab === "account" && (
-          <>
-            <FileDropzone label="📎 Attachments" onDrop={setMenuCardFiles} acceptedFiles={menuCardFiles} />
-          </>
-        )}
-      </div>
+            {activeTab === "photo" && (
+              <div className="bg-white p-4 rounded-2xl border border-emerald-100">
+                <label className={labelClass}>🤳 Merchant Selfie</label>
+                <FileDropzone acceptedFiles={selfieFile} onDrop={setSelfieFile} label="Upload Merchant Selfie" />
+              </div>
+            )}
+            {activeTab === "account" && (
+              <div className="bg-white p-4 rounded-2xl border border-emerald-100">
+                <label className={labelClass}>🏦 Cancelled Cheque</label>
+                <FileDropzone acceptedFiles={chequeFile} onDrop={setChequeFile} label="Upload Cheque Copy" />
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
     </div>
   );
+}
 }

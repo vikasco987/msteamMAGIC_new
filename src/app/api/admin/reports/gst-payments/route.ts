@@ -45,21 +45,26 @@ export async function GET(req: NextRequest) {
       orderBy: { updatedAt: 'desc' },
     });
 
-    const reportData = payments.map((p, idx) => ({
-      "Date": p.updatedAt ? p.updatedAt.toLocaleDateString('en-IN') : "N/A",
-      "Task ID": p.taskId,
-      "Project Name": p.task.title,
-      "Shop Name": p.task.shopName || "N/A",
-      "Customer Name": p.task.customerName || "N/A",
-      "Phone No.": (p.task as any).phone || "N/A",
-      "Address": (p.task as any).location || "N/A",
-      "Total Budget": p.task.amount || 0,
-      "Transaction Amount": p.received || 0,
-      "UTR / Transaction No.": p.utr || "N/A",
-      "Updated By": p.updatedBy || "System",
-      "Proof URL": p.fileUrl || "No Proof",
-      "Payment #": idx + 1
-    }));
+    const reportData = payments.map((p, idx) => {
+      const cf = (p.task.customFields as any) || {};
+      const fullAddr = [cf.fullAddress, cf.city, cf.state, cf.country, cf.pincode].filter(Boolean).join(", ") || p.task.location || "N/A";
+
+      return {
+        "Date": p.updatedAt ? p.updatedAt.toLocaleDateString('en-IN') : "N/A",
+        "Task ID": p.taskId,
+        "Project Name": p.task.title,
+        "Shop Name": p.task.shopName || "N/A",
+        "Customer Name": p.task.customerName || "N/A",
+        "Phone No.": (p.task as any).phone || "N/A",
+        "Address": fullAddr,
+        "Total Budget": p.task.amount || 0,
+        "Transaction Amount": p.received || 0,
+        "UTR / Transaction No.": p.utr || "N/A",
+        "Updated By": p.updatedBy || "System",
+        "Proof URL": p.fileUrl || "No Proof",
+        "Payment #": idx + 1
+      };
+    });
 
     if (reportData.length === 0) {
       return NextResponse.json({ error: "No payment data found" }, { status: 404 });

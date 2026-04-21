@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
         const assigner = (task.assignerId ? userMap[task.assignerId] : null) || p.assignerName || task.assignerName || "Unknown";
 
         const cf = (task.customFields as any) || {};
-        const fullAddr = [cf.fullAddress, cf.city, cf.state, cf.pincode].filter(Boolean).join(", ") || task.location;
+        const fullAddr = [cf.fullAddress, cf.city, cf.state, cf.country, cf.pincode].filter(Boolean).join(", ") || task.location;
 
         paymentsToday.push({
           paymentId: `${task.id}_${updatedAt.getTime()}`,

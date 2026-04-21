@@ -518,6 +518,7 @@ export default function TaskForm() {
         "Full Address": formData.fullAddress,
         "City": formData.city,
         "State": formData.state,
+        "Country": formData.country,
         "Pincode": formData.pincode,
       };
 
@@ -641,122 +642,161 @@ export default function TaskForm() {
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow"
-    >
-      <div className="flex justify-center gap-4 mb-6">
-        {["Step 1 (Basic Info)", "Step 2 (Uploads)", "Step 3 (Custom Fields)"].map((label, idx) => (
-          <button
-            key={idx}
-            type="button"
-            onClick={() => setStep(idx)}
-            className={`px-4 py-2 rounded ${
-              step === idx ? "bg-purple-600 text-white" : "bg-gray-300"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+    <div className="max-w-3xl mx-auto p-4 md:p-8">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-slate-100 overflow-hidden transition-all duration-500"
+      >
+        {/* Modern Stepper Header */}
+        <div className="bg-slate-50/50 border-b border-slate-100 p-6 md:p-8">
+          <div className="flex items-center justify-between relative max-w-lg mx-auto">
+            {/* Connection Line */}
+            <div className="absolute top-1/2 left-0 w-full h-0.5 bg-slate-200 -translate-y-1/2 z-0" />
+            <div 
+              className="absolute top-1/2 left-0 h-0.5 bg-indigo-600 -translate-y-1/2 z-0 transition-all duration-500" 
+              style={{ width: `${(step / 2) * 100}%` }}
+            />
 
-      {step === 0 && (
-        <BasicInfoStep
-          title={formData.title}
-          assigneeId={formData.assigneeId}
-          activeTab={formData.activeTab}
-          setTitle={(val) => updateFormData("title", val)}
-          setAssigneeId={(val) => updateFormData("assigneeId", val)}
-          setActiveTab={(val) => {
-            const matchedCategory = TASK_CATEGORIES.find((cat) => cat.value === val);
-            setFormData((prev) => ({
-              ...prev,
-              activeTab: val,
-              title: val === "other" ? "" : (matchedCategory?.label || ""),
-            }));
-          }}
-        />
-      )}
+            {[
+              { label: "Basic", icon: "📝" },
+              { label: "Uploads", icon: "📁" },
+              { label: "Final", icon: "✨" }
+            ].map((s, idx) => (
+              <div key={idx} className="relative z-10 flex flex-col items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setStep(idx)}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
+                    step >= idx 
+                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200 scale-110" 
+                      : "bg-white text-slate-400 border-2 border-slate-200"
+                  }`}
+                >
+                  {step > idx ? "✓" : idx + 1}
+                </button>
+                <span className={`text-[10px] font-black uppercase tracking-widest ${
+                  step >= idx ? "text-indigo-600" : "text-slate-400"
+                }`}>
+                  {s.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
 
-      {step === 1 && (
-        <UploadsStep
-          activeTab={formData.activeTab}
-          aadhaarFile={formData.aadhaarFile}
-          panFile={formData.panFile}
-          selfieFile={formData.selfieFile}
-          chequeFile={formData.chequeFile}
-          menuCardFiles={formData.menuCardFiles}
-          phone={formData.phone}
-          email={formData.email}
-          shopName={formData.shopName}
-          location={formData.location}
-          accountNumber={formData.accountNumber}
-          ifscCode={formData.ifscCode}
-          restId={formData.restId}
-          customerName={formData.customerName}
-          packageAmount={formData.packageAmount}
-          startDate={formData.startDate}
-          endDate={formData.endDate}
-          timeline={formData.timeline}
-          fullAddress={formData.fullAddress}
-          city={formData.city}
-          state={formData.state}
-          country={formData.country}
-          pincode={formData.pincode}
-          setFullAddress={(val) => updateFormData("fullAddress", val)}
-          setCity={(val) => updateFormData("city", val)}
-          setState={(val) => updateFormData("state", val)}
-          setCountry={(val) => updateFormData("country", val)}
-          setPincode={(val) => updateFormData("pincode", val)}
-          setAadhaarFile={(files) => updateFormData("aadhaarFile", files)}
-          setPanFile={(files) => updateFormData("panFile", files)}
-          setSelfieFile={(files) => updateFormData("selfieFile", files)}
-          setChequeFile={(files) => updateFormData("chequeFile", files)}
-          setMenuCardFiles={(files) => updateFormData("menuCardFiles", files)}
-          setPhone={(val) => updateFormData("phone", val)}
-          setEmail={(val) => updateFormData("email", val)}
-          setShopName={(val) => updateFormData("shopName", val)}
-          setLocation={(val) => updateFormData("location", val)}
-          setAccountNumber={(val) => updateFormData("accountNumber", val)}
-          setIfscCode={(val) => updateFormData("ifscCode", val)}
-          setRestId={(val) => updateFormData("restId", val)}
-          setCustomerName={(val) => updateFormData("customerName", val)}
-          setPackageAmount={(val) => updateFormData("packageAmount", val)}
-          setStartDate={(val) => updateFormData("startDate", val)}
-          setEndDate={(val) => updateFormData("endDate", val)}
-          setTimeline={(val) => updateFormData("timeline", val)}
-        />
-      )}
+        <div className="p-6 md:p-8">
+          {step === 0 && (
+            <BasicInfoStep
+              title={formData.title}
+              assigneeId={formData.assigneeId}
+              activeTab={formData.activeTab}
+              setTitle={(val) => updateFormData("title", val)}
+              setAssigneeId={(val) => updateFormData("assigneeId", val)}
+              setActiveTab={(val) => {
+                const matchedCategory = TASK_CATEGORIES.find((cat) => cat.value === val);
+                setFormData((prev) => ({
+                  ...prev,
+                  activeTab: val,
+                  title: val === "other" ? "" : (matchedCategory?.label || ""),
+                }));
+              }}
+            />
+          )}
 
-      {step === 2 && (
-        <CustomFieldsStep
-          customFields={formData.customFields}
-          setCustomFields={(fields) => updateFormData("customFields", fields)}
-        />
-      )}
+          {step === 1 && (
+            <UploadsStep
+              activeTab={formData.activeTab}
+              aadhaarFile={formData.aadhaarFile}
+              panFile={formData.panFile}
+              selfieFile={formData.selfieFile}
+              chequeFile={formData.chequeFile}
+              menuCardFiles={formData.menuCardFiles}
+              phone={formData.phone}
+              email={formData.email}
+              shopName={formData.shopName}
+              location={formData.location}
+              accountNumber={formData.accountNumber}
+              ifscCode={formData.ifscCode}
+              restId={formData.restId}
+              customerName={formData.customerName}
+              packageAmount={formData.packageAmount}
+              startDate={formData.startDate}
+              endDate={formData.endDate}
+              timeline={formData.timeline}
+              fullAddress={formData.fullAddress}
+              city={formData.city}
+              state={formData.state}
+              country={formData.country}
+              pincode={formData.pincode}
+              setFullAddress={(val) => updateFormData("fullAddress", val)}
+              setCity={(val) => updateFormData("city", val)}
+              setState={(val) => updateFormData("state", val)}
+              setCountry={(val) => updateFormData("country", val)}
+              setPincode={(val) => updateFormData("pincode", val)}
+              setAadhaarFile={(files) => updateFormData("aadhaarFile", files)}
+              setPanFile={(files) => updateFormData("panFile", files)}
+              setSelfieFile={(files) => updateFormData("selfieFile", files)}
+              setChequeFile={(files) => updateFormData("chequeFile", files)}
+              setMenuCardFiles={(files) => updateFormData("menuCardFiles", files)}
+              setPhone={(val) => updateFormData("phone", val)}
+              setEmail={(val) => updateFormData("email", val)}
+              setShopName={(val) => updateFormData("shopName", val)}
+              setLocation={(val) => updateFormData("location", val)}
+              setAccountNumber={(val) => updateFormData("accountNumber", val)}
+              setIfscCode={(val) => updateFormData("ifscCode", val)}
+              setRestId={(val) => updateFormData("restId", val)}
+              setCustomerName={(val) => updateFormData("customerName", val)}
+              setPackageAmount={(val) => updateFormData("packageAmount", val)}
+              setStartDate={(val) => updateFormData("startDate", val)}
+              setEndDate={(val) => updateFormData("endDate", val)}
+              setTimeline={(val) => updateFormData("timeline", val)}
+            />
+          )}
 
-      {uploading && uploadStatus && (
-        <p className="text-sm text-blue-600 mt-4 animate-pulse">{uploadStatus}</p>
-      )}
+          {step === 2 && (
+            <CustomFieldsStep
+              customFields={formData.customFields}
+              setCustomFields={(fields) => updateFormData("customFields", fields)}
+            />
+          )}
 
-      <div className="mt-6">
-        {step < 2 ? (
-          <button
-            type="submit"
-            className="bg-purple-600 text-white px-6 py-2 rounded"
-          >
-            ➡️ Next
-          </button>
-        ) : (
-          <button
-            type="submit"
-            className="bg-purple-600 text-white px-6 py-2 rounded w-full"
-            disabled={loading}
-          >
-            {loading ? "Creating..." : "✅ Create Task"}
-          </button>
-        )}
-      </div>
-    </form>
+          {uploading && uploadStatus && (
+            <div className="flex items-center gap-3 bg-indigo-50 text-indigo-600 p-4 rounded-2xl mt-6 border border-indigo-100 animate-pulse">
+              <div className="w-2 h-2 bg-indigo-600 rounded-full animate-ping" />
+              <p className="text-sm font-bold uppercase tracking-widest">{uploadStatus}</p>
+            </div>
+          )}
+
+          <div className="mt-10 flex gap-4">
+            {step > 0 && (
+              <button
+                type="button"
+                onClick={() => setStep(step - 1)}
+                className="flex-1 px-6 py-4 rounded-2xl border-2 border-slate-100 text-slate-500 font-bold hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+              >
+                ← Previous
+              </button>
+            )}
+            {step < 2 ? (
+              <button
+                type="submit"
+                className="flex-[2] bg-indigo-600 text-white px-6 py-4 rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-2"
+              >
+                Continue ➡️
+              </button>
+            ) : (
+              <button
+                type="submit"
+                className="flex-[2] bg-emerald-600 text-white px-6 py-4 rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 flex items-center justify-center gap-2"
+                disabled={loading}
+              >
+                {loading ? "Creating..." : "✨ Complete & Create Task"}
+              </button>
+            )}
+          </div>
+        </div>
+      </form>
+    </div>
+  );
   );
 }

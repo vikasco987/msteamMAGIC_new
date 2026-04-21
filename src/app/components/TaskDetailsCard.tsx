@@ -462,10 +462,10 @@ export default function TaskDetailsCard({ task, isAdmin = false, onDelete, onUpd
               <div className="flex-1">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">🏠 Full Address</p>
                 <p className="text-[11px] text-slate-800 leading-normal font-medium">
-                  {[cf.fullAddress, cf.city, cf.state, cf.pincode].filter(Boolean).join(", ")}
+                {[cf.fullAddress, cf.city, cf.state, cf.country, cf.pincode].filter(Boolean).join(", ")}
                 </p>
               </div>
-              <CopyIcon text={[cf.fullAddress, cf.city, cf.state, cf.pincode].filter(Boolean).join(", ")} />
+              <CopyIcon text={[cf.fullAddress, cf.city, cf.state, cf.country, cf.pincode].filter(Boolean).join(", ")} />
             </div>
           )}
 

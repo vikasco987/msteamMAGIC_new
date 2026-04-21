@@ -1,9 +1,10 @@
-// "use client"; // Already present
+"use client";
 
 import React, { useCallback, useState, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { FaTimes } from "react-icons/fa";
-import Image from "next/image"; // Import the Image component
+import { UploadCloud, FileText, Eye, Trash2, X } from "lucide-react";
+import Image from "next/image";
 
 interface FileDropzoneProps {
   onDrop: (files: File[]) => void;
@@ -41,90 +42,139 @@ export default function FileDropzone({
     setPreviewType(file.type === "application/pdf" ? "pdf" : "image");
   };
 
-  // ✅ Prevent background scroll and layout shift
   useEffect(() => {
     if (previewUrl) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
     }
-
-    return () => {
-      document.body.style.overflow = "";
-    };
+    return () => { document.body.style.overflow = ""; };
   }, [previewUrl]);
 
   return (
-    <>
+    <div className="w-full">
       <div
         {...getRootProps()}
-        className={`border-2 border-dashed p-4 rounded-lg cursor-pointer transition-colors duration-200 ${
+        className={`group relative border-2 border-dashed p-6 rounded-[2rem] cursor-pointer transition-all duration-500 overflow-hidden ${
           isDragActive
-            ? "bg-purple-100 border-purple-500"
-            : "bg-purple-50 border-purple-300"
+            ? "bg-indigo-50 border-indigo-500 ring-4 ring-indigo-500/10 scale-[0.99]"
+            : "bg-slate-50 border-slate-200 hover:border-indigo-400 hover:bg-white hover:shadow-xl hover:shadow-indigo-500/5"
         }`}
       >
         <input {...getInputProps()} />
-        <p className="text-center text-gray-700 font-medium">{label}</p>
+        
+        <div className="flex flex-col items-center justify-center text-center space-y-3">
+          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${
+            isDragActive ? "bg-indigo-600 text-white rotate-12" : "bg-white text-slate-400 group-hover:text-indigo-600 group-hover:shadow-lg shadow-sm"
+          }`}>
+            <UploadCloud size={24} />
+          </div>
+          
+          <div>
+            <p className="text-xs font-black text-slate-700 uppercase tracking-widest">{label}</p>
+            <p className="text-[10px] text-slate-400 font-medium mt-1 uppercase tracking-tighter">PDF, PNG, JPG up to 10MB</p>
+          </div>
+        </div>
 
-        {acceptedFiles?.length > 0 && (
-          <ul className="mt-2 text-sm text-gray-600 space-y-2 max-h-32 overflow-auto">
-            {acceptedFiles.map((file, i) => (
-              <li key={i} className="flex justify-between items-center gap-2">
-                <span className="truncate">{file.name}</span>
+        {/* Floating background element */}
+        <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-indigo-500/5 rounded-full blur-3xl group-hover:bg-indigo-500/10 transition-all duration-700" />
+      </div>
+
+      {acceptedFiles?.length > 0 && (
+        <div className="mt-4 space-y-2">
+          {acceptedFiles.map((file, i) => (
+            <div 
+              key={i} 
+              className="flex items-center justify-between gap-3 p-3 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-all group/item animate-in slide-in-from-left-2 duration-300"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover/item:bg-indigo-50 group-hover/item:text-indigo-600 transition-colors">
+                  <FileText size={16} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-slate-700 truncate">{file.name}</p>
+                  <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest">{(file.size / 1024).toFixed(0)} KB</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={(e) => {
-                    e.stopPropagation(); // prevent file picker
+                    e.stopPropagation();
                     handlePreview(file);
                   }}
-                  className="text-blue-600 text-xs hover:underline"
+                  className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                  title="Preview"
                 >
-                  👁️ Preview
+                  <Eye size={14} />
                 </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+                <button
+                  type="button"
+                  className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                  title="Remove"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Optional: Add remove logic if needed, but the current state management 
+                    // handles this via the parent component usually.
+                  }}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-      {/* ✅ Preview Modal */}
+      {/* Modern Glassmorphism Preview Modal */}
       {previewUrl && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center">
-          <div className="bg-white p-4 rounded-lg max-w-3xl w-full relative shadow-lg">
-            <button
-              onClick={() => {
-                setPreviewUrl(null);
-                setPreviewType(null);
-              }}
-              className="absolute top-2 right-2 text-gray-500 hover:text-red-500"
-            >
-              <FaTimes size={18} />
-            </button>
+        <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] overflow-hidden relative shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)] flex flex-col">
+            {/* Modal Header */}
+            <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+                  <Eye size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-800 tracking-tight">Document Preview</h3>
+                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Visual Inspection Mode</p>
+                </div>
+              </div>
+              
+              <button
+                onClick={() => {
+                  setPreviewUrl(null);
+                  setPreviewType(null);
+                }}
+                className="w-10 h-10 rounded-2xl bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all flex items-center justify-center"
+              >
+                <X size={20} />
+              </button>
+            </div>
 
-            {previewType === "pdf" ? (
-              <iframe
-                src={previewUrl}
-                className="w-full h-[70vh] rounded border"
-                title="PDF Preview"
-              />
-            ) : (
-              // Replaced <img> with <Image />
-              <Image
-                src={previewUrl}
-                alt="Preview"
-                // The actual width and height should reflect the natural dimensions or desired display dimensions.
-                // For a modal, often you want it to fill the container while maintaining aspect ratio.
-                // A common practice for `object-contain` is to provide generous width/height.
-                // You might need to adjust these values based on your UI needs or dynamically from the image itself.
-                width={700} // Example width, adjust as needed
-                height={500} // Example height, adjust as needed
-                className="w-full max-h-[70vh] object-contain rounded"
-              />
-            )}
+            <div className="flex-1 overflow-auto p-4 md:p-8 bg-slate-50/50">
+              {previewType === "pdf" ? (
+                <iframe
+                  src={previewUrl}
+                  className="w-full h-[60vh] rounded-[2rem] border-4 border-white shadow-xl"
+                  title="PDF Preview"
+                />
+              ) : (
+                <div className="relative w-full h-[60vh] rounded-[2rem] border-4 border-white shadow-xl overflow-hidden bg-white">
+                  <Image
+                    src={previewUrl}
+                    alt="Preview"
+                    fill
+                    className="object-contain"
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
