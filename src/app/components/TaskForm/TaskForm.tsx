@@ -509,8 +509,19 @@ export default function TaskForm() {
     e.preventDefault();
 
 
+    if (step === 0) {
+      if (!formData.activeTab) {
+        alert("⚠️ Please select a Service Type to continue.");
+        return;
+      }
+      if (!formData.assigneeId) {
+        alert("⚠️ Please select an Assignee.");
+        return;
+      }
+    }
+
     if (step === 1) {
-      // Compulsory fields validation for Step 2
+      // Compulsory fields validation for Merchant Details
       const requiredFields = {
         "Customer Name": formData.customerName,
         "Shop/Outlet Name": formData.shopName,
@@ -518,13 +529,12 @@ export default function TaskForm() {
         "Full Address": formData.fullAddress,
         "City": formData.city,
         "State": formData.state,
-        "Country": formData.country,
         "Pincode": formData.pincode,
       };
 
       for (const [label, value] of Object.entries(requiredFields)) {
         if (!value || value.trim() === "") {
-          alert(`⚠️ ${label} is compulsory for invoice generation.`);
+          alert(`⚠️ ${label} is compulsory to proceed.`);
           return;
         }
       }
@@ -535,7 +545,7 @@ export default function TaskForm() {
       }
     }
 
-    if (step < 2) {
+    if (step < 3) {
       setStep(step + 1);
       return;
     }
@@ -659,11 +669,12 @@ export default function TaskForm() {
             <div className="absolute top-1/2 left-0 w-full h-0.5 bg-slate-200 -translate-y-1/2 z-0" />
             <div 
               className="absolute top-1/2 left-0 h-0.5 bg-indigo-600 -translate-y-1/2 z-0 transition-all duration-500" 
-              style={{ width: `${(step / 2) * 100}%` }}
+              style={{ width: `${(step / 3) * 100}%` }}
             />
 
             {[
               { label: "Basic", icon: "📝" },
+              { label: "Merchant", icon: "🏢" },
               { label: "Uploads", icon: "📁" },
               { label: "Final", icon: "✨" }
             ].map((s, idx) => (
@@ -708,8 +719,9 @@ export default function TaskForm() {
             />
           )}
 
-          {step === 1 && (
+          {(step === 1 || step === 2) && (
             <UploadsStep
+              step={step}
               activeTab={formData.activeTab}
               aadhaarFile={formData.aadhaarFile}
               panFile={formData.panFile}
@@ -758,10 +770,10 @@ export default function TaskForm() {
             />
           )}
 
-          {step === 2 && (
+          {step === 3 && (
             <CustomFieldsStep
               customFields={formData.customFields}
-              setCustomFields={(fields) => updateFormData("customFields", fields)}
+              setCustomFields={(val) => updateFormData("customFields", val)}
             />
           )}
 
@@ -782,7 +794,7 @@ export default function TaskForm() {
                 ← Previous
               </button>
             )}
-            {step < 2 ? (
+            {step < 3 ? (
               <button
                 type="submit"
                 className="flex-[2] bg-indigo-600 text-white px-6 py-4 rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-2"

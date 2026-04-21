@@ -1899,6 +1899,7 @@ interface UploadsStepProps {
   setState: (value: string) => void;
   setCountry: (value: string) => void;
   setPincode: (value: string) => void;
+  step: number;
 }
 
 const timelineOptions = [
@@ -1918,7 +1919,7 @@ export default function UploadsStep(props: UploadsStepProps) {
     packageAmount, setPackageAmount, startDate, setStartDate,
     endDate, setEndDate, timeline, setTimeline,
     fullAddress, setFullAddress, city, setCity, state, setState,
-    country, setCountry, pincode, setPincode
+    country, setCountry, pincode, setPincode, step
   } = props;
 
   const [suggestions, setSuggestions] = useState<any[]>([]);
@@ -2014,7 +2015,9 @@ export default function UploadsStep(props: UploadsStepProps) {
 
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* 🏛️ Section 1: Customer Identity & Address */}
+      {step === 1 && (
+        <>
+          {/* 🏛️ Section 1: Customer Identity & Address */}
       <section className="relative">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
@@ -2245,9 +2248,13 @@ export default function UploadsStep(props: UploadsStepProps) {
           )}
         </div>
       </section>
+        </>
+      )}
 
-      {/* 📁 Section 3: Document Repository */}
-      <section>
+      {step === 2 && (
+        <>
+          {/* 📁 Section 3: Document Repository */}
+          <section>
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-600 shadow-sm">
             <Loader2 size={20} className="animate-spin-slow" />
@@ -2294,7 +2301,8 @@ export default function UploadsStep(props: UploadsStepProps) {
             )}
           </div>
         </div>
-      </section>
+        </>
+      )}
     </div>
   );
 }
