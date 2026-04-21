@@ -1926,7 +1926,6 @@ export default function UploadsStep(props: UploadsStepProps) {
   const [isSearching, setIsSearching] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const inputClass = "w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-purple-400";
 
   // Search suggestions when name changes
   useEffect(() => {
