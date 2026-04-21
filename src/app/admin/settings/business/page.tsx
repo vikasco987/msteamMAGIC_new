@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   Building2, 
   MapPin, 
@@ -14,14 +14,19 @@ import {
   ChevronLeft,
   Banknote,
   FileText,
-  CreditCard
+  Upload,
+  CheckCircle2
 } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import { uploadToCloudinary } from "../../../components/TaskForm/utils";
 
 export default function BusinessSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [formData, setFormData] = useState({
     name: "",
     address: "",
@@ -67,6 +72,23 @@ export default function BusinessSettingsPage() {
       console.error("Failed to fetch settings", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const url = await uploadToCloudinary(file);
+      setFormData(prev => ({ ...prev, logo: url }));
+      toast.success("Logo uploaded successfully!");
+    } catch (error) {
+      console.error("Logo upload failed", error);
+      toast.error("Logo upload failed. Please try again.");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -201,18 +223,53 @@ export default function BusinessSettingsPage() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className={labelClass}>🖼️ Logo URL</label>
-                  <input
-                    className={inputClass}
-                    placeholder="Paste Cloudinary/Image URL"
-                    value={formData.logo}
-                    onChange={(e) => setFormData({ ...formData, logo: e.target.value })}
-                  />
-                  {formData.logo && (
-                    <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200 flex items-center justify-center">
-                      <img src={formData.logo} alt="Logo Preview" className="h-16 object-contain" />
+                  <label className={labelClass}>🖼️ Company Logo</label>
+                  <div className="flex flex-col md:flex-row gap-6 items-start">
+                    {/* Logo Preview/Placeholder */}
+                    <div className="w-32 h-32 rounded-[2rem] bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden shrink-0 group relative">
+                      {formData.logo ? (
+                        <img src={formData.logo} alt="Company Logo" className="w-full h-full object-contain p-2" />
+                      ) : (
+                        <ImageIcon size={32} className="text-slate-300" />
+                      )}
+                      {uploading && (
+                        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center">
+                          <Loader2 size={24} className="text-white animate-spin" />
+                        </div>
+                      )}
                     </div>
-                  )}
+
+                    {/* Upload Controls */}
+                    <div className="flex-1 space-y-4">
+                      <div className="flex flex-wrap gap-3">
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleLogoUpload}
+                          className="hidden"
+                          accept="image/*"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploading}
+                          className="px-6 py-3 bg-indigo-50 text-indigo-600 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50"
+                        >
+                          <Upload size={16} />
+                          {formData.logo ? "Change Logo" : "Upload Logo"}
+                        </button>
+                        {formData.logo && (
+                          <div className="px-4 py-3 bg-emerald-50 text-emerald-600 rounded-2xl font-bold text-[10px] uppercase tracking-widest flex items-center gap-2">
+                            <CheckCircle2 size={14} />
+                            Ready for Invoices
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
+                        Recommended: PNG or SVG with transparent background.<br/>Max size: 2MB.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -306,7 +363,7 @@ export default function BusinessSettingsPage() {
               </p>
               <button
                 type="submit"
-                disabled={saving}
+                disabled={saving || uploading}
                 className="bg-slate-900 text-white px-10 py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-indigo-600 transition-all shadow-2xl shadow-indigo-200 active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center gap-3"
               >
                 {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}

@@ -348,8 +348,8 @@ export default function Sidebar() {
 
               // If we have dynamic permissions, they override or restrict
               if (dynamicPermissions && dynamicPermissions.length > 0) {
-                // Safety Lock: Master should always see Access Control to avoid locking out
-                if (userRole === 'master' && i.label === 'Access Control') return true;
+                // Safety Lock: Master should always see Access Control & Business Setup to avoid locking out
+                if (userRole === 'master' && (i.label === 'Access Control' || i.label === 'Business Setup')) return true;
                 
                 return dynamicPermissions.includes(i.label);
               }
