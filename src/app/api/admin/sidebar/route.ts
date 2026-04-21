@@ -22,8 +22,8 @@ export async function GET(req: NextRequest) {
         const allItems = [
             'Dashboard', 'Team Board', 'Create Task', 'Assigned Task',
             'Recovery Hub', 'KAM Strategy', 'Sales Matrix', 'Team Sales', 'My Growth', 'CRM Forms', 'Follow-up Board', 'Call Report', 'Financial Ecosystem',
-            'Attendance', 'Tish Control', 'Activity Log', 'Lifecycle Report', 'Customers',
-            'Agreements', 'Timeline', 'DB Backups'
+            'Attendance', 'Tish Control', 'Employee Insights', 'Activity Log', 'Lifecycle Report', 'Customers',
+            'Agreements', 'Timeline', 'Access Control', 'Team Management', 'DB Backups'
         ];
 
         const DEFAULT_PERMISSIONS: Record<string, string[]> = {

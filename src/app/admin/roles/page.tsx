@@ -393,7 +393,7 @@ export default function RoleManagementPage() {
                         exit={{ opacity: 0, y: -20 }}
                         className="grid lg:grid-cols-2 gap-8"
                     >
-                        {AVAILABLE_ROLES.filter(r => r !== 'MASTER').map(role => {
+                        {AVAILABLE_ROLES.map(role => {
                             const rolePerm = permissions.find(p => p.role === role.toLowerCase());
                             const activeItems = rolePerm?.sidebarItems || [];
 
@@ -417,7 +417,13 @@ export default function RoleManagementPage() {
                                             return (
                                                 <button
                                                     key={item}
-                                                    onClick={() => toggleSidebarItem(role, item)}
+                                                    onClick={() => {
+                                                        if (role === 'MASTER' && item === 'Access Control') {
+                                                            toast.error("Master cannot hide Access Control (Safety Lock)");
+                                                            return;
+                                                        }
+                                                        toggleSidebarItem(role, item);
+                                                    }}
                                                     className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isVisible ? 'bg-indigo-50 border-indigo-200 text-indigo-700 font-black' : 'bg-slate-50 border-transparent text-slate-400 grayscale'}`}
                                                 >
                                                     <span className="text-sm">{item}</span>

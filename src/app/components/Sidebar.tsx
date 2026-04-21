@@ -346,9 +346,9 @@ export default function Sidebar() {
 
               // If we have dynamic permissions, they override or restrict
               if (dynamicPermissions && dynamicPermissions.length > 0) {
-                // If the item is in the dynamic list, show it. 
-                if ((userRole === 'master' || userRole === 'admin' || userRole === 'tl') && 
-                    (i.label === 'Access Control' || i.label === 'DB Backups' || i.label === 'Team Management' || i.label === 'Financial Reports' || i.label === 'Employee Insights')) return true;
+                // Safety Lock: Master should always see Access Control to avoid locking out
+                if (userRole === 'master' && i.label === 'Access Control') return true;
+                
                 return dynamicPermissions.includes(i.label);
               }
 
