@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { motion, AnimatePresence } from "framer-motion";
 import MonthlyAttendanceTable from "./MonthlyAttendanceTable";
@@ -321,7 +322,6 @@ function EditAttendanceModal({
   );
 }
 
-import { useSearchParams } from "next/navigation";
 
 // -------------------- Component --------------------
 export default function AttendanceTable({ all = false }: AttendanceTableProps) {
