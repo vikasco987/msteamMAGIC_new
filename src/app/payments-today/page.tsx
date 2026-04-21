@@ -30,6 +30,7 @@ interface PaymentEntry {
   shopName?: string | null;
   address?: string | null;
   utr?: string | null;
+  customerName?: string | null;
 }
 
 interface SummaryByAssigner {
@@ -231,6 +232,11 @@ export default function PaymentsTodayPage() {
                                 {p.phone}
                               </div>
                             )}
+                            {p.customerName && (
+                              <div className="flex items-center gap-2 text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 w-fit px-2 py-0.5 rounded-md border border-blue-100">
+                                <User size={12} /> {p.customerName}
+                              </div>
+                            )}
                             {p.address && (
                               <div className="flex items-start gap-2 pt-1">
                                 {p.address.startsWith("http") ? (
@@ -242,12 +248,12 @@ export default function PaymentsTodayPage() {
                                     <MapPin size={10} /> View Location
                                   </a>
                                 ) : (
-                                  <div className="flex items-start gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest leading-relaxed">
+                                  <div className="flex items-start gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest leading-relaxed bg-slate-50 p-2 rounded-xl border border-slate-100 w-full group/addr relative">
                                     <MapPin size={14} className="text-slate-300 shrink-0 mt-0.5" />
-                                    <span className="max-w-[180px] line-clamp-2">{p.address}</span>
+                                    <span className="max-w-[200px] line-clamp-3 text-slate-600 font-bold">{p.address}</span>
                                     <button 
                                       onClick={() => copyToClipboard(p.address || "")}
-                                      className="p-1 hover:bg-slate-200 rounded-md text-slate-400 hover:text-indigo-600 transition-all shrink-0"
+                                      className="p-1.5 bg-white shadow-sm border border-slate-200 rounded-lg text-slate-400 hover:text-blue-600 transition-all shrink-0 hover:shadow-md"
                                       title="Copy Full Address"
                                     >
                                       <Copy size={12} />

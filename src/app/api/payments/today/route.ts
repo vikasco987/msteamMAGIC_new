@@ -47,6 +47,9 @@ export async function GET(req: NextRequest) {
         paymentHistory: true,
         customFields: true,
         location: true,
+        customerName: true,
+        shopName: true,
+        phone: true,
       },
     });
 
@@ -85,6 +88,9 @@ export async function GET(req: NextRequest) {
         // Get Full Name from Map, fallback to task.assignerName
         const assigner = (task.assignerId ? userMap[task.assignerId] : null) || p.assignerName || task.assignerName || "Unknown";
 
+        const cf = (task.customFields as any) || {};
+        const fullAddr = [cf.fullAddress, cf.city, cf.state, cf.pincode].filter(Boolean).join(", ") || task.location;
+
         paymentsToday.push({
           paymentId: `${task.id}_${updatedAt.getTime()}`,
           taskId: task.id,
@@ -98,7 +104,8 @@ export async function GET(req: NextRequest) {
           utr: p.utr || null,
           phone,
           shopName,
-          address: task.location || null,
+          customerName: task.customerName,
+          address: fullAddr || null,
         });
 
         // Overall aggregates

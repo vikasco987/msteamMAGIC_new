@@ -444,13 +444,29 @@ export default function TaskDetailsCard({ task, isAdmin = false, onDelete, onUpd
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-y-1.5">
+        <div className="grid grid-cols-1 gap-y-1 mt-1">
           <FieldWithCopy label="🏪 Shop" value={cf.shopName} />
           <FieldWithCopy label="🏷️ Outlet" value={cf.outletName} />
-          <FieldWithCopy label="📞 Phone" value={cf.phone} />
-          <FieldWithCopy label="📧 Email" value={cf.email} />
-          <FieldWithCopy label="👤 Customer" value={cf.customerName} />
-          <FieldWithCopy label="💰 Package" value={cf.packageAmount} />
+          <FieldWithCopy label="👤 Cust" value={cf.customerName} />
+          <FieldWithCopy label="📞 Ph" value={cf.phone} />
+          <FieldWithCopy label="💰 Pkg" value={cf.packageAmount} />
+          <div className="flex flex-wrap gap-2 text-[11px]">
+             <FieldWithCopy label="🏦 A/C" value={cf.accountNumber} />
+             <FieldWithCopy label="🔢 IFSC" value={cf.ifscCode} />
+          </div>
+        </div>
+
+        {(cf.fullAddress || cf.city || cf.pincode) && (
+          <div className="flex items-start gap-2 group bg-slate-100/50 p-2.5 rounded-xl border border-slate-200/50 mt-1 mb-2">
+            <div className="flex-1">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">🏠 Full Address</p>
+              <p className="text-[11px] text-slate-800 leading-normal font-medium">
+                {[cf.fullAddress, cf.city, cf.state, cf.pincode].filter(Boolean).join(", ")}
+              </p>
+            </div>
+            <CopyIcon text={[cf.fullAddress, cf.city, cf.state, cf.pincode].filter(Boolean).join(", ")} />
+          </div>
+        )}
 
           {cf.location && (
             <div className="flex items-center gap-2 group">
