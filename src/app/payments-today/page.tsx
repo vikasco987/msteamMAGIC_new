@@ -12,9 +12,13 @@ import {
   IndianRupee,
   Search,
   MapPin,
-  Copy
+  Copy,
+  Download,
+  FileText
 } from "lucide-react";
 import toast from "react-hot-toast";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface PaymentEntry {
   paymentId: string;
@@ -60,8 +64,119 @@ export default function PaymentsTodayPage() {
   const today = new Date().toISOString().split("T")[0];
   const [selectedDate, setSelectedDate] = useState(today);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [businessSettings, setBusinessSettings] = useState<any>(null);
 
-  const fetchPayments = async (date: string) => {
+  useEffect(() => {
+    fetchPayments(selectedDate);
+    fetchBusinessSettings();
+  }, [selectedDate]);
+
+  const fetchBusinessSettings = async () => {
+    try {
+      const res = await fetch("/api/admin/settings/business");
+      const data = await res.json();
+      if (data && !data.error) setBusinessSettings(data);
+    } catch (err) {
+      console.error("Failed to fetch business settings", err);
+    }
+  };
+
+  const handleDownloadInvoice = (p: PaymentEntry) => {
+    if (!businessSettings) {
+      toast.error("Please setup Business Settings first!");
+      return;
+    }
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    // Header - Business Logo or Name
+    if (businessSettings.logo) {
+      try {
+        doc.addImage(businessSettings.logo, 'PNG', 15, 15, 30, 30);
+      } catch (e) {
+        doc.setFontSize(22);
+        doc.setTextColor(79, 70, 229); // indigo-600
+        doc.text(businessSettings.name || "INVOICE", 15, 25);
+      }
+    } else {
+      doc.setFontSize(22);
+      doc.setTextColor(79, 70, 229);
+      doc.text(businessSettings.name || "INVOICE", 15, 25);
+    }
+
+    // Invoice Label
+    doc.setFontSize(30);
+    doc.setTextColor(200, 200, 200);
+    doc.text("INVOICE", pageWidth - 15, 25, { align: 'right' });
+
+    // Business Details (From)
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(businessSettings.address || "", 15, 50);
+    doc.text(`GSTIN: ${businessSettings.gstin || "N/A"}`, 15, 55);
+    doc.text(`Phone: ${businessSettings.phone || "N/A"}`, 15, 60);
+
+    // Bill To (Customer Details)
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.text("BILL TO:", 15, 75);
+    doc.setFontSize(10);
+    doc.setTextColor(50, 50, 50);
+    doc.text(p.customerName || "Customer", 15, 82);
+    doc.text(p.shopName || "", 15, 87);
+    doc.text(p.address || "", 15, 92, { maxWidth: 80 });
+
+    // Invoice Info (Date/ID)
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(10);
+    doc.text(`Invoice Date: ${new Date().toLocaleDateString()}`, pageWidth - 15, 75, { align: 'right' });
+    doc.text(`Task ID: ${p.taskId}`, pageWidth - 15, 82, { align: 'right' });
+    doc.text(`Payment ID: ${p.paymentId.substring(0, 8)}`, pageWidth - 15, 89, { align: 'right' });
+
+    // Table
+    autoTable(doc, {
+      startY: 110,
+      head: [['Description', 'Qty', 'Rate', 'Amount']],
+      body: [
+        [p.taskTitle, '1', `₹${p.received}`, `₹${p.received}`]
+      ],
+      headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: 'bold' },
+      foot: [['', '', 'Total Received:', `₹${p.received}`]],
+      footStyles: { fillColor: [245, 245, 245], textColor: [0, 0, 0], fontStyle: 'bold' },
+      theme: 'grid'
+    });
+
+    // Bank Details
+    const finalY = (doc as any).lastAutoTable.finalY + 15;
+    doc.setFontSize(11);
+    doc.setTextColor(0, 0, 0);
+    doc.text("BANKING DETAILS:", 15, finalY);
+    doc.setFontSize(9);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Bank Name: ${businessSettings.bankName || "N/A"}`, 15, finalY + 7);
+    doc.text(`A/C Holder: ${businessSettings.accountName || "N/A"}`, 15, finalY + 12);
+    doc.text(`A/C Number: ${businessSettings.accountNumber || "N/A"}`, 15, finalY + 17);
+    doc.text(`IFSC Code: ${businessSettings.ifscCode || "N/A"}`, 15, finalY + 22);
+
+    // Terms
+    if (businessSettings.terms) {
+      doc.setFontSize(11);
+      doc.setTextColor(0, 0, 0);
+      doc.text("TERMS & CONDITIONS:", 15, finalY + 35);
+      doc.setFontSize(8);
+      doc.setTextColor(100, 100, 100);
+      doc.text(businessSettings.terms, 15, finalY + 42, { maxWidth: 180 });
+    }
+
+    // Footer
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text("This is a computer generated invoice and does not require a signature.", pageWidth / 2, 285, { align: 'center' });
+
+    doc.save(`Invoice_${p.shopName || p.customerName || p.taskId}.pdf`);
+    toast.success("Invoice generated successfully!");
+  };
     setLoading(true);
     try {
       const res = await fetch(`/api/payments/today?date=${date}`);
@@ -102,9 +217,6 @@ export default function PaymentsTodayPage() {
     });
   };
 
-  useEffect(() => {
-    fetchPayments(selectedDate);
-  }, [selectedDate]);
 
   return (
     <div className="min-h-screen bg-gray-50/50 p-4 md:p-8">
@@ -277,16 +389,25 @@ export default function PaymentsTodayPage() {
                           </div>
                         </td>
                         <td className="px-8 py-6">
-                          {p.fileUrl ? (
+                          <div className="flex flex-col gap-2">
+                            {p.fileUrl ? (
+                              <button
+                                onClick={() => setPreviewImage(p.fileUrl)}
+                                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                              >
+                                View Proof <ExternalLink size={12} />
+                              </button>
+                            ) : (
+                              <span className="text-slate-200 text-[9px] font-black uppercase tracking-widest italic text-center">No Attachment</span>
+                            )}
+                            
                             <button
-                              onClick={() => setPreviewImage(p.fileUrl)}
-                              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                              onClick={() => handleDownloadInvoice(p)}
+                              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-sm border border-emerald-100"
                             >
-                              View Proof <ExternalLink size={12} />
+                              Invoice <FileText size={12} />
                             </button>
-                          ) : (
-                            <span className="text-slate-200 text-[9px] font-black uppercase tracking-widest italic pt-2 block">No Attachment</span>
-                          )}
+                          </div>
                         </td>
                         <td className="px-8 py-6 text-center">
                           <button
