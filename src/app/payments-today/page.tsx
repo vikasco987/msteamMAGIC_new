@@ -217,19 +217,29 @@ export default function PaymentsTodayPage() {
                               </div>
                             )}
                             {p.address && (
-                              <div className="flex items-start gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest leading-relaxed">
-                                <MapPin size={14} className="text-slate-300 shrink-0 mt-0.5" />
-                                <span className="max-w-[200px]">{p.address}</span>
+                              <div className="flex items-start gap-2 pt-1">
+                                {p.address.startsWith("http") ? (
+                                  <a 
+                                    href={p.address} 
+                                    target="_blank" 
+                                    className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all border border-indigo-100"
+                                  >
+                                    <MapPin size={10} /> View Location
+                                  </a>
+                                ) : (
+                                  <div className="flex items-start gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest leading-relaxed">
+                                    <MapPin size={14} className="text-slate-300 shrink-0 mt-0.5" />
+                                    <span className="max-w-[180px] line-clamp-2">{p.address}</span>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
                         </td>
-                        <td className="px-8 py-6">
-                          <div className="flex flex-col">
-                            <span className="text-sm font-black text-slate-900 italic">₹{p.received}</span>
-                            <span className={`text-[10px] font-black uppercase tracking-widest mt-1 ${p.amountUpdated >= 0 ? "text-blue-600" : "text-red-500"}`}>
-                              {p.amountUpdated >= 0 ? "increase" : "decrease"}: ₹{Math.abs(p.amountUpdated)}
-                            </span>
+                        <td className="px-8 py-6 text-center">
+                          <div className="inline-flex flex-col items-center justify-center bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100 min-w-[100px]">
+                            <span className="text-base font-black text-slate-900 leading-tight">₹{p.received.toLocaleString()}</span>
+                            <span className="text-[8px] font-black uppercase tracking-[0.2em] text-blue-500 mt-0.5">COLLECTED</span>
                           </div>
                         </td>
                         <td className="px-8 py-6">
