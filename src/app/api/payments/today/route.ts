@@ -43,10 +43,20 @@ export async function GET(req: NextRequest) {
         id: true,
         title: true,
         assignerName: true,
+        assignerId: true,
         paymentHistory: true,
         customFields: true,
         location: true,
       },
+    });
+
+    // 🚀 STEP 3: Fetch all Users to get Full Names
+    const users = await prisma.user.findMany({
+      select: { clerkId: true, name: true }
+    });
+    const userMap: Record<string, string> = {};
+    users.forEach(u => {
+      if (u.clerkId && u.name) userMap[u.clerkId] = u.name;
     });
 
     const paymentsToday: any[] = [];
@@ -71,7 +81,9 @@ export async function GET(req: NextRequest) {
 
         const currentReceived = Number(p.received || 0);
         const amountUpdated = currentReceived; // Fix: Use the actual added amount directly
-        const assigner = p.assignerName || task.assignerName || "Unknown";
+        
+        // Get Full Name from Map, fallback to task.assignerName
+        const assigner = (task.assignerId ? userMap[task.assignerId] : null) || p.assignerName || task.assignerName || "Unknown";
 
         paymentsToday.push({
           paymentId: `${task.id}_${updatedAt.getTime()}`,
