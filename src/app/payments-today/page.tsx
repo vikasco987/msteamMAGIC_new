@@ -10,7 +10,8 @@ import {
   ExternalLink,
   Filter,
   IndianRupee,
-  Search
+  Search,
+  MapPin
 } from "lucide-react";
 
 interface PaymentEntry {
@@ -25,6 +26,8 @@ interface PaymentEntry {
   fileUrl: string | null;
   phone?: string | null;
   shopName?: string | null;
+  address?: string | null;
+  utr?: string | null;
 }
 
 interface SummaryByAssigner {
@@ -181,7 +184,14 @@ export default function PaymentsTodayPage() {
                         <td className="px-8 py-6">
                           <div className="flex flex-col">
                             <span className="text-sm font-black text-slate-900 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{p.taskTitle}</span>
-                            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest mt-1">ID: {p.taskId}</span>
+                            <div className="flex flex-col gap-0.5 mt-1">
+                              <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">ID: {p.taskId}</span>
+                              {p.utr && (
+                                <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-50 w-fit px-2 py-0.5 rounded-md border border-indigo-100">
+                                  UTR: {p.utr}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className="px-8 py-6">
@@ -204,6 +214,12 @@ export default function PaymentsTodayPage() {
                               <div className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
                                 <Phone size={14} className="text-slate-300" />
                                 {p.phone}
+                              </div>
+                            )}
+                            {p.address && (
+                              <div className="flex items-start gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest leading-relaxed">
+                                <MapPin size={14} className="text-slate-300 shrink-0 mt-0.5" />
+                                <span className="max-w-[200px]">{p.address}</span>
                               </div>
                             )}
                           </div>

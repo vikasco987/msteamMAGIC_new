@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
         assignerName: true,
         paymentHistory: true,
         customFields: true,
+        location: true,
       },
     });
 
@@ -83,8 +84,10 @@ export async function GET(req: NextRequest) {
           updatedAt,
           updatedBy: p.updatedBy || "Unknown",
           fileUrl: p.fileUrl || null,
+          utr: p.utr || null,
           phone,
           shopName,
+          address: task.location || null,
         });
 
         // Overall aggregates
