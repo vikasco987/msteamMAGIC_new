@@ -1846,7 +1846,9 @@
 // src/app/components/TaskForm/UploadsStep.tsx
 "use client";
 
+import React, { useState, useEffect, useRef } from "react";
 import FileDropzone from "./FileDropzone";
+import { Search, Loader2, User, MapPin } from "lucide-react";
 
 // Define TabType locally or import it if it's defined in a shared types file
 type TabType = "license" | "swiggy" | "zomato" | "combo" | "photo" | "account" | "other";
@@ -1919,7 +1921,58 @@ export default function UploadsStep(props: UploadsStepProps) {
     country, setCountry, pincode, setPincode
   } = props;
 
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
   const inputClass = "w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-purple-400";
+
+  // Search suggestions when name changes
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (customerName.length >= 2 && showSuggestions) {
+        setIsSearching(true);
+        try {
+          const res = await fetch(`/api/customers/suggestions?q=${encodeURIComponent(customerName)}`);
+          const data = await res.json();
+          setSuggestions(data);
+        } catch (err) {
+          console.error("Failed to fetch suggestions", err);
+        } finally {
+          setIsSearching(false);
+        }
+      } else {
+        setSuggestions([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [customerName]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSelectCustomer = (cust: any) => {
+    setCustomerName(cust.customerName);
+    setShopName(cust.shopName);
+    setPhone(cust.phone);
+    setFullAddress(cust.fullAddress);
+    setCity(cust.city);
+    setState(cust.state);
+    setPincode(cust.pincode);
+    setCountry(cust.country);
+    setLocation(cust.location);
+    setShowSuggestions(false);
+  };
   const isValidUrl = (str: string) => {
     try {
       new URL(str);
@@ -1935,9 +1988,55 @@ export default function UploadsStep(props: UploadsStepProps) {
         <h3 className="font-bold text-lg text-purple-800 mb-3 border-b pb-2">📄 Fill Information</h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div className="col-span-full">
+          <div className="col-span-full relative" ref={dropdownRef}>
             <label className="block text-sm font-bold text-purple-700 mb-1">👤 Customer Name *</label>
-            <input className={inputClass} placeholder="Enter Full Customer Name" value={customerName} onChange={e => setCustomerName(e.target.value)} />
+            <div className="relative">
+              <input 
+                className={`${inputClass} pr-10`}
+                placeholder="Type name to see suggestions..." 
+                value={customerName} 
+                onChange={e => {
+                  setCustomerName(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => setShowSuggestions(true)}
+              />
+              <div className="absolute right-3 top-2.5 text-slate-400">
+                {isSearching ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
+              </div>
+            </div>
+
+            {/* Suggestions Dropdown */}
+            {showSuggestions && (suggestions.length > 0 || isSearching) && (
+              <div className="absolute z-50 w-full bg-white border border-slate-200 rounded-xl shadow-2xl mt-1 max-h-60 overflow-y-auto overflow-x-hidden">
+                {isSearching && suggestions.length === 0 && (
+                  <div className="p-4 text-center text-slate-500 text-sm">Searching...</div>
+                )}
+                {suggestions.map((cust, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => handleSelectCustomer(cust)}
+                    className="p-3 hover:bg-purple-50 cursor-pointer border-b border-slate-50 last:border-0 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <User size={14} className="text-purple-600" />
+                      <span className="font-bold text-slate-800 text-sm">{cust.customerName}</span>
+                      {cust.shopName && (
+                        <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded uppercase font-bold tracking-tight">
+                          {cust.shopName}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-start gap-1.5">
+                      <MapPin size={12} className="text-slate-400 shrink-0 mt-0.5" />
+                      <span className="text-[11px] text-slate-500 truncate italic">
+                        {[cust.fullAddress, cust.city, cust.pincode].filter(Boolean).join(", ")}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div className="col-span-full">
             <label className="block text-sm font-bold text-purple-700 mb-1">🏠 Full Address (House No, Street, Area) *</label>
