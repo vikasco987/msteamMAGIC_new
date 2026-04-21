@@ -528,6 +528,11 @@ export default function TaskForm() {
           return;
         }
       }
+
+      if (formData.customerName.trim().toLowerCase() === formData.shopName.trim().toLowerCase()) {
+        alert("⚠️ Customer Name and Shop/Outlet Name cannot be the same. Please provide distinct names.");
+        return;
+      }
     }
 
     if (step < 2) {
