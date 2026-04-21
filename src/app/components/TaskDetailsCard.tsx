@@ -279,7 +279,7 @@ export default function TaskDetailsCard({ task, isAdmin = false, onDelete, onUpd
       onUpdateTask(taskId, {
         assignerId: member.id,
         assignerName: member.name,
-        assignerEmail: member.email,
+      assignerEmail: member.email,
         assigner: { name: member.name, email: member.email }
       });
       toast.success(`Ownership transferred to ${member.name}!`);
@@ -289,184 +289,185 @@ export default function TaskDetailsCard({ task, isAdmin = false, onDelete, onUpd
   };
 
   return (
-    <div className="text-sm text-gray-700 space-y-3 overflow-hidden">
-      {/* Header with Title and Control Icons */}
-      <div className="flex items-start justify-between gap-3">
-        {showTitle && (
-          <div className="flex flex-col gap-1.5 mt-1">
-            <h3
-              className="text-base font-bold text-slate-900 leading-tight line-clamp-2"
-              title={task.title}
-            >
-              {task.title}
-            </h3>
-            <TaskTimer createdAt={task.createdAt} status={task.status} />
-          </div>
-        )}
-        {!showTitle && (
-          <div className="mt-1">
-            <TaskTimer createdAt={task.createdAt} status={task.status} />
-          </div>
-        )}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {/* 🛠️ Primary Action Toolbar */}
-          <div className="flex items-center gap-1 bg-white/80 backdrop-blur-sm p-1 rounded-xl border border-slate-200 shadow-sm">
-            {/* 1. Status Check */}
-            <AnimatedIconButton 
-              onClick={() => {
-                const newStatus = task.status === "done" ? "todo" : "done";
-                onUpdateTask?.(task.id, { status: newStatus });
-              }} 
-              title={task.status === "done" ? "Mark as To Do" : "Mark as Done"}
-            >
-              <span className={`text-base ${task.status === "done" ? "opacity-40" : "animate-pulse"}`}>
-                {task.status === "done" ? "🔄" : "✅"}
-              </span>
-            </AnimatedIconButton>
-
-            {/* 2. Reassign */}
-            <AnimatedIconButton onClick={() => setShowReassignModal(true)} title="Reassign Task">
-              <FaUserEdit size={14} className="text-slate-600" />
-            </AnimatedIconButton>
-            
-            {/* 3. Ownership (Admin Only) */}
-            {isAdmin && (
-              <AnimatedIconButton onClick={handleTakeOwnership} title="Take Ownership">
-                <FaCrown size={14} className="text-amber-500" />
+    <>
+      <div className="text-sm text-gray-700 space-y-3 overflow-hidden">
+        {/* Header with Title and Control Icons */}
+        <div className="flex items-start justify-between gap-3">
+          {showTitle && (
+            <div className="flex flex-col gap-1.5 mt-1">
+              <h3
+                className="text-base font-bold text-slate-900 leading-tight line-clamp-2"
+                title={task.title}
+              >
+                {task.title}
+              </h3>
+              <TaskTimer createdAt={task.createdAt} status={task.status} />
+            </div>
+          )}
+          {!showTitle && (
+            <div className="mt-1">
+              <TaskTimer createdAt={task.createdAt} status={task.status} />
+            </div>
+          )}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* 🛠️ Primary Action Toolbar */}
+            <div className="flex items-center gap-1 bg-white/80 backdrop-blur-sm p-1 rounded-xl border border-slate-200 shadow-sm">
+              {/* 1. Status Check */}
+              <AnimatedIconButton 
+                onClick={() => {
+                  const newStatus = task.status === "done" ? "todo" : "done";
+                  onUpdateTask?.(task.id, { status: newStatus });
+                }} 
+                title={task.status === "done" ? "Mark as To Do" : "Mark as Done"}
+              >
+                <span className={`text-base ${task.status === "done" ? "opacity-40" : "animate-pulse"}`}>
+                  {task.status === "done" ? "🔄" : "✅"}
+                </span>
               </AnimatedIconButton>
-            )}
 
-            {/* 4. More Options Dropdown */}
-            <DropdownMenu.Root>
-              <DropdownMenu.Trigger asChild>
-                <button className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors outline-none text-slate-400 hover:text-slate-600">
-                  <MoreVertical size={16} />
-                </button>
-              </DropdownMenu.Trigger>
+              {/* 2. Reassign */}
+              <AnimatedIconButton onClick={() => setShowReassignModal(true)} title="Reassign Task">
+                <FaUserEdit size={14} className="text-slate-600" />
+              </AnimatedIconButton>
+              
+              {/* 3. Ownership (Admin Only) */}
+              {isAdmin && (
+                <AnimatedIconButton onClick={handleTakeOwnership} title="Take Ownership">
+                  <FaCrown size={14} className="text-amber-500" />
+                </AnimatedIconButton>
+              )}
 
-              <DropdownMenu.Portal>
-                <DropdownMenu.Content 
-                  className="min-w-[180px] bg-white rounded-xl shadow-2xl p-1.5 border border-slate-100 z-[1000] animate-in fade-in zoom-in duration-200"
-                  sideOffset={5}
-                  align="end"
-                >
-                  {/* Notes with Count Badge */}
-                  <DropdownMenu.Item 
-                    onClick={() => setShowNotesModal(true)}
-                    className="flex items-center justify-between px-3 py-2 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg cursor-pointer outline-none group"
+              {/* 4. More Options Dropdown */}
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger asChild>
+                  <button className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors outline-none text-slate-400 hover:text-slate-600">
+                    <MoreVertical size={16} />
+                  </button>
+                </DropdownMenu.Trigger>
+
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content 
+                    className="min-w-[180px] bg-white rounded-xl shadow-2xl p-1.5 border border-slate-100 z-[1000] animate-in fade-in zoom-in duration-200"
+                    sideOffset={5}
+                    align="end"
                   >
-                    <div className="flex items-center gap-2">
-                       <FaRegStickyNote className="text-slate-400 group-hover:text-indigo-500" size={12} />
-                       NOTES
-                    </div>
-                    {notesCount > 0 && (
-                      <span className="bg-red-500 text-white text-[9px] px-1.5 rounded-full">{notesCount}</span>
-                    )}
-                  </DropdownMenu.Item>
-
-                  <DropdownMenu.Item 
-                    onClick={() => setShowActivityModal(true)}
-                    className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-lg cursor-pointer outline-none"
-                  >
-                    <History size={12} className="text-slate-400" />
-                    ACTIVITY LOG
-                  </DropdownMenu.Item>
-
-                  {(task.amount !== undefined && task.amount > 0) && (
+                    {/* Notes with Count Badge */}
                     <DropdownMenu.Item 
-                      onClick={() => setShowRecoveryModal(true)}
-                      className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-50 rounded-lg cursor-pointer outline-none"
+                      onClick={() => setShowNotesModal(true)}
+                      className="flex items-center justify-between px-3 py-2 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg cursor-pointer outline-none group"
                     >
-                      <DollarSign size={13} />
-                      RECOVERY STATUS
+                      <div className="flex items-center gap-2">
+                         <FaRegStickyNote className="text-slate-400 group-hover:text-indigo-500" size={12} />
+                         NOTES
+                      </div>
+                      {notesCount > 0 && (
+                        <span className="bg-red-500 text-white text-[9px] px-1.5 rounded-full">{notesCount}</span>
+                      )}
                     </DropdownMenu.Item>
-                  )}
 
-                  <DropdownMenu.Separator className="h-px bg-slate-100 my-1" />
-
-                  <DropdownMenu.Item 
-                    asChild 
-                    className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-lg cursor-pointer outline-none"
-                  >
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <Layers size={12} className="text-slate-400" />
-                      <CloneTaskButton taskId={task.id} onCloned={() => onUpdateTask?.(task.id, {})} />
-                    </div>
-                  </DropdownMenu.Item>
-
-                  <DropdownMenu.Item 
-                    onClick={copyAllFields}
-                    className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-lg cursor-pointer outline-none"
-                  >
-                    <Copy size={12} className="text-slate-400" />
-                    COPY DETAILS
-                  </DropdownMenu.Item>
-
-                  {onFloatRequest && (
                     <DropdownMenu.Item 
-                      onClick={() => onFloatRequest(task)}
-                      className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-orange-600 hover:bg-orange-50 rounded-lg cursor-pointer outline-none"
+                      onClick={() => setShowActivityModal(true)}
+                      className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-lg cursor-pointer outline-none"
                     >
-                      <Pin size={12} />
-                      PIN TO TOP
+                      <History size={12} className="text-slate-400" />
+                      ACTIVITY LOG
                     </DropdownMenu.Item>
-                  )}
 
-                  {isAdmin && (
-                    <>
-                      <DropdownMenu.Separator className="h-px bg-slate-100 my-1" />
+                    {(task.amount !== undefined && task.amount > 0) && (
                       <DropdownMenu.Item 
-                        onClick={() => {
-                          const confirmDelete = window.confirm("Are you sure you want to delete this task?");
-                          if (confirmDelete && task.id && onDelete) onDelete(task.id);
-                        }}
-                        className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg cursor-pointer outline-none"
+                        onClick={() => setShowRecoveryModal(true)}
+                        className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-50 rounded-lg cursor-pointer outline-none"
                       >
-                        <Trash2 size={12} />
-                        DELETE TASK
+                        <DollarSign size={13} />
+                        RECOVERY STATUS
                       </DropdownMenu.Item>
-                    </>
-                  )}
-                </DropdownMenu.Content>
-              </DropdownMenu.Portal>
-            </DropdownMenu.Root>
+                    )}
+
+                    <DropdownMenu.Separator className="h-px bg-slate-100 my-1" />
+
+                    <DropdownMenu.Item 
+                      asChild 
+                      className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-lg cursor-pointer outline-none"
+                    >
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <Layers size={12} className="text-slate-400" />
+                        <CloneTaskButton taskId={task.id} onCloned={() => onUpdateTask?.(task.id, {})} />
+                      </div>
+                    </DropdownMenu.Item>
+
+                    <DropdownMenu.Item 
+                      onClick={copyAllFields}
+                      className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-lg cursor-pointer outline-none"
+                    >
+                      <Copy size={12} className="text-slate-400" />
+                      COPY DETAILS
+                    </DropdownMenu.Item>
+
+                    {onFloatRequest && (
+                      <DropdownMenu.Item 
+                        onClick={() => onFloatRequest(task)}
+                        className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-orange-600 hover:bg-orange-50 rounded-lg cursor-pointer outline-none"
+                      >
+                        <Pin size={12} />
+                        PIN TO TOP
+                      </DropdownMenu.Item>
+                    )}
+
+                    {isAdmin && (
+                      <>
+                        <DropdownMenu.Separator className="h-px bg-slate-100 my-1" />
+                        <DropdownMenu.Item 
+                          onClick={() => {
+                            const confirmDelete = window.confirm("Are you sure you want to delete this task?");
+                            if (confirmDelete && task.id && onDelete) onDelete(task.id);
+                          }}
+                          className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg cursor-pointer outline-none"
+                        >
+                          <Trash2 size={12} />
+                          DELETE TASK
+                        </DropdownMenu.Item>
+                      </>
+                    )}
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Main Content Area */}
-      <div className="space-y-2">
-        {task.description && (
-          <div className="bg-slate-50/50 p-2.5 rounded-xl border border-dashed border-slate-200">
-            <p className="text-xs text-slate-500 italic leading-relaxed line-clamp-3" title={task.description}>
-              "{task.description}"
-            </p>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 gap-y-1 mt-1">
-          <FieldWithCopy label="🏪 Shop" value={cf.shopName} />
-          <FieldWithCopy label="🏷️ Outlet" value={cf.outletName} />
-          <FieldWithCopy label="👤 Cust" value={cf.customerName} />
-          <FieldWithCopy label="📞 Ph" value={cf.phone} />
-          <FieldWithCopy label="💰 Pkg" value={cf.packageAmount} />
-          <div className="flex flex-wrap gap-2 text-[11px]">
-             <FieldWithCopy label="🏦 A/C" value={cf.accountNumber} />
-             <FieldWithCopy label="🔢 IFSC" value={cf.ifscCode} />
-          </div>
-        </div>
-
-        {(cf.fullAddress || cf.city || cf.pincode) && (
-          <div className="flex items-start gap-2 group bg-slate-100/50 p-2.5 rounded-xl border border-slate-200/50 mt-1 mb-2">
-            <div className="flex-1">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">🏠 Full Address</p>
-              <p className="text-[11px] text-slate-800 leading-normal font-medium">
-                {[cf.fullAddress, cf.city, cf.state, cf.pincode].filter(Boolean).join(", ")}
+        {/* Main Content Area */}
+        <div className="space-y-2">
+          {task.description && (
+            <div className="bg-slate-50/50 p-2.5 rounded-xl border border-dashed border-slate-200">
+              <p className="text-xs text-slate-500 italic leading-relaxed line-clamp-3" title={task.description}>
+                "{task.description}"
               </p>
             </div>
-            <CopyIcon text={[cf.fullAddress, cf.city, cf.state, cf.pincode].filter(Boolean).join(", ")} />
+          )}
+
+          <div className="grid grid-cols-1 gap-y-1 mt-1">
+            <FieldWithCopy label="🏪 Shop" value={cf.shopName} />
+            <FieldWithCopy label="🏷️ Outlet" value={cf.outletName} />
+            <FieldWithCopy label="👤 Cust" value={cf.customerName} />
+            <FieldWithCopy label="📞 Ph" value={cf.phone} />
+            <FieldWithCopy label="💰 Pkg" value={cf.packageAmount} />
+            <div className="flex flex-wrap gap-2 text-[11px]">
+               <FieldWithCopy label="🏦 A/C" value={cf.accountNumber} />
+               <FieldWithCopy label="🔢 IFSC" value={cf.ifscCode} />
+            </div>
           </div>
-        )}
+
+          {(cf.fullAddress || cf.city || cf.pincode) && (
+            <div className="flex items-start gap-2 group bg-slate-100/50 p-2.5 rounded-xl border border-slate-200/50 mt-1 mb-2">
+              <div className="flex-1">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">🏠 Full Address</p>
+                <p className="text-[11px] text-slate-800 leading-normal font-medium">
+                  {[cf.fullAddress, cf.city, cf.state, cf.pincode].filter(Boolean).join(", ")}
+                </p>
+              </div>
+              <CopyIcon text={[cf.fullAddress, cf.city, cf.state, cf.pincode].filter(Boolean).join(", ")} />
+            </div>
+          )}
 
           {cf.location && (
             <div className="flex items-center gap-2 group">
@@ -482,85 +483,79 @@ export default function TaskDetailsCard({ task, isAdmin = false, onDelete, onUpd
             </div>
           )}
 
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            <FieldWithCopy label="🏦 A/C" value={cf.accountNumber} />
-            <FieldWithCopy label="🔢 IFSC" value={cf.ifscCode} />
-          </div>
-        </div>
-
-        {/* Status Tags */}
-        {task.tags && task.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2">
-            {task.tags.map(tag => (
-              <span key={tag} className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md">
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Attachments Section */}
-        {task.attachments && task.attachments.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-slate-100">
-            <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Attachments</p>
-            <div className="grid grid-cols-1 gap-1.5">
-              {task.attachments.map((url, i) => {
-                const label = getLabelFromUrl(url);
-                return (
-                  <div key={i} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg group hover:bg-slate-100 transition-colors">
-                    <span className="text-xs font-bold text-slate-600 truncate mr-2">{label}</span>
-                    <div className="flex gap-2">
-                      <button onClick={() => setPreviewUrl(url)} className="text-[10px] font-black text-indigo-600 uppercase">View</button>
-                      <button onClick={() => handleDownload(url)} className="text-[10px] font-black text-emerald-600 uppercase">Save</button>
-                    </div>
-                  </div>
-                );
-              })}
+          {/* Status Tags */}
+          {task.tags && task.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {task.tags.map(tag => (
+                <span key={tag} className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md">
+                  {tag}
+                </span>
+              ))}
             </div>
-          </div>
-        )}
-
-        {/* Footer Meta Details */}
-        <div className="mt-4 pt-3 border-t border-slate-100 flex flex-col gap-2">
-          <div className="flex justify-between items-end">
-            <div className="space-y-1">
-              {displayAssignerName !== "—" && (
-                <div className="flex flex-col">
-                  <p className="text-[10px] font-medium text-slate-600">
-                    By <span className="text-slate-800 font-bold">{displayAssignerName}</span>
-                  </p>
-                  {displayAssignerEmail && <p className="text-[9px] text-slate-600 lowercase">{displayAssignerEmail}</p>}
-                </div>
-              )}
-              {displayAssigneeName !== "—" && (
-                <div className="flex flex-col mt-1">
-                  <p className="text-[10px] font-medium text-slate-600">
-                    To <span className="text-indigo-600 font-bold">{displayAssigneeName}</span>
-                  </p>
-                  {displayAssigneeEmail && <p className="text-[9px] text-indigo-500 lowercase">{displayAssigneeEmail}</p>}
-                </div>
-              )}
-            </div>
-            <p className="text-[9px] font-bold text-slate-500 uppercase">
-              {task.createdAt ? new Date(task.createdAt).toLocaleDateString() : ""}
-            </p>
-          </div>
-
-          {isAdmin && (
-            <button
-              onClick={() => {
-                const confirmDelete = window.confirm("Are you sure you want to delete this task?");
-                if (confirmDelete && task.id && onDelete) onDelete(task.id);
-              }}
-              className="w-full py-2 mt-1 text-[10px] font-black text-red-500 uppercase tracking-widest border border-red-100 rounded-lg hover:bg-red-50 transition-colors"
-            >
-              Delete Task
-            </button>
           )}
+
+          {/* Attachments Section */}
+          {task.attachments && task.attachments.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-slate-100">
+              <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Attachments</p>
+              <div className="grid grid-cols-1 gap-1.5">
+                {task.attachments.map((url, i) => {
+                  const label = getLabelFromUrl(url);
+                  return (
+                    <div key={i} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg group hover:bg-slate-100 transition-colors">
+                      <span className="text-xs font-bold text-slate-600 truncate mr-2">{label}</span>
+                      <div className="flex gap-2">
+                        <button onClick={() => setPreviewUrl(url)} className="text-[10px] font-black text-indigo-600 uppercase">View</button>
+                        <button onClick={() => handleDownload(url)} className="text-[10px] font-black text-emerald-600 uppercase">Save</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Footer Meta Details */}
+          <div className="mt-4 pt-3 border-t border-slate-100 flex flex-col gap-2">
+            <div className="flex justify-between items-end">
+              <div className="space-y-1">
+                {displayAssignerName !== "—" && (
+                  <div className="flex flex-col">
+                    <p className="text-[10px] font-medium text-slate-600">
+                      By <span className="text-slate-800 font-bold">{displayAssignerName}</span>
+                    </p>
+                    {displayAssignerEmail && <p className="text-[9px] text-slate-600 lowercase">{displayAssignerEmail}</p>}
+                  </div>
+                )}
+                {displayAssigneeName !== "—" && (
+                  <div className="flex flex-col mt-1">
+                    <p className="text-[10px] font-medium text-slate-600">
+                      To <span className="text-indigo-600 font-bold">{displayAssigneeName}</span>
+                    </p>
+                    {displayAssigneeEmail && <p className="text-[9px] text-indigo-500 lowercase">{displayAssigneeEmail}</p>}
+                  </div>
+                )}
+              </div>
+              <p className="text-[9px] font-bold text-slate-500 uppercase">
+                {task.createdAt ? new Date(task.createdAt).toLocaleDateString() : ""}
+              </p>
+            </div>
+
+            {isAdmin && (
+              <button
+                onClick={() => {
+                  const confirmDelete = window.confirm("Are you sure you want to delete this task?");
+                  if (confirmDelete && task.id && onDelete) onDelete(task.id);
+                }}
+                className="w-full py-2 mt-1 text-[10px] font-black text-red-500 uppercase tracking-widest border border-red-100 rounded-lg hover:bg-red-50 transition-colors"
+              >
+                Delete Task
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Modals and Overlays */}
       <AnimatePresence>
         {previewUrl && (
           <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-[2000] p-4">
@@ -623,6 +618,6 @@ export default function TaskDetailsCard({ task, isAdmin = false, onDelete, onUpd
           />
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }
