@@ -92,6 +92,24 @@ export default function PaymentsTodayPage() {
     terms: ""
   });
 
+  const openEditModal = (p: PaymentEntry) => {
+    setEditingPayment(p); 
+    setEditForm({ 
+        shopName: p.shopName || "", 
+        address: p.address || "", 
+        phone: p.phone || "",
+        taskTitle: p.taskTitle || "",
+        received: p.received || 0,
+        date: new Date(p.updatedAt).toISOString().split('T')[0],
+        dueDate: new Date(new Date(p.updatedAt).getTime() + 7*24*60*60*1000).toISOString().split('T')[0],
+        bankName: businessSettings?.bankName || "",
+        accountName: businessSettings?.accountName || "",
+        accountNumber: businessSettings?.accountNumber || "",
+        ifscCode: businessSettings?.ifscCode || "",
+        terms: businessSettings?.terms || ""
+    });
+  };
+
   const handleDownloadInvoice = async (p: PaymentEntry & { invoiceUrl?: string | null }, overrides?: any) => {
     if (!businessSettings) {
       toast.error("Please setup Business Settings first!");
@@ -109,21 +127,7 @@ export default function PaymentsTodayPage() {
           <div className="grid grid-cols-2 gap-2">
             <button onClick={() => { window.open(p.invoiceUrl!, '_blank'); toast.dismiss(t.id); }} className="bg-indigo-600 text-white px-3 py-2.5 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 hover:scale-105 transition-all"><ExternalLink size={12}/> Open</button>
             <button onClick={() => { 
-                setEditingPayment(p); 
-                setEditForm({ 
-                    shopName: p.shopName || "", 
-                    address: p.address || "", 
-                    phone: p.phone || "",
-                    taskTitle: p.taskTitle || "",
-                    received: p.received || 0,
-                    date: new Date(p.updatedAt).toISOString().split('T')[0],
-                    dueDate: new Date(new Date(p.updatedAt).getTime() + 7*24*60*60*1000).toISOString().split('T')[0],
-                    bankName: businessSettings.bankName || "",
-                    accountName: businessSettings.accountName || "",
-                    accountNumber: businessSettings.accountNumber || "",
-                    ifscCode: businessSettings.ifscCode || "",
-                    terms: businessSettings.terms || ""
-                });
+                openEditModal(p);
                 toast.dismiss(t.id); 
             }} className="bg-amber-500 text-white px-3 py-2.5 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 shadow-lg shadow-amber-100 hover:scale-105 transition-all"><Filter size={12}/> Edit</button>
             <button 
@@ -680,10 +684,7 @@ export default function PaymentsTodayPage() {
                               </button>
 
                               <button
-                                onClick={() => {
-                                    setEditingPayment(p);
-                                    setEditForm({ shopName: p.shopName || "", address: p.address || "", phone: p.phone || "" });
-                                }}
+                                onClick={() => openEditModal(p)}
                                 className="p-2 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-600 hover:text-white transition-all border border-amber-100"
                                 title="Edit Invoice Details"
                               >
