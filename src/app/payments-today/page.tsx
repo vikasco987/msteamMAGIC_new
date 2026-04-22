@@ -151,25 +151,31 @@ export default function PaymentsTodayPage() {
     doc.text(businessSettings.email || "Support@magicscale.in", valueX, 25);
     doc.text("https://magicscale.in/", valueX, 30);
 
-    // 2. TAX INVOICE BAR
+    // 2. TAX INVOICE BAR (Matched to Image 2 with Dividers)
     doc.setDrawColor(59, 130, 246);
     doc.setLineWidth(0.4);
     doc.rect(10, 40, pageWidth - 20, 10);
+    
+    // Vertical Dividers in Bar
+    doc.line(pageWidth / 3 + 5, 40, pageWidth / 3 + 5, 50); // Left divider
+    doc.line((pageWidth * 2) / 3 - 5, 40, (pageWidth * 2) / 3 - 5, 50); // Right divider
+
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
-    doc.setTextColor(0, 0, 0);
     doc.text(`GSTIN : ${businessSettings.gstin || "07CCJPV6752R1ZF"}`, 12, 46.5);
+    
     doc.setFontSize(16);
     doc.setTextColor(59, 130, 246);
     doc.text("TAX INVOICE", pageWidth / 2, 47, { align: 'center' });
+    
     doc.setFontSize(8);
     doc.setTextColor(0, 0, 0);
     doc.text("ORIGINAL FOR RECIPIENT", pageWidth - 12, 46.5, { align: 'right' });
 
-    // 3. DETAILS BOX
+    // 3. DETAILS BOX (Matched structure)
     doc.setDrawColor(59, 130, 246);
     doc.rect(10, 50, pageWidth - 20, 50);
-    doc.line(pageWidth / 2 - 15, 50, pageWidth / 2 - 15, 100); // Divider moved slightly right
+    doc.line(pageWidth / 2 - 15, 50, pageWidth / 2 - 15, 100); // Main Vertical Divider
     
     // Customer Detail Label
     doc.setFillColor(240, 248, 255);
