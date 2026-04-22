@@ -229,6 +229,8 @@ export default function PaymentsTodayPage() {
       );
     }
   };
+  
+  const fetchPayments = async (date: string) => {
     setLoading(true);
     try {
       const res = await fetch(`/api/payments/today?date=${date}`);

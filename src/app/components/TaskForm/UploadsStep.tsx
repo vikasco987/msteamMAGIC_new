@@ -2301,6 +2301,7 @@ export default function UploadsStep(props: UploadsStepProps) {
             )}
           </div>
         </div>
+      </section>
         </>
       )}
     </div>
