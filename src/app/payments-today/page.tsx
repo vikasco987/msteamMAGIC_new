@@ -109,32 +109,41 @@ export default function PaymentsTodayPage() {
     const cleanText = (str: string) => (str || "").replace(/[^\x20-\x7E]/g, '');
     const safeTitle = cleanText(p.taskTitle || "Service");
 
-    // 1. TOP HEADER (Better Spacing)
+    // 1. TOP HEADER (Matched to Image 1)
     if (businessSettings.logo) {
-      try { doc.addImage(businessSettings.logo, 'PNG', 10, 10, 30, 18); } catch (e) {}
+      try { doc.addImage(businessSettings.logo, 'PNG', 10, 10, 32, 18); } catch (e) {}
     }
 
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
+    doc.setFontSize(20);
     doc.setTextColor(0, 0, 0);
-    // Move business name slightly right if logo exists
-    doc.text(businessSettings.name || "Magic Scale Restaurant Consultant", 45, 15);
+    
+    // Split name into two lines like Image 1
+    doc.text("Magic Scale Restaurant", 48, 15);
+    doc.text("Consultant", 48, 23);
     
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(50, 50, 50);
-    // RESTRICT ADDRESS WIDTH to avoid overflow into right info
-    const addr = doc.splitTextToSize(businessSettings.address || "3rd floor, 599 Opp. near grand westend greens Rajokari, New Delhi - 110038", 75);
-    doc.text(addr, 45, 20);
+    doc.setFontSize(8.5);
+    doc.setTextColor(60, 60, 60);
+    const addr = doc.splitTextToSize(businessSettings.address || "3rd floor, 599 Opp. near grand westend greens Rajokari, New Delhi - 110038", 70);
+    doc.text(addr, 48, 29);
 
-    // Right side Header (Fixed Positioning)
+    // Right side Header (Fixed Spacing & Alignment)
     const rightInfoX = pageWidth - 65;
+    const colonX = pageWidth - 52;
     const valueX = pageWidth - 48;
+    
     doc.setFont("helvetica", "bold");
-    doc.text("Name :", rightInfoX, 15);
-    doc.text("Phone :", rightInfoX, 20);
-    doc.text("Email :", rightInfoX, 25);
-    doc.text("Website :", rightInfoX, 30);
+    doc.setFontSize(9);
+    doc.text("Name", rightInfoX, 15);
+    doc.text("Phone", rightInfoX, 20);
+    doc.text("Email", rightInfoX, 25);
+    doc.text("Website", rightInfoX, 30);
+    
+    doc.text(":", colonX, 15);
+    doc.text(":", colonX, 20);
+    doc.text(":", colonX, 25);
+    doc.text(":", colonX, 30);
     
     doc.setFont("helvetica", "normal");
     doc.text("Akash Verma", valueX, 15);
