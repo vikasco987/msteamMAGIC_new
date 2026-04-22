@@ -96,9 +96,21 @@ export default function PaymentsTodayPage() {
           <div className="flex gap-2">
             <button onClick={() => { window.open(p.invoiceUrl!, '_blank'); toast.dismiss(t.id); }} className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase">Open Link</button>
             <button onClick={() => { navigator.clipboard.writeText(p.invoiceUrl!); toast.success("Link copied!"); toast.dismiss(t.id); }} className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase">Copy Link</button>
+            <button 
+              onClick={() => { 
+                toast.dismiss(t.id);
+                // Trigger generation by temporarily clearing URL in local call
+                const cleanP = { ...p, invoiceUrl: null };
+                handleDownloadInvoice(cleanP as any);
+              }} 
+              className="bg-rose-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase"
+            >
+              Regenerate
+            </button>
           </div>
         </div>
-      ), { duration: 5000 });
+      ), { duration: 6000 });
+      // Don't return here, let them regenerate if they clicked the button or if we want to allow it
     }
 
     const doc = new jsPDF();
@@ -109,7 +121,7 @@ export default function PaymentsTodayPage() {
     const cleanText = (str: string) => (str || "").replace(/[^\x20-\x7E]/g, '');
     const safeTitle = cleanText(p.taskTitle || "Service");
 
-    // 1. TOP HEADER (Matched to Image 1)
+    // 1. TOP HEADER
     if (businessSettings.logo) {
       try { doc.addImage(businessSettings.logo, 'PNG', 10, 10, 32, 18); } catch (e) {}
     }
@@ -117,8 +129,6 @@ export default function PaymentsTodayPage() {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(20);
     doc.setTextColor(0, 0, 0);
-    
-    // Split name into two lines like Image 1
     doc.text("Magic Scale Restaurant", 48, 15);
     doc.text("Consultant", 48, 23);
     
@@ -128,75 +138,61 @@ export default function PaymentsTodayPage() {
     const addr = doc.splitTextToSize(businessSettings.address || "3rd floor, 599 Opp. near grand westend greens Rajokari, New Delhi - 110038", 70);
     doc.text(addr, 48, 29);
 
-    // Right side Header (Fixed Spacing & Alignment)
     const rightInfoX = pageWidth - 65;
     const colonX = pageWidth - 52;
     const valueX = pageWidth - 48;
-    
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.text("Name", rightInfoX, 15);
     doc.text("Phone", rightInfoX, 20);
     doc.text("Email", rightInfoX, 25);
     doc.text("Website", rightInfoX, 30);
-    
     doc.text(":", colonX, 15);
     doc.text(":", colonX, 20);
     doc.text(":", colonX, 25);
     doc.text(":", colonX, 30);
-    
     doc.setFont("helvetica", "normal");
     doc.text("Akash Verma", valueX, 15);
     doc.text(businessSettings.phone || "8826073117", valueX, 20);
     doc.text(businessSettings.email || "Support@magicscale.in", valueX, 25);
     doc.text("https://magicscale.in/", valueX, 30);
 
-    // 2. TAX INVOICE BAR (Matched to Image 2 with Dividers)
+    // 2. TAX INVOICE BAR
     doc.setDrawColor(59, 130, 246);
     doc.setLineWidth(0.4);
     doc.rect(10, 40, pageWidth - 20, 10);
-    
-    // Vertical Dividers in Bar
-    doc.line(pageWidth / 3 + 5, 40, pageWidth / 3 + 5, 50); // Left divider
-    doc.line((pageWidth * 2) / 3 - 5, 40, (pageWidth * 2) / 3 - 5, 50); // Right divider
-
+    doc.line(pageWidth / 3 + 5, 40, pageWidth / 3 + 5, 50);
+    doc.line((pageWidth * 2) / 3 - 5, 40, (pageWidth * 2) / 3 - 5, 50);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.text(`GSTIN : ${businessSettings.gstin || "07CCJPV6752R1ZF"}`, 12, 46.5);
-    
     doc.setFontSize(16);
     doc.setTextColor(59, 130, 246);
     doc.text("TAX INVOICE", pageWidth / 2, 47, { align: 'center' });
-    
     doc.setFontSize(8);
     doc.setTextColor(0, 0, 0);
     doc.text("ORIGINAL FOR RECIPIENT", pageWidth - 12, 46.5, { align: 'right' });
 
-    // 3. DETAILS BOX (Matched structure)
+    // 3. DETAILS BOX
     doc.setDrawColor(59, 130, 246);
     doc.rect(10, 50, pageWidth - 20, 50);
-    doc.line(pageWidth / 2 - 15, 50, pageWidth / 2 - 15, 100); // Main Vertical Divider
-    
-    // Customer Detail Label
+    doc.line(pageWidth / 2 - 15, 50, pageWidth / 2 - 15, 100);
     doc.setFillColor(240, 248, 255);
     doc.rect(10.2, 50.2, (pageWidth / 2 - 15) - 10.2, 6, 'F');
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.text("Customer Detail", (pageWidth / 2 - 15) / 2 + 5, 54.5, { align: 'center' });
 
-    // Customer Info
     doc.setFontSize(8);
     let cY = 62;
     const row = (l: string, v: string, y: number) => {
         doc.setFont("helvetica", "bold");
         doc.text(l, 12, y);
         doc.setFont("helvetica", "normal");
-        // FIX: address overflow by splitting text
         const vLines = doc.splitTextToSize(cleanText(v || "-"), 55);
         doc.text(vLines, 35, y);
         return y + (vLines.length * 4);
     };
-
     cY = row("M/S", p.shopName || p.customerName || "-", cY);
     cY = row("Address", p.address || "-", cY);
     cY = row("Phone", p.phone || "-", cY);
@@ -204,7 +200,6 @@ export default function PaymentsTodayPage() {
     cY = row("PAN", "-", cY);
     cY = row("Place of Supply", "Delhi (07)", cY);
 
-    // Invoice Info (Right side)
     let rY = 60;
     const info = (l: string, v: string, y: number) => {
         doc.setFont("helvetica", "normal");
@@ -213,12 +208,15 @@ export default function PaymentsTodayPage() {
         doc.text(v, pageWidth - 15, y, { align: 'right' });
         return y + 8;
     };
-
     rY = info("Invoice No.", p.taskId.substring(0, 8).toUpperCase(), rY);
     rY = info("Invoice Date", new Date(p.updatedAt).toLocaleDateString(), rY);
     rY = info("Due Date", new Date(new Date(p.updatedAt).getTime() + 7*24*60*60*1000).toLocaleDateString(), rY);
 
-    // 4. TABLE (Reference matched layout)
+    // 4. TABLE
+    const taxable = p.received;
+    const tax = taxable * 0.18;
+    const total = taxable + tax;
+
     autoTable(doc, {
       startY: 100,
       head: [
@@ -226,62 +224,100 @@ export default function PaymentsTodayPage() {
         ['%', 'Amount']
       ],
       body: [
-        ['1', safeTitle, '', '1.00', p.received.toLocaleString(), p.received.toLocaleString(), '18.00', (p.received * 0.18).toFixed(2), (p.received * 1.18).toFixed(2)]
+        ['1', safeTitle, '9983', '1.00', taxable.toLocaleString(), taxable.toLocaleString(), '18.00', tax.toFixed(2), total.toFixed(2)]
+      ],
+      foot: [
+        ['', 'Total', '', '1.00', '', taxable.toLocaleString(), '', tax.toFixed(2), total.toLocaleString()]
       ],
       styles: { fontSize: 8, cellPadding: 3, lineColor: [59, 130, 246], lineWidth: 0.1, textColor: [0,0,0], font: 'helvetica' },
       headStyles: { fillColor: [240, 248, 255], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', lineWidth: 0.1, lineColor: [59, 130, 246] },
-      columnStyles: { 0: { cellWidth: 10 }, 1: { cellWidth: 50 }, 7: { fontStyle: 'bold' } },
+      footStyles: { fillColor: [240, 248, 255], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center' },
+      columnStyles: { 0: { cellWidth: 10 }, 1: { cellWidth: 50 } },
       theme: 'grid'
     });
 
     let fY = (doc as any).lastAutoTable.finalY;
 
-    // 5. FOOTER
+    // 5. SUMMARY & FOOTER
     doc.setDrawColor(59, 130, 246);
-    doc.rect(10, fY, pageWidth - 20, 65);
-    doc.line(10, fY + 10, pageWidth - 10, fY + 10);
+    doc.rect(10, fY, pageWidth - 20, 32);
+    doc.line(pageWidth / 2 + 10, fY, pageWidth / 2 + 10, fY + 32); // Split words and summary
     
     doc.setFont("helvetica", "bold");
-    doc.text("Total in words", 12, fY + 7);
+    doc.text("Total in words", 12, fY + 6);
+    doc.line(10, fY + 8, pageWidth / 2 + 10, fY + 8);
+    doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
-    doc.text("Amount Received: " + p.received.toLocaleString() + " Rupees Only", 12, fY + 18);
+    doc.text(cleanText(p.received.toLocaleString() + " Rupees Only").toUpperCase(), 12, fY + 18);
 
-    doc.line(pageWidth / 2, fY + 10, pageWidth / 2, fY + 75);
+    // Summary details (Right Side)
+    const sX = pageWidth / 2 + 12;
+    const vX = pageWidth - 12;
+    const sRow = (l: string, v: string, y: number, b = false) => {
+        doc.setFont("helvetica", b ? "bold" : "normal");
+        doc.text(l, sX, y);
+        doc.text(v, vX, y, { align: 'right' });
+        doc.line(pageWidth / 2 + 10, y + 2, pageWidth - 10, y + 2);
+    };
+    sRow("Taxable Amount", taxable.toLocaleString(), fY + 6);
+    sRow("Add : IGST", tax.toFixed(2), fY + 14);
+    sRow("Total Tax", tax.toFixed(2), fY + 22);
+    sRow("Total Amount After Tax", total.toLocaleString(), fY + 30, true);
+
+    // Bank Details (New Box)
+    fY += 32;
+    doc.rect(10, fY, pageWidth - 20, 45);
+    doc.line(pageWidth / 2, fY, pageWidth / 2, fY + 45);
+
     doc.setFillColor(240, 248, 255);
-    doc.rect(10.2, fY + 25, pageWidth / 2 - 10.2, 6, 'F');
+    doc.rect(10.2, fY + 0.2, pageWidth / 2 - 10.2, 6, 'F');
     doc.setFont("helvetica", "bold");
-    doc.text("Bank Details", pageWidth / 4 + 5, fY + 29, { align: 'center' });
+    doc.text("Bank Details", pageWidth / 4 + 5, fY + 4.5, { align: 'center' });
     
     doc.setFont("helvetica", "normal");
-    doc.text(`Bank Name: ${businessSettings.bankName || "Yes Bank"}`, 12, fY + 38);
-    doc.text(`A/C Name: ${businessSettings.accountName || "Magic Scale"}`, 12, fY + 44);
-    doc.text(`A/C Number: ${businessSettings.accountNumber || "102561900002640"}`, 12, fY + 50);
-    doc.text(`IFSC: ${businessSettings.ifscCode || "YESB0001025"}`, 12, fY + 56);
+    doc.text(`Bank Name: ${businessSettings.bankName || "Yes Bank"}`, 12, fY + 15);
+    doc.text(`A/C Name: ${businessSettings.accountName || "Magic Scale"}`, 12, fY + 21);
+    doc.text(`A/C Number: ${businessSettings.accountNumber || "102561900002640"}`, 12, fY + 27);
+    doc.text(`IFSC: ${businessSettings.ifscCode || "YESB0001025"}`, 12, fY + 33);
 
-    // SIGNATURE AREA (Right Side)
     doc.setFont("helvetica", "bold");
-    doc.text("For " + (businessSettings.name || "Magic Scale"), pageWidth - 15, fY + 18, { align: 'right' });
-    
-    // Add Digital Signature if exists
+    doc.text("For " + (businessSettings.name || "Magic Scale"), pageWidth - 15, fY + 10, { align: 'right' });
     if (businessSettings.signatureUrl) {
-      try {
-        doc.addImage(businessSettings.signatureUrl, 'PNG', pageWidth - 55, fY + 22, 40, 20);
-      } catch (e) {
-        console.error("Signature image error", e);
-      }
+      try { doc.addImage(businessSettings.signatureUrl, 'PNG', pageWidth - 55, fY + 12, 40, 20); } catch (e) {}
     }
-
-    doc.line(pageWidth / 2 + 10, fY + 55, pageWidth - 15, fY + 55);
+    doc.line(pageWidth / 2 + 10, fY + 38, pageWidth - 15, fY + 38);
     doc.setFontSize(7);
-    doc.text("Authorised Signatory", (pageWidth / 2 + pageWidth) / 2 + 5, fY + 60, { align: 'center' });
+    doc.text("Authorised Signatory", (pageWidth / 2 + pageWidth) / 2 + 5, fY + 42, { align: 'center' });
 
     // Terms
+    fY += 45;
     doc.setFont("helvetica", "bold");
-    doc.text("Terms and Conditions", 12, fY + 63);
+    doc.setFontSize(8);
+    doc.text("Terms and Conditions", 12, fY + 6);
     doc.setFontSize(6);
     doc.setFont("helvetica", "normal");
-    const t = doc.splitTextToSize(businessSettings.terms || "1. Payment is non-refundable.\n2. Balance on completion.", 80);
-    doc.text(t, 12, fY + 67);
+    const t = doc.splitTextToSize(businessSettings.terms || "1. Payment is non-refundable.\n2. Balance on completion.", 180);
+    doc.text(t, 12, fY + 10);
+
+    const fileName = `Invoice_${p.shopName || p.taskId}.pdf`;
+    doc.save(fileName);
+
+    // UPLOAD (Always upload if regenerating or first time)
+    const pdfBlob = doc.output('blob');
+    const formData = new FormData();
+    formData.append('file', pdfBlob, fileName);
+    toast.promise(
+      (async () => {
+        const res = await fetch('/api/upload', { method: 'POST', body: formData });
+        const { url } = await res.json();
+        if (!url) throw new Error("Fail");
+        await fetch('/api/payments/update-invoice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paymentId: p.paymentId, invoiceUrl: url }) });
+        setPayments(prev => prev.map(item => item.paymentId === p.paymentId ? { ...item, invoiceUrl: url } : item));
+        return url;
+      })(),
+      { loading: 'Sharing...', success: 'Invoice Updated!', error: 'Sync fail.' }
+    );
+  };
 
     const fileName = `Invoice_${p.shopName || p.taskId}.pdf`;
     doc.save(fileName);
