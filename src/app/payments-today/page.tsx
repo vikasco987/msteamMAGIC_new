@@ -287,6 +287,11 @@ export default function PaymentsTodayPage() {
     cY = row("PAN", "-", cY);
     cY = row("Supply", customerState, cY);
 
+    // Professional Numerical Invoice ID (Date + Sequential-like numeric hash)
+    const datePart = new Date(p.updatedAt).toISOString().split('T')[0].replace(/-/g, '');
+    const numericHash = Math.abs(p.paymentId.split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0)).toString().substring(0, 4);
+    const professionalInvoiceNo = `MS/${datePart}/${numericHash}`;
+
     let rY = detailsY + 10;
     const info = (l: string, v: string, y: number) => {
         doc.setFont("helvetica", "normal");
@@ -295,7 +300,7 @@ export default function PaymentsTodayPage() {
         doc.text(v, pageWidth - 15, y, { align: 'right' });
         return y + 8;
     };
-    rY = info("Invoice No.", p.taskId.substring(0, 8).toUpperCase(), rY);
+    rY = info("Invoice No.", professionalInvoiceNo, rY);
     rY = info("Invoice Date", finalDate, rY);
     rY = info("Due Date", finalDueDate, rY);
 
@@ -366,6 +371,10 @@ export default function PaymentsTodayPage() {
         sRow("", "", fY + 20);
     }
     sRow("Total Tax", totalTax.toFixed(2), fY + 27);
+    
+    // Highlighted Total Amount Row
+    doc.setFillColor(240, 248, 255);
+    doc.rect(pageWidth / 2 + 15.2, fY + 28.5, (pageWidth - (pageWidth / 2 + 15)) - 10.4, 7, 'F');
     doc.setFontSize(9);
     sRow("Total Amount After Tax", `Rs. ${totalAmount.toLocaleString()}`, fY + 34, true);
 
