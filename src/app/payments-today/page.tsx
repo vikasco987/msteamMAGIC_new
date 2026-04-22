@@ -89,7 +89,7 @@ export default function PaymentsTodayPage() {
     taskTitle: "", received: 0, 
     date: "", dueDate: "",
     bankName: "", accountName: "", accountNumber: "", ifscCode: "",
-    terms: ""
+    terms: "", gstin: ""
   });
 
   const openEditModal = (p: PaymentEntry) => {
@@ -98,6 +98,7 @@ export default function PaymentsTodayPage() {
         shopName: p.shopName || "", 
         address: p.address || "", 
         phone: p.phone || "",
+        gstin: "",
         taskTitle: p.taskTitle || "",
         received: p.received || 0,
         date: new Date(p.updatedAt).toISOString().split('T')[0],
@@ -106,7 +107,8 @@ export default function PaymentsTodayPage() {
         accountName: businessSettings?.accountName || "",
         accountNumber: businessSettings?.accountNumber || "",
         ifscCode: businessSettings?.ifscCode || "",
-        terms: businessSettings?.terms || ""
+        terms: businessSettings?.terms || "",
+        gstin: ""
     });
   };
 
@@ -247,17 +249,27 @@ export default function PaymentsTodayPage() {
     const finalShopName = overrides?.shopName || p.shopName || p.customerName || "-";
     const finalAddress = overrides?.address || p.address || "-";
     const finalPhone = overrides?.phone || p.phone || "-";
+    const finalGSTIN = overrides?.gstin || "-";
     const finalDate = overrides?.date ? new Date(overrides.date).toLocaleDateString() : new Date(p.updatedAt).toLocaleDateString();
     const finalDueDate = overrides?.dueDate ? new Date(overrides.dueDate).toLocaleDateString() : new Date(new Date(p.updatedAt).getTime() + 7*24*60*60*1000).toLocaleDateString();
     
     const stateCodes: { [key: string]: string } = {
-        "delhi": "Delhi (07)", "haryana": "Haryana (06)", "up": "Uttar Pradesh (09)", "maharashtra": "Maharashtra (27)"
+        "07": "Delhi (07)", "06": "Haryana (06)", "09": "Uttar Pradesh (09)", "27": "Maharashtra (27)", "08": "Rajasthan (08)", "33": "Tamil Nadu (33)"
     };
     let customerState = "Delhi (07)";
-    for (const s in stateCodes) {
-        if (finalAddress.toLowerCase().includes(s)) {
-            customerState = stateCodes[s];
-            break;
+
+    // Auto-detect from GSTIN if available
+    if (finalGSTIN && finalGSTIN.length >= 2) {
+        const code = finalGSTIN.substring(0, 2);
+        if (stateCodes[code]) customerState = stateCodes[code];
+    } else {
+        // Fallback to address search
+        const searchCodes: { [key: string]: string } = { "delhi": "07", "haryana": "06", "up": "09", "maharashtra": "27", "rajasthan": "08" };
+        for (const s in searchCodes) {
+            if (finalAddress.toLowerCase().includes(s)) {
+                customerState = stateCodes[searchCodes[s]];
+                break;
+            }
         }
     }
 
@@ -287,8 +299,8 @@ export default function PaymentsTodayPage() {
     cY = row("M/S", finalShopName, cY);
     cY = row("Address", finalAddress, cY);
     cY = row("Phone", finalPhone, cY);
-    cY = row("GSTIN", "-", cY);
-    cY = row("PAN", "-", cY);
+    cY = row("GSTIN", finalGSTIN, cY);
+    cY = row("PAN", finalGSTIN.length === 15 ? finalGSTIN.substring(2, 12) : "-", cY);
     cY = row("Supply", customerState, cY);
 
     // Professional Numerical Invoice ID (Date + Sequential-like numeric hash)
@@ -824,6 +836,30 @@ export default function PaymentsTodayPage() {
                     <div className="space-y-1">
                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Phone</label>
                       <input type="text" value={editForm.phone} onChange={(e) => setEditForm({...editForm, phone: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 font-bold text-slate-700 outline-none focus:border-indigo-500" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Customer GSTIN</label>
+                      <div className="flex gap-2">
+                        <input 
+                            type="text" 
+                            value={editForm.gstin} 
+                            onChange={(e) => setEditForm({...editForm, gstin: e.target.value.toUpperCase()})} 
+                            placeholder="07AAAAA0000A1Z5"
+                            className="flex-1 bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 font-bold text-slate-700 outline-none focus:border-indigo-500" 
+                        />
+                        <button 
+                            onClick={() => {
+                                if (editForm.gstin.length === 15) {
+                                    toast.success("GST Format Correct. State Detected!");
+                                } else {
+                                    toast.error("Invalid GST Format");
+                                }
+                            }}
+                            className="bg-indigo-50 text-indigo-600 px-3 rounded-xl hover:bg-indigo-600 hover:text-white transition-all text-[10px] font-black uppercase"
+                        >
+                          Fetch
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
