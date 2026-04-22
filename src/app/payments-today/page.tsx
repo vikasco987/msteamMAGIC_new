@@ -14,9 +14,7 @@ import {
   MapPin,
   Copy,
   Download,
-  FileText,
-  FileSpreadsheet,
-  Receipt
+  FileText
 } from "lucide-react";
 import toast from "react-hot-toast";
 import jsPDF from "jspdf";
@@ -463,81 +461,6 @@ export default function PaymentsTodayPage() {
       { loading: 'Uploading Invoice...', success: 'Invoice Generated & Linked!', error: 'Upload Failed' }
     ).finally(() => setGeneratingInvoiceId(null));
   };
-
-  const downloadSalesReport = () => {
-    if (payments.length === 0) {
-      toast.error("No data to export!");
-      return;
-    }
-
-    const doc = new jsPDF({ orientation: 'landscape' });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    
-    // Header
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text(businessSettings?.name || "Magic Scale", 15, 15);
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
-    doc.text(businessSettings?.address || "Rajokari, New Delhi", 15, 20);
-
-    doc.setFontSize(16);
-    doc.setFont("helvetica", "bold");
-    doc.text("Sales Register", pageWidth / 2, 35, { align: 'center' });
-    doc.setFontSize(10);
-    doc.text(`${selectedDate} Report`, pageWidth / 2, 42, { align: 'center' });
-
-    const tableHead = [
-      ["Vch Type", "Invoice No", "Date", "Company Name", "Contact", "Phone", "GST NO", "State", "Taxable Value", "Grand Total"]
-    ];
-
-    const tableBody = payments.map(p => {
-        const taxable = p.received / 1.18;
-        const datePart = new Date(p.updatedAt).toISOString().split('T')[0].replace(/-/g, '');
-        const numericHash = Math.abs(p.paymentId.split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0)).toString().substring(0, 4);
-        const invNo = `MS/${datePart}/${numericHash}`;
-        
-        let state = "Delhi";
-        if (p.address?.toLowerCase().includes("haryana")) state = "Haryana";
-        if (p.address?.toLowerCase().includes("up") || p.address?.toLowerCase().includes("uttar pradesh")) state = "Uttar Pradesh";
-        if (p.address?.toLowerCase().includes("maharashtra")) state = "Maharashtra";
-
-        return [
-            "Sales",
-            invNo,
-            new Date(p.updatedAt).toLocaleDateString(),
-            p.shopName || "-",
-            p.customerName || p.assignerName || "-",
-            p.phone || "-",
-            p.gstin || "-",
-            state,
-            taxable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-            p.received.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-        ];
-    });
-
-    autoTable(doc, {
-      startY: 50,
-      head: tableHead,
-      body: tableBody,
-      theme: 'grid',
-      headStyles: { fillColor: [51, 51, 51], textColor: [255, 255, 255], fontSize: 8, fontStyle: 'bold' },
-      bodyStyles: { fontSize: 7, textColor: [40, 40, 40] },
-      columnStyles: {
-        8: { halign: 'right' },
-        9: { halign: 'right' }
-      },
-      margin: { left: 10, right: 10 }
-    });
-
-    const finalY = (doc as any).lastAutoTable.cursor.y + 10;
-    const totalGrand = payments.reduce((sum, p) => sum + p.received, 0);
-    doc.setFont("helvetica", "bold");
-    doc.text(`Total Sales: Rs. ${totalGrand.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, pageWidth - 15, finalY, { align: 'right' });
-
-    doc.save(`Sales_Register_${selectedDate}.pdf`);
-    toast.success("Sales Register Generated!");
-  };
   
   const fetchPayments = async (date: string) => {
     setLoading(true);
@@ -605,13 +528,6 @@ export default function PaymentsTodayPage() {
               onChange={(e) => setSelectedDate(e.target.value)}
               className="bg-transparent border-none focus:ring-0 text-gray-700 font-medium cursor-pointer"
             />
-            <button
-              onClick={downloadSalesReport}
-              className="bg-slate-900 hover:bg-black text-white px-5 py-2 rounded-lg transition-all flex items-center gap-2 shadow-md shadow-slate-200 font-bold text-sm"
-            >
-              <FileSpreadsheet size={16} />
-              Sales Register
-            </button>
             <button
               onClick={() => fetchPayments(selectedDate)}
               className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg transition-all flex items-center gap-2 shadow-md shadow-blue-100 font-bold text-sm"

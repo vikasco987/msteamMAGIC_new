@@ -7,14 +7,24 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const dateParam = searchParams.get("date");
+    const fromParam = searchParams.get("fromDate");
+    const toParam = searchParams.get("toDate");
 
-    const baseDate = dateParam ? new Date(dateParam) : new Date();
+    let startOfDay: Date;
+    let endOfDay: Date;
 
-    const startOfDay = new Date(baseDate);
-    startOfDay.setUTCHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(baseDate);
-    endOfDay.setUTCHours(23, 59, 59, 999);
+    if (fromParam && toParam) {
+      startOfDay = new Date(fromParam);
+      startOfDay.setUTCHours(0, 0, 0, 0);
+      endOfDay = new Date(toParam);
+      endOfDay.setUTCHours(23, 59, 59, 999);
+    } else {
+      const baseDate = dateParam ? new Date(dateParam) : new Date();
+      startOfDay = new Date(baseDate);
+      startOfDay.setUTCHours(0, 0, 0, 0);
+      endOfDay = new Date(baseDate);
+      endOfDay.setUTCHours(23, 59, 59, 999);
+    }
 
     // 🚀 NEW STEP 1: Fetch all payments for this date from the Payment collection
     const payments = await prisma.payment.findMany({
