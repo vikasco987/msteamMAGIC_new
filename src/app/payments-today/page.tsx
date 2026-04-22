@@ -303,8 +303,9 @@ export default function PaymentsTodayPage() {
         : [['', 'Total', '', '1.00', '', taxable.toLocaleString(), '', igst.toFixed(2), totalAmount.toLocaleString()]],
       styles: { fontSize: 7, cellPadding: 2, lineColor: [59, 130, 246], lineWidth: 0.1, textColor: [0,0,0], font: 'helvetica' },
       headStyles: { fillColor: [240, 248, 255], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', lineWidth: 0.1, lineColor: [59, 130, 246] },
+      bodyStyles: { minCellHeight: 85 }, // Matches the height in reference image
       footStyles: { fillColor: [240, 248, 255], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center' },
-      columnStyles: { 0: { cellWidth: 8 }, 1: { cellWidth: 45, fontStyle: 'bold' } }, // Bold titles
+      columnStyles: { 0: { cellWidth: 8 }, 1: { cellWidth: 45, fontStyle: 'bold' } },
       theme: 'grid'
     });
 
