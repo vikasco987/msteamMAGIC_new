@@ -173,65 +173,6 @@ export default function PaymentsTodayPage() {
     doc.setTextColor(0, 0, 0);
     doc.text("ORIGINAL FOR RECIPIENT", pageWidth - 12, 46.5, { align: 'right' });
 
-    // 3. DETAILS BOX
-    doc.setDrawColor(59, 130, 246);
-    doc.rect(10, 50, pageWidth - 20, 50);
-    doc.line(pageWidth / 2 - 15, 50, pageWidth / 2 - 15, 100);
-    doc.setFillColor(240, 248, 255);
-    doc.rect(10.2, 50.2, (pageWidth / 2 - 15) - 10.2, 6, 'F');
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.text("Customer Detail", (pageWidth / 2 - 15) / 2 + 5, 54.5, { align: 'center' });
-
-    doc.setFontSize(8);
-    let cY = 62;
-    const row = (l: string, v: string, y: number) => {
-        doc.setFont("helvetica", "bold");
-        doc.text(l, 12, y);
-        doc.setFont("helvetica", "normal");
-        const vLines = doc.splitTextToSize(cleanText(v || "-"), 55);
-        doc.text(vLines, 35, y);
-        return y + (vLines.length * 4);
-    };
-    cY = row("M/S", p.shopName || p.customerName || "-", cY);
-    cY = row("Address", p.address || "-", cY);
-    cY = row("Phone", p.phone || "-", cY);
-    cY = row("GSTIN", "-", cY);
-    cY = row("PAN", "-", cY);
-    cY = row("Place of Supply", "Delhi (07)", cY);
-
-    let rY = 60;
-    const info = (l: string, v: string, y: number) => {
-        doc.setFont("helvetica", "normal");
-        doc.text(l, pageWidth / 2 - 10, y);
-        doc.setFont("helvetica", "bold");
-        doc.text(v, pageWidth - 15, y, { align: 'right' });
-        return y + 8;
-    };
-    rY = info("Invoice No.", p.taskId.substring(0, 8).toUpperCase(), rY);
-    rY = info("Invoice Date", new Date(p.updatedAt).toLocaleDateString(), rY);
-    rY = info("Due Date", new Date(new Date(p.updatedAt).getTime() + 7*24*60*60*1000).toLocaleDateString(), rY);
-
-    // State Code Mapping
-    const stateCodes: { [key: string]: string } = {
-        "delhi": "Delhi (07)",
-        "haryana": "Haryana (06)",
-        "uttar pradesh": "Uttar Pradesh (09)",
-        "up": "Uttar Pradesh (09)",
-        "maharashtra": "Maharashtra (27)",
-        "karnataka": "Karnataka (29)",
-        "west bengal": "West Bengal (19)",
-        "punjab": "Punjab (03)",
-        "rajasthan": "Rajasthan (08)"
-    };
-    
-    let customerState = "Delhi (07)";
-    for (const s in stateCodes) {
-        if (custAddress.includes(s)) {
-            customerState = stateCodes[s];
-            break;
-        }
-    }
 
     // 3. DETAILS BOX
     doc.setDrawColor(59, 130, 246);
@@ -406,28 +347,6 @@ export default function PaymentsTodayPage() {
       })(),
       { loading: 'Sharing...', success: 'Invoice Updated!', error: 'Sync fail.' }
     );
-  };
-
-    const fileName = `Invoice_${p.shopName || p.taskId}.pdf`;
-    doc.save(fileName);
-
-    // UPLOAD
-    if (!p.invoiceUrl) {
-      const pdfBlob = doc.output('blob');
-      const formData = new FormData();
-      formData.append('file', pdfBlob, fileName);
-      toast.promise(
-        (async () => {
-          const res = await fetch('/api/upload', { method: 'POST', body: formData });
-          const { url } = await res.json();
-          if (!url) throw new Error("Fail");
-          await fetch('/api/payments/update-invoice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paymentId: p.paymentId, invoiceUrl: url }) });
-          setPayments(prev => prev.map(item => item.paymentId === p.paymentId ? { ...item, invoiceUrl: url } : item));
-          return url;
-        })(),
-        { loading: 'Uploading...', success: 'Shared!', error: 'Upload fail.' }
-      );
-    }
   };
   
   const fetchPayments = async (date: string) => {
