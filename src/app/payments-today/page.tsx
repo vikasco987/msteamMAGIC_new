@@ -88,13 +88,8 @@ export default function PaymentsTodayPage() {
       return;
     }
 
-    // If already uploaded, we can just share it or download it again
+    // If already uploaded, provide share options
     if (p.invoiceUrl) {
-      const copyLink = () => {
-        navigator.clipboard.writeText(p.invoiceUrl!);
-        toast.success("Invoice link copied to clipboard!");
-      };
-      
       toast((t) => (
         <div className="flex flex-col gap-2">
           <p className="text-xs font-bold uppercase tracking-widest text-slate-600">Invoice already uploaded!</p>
@@ -106,7 +101,7 @@ export default function PaymentsTodayPage() {
               Open Link
             </button>
             <button 
-              onClick={() => { copyLink(); toast.dismiss(t.id); }}
+              onClick={() => { navigator.clipboard.writeText(p.invoiceUrl!); toast.success("Link copied!"); toast.dismiss(t.id); }}
               className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase"
             >
               Copy Link
@@ -118,63 +113,147 @@ export default function PaymentsTodayPage() {
 
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
-    const blueColor = [59, 130, 246]; // A professional blue
+    const blueColor = [59, 130, 246];
     
-    // ... (rest of the PDF generation logic is same, but we will use the blob at the end) ...
-    // [I will use the same code but keep it concise for the diff]
-    
-    // 1. TOP HEADER
+    // 1. TOP HEADER (Logo and Business Contact)
     if (businessSettings.logo) {
       try { doc.addImage(businessSettings.logo, 'PNG', 10, 10, 35, 20); } catch (e) {}
     }
+
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
+    doc.setTextColor(0, 0, 0);
     doc.text(businessSettings.name || "Magic Scale Restaurant Consultant", 50, 15);
+    
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    const addressLines = doc.splitTextToSize(businessSettings.address || "", 80);
+    doc.setTextColor(50, 50, 50);
+    const addressLines = doc.splitTextToSize(businessSettings.address || "3rd floor, 599 Opp. near grand westend greens Rajokari, New Delhi - 110038", 80);
     doc.text(addressLines, 50, 22);
 
-    // Right Header
-    doc.text(`Name : Akash Verma`, pageWidth - 60, 15);
-    doc.text(`Phone : ${businessSettings.phone || ""}`, pageWidth - 60, 20);
-    doc.text(`Email : ${businessSettings.email || ""}`, pageWidth - 60, 25);
-    doc.text(`Website : ${businessSettings.website || ""}`, pageWidth - 60, 30);
+    // Right side Header (Contact Info)
+    doc.setFont("helvetica", "bold");
+    doc.text("Name :", pageWidth - 60, 15);
+    doc.text("Phone :", pageWidth - 60, 20);
+    doc.text("Email :", pageWidth - 60, 25);
+    doc.text("Website :", pageWidth - 60, 30);
+    
+    doc.setFont("helvetica", "normal");
+    doc.text("Akash Verma", pageWidth - 45, 15);
+    doc.text(businessSettings.phone || "8826073117", pageWidth - 45, 20);
+    doc.text(businessSettings.email || "Support@magicscale.in", pageWidth - 45, 25);
+    doc.text(businessSettings.website || "https://magicscale.in/", pageWidth - 45, 30);
 
-    // TAX BAR
+    // 2. TAX INVOICE BAR
     doc.setDrawColor(59, 130, 246);
+    doc.setLineWidth(0.5);
     doc.rect(10, 40, pageWidth - 20, 10);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(`GSTIN : ${businessSettings.gstin || "07CCJPV6752R1ZF"}`, 12, 46.5);
     doc.setFontSize(14);
     doc.setTextColor(59, 130, 246);
     doc.text("TAX INVOICE", pageWidth / 2, 47, { align: 'center' });
+    doc.setFontSize(8);
     doc.setTextColor(0, 0, 0);
+    doc.text("ORIGINAL FOR RECIPIENT", pageWidth - 12, 46.5, { align: 'right' });
 
-    // DETAILS
-    doc.rect(10, 50, pageWidth - 20, 45);
-    doc.line(pageWidth / 2 - 20, 50, pageWidth / 2 - 20, 95);
-    doc.text("M/S: " + (p.shopName || p.customerName || "-"), 12, 60);
-    doc.text("Address: " + (p.address || "-"), 12, 65, { maxWidth: 60 });
-    doc.text("Invoice No: " + p.taskId.substring(0, 8), pageWidth / 2 - 15, 60);
-    doc.text("Date: " + new Date().toLocaleDateString(), pageWidth / 2 - 15, 65);
+    // 3. CUSTOMER & INVOICE DETAILS BOX
+    doc.setDrawColor(59, 130, 246);
+    doc.rect(10, 50, pageWidth - 20, 45); // Main box
+    doc.line(pageWidth / 2 - 20, 50, pageWidth / 2 - 20, 95); // Middle divider
+    
+    // Header for Customer Detail
+    doc.setFillColor(240, 248, 255);
+    doc.rect(10.2, 50.2, (pageWidth / 2 - 20) - 10.2, 5, 'F');
+    doc.setFont("helvetica", "bold");
+    doc.text("Customer Detail", (pageWidth / 2 - 20) / 2 + 5, 54, { align: 'center' });
 
-    // TABLE
+    // Customer Content
+    doc.setFontSize(8);
+    let currY = 60;
+    const drawRow = (label: string, value: string, x: number, y: number) => {
+        doc.setFont("helvetica", "bold");
+        doc.text(label, x, y);
+        doc.setFont("helvetica", "normal");
+        const valLines = doc.splitTextToSize(value || "-", 60);
+        doc.text(valLines, x + 25, y);
+        return y + (valLines.length * 4);
+    };
+
+    currY = drawRow("M/S", p.shopName || p.customerName || "-", 12, currY);
+    currY = drawRow("Address", p.address || "-", 12, currY);
+    currY = drawRow("Phone", p.phone || "-", 12, currY);
+    currY = drawRow("Place of Supply", "Delhi (07)", 12, currY);
+
+    // Invoice Info (Right side of box)
+    let rightY = 58;
+    const drawInfo = (label: string, value: string, y: number) => {
+        doc.setFont("helvetica", "normal");
+        doc.text(label, pageWidth / 2 - 15, y);
+        doc.setFont("helvetica", "bold");
+        doc.text(value, pageWidth - 15, y, { align: 'right' });
+        return y + 7;
+    };
+
+    rightY = drawInfo("Invoice No.", p.taskId.substring(0, 8).toUpperCase(), rightY);
+    rightY = drawInfo("Invoice Date", new Date(p.updatedAt).toLocaleDateString(), rightY);
+    rightY = drawInfo("Due Date", new Date(new Date(p.updatedAt).getTime() + 7*24*60*60*1000).toLocaleDateString(), rightY);
+
+    // 4. PRODUCT TABLE
     autoTable(doc, {
       startY: 95,
-      head: [['Sr.', 'Service Description', 'Qty', 'Rate', 'Taxable', 'IGST %', 'Total']],
-      body: [['1', p.taskTitle, '1.00', p.received.toString(), p.received.toString(), '18.00', (p.received * 1.18).toFixed(2)]],
-      headStyles: { fillColor: [240, 248, 255], textColor: [0, 0, 0] },
+      head: [['Sr.', 'Service Description', 'HSN/SAC', 'Qty', 'Rate', 'Taxable', 'IGST%', 'IGST Amt', 'Total']],
+      body: [
+        ['1', p.taskTitle, '', '1.00', p.received.toLocaleString(), p.received.toLocaleString(), '18.00', (p.received * 0.18).toFixed(2), (p.received * 1.18).toFixed(2)]
+      ],
+      styles: { fontSize: 8, cellPadding: 2, lineColor: [59, 130, 246], lineWidth: 0.1 },
+      headStyles: { fillColor: [240, 248, 255], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.1, lineColor: [59, 130, 246] },
+      columnStyles: { 0: { cellWidth: 10 }, 1: { cellWidth: 60 } },
       theme: 'grid'
     });
 
-    let finalY = (doc as any).lastAutoTable.finalY;
+    let fY = (doc as any).lastAutoTable.finalY;
 
-    // FOOTER
-    doc.rect(10, finalY, pageWidth - 20, 40);
-    doc.text("BANK DETAILS:", 12, finalY + 10);
-    doc.text(`A/C: ${businessSettings.accountNumber || "-"}`, 12, finalY + 15);
-    doc.text(`IFSC: ${businessSettings.ifscCode || "-"}`, 12, finalY + 20);
+    // 5. FOOTER BOXES
+    doc.setDrawColor(59, 130, 246);
+    doc.rect(10, fY, pageWidth - 20, 60);
+    doc.line(10, fY + 10, pageWidth - 10, fY + 10); // Horizontal
+    
+    // Total in words
+    doc.setFont("helvetica", "bold");
+    doc.text("Total in words", 12, fY + 7);
+    doc.setFont("helvetica", "normal");
+    doc.text("Amount Received: " + p.received.toLocaleString() + " Rupees Only", 12, fY + 17);
 
-    // DOWNLOAD
+    // Bank Details Section
+    doc.line(pageWidth / 2, fY + 10, pageWidth / 2, fY + 60); // Vertical
+    doc.setFillColor(240, 248, 255);
+    doc.rect(10.2, fY + 22, pageWidth / 2 - 10.2, 5, 'F');
+    doc.setFont("helvetica", "bold");
+    doc.text("Bank Details", pageWidth / 4 + 5, fY + 26, { align: 'center' });
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Bank Name: ${businessSettings.bankName || "Yes Bank"}`, 12, fY + 34);
+    doc.text(`A/C Name: ${businessSettings.accountName || "-"}`, 12, fY + 40);
+    doc.text(`A/C Number: ${businessSettings.accountNumber || "-"}`, 12, fY + 46);
+    doc.text(`IFSC: ${businessSettings.ifscCode || "-"}`, 12, fY + 52);
+
+    // Signatory Area (Right)
+    doc.setFont("helvetica", "bold");
+    doc.text("For " + (businessSettings.name || "Magic Scale"), pageWidth - 15, fY + 17, { align: 'right' });
+    doc.line(pageWidth / 2 + 10, fY + 50, pageWidth - 15, fY + 50);
+    doc.setFontSize(7);
+    doc.text("Authorised Signatory", (pageWidth / 2 + pageWidth) / 2, fY + 55, { align: 'center' });
+
+    // Terms
+    doc.setFont("helvetica", "bold");
+    doc.text("Terms & Conditions", 12, fY + 65);
+    doc.setFontSize(6);
+    doc.setFont("helvetica", "normal");
+    const terms = doc.splitTextToSize(businessSettings.terms || "1. Payment is non-refundable.\n2. 50% advance required.", 80);
+    doc.text(terms, 12, fY + 69);
+
     const fileName = `Invoice_${p.shopName || p.taskId}.pdf`;
     doc.save(fileName);
 
@@ -186,45 +265,26 @@ export default function PaymentsTodayPage() {
 
       toast.promise(
         (async () => {
-          // 1. Upload to Cloudinary
-          const uploadRes = await fetch('/api/upload', {
-            method: 'POST',
-            body: formData,
-          });
+          const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData });
           const { url } = await uploadRes.json();
-          
           if (!url) throw new Error("Upload failed");
-
-          // 2. Save URL to Database
           await fetch('/api/payments/update-invoice', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ paymentId: p.paymentId, invoiceUrl: url }),
           });
-
-          // 3. Update local state
-          setPayments(prev => prev.map(item => 
-            item.paymentId === p.paymentId ? { ...item, invoiceUrl: url } : item
-          ));
-
+          setPayments(prev => prev.map(item => item.paymentId === p.paymentId ? { ...item, invoiceUrl: url } : item));
           return url;
         })(),
         {
-          loading: 'Uploading invoice to Cloudinary...',
-          success: (url) => {
-             return (
-               <div className="flex flex-col gap-1">
-                 <p>Invoice shared successfully!</p>
-                 <button 
-                   onClick={() => { navigator.clipboard.writeText(url); toast.success("Link copied!"); }}
-                   className="text-[10px] font-bold text-blue-600 underline"
-                 >
-                   Copy Share Link
-                 </button>
-               </div>
-             );
-          },
-          error: 'Failed to upload/share invoice.',
+          loading: 'Uploading to Cloudinary...',
+          success: (url) => (
+            <div className="flex flex-col gap-1">
+              <p>Invoice shared!</p>
+              <button onClick={() => { navigator.clipboard.writeText(url); toast.success("Copied!"); }} className="text-[10px] font-bold text-blue-600 underline">Copy Link</button>
+            </div>
+          ),
+          error: 'Upload failed.',
         }
       );
     }
