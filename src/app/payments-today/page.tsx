@@ -82,26 +82,31 @@ export default function PaymentsTodayPage() {
     }
   };
 
-  const handleDownloadInvoice = async (p: PaymentEntry & { invoiceUrl?: string | null }) => {
+  const [editingPayment, setEditingPayment] = useState<PaymentEntry | null>(null);
+  const [editForm, setEditForm] = useState({ shopName: "", address: "", phone: "" });
+
+  const handleDownloadInvoice = async (p: PaymentEntry & { invoiceUrl?: string | null }, overrides?: any) => {
     if (!businessSettings) {
       toast.error("Please setup Business Settings first!");
       return;
     }
 
     // Share link if already uploaded
-    if (p.invoiceUrl) {
+    if (p.invoiceUrl && !overrides) {
       toast((t) => (
         <div className="flex flex-col gap-2">
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-600">Invoice already uploaded!</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-600">Invoice Options</p>
           <div className="flex gap-2">
             <button onClick={() => { window.open(p.invoiceUrl!, '_blank'); toast.dismiss(t.id); }} className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase">Open Link</button>
-            <button onClick={() => { navigator.clipboard.writeText(p.invoiceUrl!); toast.success("Link copied!"); toast.dismiss(t.id); }} className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase">Copy Link</button>
+            <button onClick={() => { 
+                setEditingPayment(p); 
+                setEditForm({ shopName: p.shopName || "", address: p.address || "", phone: p.phone || "" });
+                toast.dismiss(t.id); 
+            }} className="bg-amber-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase">Edit Info</button>
             <button 
               onClick={() => { 
                 toast.dismiss(t.id);
-                // Trigger generation by temporarily clearing URL in local call
-                const cleanP = { ...p, invoiceUrl: null };
-                handleDownloadInvoice(cleanP as any);
+                handleDownloadInvoice({ ...p, invoiceUrl: null } as any);
               }} 
               className="bg-rose-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase"
             >
@@ -110,14 +115,12 @@ export default function PaymentsTodayPage() {
           </div>
         </div>
       ), { duration: 6000 });
-      // Don't return here, let them regenerate if they clicked the button or if we want to allow it
+      return;
     }
 
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const blueColor = [59, 130, 246];
-    
-    // Clean text helper
     const cleanText = (str: string) => (str || "").replace(/[^\x20-\x7E]/g, '');
     const safeTitle = cleanText(p.taskTitle || "Service");
 
@@ -125,13 +128,11 @@ export default function PaymentsTodayPage() {
     if (businessSettings.logo) {
       try { doc.addImage(businessSettings.logo, 'PNG', 10, 10, 32, 18); } catch (e) {}
     }
-
     doc.setFont("helvetica", "bold");
     doc.setFontSize(20);
     doc.setTextColor(0, 0, 0);
     doc.text("Magic Scale Restaurant", 48, 15);
     doc.text("Consultant", 48, 23);
-    
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
     doc.setTextColor(60, 60, 60);
@@ -173,6 +174,21 @@ export default function PaymentsTodayPage() {
     doc.setTextColor(0, 0, 0);
     doc.text("ORIGINAL FOR RECIPIENT", pageWidth - 12, 46.5, { align: 'right' });
 
+    // State Code Logic
+    const finalShopName = overrides?.shopName || p.shopName || p.customerName || "-";
+    const finalAddress = overrides?.address || p.address || "-";
+    const finalPhone = overrides?.phone || p.phone || "-";
+    
+    const stateCodes: { [key: string]: string } = {
+        "delhi": "Delhi (07)", "haryana": "Haryana (06)", "up": "Uttar Pradesh (09)", "maharashtra": "Maharashtra (27)"
+    };
+    let customerState = "Delhi (07)";
+    for (const s in stateCodes) {
+        if (finalAddress.toLowerCase().includes(s)) {
+            customerState = stateCodes[s];
+            break;
+        }
+    }
 
     // 3. DETAILS BOX
     doc.setDrawColor(59, 130, 246);
@@ -195,9 +211,9 @@ export default function PaymentsTodayPage() {
         doc.text(vLines, 35, y);
         return y + (vLines.length * 4);
     };
-    cY = row("M/S", p.shopName || p.customerName || "-", cY);
-    cY = row("Address", p.address || "-", cY);
-    cY = row("Phone", p.phone || "-", cY);
+    cY = row("M/S", finalShopName, cY);
+    cY = row("Address", finalAddress, cY);
+    cY = row("Phone", finalPhone, cY);
     cY = row("GSTIN", "-", cY);
     cY = row("PAN", "-", cY);
     cY = row("Place of Supply", customerState, cY);
@@ -216,9 +232,8 @@ export default function PaymentsTodayPage() {
 
     // 4. TAX CALCULATION
     const bizAddress = (businessSettings.address || "").toLowerCase();
-    const isSameState = (bizAddress.includes("delhi") && custAddress.includes("delhi")) || 
-                        (bizAddress.includes("haryana") && custAddress.includes("haryana")) ||
-                        (bizAddress.includes("up") && custAddress.includes("up"));
+    const isSameState = (bizAddress.includes("delhi") && finalAddress.toLowerCase().includes("delhi")) || 
+                        (bizAddress.includes("haryana") && finalAddress.toLowerCase().includes("haryana"));
 
     const taxable = p.received;
     let cgst = 0, sgst = 0, igst = 0;
@@ -244,26 +259,22 @@ export default function PaymentsTodayPage() {
         : [['', 'Total', '', '1.00', '', taxable.toLocaleString(), '', igst.toFixed(2), totalAmount.toLocaleString()]],
       styles: { fontSize: 7, cellPadding: 2, lineColor: [59, 130, 246], lineWidth: 0.1, textColor: [0,0,0], font: 'helvetica' },
       headStyles: { fillColor: [240, 248, 255], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', lineWidth: 0.1, lineColor: [59, 130, 246] },
-      bodyStyles: { minCellHeight: 85 }, // Matches the height in reference image
+      bodyStyles: { minCellHeight: 85 },
       footStyles: { fillColor: [240, 248, 255], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center' },
       columnStyles: { 0: { cellWidth: 8 }, 1: { cellWidth: 45, fontStyle: 'bold' } },
       theme: 'grid'
     });
 
     let fY = (doc as any).lastAutoTable.finalY;
-
-    // 5. SUMMARY
     doc.setDrawColor(59, 130, 246);
     doc.setLineWidth(0.4);
     doc.rect(10, fY, pageWidth - 20, 35);
     doc.line(pageWidth / 2 + 15, fY, pageWidth / 2 + 15, fY + 35);
-    
     doc.setFont("helvetica", "bold");
     doc.text("Total in words", (pageWidth / 2 + 15) / 2 + 5, fY + 5.5, { align: 'center' });
     doc.line(10, fY + 8, pageWidth / 2 + 15, fY + 8);
     doc.setFontSize(7);
-    const words = doc.splitTextToSize(cleanText(totalAmount.toLocaleString() + " Rupees Only").toUpperCase(), 50);
-    doc.text(words, (pageWidth / 2 + 15) / 2 + 5, fY + 18, { align: 'center' });
+    doc.text(cleanText(totalAmount.toLocaleString() + " Rupees Only").toUpperCase(), (pageWidth / 2 + 15) / 2 + 5, fY + 18, { align: 'center' });
 
     const sX = pageWidth / 2 + 17;
     const vX = pageWidth - 12;
@@ -285,25 +296,20 @@ export default function PaymentsTodayPage() {
     doc.setFontSize(9);
     sRow("Total Amount After Tax", `Rs. ${totalAmount.toLocaleString()}`, fY + 34, true);
 
-    // Footer Labels
     fY += 35;
     doc.setFontSize(6.5);
     doc.setFont("helvetica", "italic");
     doc.text("(E & O.E.)", pageWidth - 12, fY + 4.5, { align: 'right' });
     doc.line(pageWidth / 2 + 15, fY + 6, pageWidth - 10, fY + 6);
 
-    // Bank Details & Signatory
     doc.rect(10, fY + 6, pageWidth - 20, 50);
     doc.line(pageWidth / 2 + 15, fY + 6, pageWidth / 2 + 15, fY + 56);
     doc.setFont("helvetica", "bold");
     doc.text("Bank Details", (pageWidth / 2 + 15) / 2 + 5, fY + 10.5, { align: 'center' });
     doc.line(10, fY + 13, pageWidth / 2 + 15, fY + 13);
-    
     const bRow = (l: string, v: string, y: number) => {
         doc.setFont("helvetica", "bold");
-        doc.text(l, 12, y);
-        doc.setFont("helvetica", "normal");
-        doc.text(v, 40, y);
+        doc.text(l, 12, y); doc.setFont("helvetica", "normal"); doc.text(v, 40, y);
     };
     bRow("Bank Name", businessSettings.bankName || "Yes Bank", fY + 19);
     bRow("Acc. Name", businessSettings.accountName || "Magic Scale", fY + 26);
@@ -319,20 +325,17 @@ export default function PaymentsTodayPage() {
     doc.line(pageWidth / 2 + 25, fY + 48, pageWidth - 20, fY + 48);
     doc.text("Authorised Signatory", (pageWidth / 2 + 15) + (pageWidth - (pageWidth / 2 + 15)) / 2, fY + 52, { align: 'center' });
 
-    // Terms
     fY += 56;
     doc.rect(10, fY, pageWidth - 20, 25);
     doc.setFont("helvetica", "bold");
     doc.text("Terms and Conditions", (pageWidth - 20) / 2 + 10, fY + 4.5, { align: 'center' });
     doc.line(10, fY + 6, pageWidth - 10, fY + 6);
-    const t = doc.splitTextToSize(businessSettings.terms || "1. Payment is non-refundable.\n2. Balance on completion.", 180);
-    doc.setFont("helvetica", "normal");
-    doc.text(t, 12, fY + 11);
+    const tLines = doc.splitTextToSize(businessSettings.terms || "1. Payment is non-refundable.\n2. Balance on completion.", 180);
+    doc.setFont("helvetica", "normal"); doc.text(tLines, 12, fY + 11);
 
     const fileName = `Invoice_${p.shopName || p.taskId}.pdf`;
     doc.save(fileName);
 
-    // UPLOAD (Always upload if regenerating or first time)
     const pdfBlob = doc.output('blob');
     const formData = new FormData();
     formData.append('file', pdfBlob, fileName);
@@ -581,6 +584,17 @@ export default function PaymentsTodayPage() {
                               >
                                 Invoice <FileText size={12} />
                               </button>
+
+                              <button
+                                onClick={() => {
+                                    setEditingPayment(p);
+                                    setEditForm({ shopName: p.shopName || "", address: p.address || "", phone: p.phone || "" });
+                                }}
+                                className="p-2 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-600 hover:text-white transition-all border border-amber-100"
+                                title="Edit Invoice Details"
+                              >
+                                <Filter size={14} />
+                              </button>
                               
                               {p.invoiceUrl && (
                                 <button
@@ -674,6 +688,70 @@ export default function PaymentsTodayPage() {
               >
                 Close Preview
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Invoice Modal */}
+      {editingPayment && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden border border-white/20 animate-in fade-in zoom-in duration-300">
+            <div className="bg-indigo-600 p-6 text-white">
+              <h2 className="text-xl font-black uppercase tracking-widest">Edit Invoice Info</h2>
+              <p className="text-indigo-100 text-xs mt-1">Update details for this specific invoice generation</p>
+            </div>
+            
+            <div className="p-8 space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">M/S (Shop Name)</label>
+                <input 
+                  type="text" 
+                  value={editForm.shopName}
+                  onChange={(e) => setEditForm({...editForm, shopName: e.target.value})}
+                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 font-bold text-slate-700 focus:border-indigo-500 focus:ring-0 transition-all outline-none"
+                  placeholder="Enter Shop Name"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Address</label>
+                <textarea 
+                  value={editForm.address}
+                  onChange={(e) => setEditForm({...editForm, address: e.target.value})}
+                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 font-bold text-slate-700 focus:border-indigo-500 focus:ring-0 transition-all outline-none min-h-[100px]"
+                  placeholder="Enter Full Address"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Phone</label>
+                <input 
+                  type="text" 
+                  value={editForm.phone}
+                  onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
+                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 font-bold text-slate-700 focus:border-indigo-500 focus:ring-0 transition-all outline-none"
+                  placeholder="Enter Phone Number"
+                />
+              </div>
+
+              <div className="flex gap-4 pt-4">
+                <button 
+                  onClick={() => setEditingPayment(null)}
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-4 rounded-2xl font-black uppercase tracking-widest transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => {
+                    handleDownloadInvoice(editingPayment as any, editForm);
+                    setEditingPayment(null);
+                  }}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-200"
+                >
+                  Save & Generate
+                </button>
+              </div>
             </div>
           </div>
         </div>
