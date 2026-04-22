@@ -83,12 +83,13 @@ export async function GET(req: NextRequest) {
         updatedAt: p.updatedAt,
         updatedBy: p.updatedBy || "Unknown",
         fileUrl: p.fileUrl,
-        invoiceUrl: p.invoiceUrl, // 👈 New field!
+        invoiceUrl: p.invoiceUrl,
         utr: p.utr,
         phone: cf.phone || task.phone,
         shopName: cf.shopName || task.shopName,
         customerName: task.customerName,
         address: fullAddr || null,
+        gstin: cf.gstin || null,
       };
 
       paymentsToday.push(entry);

@@ -88,7 +88,7 @@ export default function SalesRegisterPage() {
     doc.text(`${new Date(fromDate).toLocaleDateString()} to ${new Date(toDate).toLocaleDateString()}`, pageWidth / 2, 42, { align: 'center' });
 
     const tableHead = [
-      ["Vch Type", "Invoice No", "Date", "Company Name", "Contact", "Phone", "GST NO", "State", "Taxable Value", "Grand Total"]
+      ["Vch Type", "Invoice No", "Date", "Company Name", "Contact", "Phone", "GST NO", "State", "Billing Address", "Taxable Value", "Grand Total"]
     ];
 
     const tableBody = payments.map(p => {
@@ -111,6 +111,7 @@ export default function SalesRegisterPage() {
             p.phone || "-",
             p.gstin || "-",
             state,
+            p.address || "-",
             taxable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
             p.received.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
         ];
@@ -121,13 +122,14 @@ export default function SalesRegisterPage() {
       head: tableHead,
       body: tableBody,
       theme: 'grid',
-      headStyles: { fillColor: [51, 51, 51], textColor: [255, 255, 255], fontSize: 8, fontStyle: 'bold' },
-      bodyStyles: { fontSize: 7, textColor: [40, 40, 40] },
+      headStyles: { fillColor: [51, 51, 51], textColor: [255, 255, 255], fontSize: 7, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 6, textColor: [40, 40, 40] },
       columnStyles: {
-        8: { halign: 'right' },
-        9: { halign: 'right' }
+        8: { cellWidth: 50 }, // Address column width
+        9: { halign: 'right' },
+        10: { halign: 'right' }
       },
-      margin: { left: 10, right: 10 }
+      margin: { left: 8, right: 8 }
     });
 
     const finalY = (doc as any).lastAutoTable.cursor.y + 10;
