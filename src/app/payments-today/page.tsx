@@ -61,6 +61,7 @@ export default function PaymentsTodayPage() {
   const [payments, setPayments] = useState<PaymentEntry[]>([]);
   const [summary, setSummary] = useState<SummaryByAssigner>({});
   const [loading, setLoading] = useState(false);
+  const [generatingInvoiceId, setGeneratingInvoiceId] = useState<string | null>(null);
 
   const today = new Date().toISOString().split("T")[0];
   const [selectedDate, setSelectedDate] = useState(today);
@@ -97,13 +98,16 @@ export default function PaymentsTodayPage() {
       return;
     }
 
-    // Share link if already uploaded
+    // Smart Options Toast
     if (p.invoiceUrl && !overrides) {
       toast((t) => (
-        <div className="flex flex-col gap-2">
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-600">Invoice Options</p>
-          <div className="flex gap-2">
-            <button onClick={() => { window.open(p.invoiceUrl!, '_blank'); toast.dismiss(t.id); }} className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase">Open Link</button>
+        <div className="flex flex-col gap-2 p-2 min-w-[200px]">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Invoice Settings</p>
+            <button onClick={() => toast.dismiss(t.id)} className="text-slate-300 hover:text-slate-500">✕</button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={() => { window.open(p.invoiceUrl!, '_blank'); toast.dismiss(t.id); }} className="bg-indigo-600 text-white px-3 py-2.5 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 hover:scale-105 transition-all"><ExternalLink size={12}/> Open</button>
             <button onClick={() => { 
                 setEditingPayment(p); 
                 setEditForm({ 
@@ -121,22 +125,42 @@ export default function PaymentsTodayPage() {
                     terms: businessSettings.terms || ""
                 });
                 toast.dismiss(t.id); 
-            }} className="bg-amber-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase">Edit Info</button>
+            }} className="bg-amber-500 text-white px-3 py-2.5 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 shadow-lg shadow-amber-100 hover:scale-105 transition-all"><Filter size={12}/> Edit</button>
             <button 
-              onClick={() => { 
+              onClick={async () => { 
                 toast.dismiss(t.id);
+                setGeneratingInvoiceId(p.paymentId);
+                // Clear URL first to force fresh generation
+                await fetch('/api/payments/update-invoice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paymentId: p.paymentId, invoiceUrl: null }) });
+                setPayments(prev => prev.map(item => item.paymentId === p.paymentId ? { ...item, invoiceUrl: null } : item));
                 handleDownloadInvoice({ ...p, invoiceUrl: null } as any);
               }} 
-              className="bg-rose-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase"
+              className="bg-rose-600 text-white px-3 py-2.5 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 shadow-lg shadow-rose-100 hover:scale-105 transition-all"
             >
-              Regenerate
+              <Download size={12}/> Re-Gen
+            </button>
+            <button 
+              onClick={async () => {
+                if (confirm("Delete this invoice permanent?")) {
+                  toast.dismiss(t.id);
+                  const res = await fetch('/api/payments/update-invoice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paymentId: p.paymentId, invoiceUrl: null }) });
+                  if (res.ok) {
+                    setPayments(prev => prev.map(item => item.paymentId === p.paymentId ? { ...item, invoiceUrl: null } : item));
+                    toast.success("Invoice deleted");
+                  }
+                }
+              }}
+              className="bg-slate-900 text-white px-3 py-2.5 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 shadow-lg shadow-slate-100 hover:scale-105 transition-all"
+            >
+              <Trash2 size={12}/> Delete
             </button>
           </div>
         </div>
-      ), { duration: 6000 });
+      ), { duration: 6000, position: 'top-center' });
       return;
     }
 
+    setGeneratingInvoiceId(p.paymentId);
     const cleanText = (str: string) => (str || "").replace(/[^\x20-\x7E]/g, '');
     
     // Number to Words Converter
@@ -398,6 +422,7 @@ export default function PaymentsTodayPage() {
     const pdfBlob = doc.output('blob');
     const formData = new FormData();
     formData.append('file', pdfBlob, fileName);
+    setGeneratingInvoiceId(p.paymentId);
     toast.promise(
       (async () => {
         const res = await fetch('/api/upload', { method: 'POST', body: formData });
@@ -407,8 +432,8 @@ export default function PaymentsTodayPage() {
         setPayments(prev => prev.map(item => item.paymentId === p.paymentId ? { ...item, invoiceUrl: url } : item));
         return url;
       })(),
-      { loading: 'Sharing...', success: 'Invoice Updated!', error: 'Sync fail.' }
-    );
+      { loading: 'Uploading Invoice...', success: 'Invoice Generated & Linked!', error: 'Upload Failed' }
+    ).finally(() => setGeneratingInvoiceId(null));
   };
   
   const fetchPayments = async (date: string) => {
@@ -639,9 +664,10 @@ export default function PaymentsTodayPage() {
                             <div className="flex gap-1 w-full">
                               <button
                                 onClick={() => handleDownloadInvoice(p)}
-                                className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-sm border border-emerald-100"
+                                disabled={generatingInvoiceId === p.paymentId}
+                                className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all shadow-sm border ${generatingInvoiceId === p.paymentId ? 'bg-slate-100 text-slate-400' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white border-emerald-100'}`}
                               >
-                                Invoice <FileText size={12} />
+                                {generatingInvoiceId === p.paymentId ? 'Processing...' : 'Invoice'} <FileText size={12} />
                               </button>
 
                               <button
