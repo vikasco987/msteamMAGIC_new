@@ -134,16 +134,20 @@ export default function PaymentsTodayPage() {
     doc.text("Magic Scale Restaurant", 48, 15);
     doc.text("Consultant", 48, 23);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
+    doc.setFontSize(8);
     doc.setTextColor(60, 60, 60);
     const addr = doc.splitTextToSize(businessSettings.address || "3rd floor, 599 Opp. near grand westend greens Rajokari, New Delhi - 110038", 70);
-    doc.text(addr, 48, 29);
+    doc.text(addr, 48, 28);
+    
+    // Dynamic Header Height to prevent overlap
+    const headerBottom = Math.max(35, 28 + (addr.length * 4));
+    const barY = headerBottom + 5;
 
     const rightInfoX = pageWidth - 65;
     const colonX = pageWidth - 52;
     const valueX = pageWidth - 48;
+    doc.setFontSize(8.5);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
     doc.text("Name", rightInfoX, 15);
     doc.text("Phone", rightInfoX, 20);
     doc.text("Email", rightInfoX, 25);
@@ -158,21 +162,23 @@ export default function PaymentsTodayPage() {
     doc.text(businessSettings.email || "Support@magicscale.in", valueX, 25);
     doc.text("https://magicscale.in/", valueX, 30);
 
-    // 2. TAX INVOICE BAR
+    // 2. TAX INVOICE BAR (Equal 3 parts)
+    const boxWidth = (pageWidth - 20) / 3;
     doc.setDrawColor(59, 130, 246);
     doc.setLineWidth(0.4);
-    doc.rect(10, 40, pageWidth - 20, 10);
-    doc.line(pageWidth / 3 + 5, 40, pageWidth / 3 + 5, 50);
-    doc.line((pageWidth * 2) / 3 - 5, 40, (pageWidth * 2) / 3 - 5, 50);
+    doc.rect(10, barY, pageWidth - 20, 10);
+    doc.line(10 + boxWidth, barY, 10 + boxWidth, barY + 10);
+    doc.line(10 + 2 * boxWidth, barY, 10 + 2 * boxWidth, barY + 10);
+    
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.text(`GSTIN : ${businessSettings.gstin || "07CCJPV6752R1ZF"}`, 12, 46.5);
-    doc.setFontSize(16);
+    doc.setFontSize(9);
+    doc.text(`GSTIN : ${businessSettings.gstin || "07CCJPV6752R1ZF"}`, 12, barY + 6.5);
+    doc.setFontSize(14);
     doc.setTextColor(59, 130, 246);
-    doc.text("TAX INVOICE", pageWidth / 2, 47, { align: 'center' });
-    doc.setFontSize(8);
+    doc.text("TAX INVOICE", 10 + boxWidth + (boxWidth/2), barY + 7, { align: 'center' });
+    doc.setFontSize(7.5);
     doc.setTextColor(0, 0, 0);
-    doc.text("ORIGINAL FOR RECIPIENT", pageWidth - 12, 46.5, { align: 'right' });
+    doc.text("ORIGINAL FOR RECIPIENT", pageWidth - 12, barY + 6.5, { align: 'right' });
 
     // State Code Logic
     const finalShopName = overrides?.shopName || p.shopName || p.customerName || "-";
@@ -190,25 +196,27 @@ export default function PaymentsTodayPage() {
         }
     }
 
-    // 3. DETAILS BOX
+    // 3. DETAILS BOX (Equal 2 parts)
+    const detailsY = barY + 10;
     doc.setDrawColor(59, 130, 246);
     doc.setLineWidth(0.4);
-    doc.rect(10, 50, pageWidth - 20, 50);
-    doc.line(pageWidth / 2 - 15, 50, pageWidth / 2 - 15, 100);
+    doc.rect(10, detailsY, pageWidth - 20, 50);
+    doc.line(pageWidth / 2, detailsY, pageWidth / 2, detailsY + 50);
+    
     doc.setFillColor(240, 248, 255);
-    doc.rect(10.2, 50.2, (pageWidth / 2 - 15) - 10.2, 6, 'F');
+    doc.rect(10.2, detailsY + 0.2, (pageWidth / 2) - 10.2, 6, 'F');
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
-    doc.text("Customer Detail", (pageWidth / 2 - 15) / 2 + 5, 54.5, { align: 'center' });
+    doc.text("Customer Detail", (pageWidth / 2) / 2 + 5, detailsY + 4.5, { align: 'center' });
 
     doc.setFontSize(8);
-    let cY = 62;
+    let cY = detailsY + 12;
     const row = (l: string, v: string, y: number) => {
         doc.setFont("helvetica", "bold");
         doc.text(l, 12, y);
         doc.setFont("helvetica", "normal");
-        const vLines = doc.splitTextToSize(cleanText(v || "-"), 55);
-        doc.text(vLines, 35, y);
+        const vLines = doc.splitTextToSize(cleanText(v || "-"), 65);
+        doc.text(vLines, 30, y);
         return y + (vLines.length * 4);
     };
     cY = row("M/S", finalShopName, cY);
@@ -216,12 +224,12 @@ export default function PaymentsTodayPage() {
     cY = row("Phone", finalPhone, cY);
     cY = row("GSTIN", "-", cY);
     cY = row("PAN", "-", cY);
-    cY = row("Place of Supply", customerState, cY);
+    cY = row("Supply", customerState, cY);
 
-    let rY = 60;
+    let rY = detailsY + 10;
     const info = (l: string, v: string, y: number) => {
         doc.setFont("helvetica", "normal");
-        doc.text(l, pageWidth / 2 - 10, y);
+        doc.text(l, pageWidth / 2 + 5, y);
         doc.setFont("helvetica", "bold");
         doc.text(v, pageWidth - 15, y, { align: 'right' });
         return y + 8;
@@ -230,7 +238,8 @@ export default function PaymentsTodayPage() {
     rY = info("Invoice Date", new Date(p.updatedAt).toLocaleDateString(), rY);
     rY = info("Due Date", new Date(new Date(p.updatedAt).getTime() + 7*24*60*60*1000).toLocaleDateString(), rY);
 
-    // 4. TAX CALCULATION
+    // 4. TAX CALCULATION (Start Table after Details)
+    const tableStartY = detailsY + 50;
     const bizAddress = (businessSettings.address || "").toLowerCase();
     const isSameState = (bizAddress.includes("delhi") && finalAddress.toLowerCase().includes("delhi")) || 
                         (bizAddress.includes("haryana") && finalAddress.toLowerCase().includes("haryana"));
@@ -251,7 +260,7 @@ export default function PaymentsTodayPage() {
         : [['1', safeTitle, '9983', '1.00', taxable.toLocaleString(), taxable.toLocaleString(), '18.00', igst.toFixed(2), totalAmount.toLocaleString()]];
 
     autoTable(doc, {
-      startY: 100,
+      startY: tableStartY,
       head: tableHead as any,
       body: tableBody as any,
       foot: isSameState 
