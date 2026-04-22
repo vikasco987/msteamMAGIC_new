@@ -212,24 +212,77 @@ export default function PaymentsTodayPage() {
     rY = info("Invoice Date", new Date(p.updatedAt).toLocaleDateString(), rY);
     rY = info("Due Date", new Date(new Date(p.updatedAt).getTime() + 7*24*60*60*1000).toLocaleDateString(), rY);
 
-    // 4. TAX CALCULATION LOGIC (Based on State)
-    const bizAddress = (businessSettings.address || "").toLowerCase();
-    const custAddress = (p.address || "").toLowerCase();
+    // State Code Mapping
+    const stateCodes: { [key: string]: string } = {
+        "delhi": "Delhi (07)",
+        "haryana": "Haryana (06)",
+        "uttar pradesh": "Uttar Pradesh (09)",
+        "up": "Uttar Pradesh (09)",
+        "maharashtra": "Maharashtra (27)",
+        "karnataka": "Karnataka (29)",
+        "west bengal": "West Bengal (19)",
+        "punjab": "Punjab (03)",
+        "rajasthan": "Rajasthan (08)"
+    };
     
-    // Simple state detection
+    let customerState = "Delhi (07)";
+    for (const s in stateCodes) {
+        if (custAddress.includes(s)) {
+            customerState = stateCodes[s];
+            break;
+        }
+    }
+
+    // 3. DETAILS BOX
+    doc.setDrawColor(59, 130, 246);
+    doc.setLineWidth(0.4);
+    doc.rect(10, 50, pageWidth - 20, 50);
+    doc.line(pageWidth / 2 - 15, 50, pageWidth / 2 - 15, 100);
+    doc.setFillColor(240, 248, 255);
+    doc.rect(10.2, 50.2, (pageWidth / 2 - 15) - 10.2, 6, 'F');
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text("Customer Detail", (pageWidth / 2 - 15) / 2 + 5, 54.5, { align: 'center' });
+
+    doc.setFontSize(8);
+    let cY = 62;
+    const row = (l: string, v: string, y: number) => {
+        doc.setFont("helvetica", "bold");
+        doc.text(l, 12, y);
+        doc.setFont("helvetica", "normal");
+        const vLines = doc.splitTextToSize(cleanText(v || "-"), 55);
+        doc.text(vLines, 35, y);
+        return y + (vLines.length * 4);
+    };
+    cY = row("M/S", p.shopName || p.customerName || "-", cY);
+    cY = row("Address", p.address || "-", cY);
+    cY = row("Phone", p.phone || "-", cY);
+    cY = row("GSTIN", "-", cY);
+    cY = row("PAN", "-", cY);
+    cY = row("Place of Supply", customerState, cY);
+
+    let rY = 60;
+    const info = (l: string, v: string, y: number) => {
+        doc.setFont("helvetica", "normal");
+        doc.text(l, pageWidth / 2 - 10, y);
+        doc.setFont("helvetica", "bold");
+        doc.text(v, pageWidth - 15, y, { align: 'right' });
+        return y + 8;
+    };
+    rY = info("Invoice No.", p.taskId.substring(0, 8).toUpperCase(), rY);
+    rY = info("Invoice Date", new Date(p.updatedAt).toLocaleDateString(), rY);
+    rY = info("Due Date", new Date(new Date(p.updatedAt).getTime() + 7*24*60*60*1000).toLocaleDateString(), rY);
+
+    // 4. TAX CALCULATION
+    const bizAddress = (businessSettings.address || "").toLowerCase();
     const isSameState = (bizAddress.includes("delhi") && custAddress.includes("delhi")) || 
                         (bizAddress.includes("haryana") && custAddress.includes("haryana")) ||
                         (bizAddress.includes("up") && custAddress.includes("up"));
 
     const taxable = p.received;
     let cgst = 0, sgst = 0, igst = 0;
-    
-    if (isSameState) {
-        cgst = taxable * 0.09;
-        sgst = taxable * 0.09;
-    } else {
-        igst = taxable * 0.18;
-    }
+    if (isSameState) { cgst = taxable * 0.09; sgst = taxable * 0.09; }
+    else { igst = taxable * 0.18; }
     const totalTax = cgst + sgst + igst;
     const totalAmount = taxable + totalTax;
 
@@ -241,40 +294,35 @@ export default function PaymentsTodayPage() {
         ? [['1', safeTitle, '9983', '1.00', taxable.toLocaleString(), taxable.toLocaleString(), '9.00', cgst.toFixed(2), '9.00', sgst.toFixed(2), totalAmount.toLocaleString()]]
         : [['1', safeTitle, '9983', '1.00', taxable.toLocaleString(), taxable.toLocaleString(), '18.00', igst.toFixed(2), totalAmount.toLocaleString()]];
 
-    const tableFoot = isSameState
-        ? [['', 'Total', '', '1.00', '', taxable.toLocaleString(), '', cgst.toFixed(2), '', sgst.toFixed(2), totalAmount.toLocaleString()]]
-        : [['', 'Total', '', '1.00', '', taxable.toLocaleString(), '', igst.toFixed(2), totalAmount.toLocaleString()]];
-
     autoTable(doc, {
       startY: 100,
       head: tableHead as any,
       body: tableBody as any,
-      foot: tableFoot as any,
+      foot: isSameState 
+        ? [['', 'Total', '', '1.00', '', taxable.toLocaleString(), '', cgst.toFixed(2), '', sgst.toFixed(2), totalAmount.toLocaleString()]]
+        : [['', 'Total', '', '1.00', '', taxable.toLocaleString(), '', igst.toFixed(2), totalAmount.toLocaleString()]],
       styles: { fontSize: 7, cellPadding: 2, lineColor: [59, 130, 246], lineWidth: 0.1, textColor: [0,0,0], font: 'helvetica' },
       headStyles: { fillColor: [240, 248, 255], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', lineWidth: 0.1, lineColor: [59, 130, 246] },
       footStyles: { fillColor: [240, 248, 255], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center' },
-      columnStyles: { 0: { cellWidth: 8 }, 1: { cellWidth: 45 } },
+      columnStyles: { 0: { cellWidth: 8 }, 1: { cellWidth: 45, fontStyle: 'bold' } }, // Bold titles
       theme: 'grid'
     });
 
     let fY = (doc as any).lastAutoTable.finalY;
 
-    // 5. SUMMARY & FOOTER (Refined to match Image 3)
+    // 5. SUMMARY
     doc.setDrawColor(59, 130, 246);
+    doc.setLineWidth(0.4);
     doc.rect(10, fY, pageWidth - 20, 35);
-    doc.line(pageWidth / 2 + 15, fY, pageWidth / 2 + 15, fY + 35); // Divider
+    doc.line(pageWidth / 2 + 15, fY, pageWidth / 2 + 15, fY + 35);
     
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
     doc.text("Total in words", (pageWidth / 2 + 15) / 2 + 5, fY + 5.5, { align: 'center' });
     doc.line(10, fY + 8, pageWidth / 2 + 15, fY + 8);
-    
-    doc.setFontSize(7.5);
-    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
     const words = doc.splitTextToSize(cleanText(totalAmount.toLocaleString() + " Rupees Only").toUpperCase(), 50);
     doc.text(words, (pageWidth / 2 + 15) / 2 + 5, fY + 18, { align: 'center' });
 
-    // Summary Right Side
     const sX = pageWidth / 2 + 17;
     const vX = pageWidth - 12;
     const sRow = (l: string, v: string, y: number, b = false) => {
@@ -289,15 +337,15 @@ export default function PaymentsTodayPage() {
         sRow("Add : SGST (9%)", sgst.toFixed(2), fY + 20);
     } else {
         sRow("Add : IGST (18%)", igst.toFixed(2), fY + 13);
-        sRow("", "", fY + 20); // Empty row to keep space
+        sRow("", "", fY + 20);
     }
     sRow("Total Tax", totalTax.toFixed(2), fY + 27);
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     sRow("Total Amount After Tax", `Rs. ${totalAmount.toLocaleString()}`, fY + 34, true);
 
-    // E&OE Label
+    // Footer Labels
     fY += 35;
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setFont("helvetica", "italic");
     doc.text("(E & O.E.)", pageWidth - 12, fY + 4.5, { align: 'right' });
     doc.line(pageWidth / 2 + 15, fY + 6, pageWidth - 10, fY + 6);
@@ -305,12 +353,10 @@ export default function PaymentsTodayPage() {
     // Bank Details & Signatory
     doc.rect(10, fY + 6, pageWidth - 20, 50);
     doc.line(pageWidth / 2 + 15, fY + 6, pageWidth / 2 + 15, fY + 56);
-    
     doc.setFont("helvetica", "bold");
     doc.text("Bank Details", (pageWidth / 2 + 15) / 2 + 5, fY + 10.5, { align: 'center' });
     doc.line(10, fY + 13, pageWidth / 2 + 15, fY + 13);
     
-    doc.setFontSize(8);
     const bRow = (l: string, v: string, y: number) => {
         doc.setFont("helvetica", "bold");
         doc.text(l, 12, y);
@@ -322,16 +368,12 @@ export default function PaymentsTodayPage() {
     bRow("Acc. Number", businessSettings.accountNumber || "102561900002640", fY + 33);
     bRow("IFSC", businessSettings.ifscCode || "YESB0001025", fY + 40);
 
-    // Signatory Area
-    doc.setFontSize(7.5);
     doc.setFont("helvetica", "bold");
     doc.text("Certified that the particulars given above are true and correct.", (pageWidth / 2 + 15) + (pageWidth - (pageWidth / 2 + 15)) / 2, fY + 10.5, { align: 'center' });
     doc.text("For " + (businessSettings.name || "Magic Scale"), (pageWidth / 2 + 15) + (pageWidth - (pageWidth / 2 + 15)) / 2, fY + 16, { align: 'center' });
-    
     if (businessSettings.signatureUrl) {
-      try { doc.addImage(businessSettings.signatureUrl, 'PNG', pageWidth - 55, fY + 22, 35, 18); } catch (e) {}
+      try { doc.addImage(businessSettings.signatureUrl, 'PNG', pageWidth - 50, fY + 20, 30, 15); } catch (e) {}
     }
-    
     doc.line(pageWidth / 2 + 25, fY + 48, pageWidth - 20, fY + 48);
     doc.text("Authorised Signatory", (pageWidth / 2 + 15) + (pageWidth - (pageWidth / 2 + 15)) / 2, fY + 52, { align: 'center' });
 
@@ -341,9 +383,8 @@ export default function PaymentsTodayPage() {
     doc.setFont("helvetica", "bold");
     doc.text("Terms and Conditions", (pageWidth - 20) / 2 + 10, fY + 4.5, { align: 'center' });
     doc.line(10, fY + 6, pageWidth - 10, fY + 6);
-    doc.setFontSize(6.5);
-    doc.setFont("helvetica", "normal");
     const t = doc.splitTextToSize(businessSettings.terms || "1. Payment is non-refundable.\n2. Balance on completion.", 180);
+    doc.setFont("helvetica", "normal");
     doc.text(t, 12, fY + 11);
 
     const fileName = `Invoice_${p.shopName || p.taskId}.pdf`;
