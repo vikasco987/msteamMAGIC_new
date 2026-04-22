@@ -105,35 +105,42 @@ export default function PaymentsTodayPage() {
     const pageWidth = doc.internal.pageSize.getWidth();
     const blueColor = [59, 130, 246];
     
-    // Clean text to avoid special character bugs
-    const cleanText = (str: string) => str.replace(/[^\x20-\x7E]/g, '');
+    // Clean text helper
+    const cleanText = (str: string) => (str || "").replace(/[^\x20-\x7E]/g, '');
     const safeTitle = cleanText(p.taskTitle || "Service");
 
-    // 1. TOP HEADER
+    // 1. TOP HEADER (Better Spacing)
     if (businessSettings.logo) {
-      try { doc.addImage(businessSettings.logo, 'PNG', 10, 10, 35, 20); } catch (e) {}
+      try { doc.addImage(businessSettings.logo, 'PNG', 10, 10, 30, 18); } catch (e) {}
     }
 
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.text(businessSettings.name || "Magic Scale Restaurant Consultant", 50, 15);
+    doc.setFontSize(16);
+    doc.setTextColor(0, 0, 0);
+    // Move business name slightly right if logo exists
+    doc.text(businessSettings.name || "Magic Scale Restaurant Consultant", 45, 15);
     
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    const addr = doc.splitTextToSize(businessSettings.address || "3rd floor, 599 Opp. near grand westend greens Rajokari, New Delhi - 110038", 80);
-    doc.text(addr, 50, 22);
+    doc.setTextColor(50, 50, 50);
+    // RESTRICT ADDRESS WIDTH to avoid overflow into right info
+    const addr = doc.splitTextToSize(businessSettings.address || "3rd floor, 599 Opp. near grand westend greens Rajokari, New Delhi - 110038", 75);
+    doc.text(addr, 45, 20);
 
-    // Right Header Info
+    // Right side Header (Fixed Positioning)
+    const rightInfoX = pageWidth - 65;
+    const valueX = pageWidth - 48;
     doc.setFont("helvetica", "bold");
-    doc.text("Name :", pageWidth - 60, 15);
-    doc.text("Phone :", pageWidth - 60, 20);
-    doc.text("Email :", pageWidth - 60, 25);
-    doc.text("Website :", pageWidth - 60, 30);
+    doc.text("Name :", rightInfoX, 15);
+    doc.text("Phone :", rightInfoX, 20);
+    doc.text("Email :", rightInfoX, 25);
+    doc.text("Website :", rightInfoX, 30);
+    
     doc.setFont("helvetica", "normal");
-    doc.text("Akash Verma", pageWidth - 45, 15);
-    doc.text(businessSettings.phone || "8826073117", pageWidth - 45, 20);
-    doc.text(businessSettings.email || "Support@magicscale.in", pageWidth - 45, 25);
-    doc.text("https://magicscale.in/", pageWidth - 45, 30);
+    doc.text("Akash Verma", valueX, 15);
+    doc.text(businessSettings.phone || "8826073117", valueX, 20);
+    doc.text(businessSettings.email || "Support@magicscale.in", valueX, 25);
+    doc.text("https://magicscale.in/", valueX, 30);
 
     // 2. TAX INVOICE BAR
     doc.setDrawColor(59, 130, 246);
@@ -141,6 +148,7 @@ export default function PaymentsTodayPage() {
     doc.rect(10, 40, pageWidth - 20, 10);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
+    doc.setTextColor(0, 0, 0);
     doc.text(`GSTIN : ${businessSettings.gstin || "07CCJPV6752R1ZF"}`, 12, 46.5);
     doc.setFontSize(16);
     doc.setTextColor(59, 130, 246);
@@ -152,14 +160,14 @@ export default function PaymentsTodayPage() {
     // 3. DETAILS BOX
     doc.setDrawColor(59, 130, 246);
     doc.rect(10, 50, pageWidth - 20, 50);
-    doc.line(pageWidth / 2 - 20, 50, pageWidth / 2 - 20, 100); // Divider
+    doc.line(pageWidth / 2 - 15, 50, pageWidth / 2 - 15, 100); // Divider moved slightly right
     
     // Customer Detail Label
     doc.setFillColor(240, 248, 255);
-    doc.rect(10.2, 50.2, (pageWidth / 2 - 20) - 10.2, 6, 'F');
+    doc.rect(10.2, 50.2, (pageWidth / 2 - 15) - 10.2, 6, 'F');
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
-    doc.text("Customer Detail", (pageWidth / 2 - 20) / 2 + 5, 54.5, { align: 'center' });
+    doc.text("Customer Detail", (pageWidth / 2 - 15) / 2 + 5, 54.5, { align: 'center' });
 
     // Customer Info
     doc.setFontSize(8);
@@ -168,7 +176,8 @@ export default function PaymentsTodayPage() {
         doc.setFont("helvetica", "bold");
         doc.text(l, 12, y);
         doc.setFont("helvetica", "normal");
-        const vLines = doc.splitTextToSize(cleanText(v || "-"), 60);
+        // FIX: address overflow by splitting text
+        const vLines = doc.splitTextToSize(cleanText(v || "-"), 55);
         doc.text(vLines, 35, y);
         return y + (vLines.length * 4);
     };
@@ -181,10 +190,10 @@ export default function PaymentsTodayPage() {
     cY = row("Place of Supply", "Delhi (07)", cY);
 
     // Invoice Info (Right side)
-    let rY = 58;
+    let rY = 60;
     const info = (l: string, v: string, y: number) => {
         doc.setFont("helvetica", "normal");
-        doc.text(l, pageWidth / 2 - 15, y);
+        doc.text(l, pageWidth / 2 - 10, y);
         doc.setFont("helvetica", "bold");
         doc.text(v, pageWidth - 15, y, { align: 'right' });
         return y + 8;
@@ -194,14 +203,19 @@ export default function PaymentsTodayPage() {
     rY = info("Invoice Date", new Date(p.updatedAt).toLocaleDateString(), rY);
     rY = info("Due Date", new Date(new Date(p.updatedAt).getTime() + 7*24*60*60*1000).toLocaleDateString(), rY);
 
-    // 4. TABLE
+    // 4. TABLE (Reference matched layout)
     autoTable(doc, {
       startY: 100,
-      head: [['Sr.', 'Name of Product / Service', 'HSN/SAC', 'Qty', 'Rate', 'Taxable Value', 'IGST %', 'IGST Amt', 'Total']],
-      body: [['1', safeTitle, '', '1.00', p.received.toLocaleString(), p.received.toLocaleString(), '18.00', (p.received * 0.18).toFixed(2), (p.received * 1.18).toFixed(2)]],
+      head: [
+        [{ content: 'Sr.', rowSpan: 2 }, { content: 'Name of Product / Service', rowSpan: 2 }, { content: 'HSN/SAC', rowSpan: 2 }, { content: 'Qty', rowSpan: 2 }, { content: 'Rate', rowSpan: 2 }, { content: 'Taxable Value', rowSpan: 2 }, { content: 'IGST', colSpan: 2 }, { content: 'Total', rowSpan: 2 }],
+        ['%', 'Amount']
+      ],
+      body: [
+        ['1', safeTitle, '', '1.00', p.received.toLocaleString(), p.received.toLocaleString(), '18.00', (p.received * 0.18).toFixed(2), (p.received * 1.18).toFixed(2)]
+      ],
       styles: { fontSize: 8, cellPadding: 3, lineColor: [59, 130, 246], lineWidth: 0.1, textColor: [0,0,0], font: 'helvetica' },
-      headStyles: { fillColor: [240, 248, 255], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.1, lineColor: [59, 130, 246] },
-      columnStyles: { 0: { cellWidth: 10 }, 1: { cellWidth: 55 } },
+      headStyles: { fillColor: [240, 248, 255], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', lineWidth: 0.1, lineColor: [59, 130, 246] },
+      columnStyles: { 0: { cellWidth: 10 }, 1: { cellWidth: 50 }, 7: { fontStyle: 'bold' } },
       theme: 'grid'
     });
 
@@ -229,12 +243,22 @@ export default function PaymentsTodayPage() {
     doc.text(`A/C Number: ${businessSettings.accountNumber || "102561900002640"}`, 12, fY + 50);
     doc.text(`IFSC: ${businessSettings.ifscCode || "YESB0001025"}`, 12, fY + 56);
 
-    // Signatory
+    // SIGNATURE AREA (Right Side)
     doc.setFont("helvetica", "bold");
     doc.text("For " + (businessSettings.name || "Magic Scale"), pageWidth - 15, fY + 18, { align: 'right' });
+    
+    // Add Digital Signature if exists
+    if (businessSettings.signatureUrl) {
+      try {
+        doc.addImage(businessSettings.signatureUrl, 'PNG', pageWidth - 55, fY + 22, 40, 20);
+      } catch (e) {
+        console.error("Signature image error", e);
+      }
+    }
+
     doc.line(pageWidth / 2 + 10, fY + 55, pageWidth - 15, fY + 55);
     doc.setFontSize(7);
-    doc.text("Authorised Signatory", (pageWidth / 2 + pageWidth) / 2, fY + 60, { align: 'center' });
+    doc.text("Authorised Signatory", (pageWidth / 2 + pageWidth) / 2 + 5, fY + 60, { align: 'center' });
 
     // Terms
     doc.setFont("helvetica", "bold");

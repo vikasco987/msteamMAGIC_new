@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const { 
             name, address, gstin, phone, email, website, logo,
-            bankName, bankBranch, accountName, accountNumber, ifscCode, terms 
+            bankName, bankBranch, accountName, accountNumber, ifscCode, terms, signatureUrl 
         } = body;
 
         const existing = await prisma.businessSettings.findFirst();
@@ -27,14 +27,14 @@ export async function POST(req: NextRequest) {
                 where: { id: existing.id },
                 data: { 
                     name, address, gstin, phone, email, website, logo,
-                    bankName, bankBranch, accountName, accountNumber, ifscCode, terms
+                    bankName, bankBranch, accountName, accountNumber, ifscCode, terms, signatureUrl
                 }
             });
         } else {
             settings = await prisma.businessSettings.create({
                 data: { 
                     name, address, gstin, phone, email, website, logo,
-                    bankName, bankBranch, accountName, accountNumber, ifscCode, terms
+                    bankName, bankBranch, accountName, accountNumber, ifscCode, terms, signatureUrl
                 }
             });
         }

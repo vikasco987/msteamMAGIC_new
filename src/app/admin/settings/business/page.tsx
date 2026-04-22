@@ -40,7 +40,8 @@ export default function BusinessSettingsPage() {
     accountName: "",
     accountNumber: "",
     ifscCode: "",
-    terms: ""
+    terms: "",
+    signatureUrl: ""
   });
 
   useEffect(() => {
@@ -65,7 +66,8 @@ export default function BusinessSettingsPage() {
           accountName: data.accountName || "",
           accountNumber: data.accountNumber || "",
           ifscCode: data.ifscCode || "",
-          terms: data.terms || ""
+          terms: data.terms || "",
+          signatureUrl: data.signatureUrl || ""
         });
       }
     } catch (error) {
@@ -87,6 +89,23 @@ export default function BusinessSettingsPage() {
     } catch (error) {
       console.error("Logo upload failed", error);
       toast.error("Logo upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSignatureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const url = await uploadToCloudinary(file);
+      setFormData(prev => ({ ...prev, signatureUrl: url }));
+      toast.success("Signature uploaded successfully!");
+    } catch (error) {
+      console.error("Signature upload failed", error);
+      toast.error("Signature upload failed. Please try again.");
     } finally {
       setUploading(false);
     }
@@ -352,6 +371,53 @@ export default function BusinessSettingsPage() {
                 <p className="mt-3 text-[9px] text-slate-400 font-bold uppercase tracking-widest ml-1">
                   These will appear at the bottom of every generated invoice.
                 </p>
+              </div>
+            </div>
+
+            {/* ✍️ Section 4: Signature Setup */}
+            <div className="space-y-8">
+              <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+                <ImageIcon size={18} className="text-rose-500" />
+                <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">Digital Signature</h2>
+              </div>
+              
+              <div className="flex flex-col md:flex-row gap-6 items-start">
+                <div className="w-48 h-24 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden shrink-0 group relative">
+                  {formData.signatureUrl ? (
+                    <img src={formData.signatureUrl} alt="Signature" className="w-full h-full object-contain p-2" />
+                  ) : (
+                    <ImageIcon size={24} className="text-slate-300" />
+                  )}
+                  {uploading && (
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center">
+                      <Loader2 size={20} className="text-white animate-spin" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1 space-y-4">
+                  <div className="flex flex-wrap gap-3">
+                    <input
+                      type="file"
+                      id="signatureInput"
+                      onChange={handleSignatureUpload}
+                      className="hidden"
+                      accept="image/*"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById('signatureInput')?.click()}
+                      disabled={uploading}
+                      className="px-6 py-3 bg-rose-50 text-rose-600 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50"
+                    >
+                      <Upload size={16} />
+                      {formData.signatureUrl ? "Change Signature" : "Upload Signature"}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
+                    Upload a transparent PNG of your signature.<br/>This will appear on the 'Authorised Signatory' line.
+                  </p>
+                </div>
               </div>
             </div>
 

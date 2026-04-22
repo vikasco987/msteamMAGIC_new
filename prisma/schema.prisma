@@ -520,8 +520,8 @@ model BusinessSettings {
   ifscCode      String?
 
   // Terms
-  terms         String?
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  terms          String?
+  signatureUrl   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
