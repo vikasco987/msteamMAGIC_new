@@ -137,8 +137,27 @@ export default function PaymentsTodayPage() {
       return;
     }
 
+    const cleanText = (str: string) => (str || "").replace(/[^\x20-\x7E]/g, '');
+    
+    // Number to Words Converter
+    const toWords = (num: number) => {
+        const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
+        const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+        const n = ('0000000' + num).slice(-7).match(/^(\d{2})(\d{2})(\d{1})(\d{2})$/);
+        if (!n) return '';
+        let str = '';
+        str += (Number(n[1]) !== 0) ? (a[Number(n[1])] || b[n[1][0]] + ' ' + a[n[1][1]]) + 'Lakh ' : '';
+        str += (Number(n[2]) !== 0) ? (a[Number(n[2])] || b[n[2][0]] + ' ' + a[n[2][1]]) + 'Thousand ' : '';
+        str += (Number(n[3]) !== 0) ? a[Number(n[3])] + 'Hundred ' : '';
+        str += (Number(n[4]) !== 0) ? ((str !== '') ? 'and ' : '') + (a[Number(n[4])] || b[n[4][0]] + ' ' + a[n[4][1]]) : '';
+        return str.trim().toUpperCase() + ' RUPEES ONLY';
+    };
+
     const finalTitle = overrides?.taskTitle || p.taskTitle || "Service";
     const safeTitle = cleanText(finalTitle);
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
 
     // 1. TOP HEADER
     if (businessSettings.logo) {
@@ -279,6 +298,7 @@ export default function PaymentsTodayPage() {
 
     autoTable(doc, {
       startY: tableStartY,
+      margin: { left: 10, right: 10 },
       head: tableHead as any,
       body: tableBody as any,
       foot: isSameState 
@@ -301,7 +321,9 @@ export default function PaymentsTodayPage() {
     doc.text("Total in words", (pageWidth / 2 + 15) / 2 + 5, fY + 5.5, { align: 'center' });
     doc.line(10, fY + 8, pageWidth / 2 + 15, fY + 8);
     doc.setFontSize(7);
-    doc.text(cleanText(totalAmount.toLocaleString() + " Rupees Only").toUpperCase(), (pageWidth / 2 + 15) / 2 + 5, fY + 18, { align: 'center' });
+    const wordsText = toWords(Math.round(totalAmount));
+    const splitWords = doc.splitTextToSize(wordsText, (pageWidth / 2 + 15) - 15);
+    doc.text(splitWords, (pageWidth / 2 + 15) / 2 + 5, fY + 18, { align: 'center' });
 
     const sX = pageWidth / 2 + 17;
     const vX = pageWidth - 12;
