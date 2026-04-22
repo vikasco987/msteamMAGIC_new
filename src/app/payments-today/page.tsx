@@ -345,14 +345,23 @@ export default function PaymentsTodayPage() {
     doc.setFontSize(9);
     sRow("Total Amount After Tax", `Rs. ${totalAmount.toLocaleString()}`, fY + 34, true);
 
-    fY += 35;
+    // Check for page space before drawing bottom boxes
+    if (fY + 85 > doc.internal.pageSize.getHeight()) {
+        doc.addPage();
+        fY = 20;
+    }
+
     doc.setFontSize(6.5);
     doc.setFont("helvetica", "italic");
     doc.text("(E & O.E.)", pageWidth - 12, fY + 4.5, { align: 'right' });
     doc.line(pageWidth / 2 + 15, fY + 6, pageWidth - 10, fY + 6);
 
+    // Bank Details & Signatory Box
+    doc.setDrawColor(59, 130, 246);
+    doc.setLineWidth(0.4);
     doc.rect(10, fY + 6, pageWidth - 20, 50);
     doc.line(pageWidth / 2 + 15, fY + 6, pageWidth / 2 + 15, fY + 56);
+    
     doc.setFont("helvetica", "bold");
     doc.text("Bank Details", (pageWidth / 2 + 15) / 2 + 5, fY + 10.5, { align: 'center' });
     doc.line(10, fY + 13, pageWidth / 2 + 15, fY + 13);
@@ -375,6 +384,7 @@ export default function PaymentsTodayPage() {
     doc.text("Authorised Signatory", (pageWidth / 2 + 15) + (pageWidth - (pageWidth / 2 + 15)) / 2, fY + 52, { align: 'center' });
 
     fY += 56;
+    // Terms and Conditions Box
     doc.rect(10, fY, pageWidth - 20, 25);
     doc.setFont("helvetica", "bold");
     doc.text("Terms and Conditions", (pageWidth - 20) / 2 + 10, fY + 4.5, { align: 'center' });
