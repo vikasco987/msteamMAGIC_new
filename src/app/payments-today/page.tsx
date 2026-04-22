@@ -83,7 +83,13 @@ export default function PaymentsTodayPage() {
   };
 
   const [editingPayment, setEditingPayment] = useState<PaymentEntry | null>(null);
-  const [editForm, setEditForm] = useState({ shopName: "", address: "", phone: "" });
+  const [editForm, setEditForm] = useState({ 
+    shopName: "", address: "", phone: "", 
+    taskTitle: "", received: 0, 
+    date: "", dueDate: "",
+    bankName: "", accountName: "", accountNumber: "", ifscCode: "",
+    terms: ""
+  });
 
   const handleDownloadInvoice = async (p: PaymentEntry & { invoiceUrl?: string | null }, overrides?: any) => {
     if (!businessSettings) {
@@ -100,7 +106,20 @@ export default function PaymentsTodayPage() {
             <button onClick={() => { window.open(p.invoiceUrl!, '_blank'); toast.dismiss(t.id); }} className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase">Open Link</button>
             <button onClick={() => { 
                 setEditingPayment(p); 
-                setEditForm({ shopName: p.shopName || "", address: p.address || "", phone: p.phone || "" });
+                setEditForm({ 
+                    shopName: p.shopName || "", 
+                    address: p.address || "", 
+                    phone: p.phone || "",
+                    taskTitle: p.taskTitle || "",
+                    received: p.received || 0,
+                    date: new Date(p.updatedAt).toISOString().split('T')[0],
+                    dueDate: new Date(new Date(p.updatedAt).getTime() + 7*24*60*60*1000).toISOString().split('T')[0],
+                    bankName: businessSettings.bankName || "",
+                    accountName: businessSettings.accountName || "",
+                    accountNumber: businessSettings.accountNumber || "",
+                    ifscCode: businessSettings.ifscCode || "",
+                    terms: businessSettings.terms || ""
+                });
                 toast.dismiss(t.id); 
             }} className="bg-amber-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase">Edit Info</button>
             <button 
@@ -118,11 +137,8 @@ export default function PaymentsTodayPage() {
       return;
     }
 
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const blueColor = [59, 130, 246];
-    const cleanText = (str: string) => (str || "").replace(/[^\x20-\x7E]/g, '');
-    const safeTitle = cleanText(p.taskTitle || "Service");
+    const finalTitle = overrides?.taskTitle || p.taskTitle || "Service";
+    const safeTitle = cleanText(finalTitle);
 
     // 1. TOP HEADER
     if (businessSettings.logo) {
@@ -184,6 +200,8 @@ export default function PaymentsTodayPage() {
     const finalShopName = overrides?.shopName || p.shopName || p.customerName || "-";
     const finalAddress = overrides?.address || p.address || "-";
     const finalPhone = overrides?.phone || p.phone || "-";
+    const finalDate = overrides?.date ? new Date(overrides.date).toLocaleDateString() : new Date(p.updatedAt).toLocaleDateString();
+    const finalDueDate = overrides?.dueDate ? new Date(overrides.dueDate).toLocaleDateString() : new Date(new Date(p.updatedAt).getTime() + 7*24*60*60*1000).toLocaleDateString();
     
     const stateCodes: { [key: string]: string } = {
         "delhi": "Delhi (07)", "haryana": "Haryana (06)", "up": "Uttar Pradesh (09)", "maharashtra": "Maharashtra (27)"
@@ -235,8 +253,8 @@ export default function PaymentsTodayPage() {
         return y + 8;
     };
     rY = info("Invoice No.", p.taskId.substring(0, 8).toUpperCase(), rY);
-    rY = info("Invoice Date", new Date(p.updatedAt).toLocaleDateString(), rY);
-    rY = info("Due Date", new Date(new Date(p.updatedAt).getTime() + 7*24*60*60*1000).toLocaleDateString(), rY);
+    rY = info("Invoice Date", finalDate, rY);
+    rY = info("Due Date", finalDueDate, rY);
 
     // 4. TAX CALCULATION (Start Table after Details)
     const tableStartY = detailsY + 50;
@@ -244,7 +262,7 @@ export default function PaymentsTodayPage() {
     const isSameState = (bizAddress.includes("delhi") && finalAddress.toLowerCase().includes("delhi")) || 
                         (bizAddress.includes("haryana") && finalAddress.toLowerCase().includes("haryana"));
 
-    const taxable = p.received;
+    const taxable = overrides?.received ? parseFloat(overrides.received) : p.received;
     let cgst = 0, sgst = 0, igst = 0;
     if (isSameState) { cgst = taxable * 0.09; sgst = taxable * 0.09; }
     else { igst = taxable * 0.18; }
@@ -320,10 +338,10 @@ export default function PaymentsTodayPage() {
         doc.setFont("helvetica", "bold");
         doc.text(l, 12, y); doc.setFont("helvetica", "normal"); doc.text(v, 40, y);
     };
-    bRow("Bank Name", businessSettings.bankName || "Yes Bank", fY + 19);
-    bRow("Acc. Name", businessSettings.accountName || "Magic Scale", fY + 26);
-    bRow("Acc. Number", businessSettings.accountNumber || "102561900002640", fY + 33);
-    bRow("IFSC", businessSettings.ifscCode || "YESB0001025", fY + 40);
+    bRow("Bank Name", overrides?.bankName || businessSettings.bankName || "Yes Bank", fY + 19);
+    bRow("Acc. Name", overrides?.accountName || businessSettings.accountName || "Magic Scale", fY + 26);
+    bRow("Acc. Number", overrides?.accountNumber || businessSettings.accountNumber || "102561900002640", fY + 33);
+    bRow("IFSC", overrides?.ifscCode || businessSettings.ifscCode || "YESB0001025", fY + 40);
 
     doc.setFont("helvetica", "bold");
     doc.text("Certified that the particulars given above are true and correct.", (pageWidth / 2 + 15) + (pageWidth - (pageWidth / 2 + 15)) / 2, fY + 10.5, { align: 'center' });
@@ -339,7 +357,7 @@ export default function PaymentsTodayPage() {
     doc.setFont("helvetica", "bold");
     doc.text("Terms and Conditions", (pageWidth - 20) / 2 + 10, fY + 4.5, { align: 'center' });
     doc.line(10, fY + 6, pageWidth - 10, fY + 6);
-    const tLines = doc.splitTextToSize(businessSettings.terms || "1. Payment is non-refundable.\n2. Balance on completion.", 180);
+    const tLines = doc.splitTextToSize(overrides?.terms || businessSettings.terms || "1. Payment is non-refundable.\n2. Balance on completion.", 180);
     doc.setFont("helvetica", "normal"); doc.text(tLines, 12, fY + 11);
 
     const fileName = `Invoice_${p.shopName || p.taskId}.pdf`;
@@ -702,65 +720,111 @@ export default function PaymentsTodayPage() {
         </div>
       )}
 
-      {/* Edit Invoice Modal */}
+      {/* Edit Invoice Modal (Canva Style) */}
       {editingPayment && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden border border-white/20 animate-in fade-in zoom-in duration-300">
-            <div className="bg-indigo-600 p-6 text-white">
-              <h2 className="text-xl font-black uppercase tracking-widest">Edit Invoice Info</h2>
-              <p className="text-indigo-100 text-xs mt-1">Update details for this specific invoice generation</p>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[100] flex items-center justify-center p-4 md:p-8">
+          <div className="bg-white rounded-[2rem] w-full max-w-5xl h-[90vh] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+            {/* Modal Header */}
+            <div className="bg-indigo-600 p-8 text-white flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-black uppercase tracking-widest">Invoice Pro Editor</h2>
+                <p className="text-indigo-100 text-xs mt-1">Live customization for your professional invoice</p>
+              </div>
+              <button onClick={() => setEditingPayment(null)} className="bg-white/20 hover:bg-white/40 p-3 rounded-full transition-all">
+                <Trash2 size={24} />
+              </button>
             </div>
             
-            <div className="p-8 space-y-6">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">M/S (Shop Name)</label>
-                <input 
-                  type="text" 
-                  value={editForm.shopName}
-                  onChange={(e) => setEditForm({...editForm, shopName: e.target.value})}
-                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 font-bold text-slate-700 focus:border-indigo-500 focus:ring-0 transition-all outline-none"
-                  placeholder="Enter Shop Name"
-                />
-              </div>
+            {/* Modal Content - Scrollable Form */}
+            <div className="flex-1 overflow-y-auto p-8 bg-slate-50">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                
+                {/* Section: Customer Details */}
+                <div className="space-y-6 bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm">
+                  <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2">
+                    <User size={14} /> Customer Info
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Shop Name</label>
+                      <input type="text" value={editForm.shopName} onChange={(e) => setEditForm({...editForm, shopName: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 font-bold text-slate-700 outline-none focus:border-indigo-500" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Address</label>
+                      <textarea value={editForm.address} onChange={(e) => setEditForm({...editForm, address: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 font-bold text-slate-700 outline-none focus:border-indigo-500 min-h-[80px]" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Phone</label>
+                      <input type="text" value={editForm.phone} onChange={(e) => setEditForm({...editForm, phone: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 font-bold text-slate-700 outline-none focus:border-indigo-500" />
+                    </div>
+                  </div>
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Address</label>
-                <textarea 
-                  value={editForm.address}
-                  onChange={(e) => setEditForm({...editForm, address: e.target.value})}
-                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 font-bold text-slate-700 focus:border-indigo-500 focus:ring-0 transition-all outline-none min-h-[100px]"
-                  placeholder="Enter Full Address"
-                />
-              </div>
+                {/* Section: Service & Amount */}
+                <div className="space-y-6 bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm">
+                  <h3 className="text-xs font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2">
+                    <IndianRupee size={14} /> Billing Info
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Product / Service Name</label>
+                      <input type="text" value={editForm.taskTitle} onChange={(e) => setEditForm({...editForm, taskTitle: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 font-bold text-slate-700 outline-none focus:border-emerald-500" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Taxable Amount (₹)</label>
+                      <input type="number" value={editForm.received} onChange={(e) => setEditForm({...editForm, received: parseFloat(e.target.value)})} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 font-bold text-slate-700 outline-none focus:border-emerald-500" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Date</label>
+                        <input type="date" value={editForm.date} onChange={(e) => setEditForm({...editForm, date: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-2 py-2.5 font-bold text-slate-700 outline-none text-xs" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Due Date</label>
+                        <input type="date" value={editForm.dueDate} onChange={(e) => setEditForm({...editForm, dueDate: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-2 py-2.5 font-bold text-slate-700 outline-none text-xs" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Phone</label>
-                <input 
-                  type="text" 
-                  value={editForm.phone}
-                  onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
-                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 font-bold text-slate-700 focus:border-indigo-500 focus:ring-0 transition-all outline-none"
-                  placeholder="Enter Phone Number"
-                />
-              </div>
+                {/* Section: Bank Details */}
+                <div className="space-y-6 bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm">
+                  <h3 className="text-xs font-black text-amber-600 uppercase tracking-widest flex items-center gap-2">
+                    <Store size={14} /> Payout Settings
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Bank Name</label>
+                      <input type="text" value={editForm.bankName} onChange={(e) => setEditForm({...editForm, bankName: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 font-bold text-slate-700 outline-none focus:border-amber-500" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Acc. Number</label>
+                      <input type="text" value={editForm.accountNumber} onChange={(e) => setEditForm({...editForm, accountNumber: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 font-bold text-slate-700 outline-none focus:border-amber-500" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">IFSC Code</label>
+                      <input type="text" value={editForm.ifscCode} onChange={(e) => setEditForm({...editForm, ifscCode: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 font-bold text-slate-700 outline-none focus:border-amber-500" />
+                    </div>
+                  </div>
+                </div>
 
-              <div className="flex gap-4 pt-4">
-                <button 
-                  onClick={() => setEditingPayment(null)}
-                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-4 rounded-2xl font-black uppercase tracking-widest transition-all"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={() => {
-                    handleDownloadInvoice(editingPayment as any, editForm);
-                    setEditingPayment(null);
-                  }}
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-200"
-                >
-                  Save & Generate
-                </button>
+                {/* Section: Terms (Full Width) */}
+                <div className="col-span-full space-y-6 bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm">
+                  <h3 className="text-xs font-black text-slate-600 uppercase tracking-widest">Terms & Conditions</h3>
+                  <textarea value={editForm.terms} onChange={(e) => setEditForm({...editForm, terms: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 font-bold text-slate-700 outline-none focus:border-slate-500 min-h-[100px]" />
+                </div>
               </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-8 bg-white border-t border-slate-100 flex gap-4">
+              <button onClick={() => setEditingPayment(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-4 rounded-2xl font-black uppercase tracking-widest transition-all">Cancel</button>
+              <button 
+                onClick={() => { handleDownloadInvoice(editingPayment as any, editForm); setEditingPayment(null); }}
+                className="flex-[2] bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-xl shadow-indigo-100"
+              >
+                Apply Changes & Generate PDF
+              </button>
             </div>
           </div>
         </div>
