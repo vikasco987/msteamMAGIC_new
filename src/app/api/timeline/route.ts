@@ -87,6 +87,7 @@ export async function GET(req: Request) {
       received: task.received,
       paymentHistory: task.paymentHistory,
       paymentProofs: task.paymentProofs,
+      customFields: task.customFields,
       subtasks: task.subtasks?.map((s) => ({
         id: s.id,
         title: s.title,
