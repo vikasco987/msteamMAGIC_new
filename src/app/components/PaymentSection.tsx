@@ -79,6 +79,8 @@ export default function PaymentSection({
 
   // Rule: amount is locked once set (> 0)
   const isAmountLocked = Boolean(selectedTask.amount && selectedTask.amount > 0);
+  const existingGstin = (selectedTask as any).customFields?.gstin || (selectedTask as any).gstin;
+  const isGstinLocked = Boolean(existingGstin && existingGstin.trim().length > 0);
   const remainingAmount = (selectedTask.amount || 0) - (selectedTask.received || 0);
 
   return (
@@ -125,7 +127,7 @@ export default function PaymentSection({
               step="0.01"
               disabled={isAmountLocked}
               placeholder="Total ₹"
-              className={`block w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500 ${isAmountLocked ? "bg-gray-50 cursor-not-allowed text-gray-400" : ""}`}
+              className={`block w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500 ${isAmountLocked ? "bg-gray-50 cursor-not-allowed text-gray-400 font-bold" : ""}`}
             />
           </div>
           <div>
@@ -148,7 +150,7 @@ export default function PaymentSection({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="gstin" className="block text-xs font-medium text-gray-500 uppercase mb-1">
-              Customer GSTIN
+              {isGstinLocked ? "GSTIN (Locked)" : "Customer GSTIN"}
             </label>
             <input
               type="text"
@@ -158,7 +160,8 @@ export default function PaymentSection({
               onChange={(e) => setGstin(e.target.value.toUpperCase())}
               placeholder="07AAAAA0000A1Z5"
               autoComplete="off"
-              className="block w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500"
+              disabled={isGstinLocked}
+              className={`block w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500 ${isGstinLocked ? "bg-gray-50 cursor-not-allowed text-gray-400 font-bold" : ""}`}
             />
           </div>
           <div>
