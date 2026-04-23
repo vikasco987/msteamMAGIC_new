@@ -17,6 +17,21 @@ import autoTable from "jspdf-autotable";
 import Link from "next/link";
 import * as XLSX from "xlsx";
 
+const getInvoiceNo = (paymentId: string) => {
+    if (!paymentId || paymentId.length < 12) return "MS/INV/0000";
+    try {
+        // Extract timestamp from MongoDB ObjectId (first 8 hex chars)
+        const timestamp = parseInt(paymentId.substring(0, 8), 16) * 1000;
+        const date = new Date(timestamp);
+        const year = date.getFullYear().toString().slice(-2);
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const idPart = paymentId.slice(-4).toUpperCase();
+        return `MS/${year}${month}/${idPart}`;
+    } catch (e) {
+        return `MS/INV/${paymentId.slice(-4).toUpperCase()}`;
+    }
+};
+
 const getState = (p: any) => {
     let state = "Delhi";
     const stateCodes: { [key: string]: string } = {
@@ -115,9 +130,7 @@ export default function SalesRegisterPage() {
 
     const tableBody = payments.map(p => {
         const taxable = p.received / 1.18;
-        const datePart = new Date(p.updatedAt).toISOString().split('T')[0].replace(/-/g, '');
-        const numericHash = Math.abs(p.paymentId.split('').reduce((a, b: any) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0)).toString().substring(0, 4);
-        const invNo = `MS/${datePart}/${numericHash}`;
+        const invNo = getInvoiceNo(p.paymentId);
         const state = getState(p);
         
         const roundedTaxable = Math.round(taxable);
@@ -170,9 +183,7 @@ export default function SalesRegisterPage() {
 
     const exportData = payments.map(p => {
         const taxable = p.received / 1.18;
-        const datePart = new Date(p.updatedAt).toISOString().split('T')[0].replace(/-/g, '');
-        const numericHash = Math.abs(p.paymentId.split('').reduce((a, b: any) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0)).toString().substring(0, 4);
-        const invNo = `MS/${datePart}/${numericHash}`;
+        const invNo = getInvoiceNo(p.paymentId);
         
         return {
             "Vch Type": "Sales",
@@ -318,7 +329,7 @@ export default function SalesRegisterPage() {
                       <tr key={p.paymentId} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'} hover:bg-blue-50/50 transition-colors`}>
                         <td className="px-4 py-5 text-[11px] text-slate-500">Sales</td>
                         <td className="px-4 py-5 text-[11px] font-bold text-teal-600">
-                           <Link href={`#`} className="hover:underline">{idx + 1}</Link>
+                           {getInvoiceNo(p.paymentId)}
                         </td>
                         <td className="px-4 py-5 text-[11px] text-slate-600">{new Date(p.updatedAt).toLocaleDateString()}</td>
                         <td className="px-4 py-5">
