@@ -202,6 +202,13 @@ export default function PaymentSection({
           <PaymentHistory
             paymentHistory={paymentHistoryArray}
             taskTitle={selectedTask.name}
+            taskDetails={{
+              shopName: selectedTask.shopName || selectedTask.shop,
+              customerName: selectedTask.customerName || selectedTask.customer,
+              address: selectedTask.address || (selectedTask as any).location,
+              phone: (selectedTask as any).phone,
+              gstin: (selectedTask as any).gstin
+            }}
           />
         </div>
       )}

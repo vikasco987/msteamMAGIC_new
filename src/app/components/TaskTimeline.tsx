@@ -734,6 +734,7 @@ export default function TaskTimeline() {
     // Clear inputs immediately for "Instant" feel
     setCurrentReceivedInput(""); 
     setCurrentUtrInput("");
+    setShowPaymentHistory(true); // 🚀 Always show history after update so buttons are visible
     toast.success(hasFile ? "Payment & Proof uploaded!" : "Balance updated!");
 
     try {
