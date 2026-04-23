@@ -244,17 +244,23 @@ export default function SalesRegisterPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50/50 border-b border-slate-100">
-                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Invoice Details</th>
-                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Company</th>
-                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">State</th>
-                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Taxable</th>
-                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Grand Total</th>
+                  <th className="px-4 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Vch Type</th>
+                  <th className="px-4 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Inv No</th>
+                  <th className="px-4 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+                  <th className="px-4 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Company</th>
+                  <th className="px-4 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Contact</th>
+                  <th className="px-4 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Phone</th>
+                  <th className="px-4 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">GST NO</th>
+                  <th className="px-4 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">State</th>
+                  <th className="px-4 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Address</th>
+                  <th className="px-4 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Taxable</th>
+                  <th className="px-4 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Grand Total</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="px-8 py-20 text-center">
+                    <td colSpan={11} className="px-8 py-20 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-10 h-10 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Generating Report...</span>
@@ -263,34 +269,41 @@ export default function SalesRegisterPage() {
                   </tr>
                 ) : payments.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-8 py-20 text-center text-slate-300 font-black uppercase tracking-widest italic">
+                    <td colSpan={11} className="px-8 py-20 text-center text-slate-300 font-black uppercase tracking-widest italic">
                       No data found for selected range
                     </td>
                   </tr>
                 ) : (
                   payments.map((p) => {
                     const taxable = p.received / 1.18;
+                    const datePart = new Date(p.updatedAt).toISOString().split('T')[0].replace(/-/g, '');
+                    const numericHash = Math.abs(p.paymentId.split('').reduce((a, b: any) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0)).toString().substring(0, 4);
+                    const invNo = `MS/${datePart}/${numericHash}`;
+
                     return (
-                      <tr key={p.paymentId} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-8 py-6">
-                          <div className="flex flex-col">
-                            <span className="text-xs font-black text-slate-900 uppercase tracking-tight">{p.taskTitle}</span>
-                            <span className="text-[10px] font-bold text-slate-400 mt-1">{new Date(p.updatedAt).toLocaleDateString()}</span>
-                          </div>
+                      <tr key={p.paymentId} className="hover:bg-slate-50/50 transition-colors border-b border-slate-50">
+                        <td className="px-4 py-4 text-[10px] font-bold text-slate-500">Sales</td>
+                        <td className="px-4 py-4 text-[10px] font-black text-blue-600">{invNo}</td>
+                        <td className="px-4 py-4 text-[10px] font-bold text-slate-600">{new Date(p.updatedAt).toLocaleDateString()}</td>
+                        <td className="px-4 py-4">
+                           <span className="text-[10px] font-black text-slate-900 uppercase">{p.shopName || "-"}</span>
                         </td>
-                        <td className="px-8 py-6">
-                           <span className="text-xs font-bold text-slate-600">{p.shopName || "-"}</span>
-                        </td>
-                        <td className="px-8 py-6">
-                            <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg uppercase tracking-widest">
+                        <td className="px-4 py-4 text-[10px] text-slate-600">{p.customerName || p.assignerName || "-"}</td>
+                        <td className="px-4 py-4 text-[10px] text-slate-600">{p.phone || "-"}</td>
+                        <td className="px-4 py-4 text-[10px] font-bold text-slate-600">{p.gstin || "-"}</td>
+                        <td className="px-4 py-4">
+                            <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md uppercase tracking-widest whitespace-nowrap">
                                 {p.address?.toLowerCase().includes("haryana") ? "Haryana" : p.address?.toLowerCase().includes("up") ? "UP" : "Delhi"}
                             </span>
                         </td>
-                        <td className="px-8 py-6 text-right">
-                          <span className="text-xs font-bold text-slate-500">₹{taxable.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        <td className="px-4 py-4 max-w-[150px]">
+                            <p className="text-[9px] text-slate-400 leading-tight truncate" title={p.address || ""}>{p.address || "-"}</p>
                         </td>
-                        <td className="px-8 py-6 text-right">
-                          <span className="text-sm font-black text-slate-900">₹{p.received.toLocaleString()}</span>
+                        <td className="px-4 py-4 text-right">
+                          <span className="text-[10px] font-bold text-slate-500">₹{taxable.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </td>
+                        <td className="px-4 py-4 text-right">
+                          <span className="text-[11px] font-black text-slate-900">₹{p.received.toLocaleString()}</span>
                         </td>
                       </tr>
                     );
