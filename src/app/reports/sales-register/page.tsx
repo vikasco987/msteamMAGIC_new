@@ -8,7 +8,8 @@ import {
   ArrowLeft,
   ChevronRight,
   TrendingUp,
-  Receipt
+  Receipt,
+  MapPin
 } from "lucide-react";
 import toast from "react-hot-toast";
 import jsPDF from "jspdf";
@@ -265,8 +266,14 @@ export default function SalesRegisterPage() {
                         <td className="px-4 py-5 text-[11px] text-slate-600 font-mono">{p.gstin || "-"}</td>
                         <td className="px-4 py-5 text-[11px] text-slate-400 italic">{(p as any).utr || "-"}</td>
                         <td className="px-4 py-5 text-[11px] text-slate-600">{p.address?.toLowerCase().includes("haryana") ? "Haryana" : p.address?.toLowerCase().includes("up") ? "UP" : "Delhi"}</td>
-                        <td className="px-4 py-5 min-w-[250px]">
-                            <p className="text-[11px] text-slate-500 leading-relaxed whitespace-pre-wrap">{p.address || "-"}</p>
+                        <td className="px-4 py-5 min-w-[150px]">
+                            {p.address?.startsWith('http') ? (
+                                <a href={p.address} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-[10px] font-black uppercase flex items-center gap-1">
+                                    <MapPin size={12}/> View Location
+                                </a>
+                            ) : (
+                                <p className="text-[11px] text-slate-500 leading-relaxed whitespace-pre-wrap">{p.address || "-"}</p>
+                            )}
                         </td>
                         <td className="px-4 py-5 text-right text-[11px] font-medium text-slate-500">
                           {taxable.toLocaleString(undefined, { minimumFractionDigits: 2 })}
