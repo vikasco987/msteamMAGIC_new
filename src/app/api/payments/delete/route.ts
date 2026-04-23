@@ -1110,107 +1110,71 @@ import { prisma } from "@/lib/prisma";
  */
 export async function DELETE(req: Request) {
   try {
-    // 1️⃣ Parse request body
-    let body: any;
-    try {
-      body = await req.json();
-      console.log("DELETE request body:", body);
-    } catch (parseErr) {
-      console.error("Invalid JSON body:", parseErr);
-      return NextResponse.json(
-        { error: "Invalid JSON body", code: "INVALID_JSON" },
-        { status: 400 }
-      );
-    }
-
+    const body = await req.json();
     const { taskId, paymentId } = body;
 
-    // 2️⃣ Validate required fields
-    if (!taskId?.trim() || !paymentId?.trim()) {
-      return NextResponse.json(
-        {
-          error: "taskId and paymentId are required",
-          code: "MISSING_FIELDS",
-        },
-        { status: 400 }
-      );
+    if (!taskId || !paymentId) {
+      return NextResponse.json({ error: "taskId and paymentId required" }, { status: 400 });
     }
 
-    // 3️⃣ Extract timestamp from paymentId (format: taskId_timestamp)
-    const parts = paymentId.split("_");
-    if (parts.length !== 2) {
-      return NextResponse.json(
-        { error: "Invalid paymentId format", code: "INVALID_PAYMENT_ID" },
-        { status: 400 }
-      );
-    }
-    const timestamp = Number(parts[1]);
-    if (isNaN(timestamp)) {
-      return NextResponse.json(
-        { error: "Invalid timestamp in paymentId", code: "INVALID_PAYMENT_ID" },
-        { status: 400 }
-      );
+    // 1️⃣ Find the payment in the Payment table
+    const payment = await prisma.payment.findUnique({
+      where: { id: paymentId }
+    });
+
+    if (!payment) {
+      return NextResponse.json({ error: "Payment record not found" }, { status: 404 });
     }
 
-    // 4️⃣ Fetch task
+    // 2️⃣ Fetch the related task
     const task = await prisma.task.findUnique({
       where: { id: taskId },
-      select: { id: true, paymentHistory: true },
+      select: { id: true, paymentHistory: true, received: true }
     });
 
     if (!task) {
-      return NextResponse.json(
-        { error: "Task not found", code: "TASK_NOT_FOUND" },
-        { status: 404 }
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+
+    // 3️⃣ Remove from Task's paymentHistory using the exact timestamp match
+    let updatedPayments = task.paymentHistory;
+    if (Array.isArray(task.paymentHistory)) {
+      updatedPayments = task.paymentHistory.filter(
+        (p: any) => new Date(p.updatedAt).getTime() !== new Date(payment.updatedAt).getTime()
       );
     }
 
-    if (!Array.isArray(task.paymentHistory)) {
-      return NextResponse.json(
-        {
-          error: "Payment history missing or corrupted",
-          code: "INVALID_PAYMENT_HISTORY",
-        },
-        { status: 500 }
-      );
-    }
+    // 4️⃣ Deduct the deleted amount from the task's received total
+    const newReceivedAmount = Math.max(0, (task.received || 0) - (payment.received || 0));
 
-    // 5️⃣ Find payment to delete using updatedAt timestamp
-    const paymentIndex = task.paymentHistory.findIndex(
-      (p: any) => new Date(p.updatedAt).getTime() === timestamp
-    );
+    // 5️⃣ Execute updates in a transaction to ensure data integrity (nothing else gets deleted)
+    await prisma.$transaction([
+      // Delete the payment from Payment table
+      prisma.payment.delete({
+        where: { id: paymentId }
+      }),
+      // Update Task's history and received amount
+      prisma.task.update({
+        where: { id: taskId },
+        data: {
+          paymentHistory: updatedPayments || [],
+          received: newReceivedAmount
+        }
+      }),
+      // Log to DeletedPayment collection
+      prisma.deletedPayment.create({
+        data: {
+          originalTask: taskId,
+          paymentData: payment,
+          deletedBy: "System/Admin"
+        }
+      })
+    ]);
 
-    if (paymentIndex === -1) {
-      return NextResponse.json(
-        { error: "Payment record not found", code: "PAYMENT_NOT_FOUND" },
-        { status: 404 }
-      );
-    }
-
-    const paymentToDelete = task.paymentHistory[paymentIndex];
-
-    // 6️⃣ Remove payment from task
-    const updatedPayments = task.paymentHistory.filter(
-      (_: any, idx: number) => idx !== paymentIndex
-    );
-
-    await prisma.task.update({
-      where: { id: taskId },
-      data: { paymentHistory: updatedPayments },
-    });
-
-    console.log("Payment deleted successfully:", paymentToDelete);
-
-    return NextResponse.json({
-      success: true,
-      deletedPayment: paymentToDelete,
-    });
+    return NextResponse.json({ success: true, deletedPayment: payment });
 
   } catch (err: any) {
     console.error("❌ Delete payment error:", err);
-    return NextResponse.json(
-      { error: "Internal server error", code: "INTERNAL_ERROR" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
