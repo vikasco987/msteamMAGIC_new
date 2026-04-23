@@ -66,6 +66,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const newAmount = formData.get("amount") ? Number(formData.get("amount")) : undefined;
     const newReceived = formData.get("received") ? Number(formData.get("received")) : undefined;
     const utr = formData.get("utr") as string | null;
+    const gstin = formData.get("gstin") as string | null;
 
     const existingTask = await prisma.task.findUnique({
       where: { id: originalTaskId },
@@ -104,6 +105,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     }
 
     const cleanUtr = utr?.trim() || null;
+    const cleanGstin = gstin?.trim() || null;
 
     // 🛡️ Step 1: Create Payment record (Enforce UTR uniqueness)
     try {
@@ -149,12 +151,16 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       utr: cleanUtr,
     };
 
+    const currentCustomFields = (existingTask.customFields as any) || {};
+    const updatedCustomFields = cleanGstin ? { ...currentCustomFields, gstin: cleanGstin } : currentCustomFields;
+
     const updatedTask = await prisma.task.update({
       where: { id: originalTaskId },
       data: {
         amount: updatedAmount,
         received: updatedReceived,
         updatedAt: new Date(),
+        customFields: updatedCustomFields,
         paymentHistory: [...(existingTask.paymentHistory as any[] || []), paymentEntry],
         ...(uploadedFileUrl ? { paymentProofs: [...(existingTask.paymentProofs || []), uploadedFileUrl] } : {})
       },

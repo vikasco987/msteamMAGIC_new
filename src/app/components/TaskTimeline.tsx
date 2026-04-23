@@ -723,10 +723,14 @@ export default function TaskTimeline() {
       utr: currentUtrInput || null
     };
 
+    const currentCustomFields = (selectedTask as any).customFields || {};
+    const updatedCustomFields = currentGstinInput ? { ...currentCustomFields, gstin: currentGstinInput } : currentCustomFields;
+
     const updatedTask = {
       ...selectedTask,
       amount: amountVal,
       received: newTotalReceived,
+      customFields: updatedCustomFields,
       paymentHistory: [optimisticHistoryEntry, ...(selectedTask.paymentHistory || [])]
     };
 
