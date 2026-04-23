@@ -34,9 +34,13 @@ export default function PaymentHistory({ paymentHistory, taskTitle, taskDetails 
   const [copyingId, setCopyingId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    fetch("/api/business-settings")
+    fetch("/api/admin/settings/business")
       .then(res => res.json())
-      .then(setBusinessSettings);
+      .then(data => {
+        console.log("Business Settings loaded:", data);
+        setBusinessSettings(data);
+      })
+      .catch(err => console.error("Failed to load business settings:", err));
   }, []);
 
   if (!paymentHistory || paymentHistory.length === 0) {

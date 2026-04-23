@@ -157,8 +157,8 @@ export const generateInvoicePDF = (p: any, businessSettings: any, overrides?: an
     const isSameState = (bizAddress.includes("delhi") && finalAddress.toLowerCase().includes("delhi")) || 
                         (bizAddress.includes("haryana") && finalAddress.toLowerCase().includes("haryana"));
 
-    const taxable = overrides?.received ? parseFloat(overrides.received) : (p.received / 1.18);
     const totalReceived = overrides?.received ? parseFloat(overrides.received) : p.received;
+    const taxable = totalReceived / 1.18;
     
     let cgst = 0, sgst = 0, igst = 0;
     if (isSameState) { cgst = taxable * 0.09; sgst = taxable * 0.09; }
@@ -191,13 +191,18 @@ export const generateInvoicePDF = (p: any, businessSettings: any, overrides?: an
     });
 
     let fY = (doc as any).lastAutoTable.finalY;
+    
+    // 5. SUMMARY BOX
     doc.setDrawColor(59, 130, 246);
     doc.setLineWidth(0.4);
     doc.rect(10, fY, pageWidth - 20, 35);
     doc.line(pageWidth / 2 + 15, fY, pageWidth / 2 + 15, fY + 35);
+    
     doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
     doc.text("Total in words", (pageWidth / 2 + 15) / 2 + 5, fY + 5.5, { align: 'center' });
     doc.line(10, fY + 8, pageWidth / 2 + 15, fY + 8);
+    
     doc.setFontSize(7);
     const wordsText = toWords(Math.round(totalAmount));
     const splitWords = doc.splitTextToSize(wordsText, (pageWidth / 2 + 15) - 15);
@@ -211,6 +216,7 @@ export const generateInvoicePDF = (p: any, businessSettings: any, overrides?: an
         doc.text(v, vX, y, { align: 'right' });
         doc.line(pageWidth / 2 + 15, y + 2.5, pageWidth - 10, y + 2.5);
     };
+    
     sRow("Taxable Amount", taxable.toLocaleString(undefined, { minimumFractionDigits: 2 }), fY + 6);
     if (isSameState) {
         sRow("Add : CGST (9%)", cgst.toFixed(2), fY + 13);
@@ -226,7 +232,11 @@ export const generateInvoicePDF = (p: any, businessSettings: any, overrides?: an
     doc.setFontSize(9);
     sRow("Total Amount After Tax", `Rs. ${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, fY + 34, true);
 
-    if (fY + 85 > doc.internal.pageSize.getHeight()) {
+    // IMPORTANT: Move fY after the summary box
+    fY += 41; 
+
+    // Check for page space
+    if (fY + 60 > doc.internal.pageSize.getHeight()) {
         doc.addPage();
         fY = 20;
     }
@@ -236,14 +246,17 @@ export const generateInvoicePDF = (p: any, businessSettings: any, overrides?: an
     doc.text("(E & O.E.)", pageWidth - 12, fY + 4.5, { align: 'right' });
     doc.line(pageWidth / 2 + 15, fY + 6, pageWidth - 10, fY + 6);
 
+    // 6. BANK & SIGNATORY BOX
     doc.setDrawColor(59, 130, 246);
     doc.setLineWidth(0.4);
     doc.rect(10, fY + 6, pageWidth - 20, 50);
     doc.line(pageWidth / 2 + 15, fY + 6, pageWidth / 2 + 15, fY + 56);
     
     doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
     doc.text("Bank Details", (pageWidth / 2 + 15) / 2 + 5, fY + 10.5, { align: 'center' });
     doc.line(10, fY + 13, pageWidth / 2 + 15, fY + 13);
+    
     const bRow = (l: string, v: string, y: number) => {
         doc.setFont("helvetica", "bold");
         doc.text(l, 12, y); doc.setFont("helvetica", "normal"); doc.text(v, 40, y);
@@ -256,13 +269,17 @@ export const generateInvoicePDF = (p: any, businessSettings: any, overrides?: an
     doc.setFont("helvetica", "bold");
     doc.text("Certified that the particulars given above are true and correct.", (pageWidth / 2 + 15) + (pageWidth - (pageWidth / 2 + 15)) / 2, fY + 10.5, { align: 'center' });
     doc.text("For " + (businessSettings?.name || "Magic Scale"), (pageWidth / 2 + 15) + (pageWidth - (pageWidth / 2 + 15)) / 2, fY + 16, { align: 'center' });
+    
     if (businessSettings?.signatureUrl) {
       try { doc.addImage(businessSettings.signatureUrl, 'PNG', pageWidth - 50, fY + 20, 30, 15); } catch (e) {}
     }
+    
     doc.line(pageWidth / 2 + 25, fY + 48, pageWidth - 20, fY + 48);
     doc.text("Authorised Signatory", (pageWidth / 2 + 15) + (pageWidth - (pageWidth / 2 + 15)) / 2, fY + 52, { align: 'center' });
 
-    fY += 56;
+    fY += 62;
+    
+    // 7. TERMS BOX
     doc.rect(10, fY, pageWidth - 20, 25);
     doc.setFont("helvetica", "bold");
     doc.text("Terms and Conditions", (pageWidth - 20) / 2 + 10, fY + 4.5, { align: 'center' });
