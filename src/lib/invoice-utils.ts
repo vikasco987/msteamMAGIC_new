@@ -191,9 +191,10 @@ export const generateInvoicePDF = (p: any, businessSettings: any, overrides?: an
     let currentY = (doc as any).lastAutoTable.finalY;
     
     // 5. SUMMARY BOX
+    const summaryHeight = isSameState ? 38 : 31;
     doc.setDrawColor(59, 130, 246);
-    doc.rect(10, currentY, pageWidth - 20, 30);
-    doc.line(pageWidth / 2 + 15, currentY, pageWidth / 2 + 15, currentY + 30);
+    doc.rect(10, currentY, pageWidth - 20, summaryHeight);
+    doc.line(pageWidth / 2 + 15, currentY, pageWidth / 2 + 15, currentY + summaryHeight);
     
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7);
@@ -210,21 +211,25 @@ export const generateInvoicePDF = (p: any, businessSettings: any, overrides?: an
         doc.text(l, pageWidth / 2 + 17, y);
         doc.text(v, pageWidth - 12, y, { align: 'right' });
         doc.line(pageWidth / 2 + 15, y + 2, pageWidth - 10, y + 2);
+        return y + 7;
     };
     
-    sRow("Taxable Amount", taxable.toFixed(2), currentY + 5);
+    let sy = currentY + 5;
+    sy = sRow("Taxable Amount", taxable.toFixed(2), sy, true);
     if (isSameState) {
-        sRow("CGST + SGST (18%)", totalTax.toFixed(2), currentY + 12);
+        sy = sRow("Add : CGST", cgst.toFixed(2), sy, true);
+        sy = sRow("Add : SGST", sgst.toFixed(2), sy, true);
     } else {
-        sRow("IGST (18%)", totalTax.toFixed(2), currentY + 12);
+        sy = sRow("Add : IGST", igst.toFixed(2), sy, true);
     }
+    sy = sRow("Total Tax", totalTax.toFixed(2), sy, true);
     
     doc.setFillColor(240, 248, 255);
-    doc.rect(pageWidth / 2 + 15.2, currentY + 21, (pageWidth - (pageWidth / 2 + 15)) - 10.4, 8, 'F');
+    doc.rect(pageWidth / 2 + 15.2, sy - 5, (pageWidth - (pageWidth / 2 + 15)) - 10.4, 8, 'F');
     doc.setFontSize(9);
-    sRow("Total (After Tax)", `Rs. ${totalAmount.toFixed(2)}`, currentY + 27, true);
+    sRow("Total Amount After Tax", `Rs. ${totalAmount.toFixed(2)}`, sy + 1, true);
 
-    currentY += 35;
+    currentY += summaryHeight + 5;
 
     // Check for page split - much tighter now
     if (currentY + 50 > doc.internal.pageSize.getHeight()) {
