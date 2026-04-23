@@ -149,9 +149,17 @@ export const generateInvoicePDF = (p: any, businessSettings: any, overrides?: an
 
     // 4. TAX CALCULATION
     const tableStartY = detailsY + 40;
-    const bizAddress = (businessSettings?.address || "").toLowerCase();
-    const isSameState = (bizAddress.includes("delhi") && finalAddress.toLowerCase().includes("delhi")) || 
-                        (bizAddress.includes("haryana") && finalAddress.toLowerCase().includes("haryana"));
+    const bizGstin = businessSettings?.gstin || "07CCJPV6752R1ZF";
+    const bizStateCode = bizGstin.substring(0, 2);
+    let isSameState = false;
+
+    if (finalGSTIN && finalGSTIN.length >= 2 && finalGSTIN !== "-") {
+        isSameState = finalGSTIN.substring(0, 2) === bizStateCode;
+    } else {
+        const bizAddress = (businessSettings?.address || "").toLowerCase();
+        isSameState = (bizAddress.includes("delhi") && finalAddress.toLowerCase().includes("delhi")) || 
+                      (bizAddress.includes("haryana") && finalAddress.toLowerCase().includes("haryana"));
+    }
 
     const totalReceived = overrides?.received ? parseFloat(overrides.received) : p.received;
     const taxable = totalReceived / 1.18;
