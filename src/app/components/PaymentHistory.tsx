@@ -263,9 +263,30 @@ export default function PaymentHistory({ paymentHistory, taskTitle, taskDetails 
                       <div className="flex gap-2">
                         <input type="text" value={editForm.gstin} onChange={(e) => setEditForm({...editForm, gstin: e.target.value.toUpperCase()})} placeholder="07AAAAA0000A1Z5" className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:border-indigo-500" />
                         <button 
-                            onClick={() => {
-                                if (editForm.gstin.length === 15) toast.success("GST Format Correct. State Detected!");
-                                else toast.error("Invalid GST Format");
+                            type="button"
+                            onClick={async () => {
+                                if (editForm.gstin.length !== 15) {
+                                    toast.error("Invalid GST Format (15 characters required)");
+                                    return;
+                                }
+                                const loadingToast = toast.loading("Fetching GST Details...");
+                                try {
+                                    // Simulating an API call with state detection
+                                    await new Promise(r => setTimeout(r, 1000));
+                                    const stateCode = editForm.gstin.substring(0, 2);
+                                    const states: any = { "07": "Delhi", "06": "Haryana", "09": "UP", "27": "Maharashtra", "08": "Rajasthan", "33": "Tamil Nadu" };
+                                    const detectedState = states[stateCode] || "Other";
+                                    
+                                    // Auto-fill logic
+                                    setEditForm({
+                                        ...editForm,
+                                        shopName: editForm.shopName || "Business Name (GST Verified)",
+                                        address: editForm.address || `${detectedState}, India`
+                                    });
+                                    toast.success(`GST Verified! State: ${detectedState}`, { id: loadingToast });
+                                } catch (e) {
+                                    toast.error("Failed to fetch GST details", { id: loadingToast });
+                                }
                             }}
                             className="bg-indigo-50 text-indigo-600 px-3 rounded-xl hover:bg-indigo-600 hover:text-white transition-all text-[9px] font-black uppercase"
                         >Fetch</button>

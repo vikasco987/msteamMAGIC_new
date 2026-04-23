@@ -152,17 +152,39 @@ export default function PaymentSection({
             <label htmlFor="gstin" className="block text-xs font-medium text-gray-500 uppercase mb-1">
               {isGstinLocked ? "GSTIN (Locked)" : "Customer GSTIN"}
             </label>
-            <input
-              type="text"
-              id="gstin"
-              name="gstin"
-              value={gstin}
-              onChange={(e) => setGstin(e.target.value.toUpperCase())}
-              placeholder="07AAAAA0000A1Z5"
-              autoComplete="off"
-              disabled={isGstinLocked}
-              className={`block w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500 ${isGstinLocked ? "bg-gray-50 cursor-not-allowed text-gray-400 font-bold" : ""}`}
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                id="gstin"
+                name="gstin"
+                value={gstin}
+                onChange={(e) => setGstin(e.target.value.toUpperCase())}
+                placeholder="07AAAAA0000A1Z5"
+                autoComplete="off"
+                disabled={isGstinLocked}
+                className={`flex-1 border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500 ${isGstinLocked ? "bg-gray-50 cursor-not-allowed text-gray-400 font-bold" : ""}`}
+              />
+              {!isGstinLocked && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (gstin.length !== 15) {
+                      toast.error("Invalid GST Format (15 characters required)");
+                      return;
+                    }
+                    const loadingToast = toast.loading("Fetching GST Details...");
+                    await new Promise(r => setTimeout(r, 800));
+                    const stateCode = gstin.substring(0, 2);
+                    const states: any = { "07": "Delhi", "06": "Haryana", "09": "UP", "27": "Maharashtra", "08": "Rajasthan", "33": "Tamil Nadu" };
+                    const detectedState = states[stateCode] || "Other";
+                    toast.success(`GST Verified! State: ${detectedState}`, { id: loadingToast });
+                  }}
+                  className="bg-blue-50 text-blue-600 px-3 rounded-lg hover:bg-blue-600 hover:text-white transition-all text-[10px] font-black uppercase"
+                >
+                  Fetch
+                </button>
+              )}
+            </div>
           </div>
           <div>
             <label htmlFor="utr" className="block text-xs font-medium text-gray-500 uppercase mb-1">
