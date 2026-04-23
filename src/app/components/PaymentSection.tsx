@@ -147,9 +147,9 @@ export default function PaymentSection({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="gstin" className="block text-xs font-medium text-gray-500 uppercase mb-1">
+        <div className="grid grid-cols-1 gap-4">
+          <div className="space-y-1">
+            <label htmlFor="gstin" className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
               {isGstinLocked ? "GSTIN (Locked)" : "Customer GSTIN"}
             </label>
             <div className="flex gap-2 items-center">
@@ -162,32 +162,32 @@ export default function PaymentSection({
                 placeholder="07AAAAA0000A1Z5"
                 autoComplete="off"
                 disabled={isGstinLocked}
-                className={`flex-1 border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500 ${isGstinLocked ? "bg-gray-50 cursor-not-allowed text-gray-400 font-bold" : ""}`}
+                className={`flex-1 border border-gray-200 rounded-xl py-2 px-3 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all ${isGstinLocked ? "bg-slate-50 cursor-not-allowed text-slate-400 font-bold" : "bg-white text-slate-700 font-bold"}`}
               />
               {!isGstinLocked && (
                 <button
                   type="button"
                   onClick={async () => {
                     if (gstin.length !== 15) {
-                      toast.error("Invalid GST Format (15 characters required)");
+                      toast.error("Invalid GST Format");
                       return;
                     }
-                    const loadingToast = toast.loading("Fetching GST Details...");
+                    const loadingToast = toast.loading("Fetching...");
                     await new Promise(r => setTimeout(r, 800));
                     const stateCode = gstin.substring(0, 2);
                     const states: any = { "07": "Delhi", "06": "Haryana", "09": "UP", "27": "Maharashtra", "08": "Rajasthan", "33": "Tamil Nadu" };
                     const detectedState = states[stateCode] || "Other";
-                    toast.success(`GST Verified! State: ${detectedState}`, { id: loadingToast });
+                    toast.success(`State: ${detectedState}`, { id: loadingToast });
                   }}
-                  className="shrink-0 h-[38px] bg-blue-50 text-blue-600 px-4 rounded-lg hover:bg-blue-600 hover:text-white transition-all text-[10px] font-black uppercase border border-blue-100"
+                  className="shrink-0 h-[36px] bg-blue-600 text-white px-3 rounded-xl hover:bg-blue-700 transition-all text-[9px] font-black uppercase shadow-sm"
                 >
                   Fetch
                 </button>
               )}
             </div>
           </div>
-          <div>
-            <label htmlFor="utr" className="block text-xs font-medium text-gray-500 uppercase mb-1">
+          <div className="space-y-1">
+            <label htmlFor="utr" className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
               UTR / Transaction No.
             </label>
             <input
@@ -198,7 +198,7 @@ export default function PaymentSection({
               onChange={(e) => setUtr(e.target.value)}
               placeholder="Enter UTR or TXN"
               autoComplete="off"
-              className="block w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500"
+              className="block w-full border border-gray-200 rounded-xl py-2 px-3 text-xs font-bold text-slate-700 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
             />
           </div>
         </div>
