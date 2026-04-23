@@ -152,7 +152,7 @@ export default function PaymentSection({
             <label htmlFor="gstin" className="block text-xs font-medium text-gray-500 uppercase mb-1">
               {isGstinLocked ? "GSTIN (Locked)" : "Customer GSTIN"}
             </label>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
               <input
                 type="text"
                 id="gstin"
@@ -179,7 +179,7 @@ export default function PaymentSection({
                     const detectedState = states[stateCode] || "Other";
                     toast.success(`GST Verified! State: ${detectedState}`, { id: loadingToast });
                   }}
-                  className="bg-blue-50 text-blue-600 px-3 rounded-lg hover:bg-blue-600 hover:text-white transition-all text-[10px] font-black uppercase"
+                  className="shrink-0 h-[38px] bg-blue-50 text-blue-600 px-4 rounded-lg hover:bg-blue-600 hover:text-white transition-all text-[10px] font-black uppercase border border-blue-100"
                 >
                   Fetch
                 </button>
