@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { FaDownload, FaCopy, FaFileInvoice, FaEye, FaFilter, FaTimes, FaUser, FaMapPin, FaPhone, FaBuilding, FaStore, FaIndianRupeeSign, FaCalendarDay } from "react-icons/fa6";
+import { FaDownload, FaCopy, FaFileInvoice, FaEye, FaFilter, FaXmark, FaUser, FaMapPin, FaPhone, FaBuilding, FaStore, FaIndianRupeeSign, FaCalendarDay } from "react-icons/fa6";
 import { generateInvoicePDF } from "@/lib/invoice-utils";
 import toast from "react-hot-toast";
 import { format, parseISO } from "date-fns";
@@ -240,7 +240,7 @@ export default function PaymentHistory({ paymentHistory, taskTitle, taskDetails 
                 <p className="text-indigo-100 text-[10px]">Customize invoice before download</p>
               </div>
               <button onClick={() => setEditingPayment(null)} className="p-2 hover:bg-white/20 rounded-full transition-all">
-                <FaTimes size={20} />
+                <FaXmark size={20} />
               </button>
             </div>
             
