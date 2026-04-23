@@ -15,6 +15,27 @@ import toast from "react-hot-toast";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import Link from "next/link";
+import * as XLSX from "xlsx";
+
+const getState = (p: any) => {
+    let state = "Delhi";
+    const stateCodes: { [key: string]: string } = {
+        "07": "Delhi", "06": "Haryana", "09": "Uttar Pradesh", "27": "Maharashtra", "08": "Rajasthan", "33": "Tamil Nadu", "24": "Gujarat"
+    };
+    if (p.gstin && p.gstin.length >= 2) {
+        const code = p.gstin.substring(0, 2);
+        if (stateCodes[code]) return stateCodes[code];
+    }
+    if (p.address) {
+        const lowerAddr = p.address.toLowerCase();
+        if (lowerAddr.includes("haryana")) return "Haryana";
+        if (lowerAddr.includes("up") || lowerAddr.includes("uttar pradesh") || lowerAddr.includes("noida")) return "Uttar Pradesh";
+        if (lowerAddr.includes("maharashtra") || lowerAddr.includes("mumbai")) return "Maharashtra";
+        if (lowerAddr.includes("gujarat") || lowerAddr.includes("ahmedabad")) return "Gujarat";
+        if (lowerAddr.includes("rajasthan") || lowerAddr.includes("jaipur")) return "Rajasthan";
+    }
+    return state;
+};
 
 interface PaymentEntry {
   paymentId: string;
@@ -97,11 +118,7 @@ export default function SalesRegisterPage() {
         const datePart = new Date(p.updatedAt).toISOString().split('T')[0].replace(/-/g, '');
         const numericHash = Math.abs(p.paymentId.split('').reduce((a, b: any) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0)).toString().substring(0, 4);
         const invNo = `MS/${datePart}/${numericHash}`;
-        
-        let state = "Delhi";
-        if (p.address?.toLowerCase().includes("haryana")) state = "Haryana";
-        if (p.address?.toLowerCase().includes("up") || p.address?.toLowerCase().includes("uttar pradesh")) state = "Uttar Pradesh";
-        if (p.address?.toLowerCase().includes("maharashtra")) state = "Maharashtra";
+        const state = getState(p);
 
         return [
             "Sales",
@@ -136,10 +153,44 @@ export default function SalesRegisterPage() {
     const finalY = (doc as any).lastAutoTable.cursor.y + 10;
     const totalGrand = payments.reduce((sum, p) => sum + p.received, 0);
     doc.setFont("helvetica", "bold");
-    doc.text(`Total Sales: Rs. ${totalGrand.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, pageWidth - 15, finalY, { align: 'right' });
+    doc.text(`Total Sales: Rs. ${totalGrand.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - 15, finalY, { align: 'right' });
 
     doc.save(`Sales_Register_${fromDate}_to_${toDate}.pdf`);
     toast.success("Sales Register Generated!");
+  };
+
+  const downloadExcel = () => {
+    if (payments.length === 0) {
+      toast.error("No data to export!");
+      return;
+    }
+
+    const exportData = payments.map(p => {
+        const taxable = p.received / 1.18;
+        const datePart = new Date(p.updatedAt).toISOString().split('T')[0].replace(/-/g, '');
+        const numericHash = Math.abs(p.paymentId.split('').reduce((a, b: any) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0)).toString().substring(0, 4);
+        const invNo = `MS/${datePart}/${numericHash}`;
+        
+        return {
+            "Vch Type": "Sales",
+            "Invoice No": invNo,
+            "Date": new Date(p.updatedAt).toLocaleDateString(),
+            "Company Name": p.shopName || "-",
+            "Contact Person": p.customerName || p.assignerName || "-",
+            "Phone": p.phone || "-",
+            "GST NO": p.gstin || "-",
+            "State": getState(p),
+            "Billing Address": p.address || "-",
+            "Taxable Value": Number(taxable.toFixed(2)),
+            "Grand Total": Number(p.received.toFixed(2))
+        };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Sales Register");
+    XLSX.writeFile(workbook, `Sales_Register_${fromDate}_to_${toDate}.xlsx`);
+    toast.success("Excel Downloaded!");
   };
 
   return (
@@ -161,13 +212,22 @@ export default function SalesRegisterPage() {
             </div>
           </div>
           
-          <button 
-            onClick={downloadSalesReport}
-            disabled={loading || payments.length === 0}
-            className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-slate-200 disabled:opacity-50"
-          >
-            <FileSpreadsheet size={16} /> Download PDF
-          </button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={downloadExcel}
+              disabled={loading || payments.length === 0}
+              className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-200 disabled:opacity-50"
+            >
+              <FileSpreadsheet size={16} /> Excel
+            </button>
+            <button 
+              onClick={downloadSalesReport}
+              disabled={loading || payments.length === 0}
+              className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-slate-200 disabled:opacity-50"
+            >
+              <Receipt size={16} /> PDF
+            </button>
+          </div>
         </div>
       </div>
 
@@ -265,7 +325,7 @@ export default function SalesRegisterPage() {
                         <td className="px-4 py-5 text-[11px] text-slate-600">{p.phone || "-"}</td>
                         <td className="px-4 py-5 text-[11px] text-slate-600 font-mono">{p.gstin || "-"}</td>
                         <td className="px-4 py-5 text-[11px] text-slate-400 italic">{(p as any).utr || "-"}</td>
-                        <td className="px-4 py-5 text-[11px] text-slate-600">{p.address?.toLowerCase().includes("haryana") ? "Haryana" : p.address?.toLowerCase().includes("up") ? "UP" : "Delhi"}</td>
+                        <td className="px-4 py-5 text-[11px] text-slate-600">{getState(p)}</td>
                         <td className="px-4 py-5 min-w-[150px]">
                             {p.address?.startsWith('http') ? (
                                 <a href={p.address} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-[10px] font-black uppercase flex items-center gap-1">
@@ -276,10 +336,10 @@ export default function SalesRegisterPage() {
                             )}
                         </td>
                         <td className="px-4 py-5 text-right text-[11px] font-medium text-slate-500">
-                          {taxable.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          {taxable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                         <td className="px-4 py-5 text-right text-[12px] font-bold text-slate-900">
-                          {p.received.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          {p.received.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                       </tr>
                     );
