@@ -154,6 +154,7 @@ export default function PaymentSection({
             value={utr}
             onChange={(e) => setUtr(e.target.value)}
             placeholder="Enter UTR or Transaction ID"
+            autoComplete="off"
             className="block w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
@@ -203,11 +204,16 @@ export default function PaymentSection({
             paymentHistory={paymentHistoryArray}
             taskTitle={selectedTask.name}
             taskDetails={{
-              shopName: selectedTask.shopName || selectedTask.shop,
+              shopName: (selectedTask as any).customFields?.shopName || selectedTask.shopName || selectedTask.shop,
               customerName: selectedTask.customerName || selectedTask.customer,
-              address: selectedTask.address || (selectedTask as any).location,
-              phone: (selectedTask as any).phone,
-              gstin: (selectedTask as any).gstin
+              address: [
+                (selectedTask as any).customFields?.fullAddress,
+                (selectedTask as any).customFields?.city,
+                (selectedTask as any).customFields?.state,
+                (selectedTask as any).customFields?.pincode
+              ].filter(Boolean).join(", ") || selectedTask.address || (selectedTask as any).location,
+              phone: (selectedTask as any).customFields?.phone || (selectedTask as any).phone,
+              gstin: (selectedTask as any).customFields?.gstin || (selectedTask as any).gstin
             }}
           />
         </div>
