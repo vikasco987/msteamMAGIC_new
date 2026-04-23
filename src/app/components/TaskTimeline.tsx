@@ -451,7 +451,7 @@ export default function TaskTimeline() {
     setSelectedTaskId(task.id);
     setSelectedTask(task);
     setIsPanelOpen(true);
-    setShowPaymentHistory(false);
+    setShowPaymentHistory(true); // 🚀 Always show history logs when opening a task
 
     try {
       const token = await getToken();
