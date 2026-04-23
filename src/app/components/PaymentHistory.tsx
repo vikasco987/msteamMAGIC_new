@@ -232,7 +232,7 @@ export default function PaymentHistory({ paymentHistory, taskTitle, taskDetails 
 
       {/* Invoice Edit Modal */}
       {editingPayment && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1000] flex items-center justify-center p-4">
           <div className="bg-white rounded-[2rem] w-full max-w-4xl max-h-[90vh] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
             <div className="bg-indigo-600 p-6 text-white flex justify-between items-center">
               <div>

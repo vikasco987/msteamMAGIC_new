@@ -56,6 +56,8 @@ export default function PaymentSection({
   setReceived,
   utr,
   setUtr,
+  gstin,
+  setGstin,
   paymentUploadStatus,
   setPaymentUploadStatus,
   handlePaymentSubmit,
@@ -63,7 +65,7 @@ export default function PaymentSection({
   setShowPaymentHistory,
   handleTogglePaymentHistory,
   fileInputRef
-}: PaymentSectionProps) {
+}: any) {
   if (!selectedTask) {
     return (
       <div className="bg-white p-6 rounded-lg shadow-sm text-gray-500 text-sm">
@@ -143,20 +145,37 @@ export default function PaymentSection({
           </div>
         </div>
 
-        <div>
-          <label htmlFor="utr" className="block text-xs font-medium text-gray-500 uppercase mb-1">
-            UTR / Transaction No. <span className="text-red-500 font-bold">(Required for Proof)</span>
-          </label>
-          <input
-            type="text"
-            id="utr"
-            name="utr"
-            value={utr}
-            onChange={(e) => setUtr(e.target.value)}
-            placeholder="Enter UTR or Transaction ID"
-            autoComplete="off"
-            className="block w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500"
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="gstin" className="block text-xs font-medium text-gray-500 uppercase mb-1">
+              Customer GSTIN
+            </label>
+            <input
+              type="text"
+              id="gstin"
+              name="gstin"
+              value={gstin}
+              onChange={(e) => setGstin(e.target.value.toUpperCase())}
+              placeholder="07AAAAA0000A1Z5"
+              autoComplete="off"
+              className="block w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label htmlFor="utr" className="block text-xs font-medium text-gray-500 uppercase mb-1">
+              UTR / Transaction No.
+            </label>
+            <input
+              type="text"
+              id="utr"
+              name="utr"
+              value={utr}
+              onChange={(e) => setUtr(e.target.value)}
+              placeholder="Enter UTR or TXN"
+              autoComplete="off"
+              className="block w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
         </div>
 
         <div>

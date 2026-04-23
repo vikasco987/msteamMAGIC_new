@@ -177,6 +177,8 @@ export default function TaskTimeline() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [newNote, setNewNote] = useState("");
   const [newSubtask, setNewSubtask] = useState("");
+  const [currentUtrInput, setCurrentUtrInput] = useState("");
+  const [currentGstinInput, setCurrentGstinInput] = useState("");
   const [uploadStatus, setUploadStatus] = useState("");
   const [paymentUploadStatus, setPaymentUploadStatus] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -188,7 +190,6 @@ export default function TaskTimeline() {
   const [assigneeMap, setAssigneeMap] = useState<Record<string, { name: string; imageUrl: string; email: string }>>({});
   const [currentAmountInput, setCurrentAmountInput] = useState("");
   const [currentReceivedInput, setCurrentReceivedInput] = useState("");
-  const [currentUtrInput, setCurrentUtrInput] = useState("");
   const [showPaymentHistory, setShowPaymentHistory] = useState(false);
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [mentionSearch, setMentionSearch] = useState("");
@@ -361,6 +362,7 @@ export default function TaskTimeline() {
       setCurrentAmountInput(selectedTask.amount?.toString() || "");
       setCurrentReceivedInput(""); // Always empty for incremental "Add Payment"
       setCurrentUtrInput(""); 
+      setCurrentGstinInput((selectedTask as any).customFields?.gstin || (selectedTask as any).gstin || "");
     }
   }, [selectedTaskId]); // Only reset when switching tasks
 
@@ -681,6 +683,7 @@ export default function TaskTimeline() {
     formData.append("amount", currentAmountInput);
     formData.append("received", currentReceivedInput);
     formData.append("utr", currentUtrInput);
+    formData.append("gstin", currentGstinInput);
 
     const fileInput = (e.target as HTMLFormElement).paymentFile as HTMLInputElement;
     const hasFile = fileInput?.files?.[0];
@@ -734,6 +737,8 @@ export default function TaskTimeline() {
     // Clear inputs immediately for "Instant" feel
     setCurrentReceivedInput(""); 
     setCurrentUtrInput("");
+    setCurrentGstinInput((selectedTask as any).customFields?.gstin || (selectedTask as any).gstin || "");
+    setPaymentUploadStatus("");
     setShowPaymentHistory(true); // 🚀 Always show history after update so buttons are visible
     toast.success(hasFile ? "Payment & Proof uploaded!" : "Balance updated!");
 
@@ -1221,6 +1226,8 @@ export default function TaskTimeline() {
                   setReceived={setCurrentReceivedInput}
                   utr={currentUtrInput}
                   setUtr={setCurrentUtrInput}
+                  gstin={currentGstinInput}
+                  setGstin={setCurrentGstinInput}
                   paymentUploadStatus={paymentUploadStatus}
                   setPaymentUploadStatus={setPaymentUploadStatus}
                   handlePaymentSubmit={handlePaymentSubmit}
