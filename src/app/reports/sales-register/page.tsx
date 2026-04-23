@@ -286,6 +286,19 @@ export default function SalesRegisterPage() {
                   })
                 )}
               </tbody>
+              {payments.length > 0 && !loading && (
+                <tfoot className="bg-slate-900 text-white">
+                  <tr>
+                    <td colSpan={10} className="px-4 py-4 text-[11px] font-black uppercase tracking-widest text-right">Totals</td>
+                    <td className="px-4 py-4 text-right text-[12px] font-bold">
+                      ₹{payments.reduce((sum, p) => sum + (p.received / 1.18), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="px-4 py-4 text-right text-[12px] font-bold">
+                      ₹{payments.reduce((sum, p) => sum + p.received, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
         </div>
