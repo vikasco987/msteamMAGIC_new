@@ -100,8 +100,8 @@ export const generateInvoicePDF = (p: any, businessSettings: any, overrides?: an
     // 3. DETAILS BOX
     const detailsY = barY + 10;
     doc.setDrawColor(59, 130, 246);
-    doc.rect(10, detailsY, pageWidth - 20, 40); // Reduced height from 50 to 40
-    doc.line(pageWidth / 2, detailsY, pageWidth / 2, detailsY + 40);
+    doc.rect(10, detailsY, pageWidth - 20, 48); // Increased height to accommodate PAN and Place of Supply
+    doc.line(pageWidth / 2, detailsY, pageWidth / 2, detailsY + 48);
     
     doc.setFillColor(240, 248, 255);
     doc.rect(10.2, detailsY + 0.2, (pageWidth / 2) - 10.2, 6, 'F');
@@ -112,16 +112,23 @@ export const generateInvoicePDF = (p: any, businessSettings: any, overrides?: an
     let cY = detailsY + 10;
     const row = (l: string, v: string, y: number) => {
         doc.setFont("helvetica", "bold");
-        doc.text(l, 12, y);
+        const lLines = doc.splitTextToSize(l, 18);
+        doc.text(lLines, 12, y);
         doc.setFont("helvetica", "normal");
         const vLines = doc.splitTextToSize(cleanText(v || "-"), 60);
         doc.text(vLines, 30, y);
-        return y + (vLines.length * 4);
+        return y + (Math.max(lLines.length, vLines.length) * 4);
     };
     cY = row("M/S", finalShopName, cY);
     cY = row("Address", finalAddress, cY);
     cY = row("Phone", finalPhone, cY);
     cY = row("GSTIN", finalGSTIN, cY);
+    
+    if (finalGSTIN && finalGSTIN.length >= 15 && finalGSTIN !== "-") {
+        const pan = finalGSTIN.substring(2, 12);
+        cY = row("PAN", pan, cY);
+        cY = row("Place of\nSupply", customerState, cY);
+    }
 
     const datePart = new Date(p.updatedAt).toISOString().split('T')[0].replace(/-/g, '');
     const entryId = p.paymentId || p.id || "0";
