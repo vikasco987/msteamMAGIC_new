@@ -2,6 +2,7 @@
 
 import React from "react";
 import PaymentHistory from "./PaymentHistory";
+import toast from "react-hot-toast";
 
 interface PaymentEntry {
   amount: number;
