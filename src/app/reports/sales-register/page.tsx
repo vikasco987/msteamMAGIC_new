@@ -119,6 +119,9 @@ export default function SalesRegisterPage() {
         const numericHash = Math.abs(p.paymentId.split('').reduce((a, b: any) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0)).toString().substring(0, 4);
         const invNo = `MS/${datePart}/${numericHash}`;
         const state = getState(p);
+        
+        const roundedTaxable = Math.round(taxable);
+        const roundedReceived = Math.round(p.received);
 
         return [
             "Sales",
@@ -130,8 +133,8 @@ export default function SalesRegisterPage() {
             p.gstin || "-",
             state,
             p.address || "-",
-            taxable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-            p.received.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            roundedTaxable.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 }),
+            roundedReceived.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
         ];
     });
 
@@ -151,9 +154,9 @@ export default function SalesRegisterPage() {
     });
 
     const finalY = (doc as any).lastAutoTable.cursor.y + 10;
-    const totalGrand = payments.reduce((sum, p) => sum + p.received, 0);
+    const totalGrand = Math.round(payments.reduce((sum, p) => sum + p.received, 0));
     doc.setFont("helvetica", "bold");
-    doc.text(`Total Sales: Rs. ${totalGrand.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - 15, finalY, { align: 'right' });
+    doc.text(`Total Sales: Rs. ${totalGrand.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, pageWidth - 15, finalY, { align: 'right' });
 
     doc.save(`Sales_Register_${fromDate}_to_${toDate}.pdf`);
     toast.success("Sales Register Generated!");
@@ -181,8 +184,8 @@ export default function SalesRegisterPage() {
             "GST NO": p.gstin || "-",
             "State": getState(p),
             "Billing Address": p.address || "-",
-            "Taxable Value": Number(taxable.toFixed(2)),
-            "Grand Total": Number(p.received.toFixed(2))
+            "Taxable Value": Math.round(taxable),
+            "Grand Total": Math.round(p.received)
         };
     });
 
@@ -336,10 +339,10 @@ export default function SalesRegisterPage() {
                             )}
                         </td>
                         <td className="px-4 py-5 text-right text-[11px] font-medium text-slate-500">
-                          {taxable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {Math.round(taxable).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </td>
                         <td className="px-4 py-5 text-right text-[12px] font-bold text-slate-900">
-                          {p.received.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {Math.round(p.received).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </td>
                       </tr>
                     );
@@ -351,10 +354,10 @@ export default function SalesRegisterPage() {
                   <tr>
                     <td colSpan={10} className="px-4 py-4 text-[11px] font-black uppercase tracking-widest text-right">Totals</td>
                     <td className="px-4 py-4 text-right text-[12px] font-bold">
-                      ₹{payments.reduce((sum, p) => sum + (p.received / 1.18), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      ₹{Math.round(payments.reduce((sum, p) => sum + (p.received / 1.18), 0)).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </td>
                     <td className="px-4 py-4 text-right text-[12px] font-bold">
-                      ₹{payments.reduce((sum, p) => sum + p.received, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      ₹{Math.round(payments.reduce((sum, p) => sum + p.received, 0)).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </td>
                   </tr>
                 </tfoot>
