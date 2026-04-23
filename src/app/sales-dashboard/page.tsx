@@ -451,17 +451,24 @@ export default function SalesDashboardPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Sales Dashboard</h1>
         <div className="flex items-center gap-3">
-          {/* ✅ Redirect Button Added */}
+          {/* ✅ Redirect Buttons */}
           <button
             onClick={() => router.push("/payments-today")}
-            className="px-4 py-1 text-sm font-medium text-white bg-indigo-600 rounded hover:bg-indigo-700 transition-colors"
+            className="px-4 py-1.5 text-xs font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors uppercase tracking-tight"
           >
-            View Today Payments
+            Today Payments
+          </button>
+          
+          <button
+            onClick={() => router.push("/reports/sales-register")}
+            className="px-4 py-1.5 text-xs font-bold text-white bg-slate-900 rounded-lg hover:bg-black transition-colors uppercase tracking-tight"
+          >
+            Sales Register
           </button>
           
           <Link
             href="/goals"
-            className="text-sm font-medium text-blue-600 hover:underline border border-blue-600 rounded px-3 py-1"
+            className="text-xs font-bold text-blue-600 hover:bg-blue-50 border border-blue-600 rounded-lg px-4 py-1.5 transition-colors uppercase tracking-tight"
           >
             Set Goals
           </Link>
