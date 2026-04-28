@@ -4,6 +4,8 @@ import zlib from 'zlib';
 import { S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { MongoClient, BSON } from 'mongodb';
+import { fileURLToPath } from 'url';
+
 
 const { EJSON } = BSON;
 
@@ -118,9 +120,16 @@ export async function runBackup() {
 }
 
 // CLI handler for local development (npm run db:backup)
-if (require.main === module) {
+
+const isMain = process.argv[1] && (
+    process.argv[1].endsWith('mongodb-backup.ts') || 
+    process.argv[1].endsWith('mongodb-backup.js')
+);
+
+if (isMain) {
     runBackup().catch(err => {
         console.error(err);
         process.exit(1);
     });
 }
+

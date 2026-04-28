@@ -5,9 +5,10 @@
     <key>Label</key>
     <string>com.magicscale.backup</string>
     <key>ProgramArguments</key>
-    <array>
+    <array>. 
         <string>/bin/bash</string>
-        <string>/Users/vikas/msteamMAGIC/scripts/backup/run-cron-backup.sh</string>
+        <string>/Users/vikas/msteamMAGIC_new/scripts/backup/run-cron-backup.sh</string>
+
     </array>
     <key>StartCalendarInterval</key>
     <dict>
@@ -17,8 +18,9 @@
         <integer>0</integer>
     </dict>
     <key>StandardOutPath</key>
-    <string>/Users/vikas/msteamMAGIC/scripts/backup/backup.log</string>
+    <string>/Users/vikas/msteamMAGIC_new/scripts/backup/backup.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/vikas/msteamMAGIC/scripts/backup/backup.log</string>
+    <string>/Users/vikas/msteamMAGIC_new/scripts/backup/backup.log</string>
+
 </dict>
 </plist>

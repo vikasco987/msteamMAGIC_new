@@ -450,6 +450,7 @@ export default function TaskDetailsCard({ task, isAdmin = false, onDelete, onUpd
             <FieldWithCopy label="🏷️ Outlet" value={cf.outletName} />
             <FieldWithCopy label="👤 Cust" value={cf.customerName} />
             <FieldWithCopy label="📞 Ph" value={cf.phone} />
+            <FieldWithCopy label="📧 Email" value={cf.email} />
             <FieldWithCopy label="💰 Pkg" value={cf.packageAmount} />
             <div className="flex flex-wrap gap-2 text-[11px]">
                <FieldWithCopy label="🏦 A/C" value={cf.accountNumber} />
@@ -514,32 +515,52 @@ export default function TaskDetailsCard({ task, isAdmin = false, onDelete, onUpd
               </div>
             </div>
           )}
+          {/* Notes Preview Section */}
+          {task.notes && task.notes.length > 0 && (
+            <div className="mt-2 p-2 bg-slate-50 rounded-xl border border-slate-200">
+              <p className="text-xs font-bold text-slate-600 mb-1">📝 Notes</p>
+              {task.notes.map((note, idx) => (
+                <div key={idx} className="text-[10px] text-slate-700 border-b border-slate-100 py-1 last:border-0">
+                  {note.content}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Footer Meta Details */}
           <div className="mt-4 pt-3 border-t border-slate-100 flex flex-col gap-2">
-            <div className="flex justify-between items-end">
-              <div className="space-y-1">
-                {displayAssignerName !== "—" && (
-                  <div className="flex flex-col">
-                    <p className="text-[10px] font-medium text-slate-600">
-                      By <span className="text-slate-800 font-bold">{displayAssignerName}</span>
-                    </p>
-                    {displayAssignerEmail && <p className="text-[9px] text-slate-600 lowercase">{displayAssignerEmail}</p>}
-                  </div>
-                )}
-                {displayAssigneeName !== "—" && (
-                  <div className="flex flex-col mt-1">
-                    <p className="text-[10px] font-medium text-slate-600">
-                      To <span className="text-indigo-600 font-bold">{displayAssigneeName}</span>
-                    </p>
-                    {displayAssigneeEmail && <p className="text-[9px] text-indigo-500 lowercase">{displayAssigneeEmail}</p>}
-                  </div>
-                )}
-              </div>
-              <p className="text-[9px] font-bold text-slate-500 uppercase">
-                {task.createdAt ? new Date(task.createdAt).toLocaleDateString() : ""}
-              </p>
-            </div>
+<div className="flex justify-between items-end">
+  <div className="space-y-1">
+    {displayAssignerName !== "—" && (
+      <div className="flex flex-col">
+        <p className="text-[10px] font-medium text-slate-600">
+          By <span className="text-slate-800 font-bold">{displayAssignerName}</span>
+        </p>
+        {displayAssignerEmail && (
+          <p className="text-[9px] text-slate-600 lowercase">
+            Email: <span className="font-medium">{displayAssignerEmail}</span>
+          </p>
+        )}
+      </div>
+    )}
+    {displayAssigneeName !== "—" && (
+      <div className="flex flex-col mt-1">
+        <p className="text-[10px] font-medium text-slate-600">
+          To <span className="text-indigo-600 font-bold">{displayAssigneeName}</span>
+        </p>
+        {displayAssigneeEmail && (
+          <p className="text-[9px] text-indigo-500 lowercase">
+            Email: <span className="font-medium">{displayAssigneeEmail}</span>
+          </p>
+        )}
+      </div>
+    )}
+  </div>
+  <p className="text-[9px] font-bold text-slate-500 uppercase">
+    {task.createdAt ? new Date(task.createdAt).toLocaleDateString() : ""}
+  </p>
+</div>
+
 
             {isAdmin && (
               <button

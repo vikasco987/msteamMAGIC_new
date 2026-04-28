@@ -26,10 +26,10 @@ echo "📅 Backup started at: $(date)" >> "$LOG_FILE"
 echo "📂 Project Dir: $PROJECT_DIR" >> "$LOG_FILE"
 echo "📝 Using Log File: $LOG_FILE" >> "$LOG_FILE"
 
-# Run the backup script using npm
-# We use 'node' directly to be safer about which script we run
+# Run the backup script using ts-node
 export NODE_ENV=production
-node "$PROJECT_DIR/scripts/backup/mongodb-backup.js" >> "$LOG_FILE" 2>&1
+npx ts-node "$PROJECT_DIR/src/lib/backup/mongodb-backup.ts" >> "$LOG_FILE" 2>&1
+
 
 if [ $? -eq 0 ]; then
     echo "✅ Backup process finished successfully." >> "$LOG_FILE"
