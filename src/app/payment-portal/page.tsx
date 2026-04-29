@@ -122,7 +122,7 @@ const PaymentPortal = () => {
     try {
       const res = await axios.post(`${API_BASE_URL}/create-link`, {
         ...formData,
-        createdBy: currentUser.fullName || currentUser.username || currentUser.emailAddresses[0].emailAddress,
+        createdBy: currentUser.fullName || currentUser.username || currentUser.emailAddresses[0]?.emailAddress || "CRM User",
         purpose: mode === "pending" ? `Balance: ${formData.purpose}` : (paymentType === "partial" ? `Partial: ${formData.purpose}` : formData.purpose)
       });
       if (res.data.success) {
