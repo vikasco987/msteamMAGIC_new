@@ -140,7 +140,11 @@ export default function Board() {
 
     try {
       const res = await fetch("/api/tasks?limit=200");
-      if (!res.ok) throw new Error("Fetch failed");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error("Fetch failed:", res.status, errorData);
+        throw new Error(`Fetch failed: ${res.status} ${errorData.error || ""}`);
+      }
       const json: { tasks: TaskType[] } = await res.json();
       const taskArray: TaskType[] = Array.isArray(json.tasks) ? json.tasks : [];
 

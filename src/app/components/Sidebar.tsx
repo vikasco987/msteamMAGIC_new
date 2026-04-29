@@ -30,7 +30,8 @@ import {
   PhoneCall,
   Activity,
   Database,
-  Clock
+  Clock,
+  CreditCard
 } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -61,6 +62,7 @@ const NAVIGATION_GROUPS = [
       { label: 'Follow-up Board', icon: Calendar, href: '/dashboard/followups', roles: ['admin', 'master', 'seller', 'tl', 'manager'] },
       { label: 'Call Report', icon: PhoneCall, href: '/call-report', roles: ['admin', 'master', 'seller', 'tl'] },
       { label: 'Financial Ecosystem', icon: FileSpreadsheet, href: '/admin/reports/payments', roles: ['admin', 'master', 'tl'] },
+      { label: 'Payment Portal', icon: CreditCard, href: '/payment-portal', roles: ['admin', 'master', 'seller', 'tl', 'user', 'manager', 'intern', 'guest'] },
     ]
   },
   {
@@ -349,7 +351,7 @@ export default function Sidebar() {
               // If we have dynamic permissions, they override or restrict
               if (dynamicPermissions && dynamicPermissions.length > 0) {
                 // Safety Lock: Master should always see Access Control & Business Setup to avoid locking out
-                if (userRole === 'master' && (i.label === 'Access Control' || i.label === 'Business Setup')) return true;
+                if (userRole === 'master' && (i.label === 'Access Control' || i.label === 'Business Setup' || i.label === 'Payment Portal')) return true;
                 
                 return dynamicPermissions.includes(i.label);
               }
