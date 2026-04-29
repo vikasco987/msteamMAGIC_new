@@ -15,7 +15,7 @@ export async function POST(
   if (action === "create-link") {
     try {
       const body = await req.json();
-      const { name, email, phone, amount, totalServicePrice, purpose } = body;
+      const { name, email, phone, amount, totalServicePrice, purpose, createdBy } = body;
       const finalAmount = parseFloat(amount || totalServicePrice || "0");
 
       if (!appId || !secretKey) {
@@ -72,6 +72,7 @@ export async function POST(
           purpose: purpose || "Service Payment",
           paymentLink: checkoutUrl,
           paymentSessionId: sessionId,
+          createdBy: createdBy || "Unknown",
           status: "pending"
         }
       });

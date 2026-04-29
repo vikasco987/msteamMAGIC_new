@@ -8,13 +8,15 @@ import {
   ChevronDown, AlertCircle, Calculator, Wallet, Zap, Clock, UserCheck,
   ShieldCheck, Sparkles, Settings
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { ALL_SERVICES } from "@/constants/services";
 import { toast } from "react-hot-toast";
+import { useUser } from "@clerk/nextjs";
+import { format } from "date-fns";
 
 const API_BASE_URL = "/api/cashfree";
 
 const PaymentPortal = () => {
+  const { user: currentUser } = useUser();
   const [mode, setMode] = useState("new");
   const [paymentType, setPaymentType] = useState("full");
   const [formData, setFormData] = useState({
@@ -101,6 +103,7 @@ const PaymentPortal = () => {
     try {
       const res = await axios.post(`${API_BASE_URL}/create-link`, {
         ...formData,
+        createdBy: currentUser?.fullName || currentUser?.firstName || "Admin",
         purpose: mode === "pending" ? `Balance: ${formData.purpose}` : (paymentType === "partial" ? `Partial: ${formData.purpose}` : formData.purpose)
       });
       if (res.data.success) {
@@ -478,9 +481,18 @@ const PaymentPortal = () => {
               <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-tighter">
                 <Clock size={20} className="text-indigo-600" /> Transaction Logs
               </h3>
-              <button onClick={fetchHistory} className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                <Zap size={16} className={fetchingHistory ? "animate-spin" : ""} />
-              </button>
+              <div className="flex items-center gap-3">
+                <Link 
+                  href="/payment-portal/history"
+                  className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 font-black text-[10px] uppercase tracking-widest rounded-xl border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-100 transition-all flex items-center gap-2"
+                >
+                  View Full Screen
+                  <ChevronRight size={14} />
+                </Link>
+                <button onClick={fetchHistory} className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                  <Zap size={16} className={fetchingHistory ? "animate-spin" : ""} />
+                </button>
+              </div>
             </div>
 
             {fetchingHistory ? (
@@ -493,6 +505,7 @@ const PaymentPortal = () => {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/50 dark:bg-slate-800/30">
+                      <th className="px-8 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">Date & Creator</th>
                       <th className="px-8 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">Customer Details</th>
                       <th className="px-8 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">Service Item</th>
                       <th className="px-8 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">Collection</th>
@@ -503,7 +516,13 @@ const PaymentPortal = () => {
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {history.length > 0 ? (
                       history.map((link) => (
-                        <tr key={link._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors group">
+                        <tr key={link.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors group">
+                          <td className="px-8 py-6">
+                            <div className="flex flex-col">
+                              <span className="font-black text-slate-900 dark:text-white text-xs">{format(new Date(link.createdAt), "dd MMM, hh:mm a")}</span>
+                              <span className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider">By: {link.createdBy || "Admin"}</span>
+                            </div>
+                          </td>
                           <td className="px-8 py-6">
                             <div className="flex flex-col">
                               <span className="font-black text-slate-900 dark:text-white text-sm group-hover:text-indigo-600 transition-colors">{link.name}</span>
@@ -511,7 +530,7 @@ const PaymentPortal = () => {
                             </div>
                           </td>
                           <td className="px-8 py-6">
-                            <span className="text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg">{link.plan}</span>
+                            <span className="text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg">{link.purpose}</span>
                           </td>
                           <td className="px-8 py-6">
                             <div className="flex flex-col">
@@ -555,7 +574,7 @@ const PaymentPortal = () => {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={5} className="py-32 text-center">
+                        <td colSpan={6} className="py-32 text-center">
                           <div className="flex flex-col items-center gap-3 opacity-30">
                             <FileText size={48} />
                             <p className="font-black text-xs uppercase tracking-widest">No transaction history found</p>
