@@ -191,17 +191,35 @@ export async function GET(
         },
       });
 
-      const cashfreeStatus = orderResponse.data.order_status; // PAID, ACTIVE, EXPIRED, etc.
+      const cashfreeStatus = orderResponse.data.order_status?.toUpperCase(); 
+      console.log(`ORDER STATUS FOR ${orderId}:`, cashfreeStatus);
+
       let finalStatus = "pending";
-      if (cashfreeStatus === "PAID") finalStatus = "paid";
+      if (cashfreeStatus === "PAID" || cashfreeStatus === "SUCCESS") finalStatus = "paid";
       else if (cashfreeStatus === "EXPIRED") finalStatus = "expired";
-      else if (cashfreeStatus === "TERMINATED") finalStatus = "failed";
+      else if (cashfreeStatus === "TERMINATED" || cashfreeStatus === "FAILED") finalStatus = "failed";
+
+      // If still pending, check payments array just in case
+      if (finalStatus === "pending" && orderResponse.data.order_amount > 0) {
+        // Fetch payments for this order
+        const paymentsUrl = `${orderUrl}/payments`;
+        const paymentsResponse = await axios.get(paymentsUrl, {
+          headers: {
+            "x-client-id": appId,
+            "x-client-secret": secretKey,
+            "x-api-version": "2022-09-01",
+          },
+        });
+        
+        const hasSuccess = paymentsResponse.data.some((p: any) => p.payment_status?.toUpperCase() === "SUCCESS");
+        if (hasSuccess) finalStatus = "paid";
+      }
 
       // Update local DB
       // @ts-ignore
       await prisma.cashfreeLink.update({
         where: { orderId },
-        data: { status: finalStatus.toLowerCase() }
+        data: { status: finalStatus }
       });
 
       return NextResponse.json({ 
