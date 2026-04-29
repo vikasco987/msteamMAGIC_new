@@ -70,6 +70,7 @@
     "pdfkit": "^0.17.2",
     "pusher": "^5.3.3",
     "pusher-js": "^8.4.3",
+    "qrcode.react": "^4.2.0",
     "react": "^18.2.0",
     "react-datepicker": "^8.4.0",
     "react-dom": "^18.2.0",

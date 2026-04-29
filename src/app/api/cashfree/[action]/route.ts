@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
 import { prisma } from "@/lib/prisma";
+import { currentUser as getClerkUser } from "@clerk/nextjs/server";
 
 export async function POST(
   req: NextRequest,
@@ -15,7 +16,7 @@ export async function POST(
   if (action === "create-link") {
     try {
       const body = await req.json();
-      const { name, email, phone, amount, totalServicePrice, purpose, createdBy } = body;
+      const { name, email, phone, amount, totalServicePrice, purpose, createdBy, creatorId } = body;
       const finalAmount = parseFloat(amount || totalServicePrice || "0");
 
       if (!appId || !secretKey) {
@@ -73,6 +74,7 @@ export async function POST(
           paymentLink: checkoutUrl,
           paymentSessionId: sessionId,
           createdBy: createdBy || "Unknown",
+          creatorId: creatorId || null,
           status: "pending"
         }
       });
@@ -103,10 +105,47 @@ export async function GET(
 
   if (action === "get-all-links") {
     try {
-      // @ts-ignore
+      const user = await getClerkUser();
+      if (!user) return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+
+      const role = String(user.publicMetadata?.role || "user").toLowerCase();
+      
+      let where = {};
+      if (role !== "master") {
+        where = { creatorId: user.id };
+      }
+
       const links = await prisma.cashfreeLink.findMany({
+        where,
         orderBy: { createdAt: "desc" },
         take: 50
+      });
+      return NextResponse.json({ success: true, links });
+    } catch (error: any) {
+      return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    }
+  }
+
+  if (action === "analytics") {
+    try {
+      const user = await getClerkUser();
+      if (!user) return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+      const role = String(user.publicMetadata?.role || "user").toLowerCase();
+      
+      // Check for dynamic permission in database
+      const permission = await prisma.sidebarPermission.findUnique({
+        where: { role }
+      });
+
+      const allowedItems = permission?.sidebarItems || [];
+      const hasAccess = allowedItems.includes("Payment Analytics");
+
+      if (!hasAccess && role !== "master") {
+        return NextResponse.json({ success: false, message: "Forbidden" }, { status: 403 });
+      }
+
+      const links = await prisma.cashfreeLink.findMany({
+        orderBy: { createdAt: "desc" }
       });
       return NextResponse.json({ success: true, links });
     } catch (error: any) {

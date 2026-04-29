@@ -539,6 +539,7 @@ model CashfreeLink {
   status          String   @default("pending") // pending, paid, failed
   paymentSessionId String?
   createdBy       String?
+  creatorId       String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
