@@ -18,7 +18,7 @@ import { format } from "date-fns";
 const API_BASE_URL = "/api/cashfree";
 
 const PaymentPortal = () => {
-  const { user: currentUser } = useUser();
+  const { isLoaded, user: currentUser } = useUser();
   const [mode, setMode] = useState("new");
   const [paymentType, setPaymentType] = useState("full");
   const [formData, setFormData] = useState({
