@@ -8,6 +8,7 @@ import {
   ChevronDown, AlertCircle, Calculator, Wallet, Zap, Clock, UserCheck,
   ShieldCheck, Sparkles, Settings
 } from "lucide-react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ALL_SERVICES } from "@/constants/services";
 import { toast } from "react-hot-toast";
