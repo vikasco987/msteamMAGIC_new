@@ -6,7 +6,7 @@ import {
   Link as LinkIcon, Copy, Check, Send, Loader2, IndianRupee, 
   User, Mail, Phone, FileText, Search, CreditCard, ArrowRight,
   ChevronDown, AlertCircle, Calculator, Wallet, Zap, Clock, UserCheck,
-  ShieldCheck, Sparkles, Settings
+  ShieldCheck, Sparkles, Settings, ChevronRight
 } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
