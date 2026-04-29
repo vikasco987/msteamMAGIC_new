@@ -9,7 +9,7 @@ frontend:
     build:
       commands:
         # Pre-injecting environment variables for runtime
-        - env | grep -E "CLERK_|DATABASE_|NEXT_PUBLIC_|GEMINI_|NEXTAUTH_|CLOUDINARY_|PUSHER_" > .env.production
+        - env | grep -E "CLERK_|DATABASE_|NEXT_PUBLIC_|GEMINI_|NEXTAUTH_|CLOUDINARY_|PUSHER_|CASHFREE_" > .env.production
         - npm run build
         
         # Post-build Cleanup (Only non-essential assets)
