@@ -176,7 +176,7 @@ const PaymentHistoryPage = () => {
                       </td>
                       <td className="px-8 py-8">
                         <div className="flex items-center gap-3">
-                          {link.status === "pending" && (
+                          {link.status?.toLowerCase() === "pending" && (
                             <button 
                               onClick={() => handleSyncStatus(link.orderId)}
                               className="p-3.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-2xl hover:bg-indigo-100 transition-all shadow-sm border border-indigo-100 dark:border-indigo-800"

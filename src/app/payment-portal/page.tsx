@@ -566,7 +566,7 @@ const PaymentPortal = () => {
                           </td>
                           <td className="px-8 py-6">
                             <div className="flex items-center gap-2">
-                              {link.status === "pending" && (
+                              {link.status?.toLowerCase() === "pending" && (
                                 <button 
                                   onClick={() => handleSyncStatus(link.orderId)}
                                   className="p-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all shadow-sm border border-indigo-100 dark:border-indigo-800"
