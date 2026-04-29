@@ -11,9 +11,6 @@ export async function POST(
   const secretKey = process.env.CASHFREE_SECRET_KEY?.trim();
   const env = process.env.CASHFREE_ENV?.trim()?.toUpperCase() || "PROD";
 
-  console.log("DEBUG: Prisma defined?", !!prisma);
-  console.log("DEBUG: prisma.cashfreeLink defined?", !!(prisma as any).cashfreeLink);
-  console.log("DEBUG: Prisma keys:", Object.keys(prisma).filter(k => !k.startsWith("_")));
 
   if (action === "create-link") {
     try {
@@ -161,10 +158,64 @@ export async function GET(
           pendingBalance: 0
         });
       }
-
       return NextResponse.json({ success: false, message: "Customer not found" });
     } catch (error: any) {
       return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    }
+  }
+
+  if (action === "check-status") {
+    const { searchParams } = new URL(req.url);
+    const orderId = searchParams.get("order_id");
+    if (!orderId) return NextResponse.json({ success: false, message: "Order ID required" }, { status: 400 });
+
+    const appId = process.env.CASHFREE_APP_ID?.trim();
+    const secretKey = process.env.CASHFREE_SECRET_KEY?.trim();
+    const env = process.env.CASHFREE_ENV?.trim()?.toUpperCase() || "PROD";
+
+    if (!appId || !secretKey) {
+      return NextResponse.json({ success: false, message: "Cashfree API keys missing" }, { status: 500 });
+    }
+
+    try {
+      const orderUrl = env === "PROD" 
+        ? `https://api.cashfree.com/pg/orders/${orderId}` 
+        : `https://sandbox.cashfree.com/pg/orders/${orderId}`;
+
+      const orderResponse = await axios.get(orderUrl, {
+        headers: {
+          "x-client-id": appId,
+          "x-client-secret": secretKey,
+          "x-api-version": "2022-09-01",
+        },
+      });
+
+      const cashfreeStatus = orderResponse.data.order_status; // PAID, ACTIVE, EXPIRED, etc.
+      let finalStatus = "pending";
+      if (cashfreeStatus === "PAID") finalStatus = "paid";
+      else if (cashfreeStatus === "EXPIRED") finalStatus = "expired";
+      else if (cashfreeStatus === "TERMINATED") finalStatus = "failed";
+
+      // Update local DB
+      // @ts-ignore
+      await prisma.cashfreeLink.update({
+        where: { orderId },
+        data: { status: finalStatus.toLowerCase() }
+      });
+
+      return NextResponse.json({ 
+        success: true, 
+        status: finalStatus, 
+        cashfree_status: cashfreeStatus,
+        order_details: orderResponse.data 
+      });
+
+    } catch (error: any) {
+      console.error("Cashfree Status Error:", error.response?.data || error.message);
+      return NextResponse.json({ 
+        success: false, 
+        message: error.response?.data?.message || error.message 
+      }, { status: 500 });
     }
   }
 

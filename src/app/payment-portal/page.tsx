@@ -113,6 +113,18 @@ const PaymentPortal = () => {
     } finally { setLoading(false); }
   };
 
+  const handleSyncStatus = async (orderId: string) => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/check-status?order_id=${orderId}`);
+      if (res.data.success) {
+        toast.success(`Status updated to ${res.data.status}`);
+        fetchHistory(); // Refresh list
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Sync failed");
+    }
+  };
+
   const remainingBalance = Math.max(0, (parseFloat(formData.totalServicePrice) || 0) - (parseFloat(formData.amount) || 0));
 
   return (
@@ -515,18 +527,29 @@ const PaymentPortal = () => {
                             </span>
                           </td>
                           <td className="px-8 py-6">
-                            {link.paymentLink && (
-                              <button 
-                                onClick={() => { 
-                                  navigator.clipboard.writeText(link.paymentLink); 
-                                  toast.success("Link copied!");
-                                }}
-                                className="p-3 bg-white dark:bg-slate-800 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-all shadow-sm border border-slate-100 dark:border-slate-700"
-                                title="Copy Payment Link"
-                              >
-                                <Copy size={16} />
-                              </button>
-                            )}
+                            <div className="flex items-center gap-2">
+                              {link.status === "pending" && (
+                                <button 
+                                  onClick={() => handleSyncStatus(link.orderId)}
+                                  className="p-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all shadow-sm border border-indigo-100 dark:border-indigo-800"
+                                  title="Sync Status"
+                                >
+                                  <Zap size={16} />
+                                </button>
+                              )}
+                              {link.paymentLink && (
+                                <button 
+                                  onClick={() => { 
+                                    navigator.clipboard.writeText(link.paymentLink); 
+                                    toast.success("Link copied!");
+                                  }}
+                                  className="p-3 bg-white dark:bg-slate-800 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-all shadow-sm border border-slate-100 dark:border-slate-700"
+                                  title="Copy Payment Link"
+                                >
+                                  <Copy size={16} />
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))
