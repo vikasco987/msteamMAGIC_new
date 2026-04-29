@@ -543,7 +543,7 @@ const PaymentPortal = () => {
                             </div>
                           </td>
                           <td className="px-8 py-6">
-                            <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-[0.1em] shadow-sm ${link.status === "paid" ? "bg-emerald-100 text-emerald-600 border border-emerald-200" : "bg-amber-100 text-amber-600 border border-amber-200"}`}>
+                            <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-[0.1em] shadow-sm ${link.status?.toLowerCase() === "paid" ? "bg-emerald-100 text-emerald-600 border border-emerald-200" : "bg-amber-100 text-amber-600 border border-amber-200"}`}>
                               {link.status}
                             </span>
                           </td>

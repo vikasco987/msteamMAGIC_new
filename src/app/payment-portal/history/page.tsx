@@ -156,11 +156,11 @@ const PaymentHistoryPage = () => {
                       </td>
                       <td className="px-8 py-8">
                         <div className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] shadow-sm border w-fit flex items-center gap-2 ${
-                          link.status === "paid" ? "bg-emerald-100/50 text-emerald-600 border-emerald-200" : 
-                          link.status === "pending" ? "bg-amber-100/50 text-amber-600 border-amber-200" : 
+                          link.status?.toLowerCase() === "paid" ? "bg-emerald-100/50 text-emerald-600 border-emerald-200" : 
+                          link.status?.toLowerCase() === "pending" ? "bg-amber-100/50 text-amber-600 border-amber-200" : 
                           "bg-rose-100/50 text-rose-600 border-rose-200"
                         }`}>
-                          <div className={`w-1.5 h-1.5 rounded-full ${link.status === 'paid' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                          <div className={`w-1.5 h-1.5 rounded-full ${link.status?.toLowerCase() === 'paid' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                           {link.status}
                         </div>
                       </td>
