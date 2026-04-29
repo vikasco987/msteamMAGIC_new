@@ -447,45 +447,9 @@ const PaymentPortal = () => {
                     </button>
                   </div>
                 </motion.div>
-              ) : (
-                <motion.div
-                  key="empty"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 border-2 border-dashed border-slate-200 dark:border-slate-800 text-center space-y-4"
-                >
-                  <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto text-slate-300">
-                    <Sparkles size={32} />
-                  </div>
-                  <div className="space-y-1">
-                    <h5 className="font-black text-slate-900 dark:text-white">Ready for Generation</h5>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Fill in the client and service details to generate a professional payment request link.</p>
-                  </div>
-                </motion.div>
-              )}
+              ) : null}
             </AnimatePresence>
 
-            {/* Quick Stats / Info */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100 dark:shadow-none space-y-4">
-                <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-xl flex items-center justify-center">
-                  <Zap size={20} />
-                </div>
-                <div className="space-y-1">
-                  <h6 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">Instant Settlement</h6>
-                  <p className="text-[10px] text-slate-500 font-medium leading-relaxed">Payments are settled directly to the primary account within minutes of successful transaction.</p>
-                </div>
-              </div>
-              <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100 dark:shadow-none space-y-4">
-                <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 rounded-xl flex items-center justify-center">
-                  <ShieldCheck size={20} />
-                </div>
-                <div className="space-y-1">
-                  <h6 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">Secure Protocol</h6>
-                  <p className="text-[10px] text-slate-500 font-medium leading-relaxed">All links are encrypted and use Cashfree's enterprise-grade security for fraud prevention.</p>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
