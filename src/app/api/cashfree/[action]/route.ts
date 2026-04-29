@@ -179,17 +179,29 @@ export async function GET(
     }
 
     try {
-      const orderUrl = env === "PROD" 
-        ? `https://api.cashfree.com/pg/orders/${orderId}` 
-        : `https://sandbox.cashfree.com/pg/orders/${orderId}`;
+      const fetchStatus = async (targetEnv: string) => {
+        const url = targetEnv === "PROD" 
+          ? `https://api.cashfree.com/pg/orders/${orderId}` 
+          : `https://sandbox.cashfree.com/pg/orders/${orderId}`;
+        
+        return axios.get(url, {
+          headers: {
+            "x-client-id": appId,
+            "x-client-secret": secretKey,
+            "x-api-version": "2022-09-01",
+          },
+        });
+      };
 
-      const orderResponse = await axios.get(orderUrl, {
-        headers: {
-          "x-client-id": appId,
-          "x-client-secret": secretKey,
-          "x-api-version": "2022-09-01",
-        },
-      });
+      let orderResponse;
+      try {
+        orderResponse = await fetchStatus(env);
+      } catch (err: any) {
+        // If not found in primary env, try the other one
+        const alternateEnv = env === "PROD" ? "TEST" : "PROD";
+        console.log(`Order ${orderId} not found in ${env}, trying ${alternateEnv}...`);
+        orderResponse = await fetchStatus(alternateEnv);
+      }
 
       const cashfreeStatus = orderResponse.data.order_status?.toUpperCase(); 
       console.log(`ORDER STATUS FOR ${orderId}:`, cashfreeStatus);
@@ -199,35 +211,23 @@ export async function GET(
       else if (cashfreeStatus === "EXPIRED") finalStatus = "expired";
       else if (cashfreeStatus === "TERMINATED" || cashfreeStatus === "FAILED") finalStatus = "failed";
 
-      // If still pending, check payments array just in case
+      // If still pending, check payments array
       if (finalStatus === "pending" && orderResponse.data.order_amount > 0) {
-        // Fetch payments for this order
-        const paymentsUrl = `${orderUrl}/payments`;
+        const paymentsUrl = (env === "PROD" ? `https://api.cashfree.com/pg/orders/${orderId}` : `https://sandbox.cashfree.com/pg/orders/${orderId}`) + "/payments";
         const paymentsResponse = await axios.get(paymentsUrl, {
-          headers: {
-            "x-client-id": appId,
-            "x-client-secret": secretKey,
-            "x-api-version": "2022-09-01",
-          },
+          headers: { "x-client-id": appId, "x-client-secret": secretKey, "x-api-version": "2022-09-01" },
         });
-        
         const hasSuccess = paymentsResponse.data.some((p: any) => p.payment_status?.toUpperCase() === "SUCCESS");
         if (hasSuccess) finalStatus = "paid";
       }
 
       // Update local DB
-      // @ts-ignore
       await prisma.cashfreeLink.update({
         where: { orderId },
         data: { status: finalStatus }
       });
 
-      return NextResponse.json({ 
-        success: true, 
-        status: finalStatus, 
-        cashfree_status: cashfreeStatus,
-        order_details: orderResponse.data 
-      });
+      return NextResponse.json({ success: true, status: finalStatus });
 
     } catch (error: any) {
       console.error("Cashfree Status Error:", error.response?.data || error.message);
