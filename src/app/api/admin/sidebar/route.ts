@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
 
         const permissions = await prisma.sidebarPermission.findMany();
 
+        const allItems = [
             'Dashboard', 'Team Board', 'Create Task', 'Assigned Task',
             'Recovery Hub', 'KAM Strategy', 'Sales Matrix', 'Team Sales', 'My Growth', 'CRM Forms', 'Follow-up Board', 'Call Report', 'Financial Ecosystem', 'Payment Portal',
             'Attendance', 'Tish Control', 'Employee Insights', 'Activity Log', 'Lifecycle Report', 'Customers',
