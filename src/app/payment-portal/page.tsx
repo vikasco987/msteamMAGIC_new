@@ -57,8 +57,20 @@ const PaymentPortal = () => {
   };
 
   useEffect(() => {
-    if (mode === "history") fetchHistory();
+    if (mode === "history") {
+      fetchHistory();
+    }
   }, [mode]);
+
+  // Auto-sync pending links when history loads
+  useEffect(() => {
+    if (history.length > 0) {
+      const pendingLinks = history.filter(h => h.status?.toLowerCase() === "pending").slice(0, 5);
+      if (pendingLinks.length > 0) {
+        pendingLinks.forEach(link => handleSyncStatus(link.orderId));
+      }
+    }
+  }, [history.length]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -100,12 +112,17 @@ const PaymentPortal = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isLoaded || !currentUser) {
+      toast.error("User data not loaded. Please wait.");
+      return;
+    }
+
     setLoading(true);
     setGeneratedLink(null);
     try {
       const res = await axios.post(`${API_BASE_URL}/create-link`, {
         ...formData,
-        createdBy: currentUser?.fullName || currentUser?.firstName || "Admin",
+        createdBy: currentUser.fullName || currentUser.username || currentUser.emailAddresses[0].emailAddress,
         purpose: mode === "pending" ? `Balance: ${formData.purpose}` : (paymentType === "partial" ? `Partial: ${formData.purpose}` : formData.purpose)
       });
       if (res.data.success) {

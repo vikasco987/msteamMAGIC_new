@@ -10,10 +10,12 @@ import { toast } from "react-hot-toast";
 import { format } from "date-fns";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { useUser } from "@clerk/nextjs";
 
 const API_BASE_URL = "/api/cashfree";
 
 const PaymentHistoryPage = () => {
+  const { isLoaded, user: currentUser } = useUser();
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -21,6 +23,14 @@ const PaymentHistoryPage = () => {
   useEffect(() => {
     fetchHistory();
   }, []);
+
+  // Auto-sync first 10 pending links on load
+  useEffect(() => {
+    if (history.length > 0) {
+      const pendingLinks = history.filter(h => h.status?.toLowerCase() === "pending").slice(0, 10);
+      pendingLinks.forEach(link => handleSyncStatus(link.orderId));
+    }
+  }, [history.length]);
 
   const fetchHistory = async () => {
     try {
