@@ -6,7 +6,7 @@ const middleware = clerkMiddleware((auth, req) => {
     const url = new URL(req.url);
     
     // ✅ Make Payment Links completely PUBLIC
-    if (url.pathname.startsWith("/api/p/")) {
+    if (url.pathname.startsWith("/api/p/") || url.pathname.startsWith("/api/cashfree/")) {
         return NextResponse.next();
     }
 
