@@ -142,6 +142,11 @@ const PaymentPortal = () => {
       return;
     }
 
+    if (formData.phone.replace(/[^0-9]/g, "").length !== 10) {
+      toast.error("Phone number must be exactly 10 digits");
+      return;
+    }
+
     setLoading(true);
     setGeneratedLink(null);
     try {

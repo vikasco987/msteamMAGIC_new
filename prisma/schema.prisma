@@ -546,3 +546,14 @@ model CashfreeLink {
   @@index([email])
   @@index([phone])
 }
+
+model ShortLink {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  shortId     String   @unique
+  originalUrl String
+  orderId     String   @unique
+  visits      Int      @default(0)
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

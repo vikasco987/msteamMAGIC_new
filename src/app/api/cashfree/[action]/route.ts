@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
 import { prisma } from "@/lib/prisma";
 import { currentUser as getClerkUser } from "@clerk/nextjs/server";
+import crypto from "crypto";
 
 export async function POST(
   req: NextRequest,
@@ -25,6 +26,12 @@ export async function POST(
 
       if (!finalAmount || finalAmount <= 0) {
         return NextResponse.json({ success: false, message: "Valid amount is required" }, { status: 400 });
+      }
+
+      // Basic Phone Validation
+      const cleanPhone = phone?.replace(/[^0-9]/g, "");
+      if (cleanPhone && cleanPhone.length !== 10) {
+        return NextResponse.json({ success: false, message: "Phone number must be exactly 10 digits" }, { status: 400 });
       }
 
       const orderId = "LNK_" + Date.now();
@@ -79,17 +86,43 @@ export async function POST(
         }
       });
 
+      // Generate Short Link
+      const shortId = crypto.randomBytes(3).toString("hex"); // 6 chars
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://magicscale.in';
+      const shortUrl = `${appUrl}/p/${shortId}`;
+
+      if (!(prisma as any).shortLink) {
+        console.error("❌ ERROR: shortLink model is missing from Prisma Client. PLEASE RESTART SERVER.");
+        return NextResponse.json({
+          success: true,
+          link_url: checkoutUrl, // Fallback to long URL if shortener is not ready
+          order_id: orderId,
+          warning: "Short link could not be generated. Please restart server."
+        });
+      }
+
+      await (prisma as any).shortLink.create({
+        data: {
+          shortId,
+          originalUrl: checkoutUrl,
+          orderId: orderId,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+        }
+      });
+
       return NextResponse.json({
         success: true,
-        link_url: checkoutUrl,
+        link_url: shortUrl, // Return the short URL
         order_id: orderId
       });
 
     } catch (error: any) {
-      console.error("Cashfree API Error:", error.response?.data || error.message);
+      const cfError = error.response?.data || error.message;
+      console.error("❌ CASHFREE API REJECTED REQUEST:", cfError);
+      
       return NextResponse.json({ 
         success: false, 
-        message: error.response?.data?.message || error.message 
+        message: typeof cfError === 'object' ? (cfError.message || "Cashfree API Error") : cfError
       }, { status: 500 });
     }
   }
@@ -199,6 +232,30 @@ export async function GET(
         });
       }
       return NextResponse.json({ success: false, message: "Customer not found" });
+    } catch (error: any) {
+      return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    }
+  }
+
+  if (action === "redirect-handler") {
+    const { searchParams } = new URL(req.url);
+    const shortId = searchParams.get("shortId");
+    if (!shortId) return NextResponse.json({ success: false, message: "Short ID required" }, { status: 400 });
+
+    try {
+      const link = await prisma.shortLink.findUnique({
+        where: { shortId }
+      });
+
+      if (!link) return NextResponse.json({ success: false, message: "Link not found" });
+
+      // Optional visit increment
+      await prisma.shortLink.update({
+        where: { shortId },
+        data: { visits: { increment: 1 } }
+      });
+
+      return NextResponse.json({ success: true, url: link.originalUrl });
     } catch (error: any) {
       return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }
