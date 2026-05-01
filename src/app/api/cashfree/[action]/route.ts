@@ -255,13 +255,7 @@ export async function GET(
         data: { visits: { increment: 1 } }
       });
 
-      return NextResponse.json({ success: true, url: link.originalUrl }, {
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-        }
-      });
+      return NextResponse.json({ success: true, url: link.originalUrl });
     } catch (error: any) {
       return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }
