@@ -5,6 +5,11 @@ import { NextResponse } from "next/server";
 const middleware = clerkMiddleware((auth, req) => {
     const url = new URL(req.url);
 
+    // ✅ Make redirection handler PUBLIC
+    if (url.pathname.startsWith("/api/cashfree/")) {
+        return NextResponse.next();
+    }
+
     // ✅ Redirect '/' to '/dashboard'
     if (url.pathname === "/") {
         return NextResponse.redirect(new URL("/dashboard", req.url));
