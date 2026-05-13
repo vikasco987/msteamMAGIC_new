@@ -322,7 +322,7 @@ export default function Board() {
       t.status,
       stripEmojis(t.customFields?.shopName as string),
       stripEmojis(t.customFields?.outletName as string),
-      t.customFields?.phone,
+      t.phone || t.customFields?.phone,
       stripEmojis(t.customFields?.customerName as string),
       t.customFields?.packageAmount,
       t.createdAt ? new Date(t.createdAt).toLocaleString() : ""
@@ -337,8 +337,16 @@ export default function Board() {
 
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
-      const matchesSearch = task.title.toLowerCase().includes(filterText.toLowerCase()) ||
-        task.customFields?.shopName?.toString().toLowerCase().includes(filterText.toLowerCase());
+      const lowerFilter = filterText.toLowerCase();
+      const matchesSearch = 
+        task.title?.toLowerCase().includes(lowerFilter) ||
+        task.shopName?.toLowerCase().includes(lowerFilter) ||
+        task.customerName?.toLowerCase().includes(lowerFilter) ||
+        task.phone?.includes(lowerFilter) ||
+        task.email?.toLowerCase().includes(lowerFilter) ||
+        task.customFields?.shopName?.toString().toLowerCase().includes(lowerFilter) ||
+        task.customFields?.customerName?.toString().toLowerCase().includes(lowerFilter) ||
+        task.customFields?.phone?.toString().includes(lowerFilter);
 
       const matchesCategory = selectedCategories.length === 0 ||
         selectedCategories.includes(task.tags?.[0]?.toLowerCase() || "other");
