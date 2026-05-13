@@ -201,19 +201,25 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
 
         try {
           const client = await clerkClient();
-          const leadUser = await client.users.getUser(ids[0]);
-          updateData.assigneeId = leadUser.id;
-          updateData.assigneeName = `${leadUser.firstName || ""} ${leadUser.lastName || ""}`.trim() || leadUser.username || "Unknown";
-          updateData.assigneeEmail = leadUser.emailAddresses[0]?.emailAddress || "Unknown";
+          const allAssignees = await client.users.getUserList({ userId: ids });
+          const allNames = allAssignees.data.map(u => `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.username || "Unknown").join(", ");
           
-          // Only change assigner if it's a new assignment by the pusher
+          // Lead User Sync
+          const leadUser = allAssignees.data.find(u => u.id === ids[0]) || allAssignees.data[0];
+          if (leadUser) {
+            updateData.assigneeId = leadUser.id;
+            updateData.assigneeName = `${leadUser.firstName || ""} ${leadUser.lastName || ""}`.trim() || leadUser.username || "Unknown";
+            updateData.assigneeEmail = leadUser.emailAddresses[0]?.emailAddress || "Unknown";
+          }
+
+          // Assigner Sync
           if (!currentTask.assignerId || isPowerUser) {
              updateData.assignerId = userId;
              updateData.assignerName = userName;
              updateData.assignerEmail = user?.emailAddresses[0]?.emailAddress || "Unknown";
           }
           
-          logs.push(`reassigned the task to ${updateData.assigneeName}`);
+          logs.push(`reassigned the task to: ${allNames}`);
         } catch (err) {
           console.error("Failed to sync lead user on reassignment:", err);
         }

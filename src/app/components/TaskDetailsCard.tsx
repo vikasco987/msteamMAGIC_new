@@ -21,6 +21,7 @@ import { FaHandHoldingUsd, FaCommentsDollar, FaHistory } from "react-icons/fa";
 interface Props {
   task: Task;
   isAdmin?: boolean;
+  isTL?: boolean;
   onDelete?: (taskId: string) => void;
   onUpdateTask?: (taskId: string, updatedFields: Partial<Task>) => void;
   onFloatRequest?: (task: Task) => void;
@@ -177,7 +178,7 @@ const TaskTimer = ({ createdAt, status }: { createdAt: string | Date | undefined
 };
 
 // --- TaskDetailsCard Component ---
-export default function TaskDetailsCard({ task, isAdmin = false, onDelete, onUpdateTask, onFloatRequest }: Props) {
+export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, onDelete, onUpdateTask, onFloatRequest }: Props) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [showReassignModal, setShowReassignModal] = useState(false);
@@ -246,25 +247,26 @@ export default function TaskDetailsCard({ task, isAdmin = false, onDelete, onUpd
 
   const notesCount = task.notes?.length || 0;
 
-  const handleReassignTask = (taskId: string, assignee: { id: string; name: string; email: string }) => {
+  const handleReassignTask = (taskId: string, assignees: { id: string; name: string; email: string }[]) => {
     setShowReassignModal(false);
-    if (onUpdateTask) {
+    if (onUpdateTask && assignees.length > 0) {
+      const mainAssignee = assignees[0];
       // ✅ Instantly update all assignee metadata for a snappier UI
       onUpdateTask(taskId, { 
-        assigneeId: assignee.id, 
-        assigneeIds: [assignee.id],
-        assigneeName: assignee.name,
-        assigneeEmail: assignee.email,
-        assignees: [{ 
-          id: assignee.id, 
-          name: assignee.name, 
-          email: assignee.email,
-          imageUrl: `https://api.dicebear.com/7.x/identicon/svg?seed=${assignee.id}`
-        }]
+        assigneeId: mainAssignee.id, 
+        assigneeIds: assignees.map(a => a.id),
+        assigneeName: mainAssignee.name,
+        assigneeEmail: mainAssignee.email,
+        assignees: assignees.map(a => ({ 
+          id: a.id, 
+          name: a.name, 
+          email: a.email,
+          imageUrl: `https://api.dicebear.com/7.x/initials/svg?seed=${a.name}`
+        }))
       });
-      toast.success("Task reassigned successfully!");
+      toast.success(`Task assigned to ${assignees.length} member(s)!`);
     } else {
-      toast.error("Reassign functionality not available.");
+      toast.error("Please select at least one assignee.");
     }
   };
 
@@ -286,6 +288,28 @@ export default function TaskDetailsCard({ task, isAdmin = false, onDelete, onUpd
     } else {
       toast.error("Ownership change not available.");
     }
+  };
+
+  const handleRemoveAssignee = (memberId: string) => {
+    if (!onUpdateTask) return;
+    
+    const newAssigneeIds = (task.assigneeIds || []).filter(id => id !== memberId);
+    const newAssignees = (task.assignees || []).filter(a => a.id !== memberId);
+    
+    if (newAssigneeIds.length === 0) {
+      toast.error("At least one assignee must remain. Use Delete to remove the task entirely.");
+      return;
+    }
+
+    const mainAssignee = newAssignees[0];
+    onUpdateTask(task.id, {
+      assigneeId: mainAssignee.id,
+      assigneeIds: newAssigneeIds,
+      assigneeName: mainAssignee.name,
+      assigneeEmail: mainAssignee.email,
+      assignees: newAssignees
+    });
+    toast.success("Member removed from task.");
   };
 
   return (
@@ -312,16 +336,24 @@ export default function TaskDetailsCard({ task, isAdmin = false, onDelete, onUpd
           <div className="flex items-center gap-1.5 shrink-0">
             {/* 🛠️ Primary Action Toolbar */}
             <div className="flex items-center gap-1 bg-white/80 backdrop-blur-sm p-1 rounded-xl border border-slate-200 shadow-sm">
-              {/* 1. Status Check */}
+              {/* 1. Status Check (Sequential Workflow) */}
               <AnimatedIconButton 
                 onClick={() => {
-                  const newStatus = task.status === "done" ? "todo" : "done";
+                  let newStatus = "done";
+                  if (task.status === "todo") newStatus = "inprogress";
+                  else if (task.status === "inprogress") newStatus = "done";
+                  else newStatus = "todo"; // Cycle back from done to todo
+                  
                   onUpdateTask?.(task.id, { status: newStatus });
                 }} 
-                title={task.status === "done" ? "Mark as To Do" : "Mark as Done"}
+                title={
+                  task.status === "todo" ? "Start Task (Move to In Progress)" :
+                  task.status === "inprogress" ? "Complete Task (Move to Done)" :
+                  "Reset Task (Move to To Do)"
+                }
               >
-                <span className={`text-base ${task.status === "done" ? "opacity-40" : "animate-pulse"}`}>
-                  {task.status === "done" ? "🔄" : "✅"}
+                <span className="text-base">
+                  {task.status === "todo" ? "⏳" : task.status === "inprogress" ? "✅" : "🔄"}
                 </span>
               </AnimatedIconButton>
 
@@ -435,6 +467,31 @@ export default function TaskDetailsCard({ task, isAdmin = false, onDelete, onUpd
           </div>
         </div>
 
+        {/* 📌 HIGHLIGHTED NOTES (Moved to Top for Maximum Visibility) */}
+        {task.notes && task.notes.length > 0 && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="mb-3 p-3 bg-amber-50/80 rounded-2xl border border-amber-200 shadow-sm relative overflow-hidden group"
+          >
+            {/* Sticky note decoration */}
+            <div className="absolute top-0 right-0 w-8 h-8 bg-amber-200/20 rounded-bl-3xl" />
+            
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-sm">📝</span>
+              <p className="text-[11px] font-black text-amber-800 uppercase tracking-widest mb-0">Crucial Notes</p>
+            </div>
+            
+            <div className="space-y-2">
+              {task.notes.map((note, idx) => (
+                <div key={idx} className="text-xs text-amber-900 font-bold leading-relaxed border-l-2 border-amber-300 pl-3 py-0.5">
+                  {note.content}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
         {/* Main Content Area */}
         <div className="space-y-2">
           {task.description && (
@@ -515,17 +572,6 @@ export default function TaskDetailsCard({ task, isAdmin = false, onDelete, onUpd
               </div>
             </div>
           )}
-          {/* Notes Preview Section */}
-          {task.notes && task.notes.length > 0 && (
-            <div className="mt-2 p-2 bg-slate-50 rounded-xl border border-slate-200">
-              <p className="text-xs font-bold text-slate-600 mb-1">📝 Notes</p>
-              {task.notes.map((note, idx) => (
-                <div key={idx} className="text-[10px] text-slate-700 border-b border-slate-100 py-1 last:border-0">
-                  {note.content}
-                </div>
-              ))}
-            </div>
-          )}
 
           {/* Footer Meta Details */}
           <div className="mt-4 pt-3 border-t border-slate-100 flex flex-col gap-2">
@@ -545,20 +591,54 @@ export default function TaskDetailsCard({ task, isAdmin = false, onDelete, onUpd
     )}
     {displayAssigneeName !== "—" && (
       <div className="flex flex-col mt-1">
-        <p className="text-[10px] font-medium text-slate-600">
-          To <span className="text-indigo-600 font-bold">{displayAssigneeName}</span>
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+          {task.assignees && task.assignees.length > 1 ? "👥 Collaborators" : "👤 Assigned To"}
         </p>
-        {displayAssigneeEmail && (
-          <p className="text-[9px] text-indigo-500 lowercase">
+        <div className="flex flex-wrap gap-1.5">
+          {task.assignees && task.assignees.length > 0 ? (
+            task.assignees.map((a, i) => (
+              <div key={i} className="flex items-center gap-1.5 bg-indigo-50/50 px-2 py-1 rounded-lg border border-indigo-100/50 group/name relative">
+                <img 
+                  src={a?.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${a?.name || 'User'}`} 
+                  alt="" 
+                  className="w-4 h-4 rounded-full border border-indigo-200"
+                />
+                <span className="text-[10px] font-bold text-indigo-700">
+                  {a?.name || a?.email?.split('@')[0] || "Unknown"}
+                </span>
+                
+                {(isAdmin || isTL) && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (a.id) handleRemoveAssignee(a.id);
+                    }}
+                    className="ml-1 text-indigo-300 hover:text-red-500 transition-colors"
+                    title="Remove member"
+                  >
+                    <FaTimes size={10} />
+                  </button>
+                )}
+              </div>
+            ))
+          ) : (
+            <span className="text-indigo-600 font-bold text-[10px]">{displayAssigneeName}</span>
+          )}
+        </div>
+        {displayAssigneeEmail && !task.assignees?.length && (
+          <p className="text-[9px] text-indigo-500 lowercase mt-1">
             Email: <span className="font-medium">{displayAssigneeEmail}</span>
           </p>
         )}
       </div>
     )}
   </div>
-  <p className="text-[9px] font-bold text-slate-500 uppercase">
-    {task.createdAt ? new Date(task.createdAt).toLocaleDateString() : ""}
-  </p>
+  <div className="text-right">
+    <p className="text-[9px] font-black text-slate-300 uppercase tracking-tighter">Created</p>
+    <p className="text-[10px] font-bold text-slate-500">
+      {task.createdAt ? new Date(task.createdAt).toLocaleDateString() : ""}
+    </p>
+  </div>
 </div>
 
 
@@ -609,6 +689,7 @@ export default function TaskDetailsCard({ task, isAdmin = false, onDelete, onUpd
         {showReassignModal && (
           <ReassignTaskModal
             taskId={task.id}
+            initialSelectedIds={task.assigneeIds || (task.assigneeId ? [task.assigneeId] : [])}
             onClose={() => setShowReassignModal(false)}
             onReassign={handleReassignTask}
           />

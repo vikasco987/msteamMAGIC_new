@@ -482,6 +482,7 @@ export default function Board() {
                             <TaskDetailsCard
                               task={task}
                               isAdmin={userRole === "master"}
+                              isTL={userRole === "tl"}
                               onDelete={handleDeleteTask}
                               onUpdateTask={handleFieldUpdate}
                               onFloatRequest={setFloatingTask}
