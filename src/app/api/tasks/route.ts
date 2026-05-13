@@ -1030,6 +1030,26 @@ export async function GET(req: NextRequest) {
     const listView = url.searchParams.get('listView') === 'true';
     const skip = (page - 1) * limit;
 
+    // ✅ BULK CLERK LOOKUP: Fetch all users once for efficiency and filtering
+    const clerkResponse = await client.users.getUserList({ limit: 500 });
+    const allClerkUsers = clerkResponse.data;
+
+    // Build user map by ID and email, and also a reverse map for name-to-ID resolution
+    const userMap: Record<string, { id: string; name: string; email: string }> = {};
+    const nameToIdMap: Record<string, string[]> = {};
+    
+    allClerkUsers.forEach((u) => {
+      const email = u.emailAddresses?.[0]?.emailAddress || "";
+      const name = `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.username || "Unnamed User";
+      const userData = { id: u.id, name, email };
+      userMap[u.id] = userData;
+      if (email) userMap[email] = userData;
+      
+      const lowerName = name.toLowerCase();
+      if (!nameToIdMap[lowerName]) nameToIdMap[lowerName] = [];
+      nameToIdMap[lowerName].push(u.id);
+    });
+
     // Extract filters and sorting from searchParams
     const query = url.searchParams.get('query')?.toLowerCase();
     const status = url.searchParams.get('status');
@@ -1126,22 +1146,40 @@ export async function GET(req: NextRequest) {
       }
 
       if (assignees && assignees.length > 0) {
-        // This is complex because we match by name in frontend but have IDs in DB
-        // For now, let's assume the frontend passes IDs if possible, or we search by assigneeName if stored
+        // Resolve names/emails to Clerk IDs for broad matching
+        const resolvedAssigneeIds = assignees.flatMap(a => {
+          const lower = a.toLowerCase();
+          const ids = nameToIdMap[lower] || [];
+          const directMatch = userMap[a]?.id;
+          return [...ids, ...(directMatch ? [directMatch] : [])];
+        });
+
         where.AND.push({
           OR: [
             { assigneeName: { in: assignees } },
-            { assigneeIds: { hasSome: assignees } }
+            { assigneeEmail: { in: assignees } },
+            { assigneeId: { in: resolvedAssigneeIds } },
+            { assigneeIds: { hasSome: [...assignees, ...resolvedAssigneeIds] } }
           ]
         });
       }
 
       if (assigners && assigners.length > 0) {
+        // Resolve names/emails to Clerk IDs
+        const resolvedAssignerIds = assigners.flatMap(a => {
+          const lower = a.toLowerCase();
+          const ids = nameToIdMap[lower] || [];
+          const directMatch = userMap[a]?.id;
+          return [...ids, ...(directMatch ? [directMatch] : [])];
+        });
+
         where.AND.push({
           OR: [
             { assignerName: { in: assigners } },
-            { createdByClerkId: { in: assigners } },
-            { assignerId: { in: assigners } }
+            { assignerEmail: { in: assigners } },
+            { createdByName: { in: assigners } },
+            { createdByClerkId: { in: [...assigners, ...resolvedAssignerIds] } },
+            { assignerId: { in: [...assigners, ...resolvedAssignerIds] } }
           ]
         });
       }
@@ -1149,30 +1187,38 @@ export async function GET(req: NextRequest) {
       if (dateFilter) {
         const now = new Date();
         let startDate: Date | null = null;
-        let endDate: Date | null = now;
+        let endDate: Date | null = new Date(); // Use a fresh copy
 
         switch (dateFilter) {
           case "today":
-            startDate = new Date(now.setHours(0, 0, 0, 0));
+            startDate = new Date(now);
+            startDate.setHours(0, 0, 0, 0);
+            endDate.setHours(23, 59, 59, 999);
             break;
           case "yesterday":
-            startDate = new Date(now.setDate(now.getDate() - 1));
+            startDate = new Date(now);
+            startDate.setDate(startDate.getDate() - 1);
             startDate.setHours(0, 0, 0, 0);
             endDate = new Date(startDate);
             endDate.setHours(23, 59, 59, 999);
             break;
           case "last_7_days":
-            startDate = new Date(now.setDate(now.getDate() - 7));
+            startDate = new Date(now);
+            startDate.setDate(startDate.getDate() - 7);
+            startDate.setHours(0, 0, 0, 0);
+            endDate.setHours(23, 59, 59, 999);
             break;
           case "this_month":
-            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+            endDate.setHours(23, 59, 59, 999);
             break;
           case "last_month":
-            startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
             endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
             break;
           case "this_year":
-            startDate = new Date(now.getFullYear(), 0, 1);
+            startDate = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+            endDate.setHours(23, 59, 59, 999);
             break;
         }
 
@@ -1199,61 +1245,75 @@ export async function GET(req: NextRequest) {
         });
       }
 
-      if (pendingSalesFilter === "withPendingSales") {
-        // Pending: amount > received
-        // Note: Prisma doesn't support comparing two columns directly in findMany easily without raw queries or $expr (MongoDB)
-        // Since we are using MongoDB (implied by 'has'), we can use $expr if needed, but let's try a simpler approach if possible.
-        // For MongoDB, we can use the 'where' with a function or $expr but findMany doesn't expose it directly.
-        // Actually for MongoDB we can use `prisma.task.findMany({ where: { $expr: { $gt: ["$amount", "$received"] } } })` if using raw.
-        // But let's stick to standard filters where possible.
-        // If we can't do it in standard Prisma, we might have to fetch and filter, but that defeats the purpose.
-        // Let's assume most pending tasks have amount > 0 and received < amount.
-      } else if (pendingSalesFilter === "fullyPaidSales") {
-        // amount > 0 AND amount == received
-      }
-
       // Build orderBy
       const orderBy: any = {};
       if (sortKey === 'pendingAmount') {
-        // Prisma doesn't support sorting by calculated fields directly in findMany
-        // We will default to createdAt and handle if needed
         orderBy['createdAt'] = 'desc';
       } else {
         orderBy[sortKey] = sortDir;
       }
 
-      const [fetchedTasks, count] = await Promise.all([
-        prisma.task.findMany({
+      const needsInMemoryFiltering = pendingSalesFilter && pendingSalesFilter !== "all";
+      let fetchedTasks;
+      let count;
+
+      if (needsInMemoryFiltering) {
+        // Fetch all matching tasks without pagination for manual filtering
+        fetchedTasks = await prisma.task.findMany({
           where,
           orderBy,
-          skip,
-          take: limit,
           include: !listView ? {
             subtasks: true,
             notes: true,
           } : undefined,
-        }),
-        prisma.task.count({ where })
-      ]);
+        });
+
+        // Apply complex in-memory filters
+        if (pendingSalesFilter === "withPendingSales") {
+          fetchedTasks = fetchedTasks.filter(t => (t.amount || 0) > (t.received || 0));
+        } else if (pendingSalesFilter === "fullyPaidSales") {
+          fetchedTasks = fetchedTasks.filter(t => (t.amount || 0) > 0 && (t.amount || 0) === (t.received || 0));
+        } else if (pendingSalesFilter === "zeroAmountAndPaid") {
+          fetchedTasks = fetchedTasks.filter(t => (t.amount || 0) === 0 && (t.received || 0) === 0);
+        }
+
+        count = fetchedTasks.length;
+        // Manual pagination
+        fetchedTasks = fetchedTasks.slice(skip, skip + limit);
+      } else {
+        // Standard server-side pagination
+        const [resTasks, resCount] = await Promise.all([
+          prisma.task.findMany({
+            where,
+            orderBy,
+            skip,
+            take: limit,
+            include: !listView ? {
+              subtasks: true,
+              notes: true,
+            } : undefined,
+          }),
+          prisma.task.count({ where })
+        ]);
+        fetchedTasks = resTasks;
+        count = resCount;
+      }
 
       tasks = fetchedTasks;
       totalCount = count;
     }
 
-    // ✅ BULK CLERK LOOKUP: Fetch all users once for efficiency
-    // This avoids 50+ individual network calls and fixes "Fetch failed" errors.
-    const clerkResponse = await client.users.getUserList({ limit: 500 });
-    const allClerkUsers = clerkResponse.data;
-
-    // ✅ Build user map by ID and email
-    const userMap: Record<string, { id: string; name: string; email: string }> = {};
-    allClerkUsers.forEach((u) => {
-      const email = u.emailAddresses?.[0]?.emailAddress || "";
-      const name = `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.username || "Unnamed User";
-      const userData = { id: u.id, name, email };
-      userMap[u.id] = userData;
-      if (email) userMap[email] = userData;
-    });
+    // ✅ Get unique statuses from the whole DB for filtering (optional but good)
+    // For now, let's use a standard list + any found in current result set to be safe
+    // Ideally we'd aggregate from DB, but that's expensive.
+    const standardStatuses = ["todo", "in-progress", "done", "revision", "cancelled"];
+    
+    // Convert Clerk users to a clean list for the frontend
+    const allUsersList = allClerkUsers.map(u => ({
+      id: u.id,
+      name: `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.username || "Unnamed User",
+      email: u.emailAddresses?.[0]?.emailAddress || ""
+    }));
 
     // ✅ Enrich tasks with assigner + assignees using the map
     const enrichedTasks = tasks.map((task) => {
@@ -1287,7 +1347,6 @@ export async function GET(req: NextRequest) {
 
     // 🛰️ REAL-TIME SHARD (NO REFRESH ARCHITECTURE)
     try {
-      console.log("🔥 API HIT HOI");
       const { emitMatrixUpdate } = await import("@/lib/socket-server");
       await emitMatrixUpdate();
     } catch (e) {
@@ -1299,7 +1358,11 @@ export async function GET(req: NextRequest) {
       totalCount,
       page,
       limit,
-      totalPages: Math.ceil(totalCount / limit)
+      totalPages: Math.ceil(totalCount / limit),
+      filterOptions: {
+        statuses: standardStatuses,
+        users: allUsersList
+      }
     }, { status: 200 });
 
   } catch (err: unknown) {

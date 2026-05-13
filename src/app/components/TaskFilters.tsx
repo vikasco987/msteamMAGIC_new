@@ -1246,6 +1246,18 @@ interface TaskFiltersProps {
   onStatusChange: (status: string | null) => void;
   dateFilter: string | null;
   onDateFilterChange: (dateFilter: string | null) => void;
+  selectedCategories: string[];
+  onCategoriesChange: (categories: string[]) => void;
+  selectedAssignees: string[];
+  onAssigneesChange: (assignees: string[]) => void;
+  selectedAssigners: string[];
+  onAssignersChange: (assigners: string[]) => void;
+  salesFilter: "all" | "withSales" | "noSales";
+  onSalesFilterChange: (filter: "all" | "withSales" | "noSales") => void;
+  pendingSalesFilter: "all" | "withPendingSales" | "fullyPaidSales" | "zeroAmountAndPaid";
+  onPendingSalesFilterChange: (filter: "all" | "withPendingSales" | "fullyPaidSales" | "zeroAmountAndPaid") => void;
+  availableUsers?: {id: string, name: string, email: string}[];
+  availableStatuses?: string[];
 }
 
 const ALL_COLUMNS = [
@@ -1303,24 +1315,26 @@ export const TaskFilters = ({
   onStatusChange,
   dateFilter,
   onDateFilterChange,
+  selectedCategories,
+  onCategoriesChange,
+  selectedAssignees,
+  onAssigneesChange,
+  selectedAssigners,
+  onAssignersChange,
+  salesFilter,
+  onSalesFilterChange,
+  pendingSalesFilter,
+  onPendingSalesFilterChange,
+  availableUsers,
+  availableStatuses
 }: TaskFiltersProps) => {
   // Local states for other filters
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
   const [columns, setColumns] = useState<string[]>(ALL_COLUMNS);
 
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
-
-  const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
   const [isAssigneeDropdownOpen, setIsAssigneeDropdownOpen] = useState(false);
-
-  // New state and ref for assigner filter
-  const [selectedAssigners, setSelectedAssigners] = useState<string[]>([]);
   const [isAssignerDropdownOpen, setIsAssignerDropdownOpen] = useState(false);
-
-  // State for the new filters
-  const [salesFilter, setSalesFilter] = useState<"all" | "withSales" | "noSales">("all");
-  const [pendingSalesFilter, setPendingSalesFilter] = useState<"all" | "withPendingSales" | "fullyPaidSales" | "zeroAmountAndPaid">("all");
 
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const assigneeDropdownRef = useRef<HTMLDivElement>(null);
@@ -1359,165 +1373,9 @@ export const TaskFilters = ({
   }, [columns, onColumnVisibilityChange]);
 
   const filteredTasks = useMemo(() => {
-    let currentFilteredTasks = [...initialTasks];
-    const now = new Date();
-
-    if (query) {
-      const lower = query.toLowerCase();
-      currentFilteredTasks = currentFilteredTasks.filter((t) =>
-        [
-          t.customFields?.shopName,
-          t.customFields?.email,
-          t.customFields?.phone,
-          t.assignee?.name,
-          t.title, // Keep title for general search
-          t.status,
-          t.assignerName,
-          t.customFields?.location,
-          ...(notesMap[t.id] || []).map((note) => note.content),
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase()
-          .includes(lower)
-      );
-    }
-    if (status) {
-      currentFilteredTasks = currentFilteredTasks.filter((t) => t.status === status);
-    }
-
-    // New filter for assigners
-    if (selectedAssigners.length > 0) {
-      currentFilteredTasks = currentFilteredTasks.filter((t) =>
-        selectedAssigners.includes(t.assignerName || t.createdByName || "")
-      );
-    }
-
-    if (selectedAssignees.length > 0) {
-      currentFilteredTasks = currentFilteredTasks.filter((t) =>
-        t.assignees?.some(
-          (a) => (a.name || a.email) && selectedAssignees.includes(a.name || a.email || '')
-        ) || (t.assigneeName && selectedAssignees.includes(t.assigneeName))
-      );
-    }
-
-    // FIX: Filter by stripping emojis from task.title before comparison
-    if (selectedCategories.length > 0) {
-      currentFilteredTasks = currentFilteredTasks.filter(
-        (t) => t.title && selectedCategories.includes(stripEmojis(t.title))
-      );
-    }
-
-    // Only apply client-side date filtering if it's NOT handled by the server (i.e., when onDateFilterChange isn't used or we are in a non-server-paged view)
-    // For the ReportPage, we assume the server has already filtered the tasks.
-    // So we avoid redundant (and potentially conflicting) client-side filtering.
-    /*
-    if (dateFilter) {
-      currentFilteredTasks = currentFilteredTasks.filter((t) => {
-        const taskDate = new Date(t.createdAt);
-        switch (dateFilter) {
-          case "today":
-            return isToday(taskDate);
-          case "yesterday":
-            const yesterday = subDays(now, 1);
-            return format(taskDate, "yyyy-MM-dd") === format(yesterday, "yyyy-MM-dd");
-          case "last_7_days":
-            const sevenDaysAgo = subDays(now, 7);
-            return taskDate >= sevenDaysAgo && taskDate <= now;
-          case "this_month":
-            const startOfCurrentMonth = startOfMonth(now);
-            return taskDate >= startOfCurrentMonth && taskDate <= now;
-          case "last_month":
-            const lastMonth = subMonths(now, 1);
-            const startOfLastMonth = startOfMonth(lastMonth);
-            const endOfLastMonth = endOfMonth(lastMonth);
-            return taskDate >= startOfLastMonth && taskDate <= endOfLastMonth;
-          case "this_year":
-            const startOfCurrentYear = new Date(now.getFullYear(), 0, 1);
-            return taskDate >= startOfCurrentYear && taskDate <= now;
-          default:
-            return true;
-        }
-      });
-    }
-    */
-
-    // Apply sales filter
-    if (salesFilter === "withSales") {
-      currentFilteredTasks = currentFilteredTasks.filter((t) => (t.amount || 0) > 0);
-    } else if (salesFilter === "noSales") {
-      currentFilteredTasks = currentFilteredTasks.filter((t) => (t.amount || 0) === 0);
-    }
-
-    // Apply pending sales filter
-    if (pendingSalesFilter === "withPendingSales") {
-      currentFilteredTasks = currentFilteredTasks.filter((t) => {
-        const pending = (Number(t.amount) || 0) - (Number(t.received) || 0);
-        return pending > 0;
-      });
-    } else if (pendingSalesFilter === "fullyPaidSales") {
-      currentFilteredTasks = currentFilteredTasks.filter((t) => {
-        const pending = (Number(t.amount) || 0) - (Number(t.received) || 0);
-        return pending === 0 && (Number(t.amount) || 0) > 0;
-      });
-    } else if (pendingSalesFilter === "zeroAmountAndPaid") {
-      currentFilteredTasks = currentFilteredTasks.filter((t) => {
-        const amount = Number(t.amount) || 0;
-        const received = Number(t.received) || 0;
-        return amount === 0 && received === 0;
-      });
-    }
-
-
-    if (sortConfig) {
-      currentFilteredTasks.sort((a, b) => {
-        let aValue: any;
-        let bValue: any;
-
-        if (sortConfig.key === "pendingAmount") {
-          aValue = (Number(a.amount) || 0) - (Number(a.received) || 0);
-          bValue = (Number(b.amount) || 0) - (Number(b.received) || 0);
-        } else if (sortConfig.key === "amount") {
-          aValue = Number(a.amount) || 0;
-          bValue = Number(b.amount) || 0;
-        } else if (sortConfig.key === "amountReceived") {
-          aValue = Number(a.received) || 0;
-          bValue = Number(b.received) || 0;
-        } else if (sortConfig.key === "createdAt") {
-          aValue = new Date(a.createdAt || 0).getTime();
-          bValue = new Date(b.createdAt || 0).getTime();
-        } else {
-          aValue = (a as any)[sortConfig.key];
-          bValue = (b as any)[sortConfig.key];
-        }
-
-        if (aValue === undefined && bValue === undefined) return 0;
-        if (aValue === undefined) return sortConfig.direction === "asc" ? 1 : -1;
-        if (bValue === undefined) return sortConfig.direction === "asc" ? -1 : 1;
-
-        if (typeof aValue === "number" && typeof bValue === "number") {
-          return sortConfig.direction === "asc" ? aValue - bValue : bValue - aValue;
-        }
-        return sortConfig.direction === "asc"
-          ? String(aValue).localeCompare(String(bValue))
-          : String(bValue).localeCompare(String(aValue));
-      });
-    }
-
-    return currentFilteredTasks;
-  }, [
-    initialTasks,
-    query,
-    sortConfig,
-    status,
-    selectedAssigners, // New dependency
-    selectedAssignees,
-    selectedCategories, // Now correctly compares against `task.title` after emoji stripping
-    dateFilter,
-    notesMap,
-    salesFilter, // Add salesFilter to dependencies
-    pendingSalesFilter, // Add pendingSalesFilter to dependencies
-  ]);
+    // Rely on server-side filtering for consistent pagination (10 items per page)
+    return initialTasks;
+  }, [initialTasks]);
 
   useEffect(() => {
     onFilteredTasksChange(filteredTasks);
@@ -1599,8 +1457,15 @@ export const TaskFilters = ({
     );
   };
 
-  const statusOptions = Array.from(new Set(initialTasks.map((t) => t.status).filter(Boolean))) as string[];
+  const statusOptions = useMemo(() => {
+    if (availableStatuses && availableStatuses.length > 0) return availableStatuses;
+    return Array.from(new Set(initialTasks.map((t) => t.status).filter(Boolean))) as string[];
+  }, [availableStatuses, initialTasks]);
+
   const uniqueAssigneeNames = useMemo(() => {
+    if (availableUsers && availableUsers.length > 0) {
+      return Array.from(new Set(availableUsers.map(u => u.name).filter(Boolean)));
+    }
     const names = new Set<string>();
     initialTasks.forEach(task => {
       task.assignees?.forEach(assignee => {
@@ -1611,17 +1476,20 @@ export const TaskFilters = ({
       });
     });
     return Array.from(names);
-  }, [initialTasks]);
+  }, [availableUsers, initialTasks]);
 
   // New memoized list of unique assigners
   const uniqueAssignerNames = useMemo(() => {
+    if (availableUsers && availableUsers.length > 0) {
+      return Array.from(new Set(availableUsers.map(u => u.name).filter(Boolean)));
+    }
     const names = new Set<string>();
     initialTasks.forEach(task => {
       if (task.assignerName) names.add(task.assignerName);
       else if (task.createdByName) names.add(task.createdByName);
     });
     return Array.from(names);
-  }, [initialTasks]);
+  }, [availableUsers, initialTasks]);
 
 
   const getCategoryDropdownDisplayText = () => {
@@ -1681,7 +1549,7 @@ export const TaskFilters = ({
           {/* Sales Filter Dropdown */}
           <select
             value={salesFilter}
-            onChange={(e) => setSalesFilter(e.target.value as "all" | "withSales" | "noSales")}
+            onChange={(e) => onSalesFilterChange(e.target.value as "all" | "withSales" | "noSales")}
             className="p-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="all">All Sales</option>
@@ -1692,7 +1560,7 @@ export const TaskFilters = ({
           {/* Pending Sales Filter Dropdown */}
           <select
             value={pendingSalesFilter}
-            onChange={(e) => setPendingSalesFilter(e.target.value as "all" | "withPendingSales" | "fullyPaidSales" | "zeroAmountAndPaid")}
+            onChange={(e) => onPendingSalesFilterChange(e.target.value as "all" | "withPendingSales" | "fullyPaidSales" | "zeroAmountAndPaid")}
             className="p-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="all">All Pending Sales</option>
@@ -1766,8 +1634,8 @@ export const TaskFilters = ({
                       checked={selectedAssigners.includes(assigner)}
                       onChange={(e) => {
                         const isChecked = e.target.checked;
-                        setSelectedAssigners(prev =>
-                          isChecked ? [...prev, assigner] : prev.filter(v => v !== assigner)
+                        onAssignersChange(
+                          isChecked ? [...selectedAssigners, assigner] : selectedAssigners.filter(v => v !== assigner)
                         );
                       }}
                     />
@@ -1805,8 +1673,8 @@ export const TaskFilters = ({
                       checked={selectedAssignees.includes(assignee)}
                       onChange={(e) => {
                         const isChecked = e.target.checked;
-                        setSelectedAssignees((prev) =>
-                          isChecked ? [...prev, assignee] : prev.filter((v) => v !== assignee)
+                        onAssigneesChange(
+                          isChecked ? [...selectedAssignees, assignee] : selectedAssignees.filter((v) => v !== assignee)
                         );
                       }}
                     />
@@ -1858,8 +1726,8 @@ export const TaskFilters = ({
                       checked={selectedCategories.includes(cat.value)}
                       onChange={(e) => {
                         const isChecked = e.target.checked;
-                        setSelectedCategories((prev) =>
-                          isChecked ? [...prev, cat.value] : prev.filter((v) => v !== cat.value)
+                        onCategoriesChange(
+                          isChecked ? [...selectedCategories, cat.value] : selectedCategories.filter((v) => v !== cat.value)
                         );
                       }}
                     />

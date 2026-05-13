@@ -117,6 +117,15 @@ export default function ReportPage() {
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState<string | null>(null);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
+  const [selectedAssigners, setSelectedAssigners] = useState<string[]>([]);
+  const [salesFilter, setSalesFilter] = useState<"all" | "withSales" | "noSales">("all");
+  const [pendingSalesFilter, setPendingSalesFilter] = useState<"all" | "withPendingSales" | "fullyPaidSales" | "zeroAmountAndPaid">("all");
+  
+  // Filter Options (available users and statuses from API)
+  const [availableUsers, setAvailableUsers] = useState<{id: string, name: string, email: string}[]>([]);
+  const [availableStatuses, setAvailableStatuses] = useState<string[]>([]);
 
   // Debouncing Search Query
   useEffect(() => {
@@ -129,7 +138,7 @@ export default function ReportPage() {
   // Reset to page 1 when search or filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedQuery, status, dateFilter, limit]);
+  }, [debouncedQuery, status, dateFilter, limit, selectedCategories, selectedAssignees, selectedAssigners, salesFilter, pendingSalesFilter]);
 
   // Re-fetch when page, limit, debouncedQuery, or status changes
   useEffect(() => {
@@ -137,7 +146,7 @@ export default function ReportPage() {
     if (isLoaded && user && (normalizedRole === "admin" || normalizedRole === "seller" || normalizedRole === "master" || normalizedRole === "tl")) {
       fetchTasks();
     }
-  }, [isLoaded, user, currentPage, limit, debouncedQuery, status, dateFilter]);
+  }, [isLoaded, user, currentPage, limit, debouncedQuery, status, dateFilter, selectedCategories, selectedAssignees, selectedAssigners, salesFilter, pendingSalesFilter]);
 
   const fetchTasks = async () => {
     setLoading(true);
@@ -150,6 +159,11 @@ export default function ReportPage() {
         query: debouncedQuery,
         status: status || "",
         dateFilter: dateFilter || "",
+        categories: selectedCategories.join(","),
+        assignees: selectedAssignees.join(","),
+        assigners: selectedAssigners.join(","),
+        salesFilter,
+        pendingSalesFilter,
       });
 
       const res = await fetch(`/api/tasks?${params.toString()}`);
@@ -164,6 +178,12 @@ export default function ReportPage() {
         setTasks(data.tasks);
         setTotalItems(data.totalCount || 0);
         setTotalPages(data.totalPages || 0);
+        
+        // Save available options for filters
+        if (data.filterOptions) {
+          if (data.filterOptions.users) setAvailableUsers(data.filterOptions.users);
+          if (data.filterOptions.statuses) setAvailableStatuses(data.filterOptions.statuses);
+        }
       } else {
         console.warn("API returned non-array for tasks:", data);
         setTasks([]);
@@ -217,6 +237,18 @@ export default function ReportPage() {
         onStatusChange={setStatus}
         dateFilter={dateFilter}
         onDateFilterChange={setDateFilter}
+        selectedCategories={selectedCategories}
+        onCategoriesChange={setSelectedCategories}
+        selectedAssignees={selectedAssignees}
+        onAssigneesChange={setSelectedAssignees}
+        selectedAssigners={selectedAssigners}
+        onAssignersChange={setSelectedAssigners}
+        salesFilter={salesFilter}
+        onSalesFilterChange={setSalesFilter}
+        pendingSalesFilter={pendingSalesFilter}
+        onPendingSalesFilterChange={setPendingSalesFilter}
+        availableUsers={availableUsers}
+        availableStatuses={availableStatuses}
       />
     </main>
   );

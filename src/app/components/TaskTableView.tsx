@@ -6681,6 +6681,18 @@ interface Props {
   onStatusChange: (status: string | null) => void;
   dateFilter: string | null;
   onDateFilterChange: (dateFilter: string | null) => void;
+  selectedCategories: string[];
+  onCategoriesChange: (categories: string[]) => void;
+  selectedAssignees: string[];
+  onAssigneesChange: (assignees: string[]) => void;
+  selectedAssigners: string[];
+  onAssignersChange: (assigners: string[]) => void;
+  salesFilter: "all" | "withSales" | "noSales";
+  onSalesFilterChange: (filter: "all" | "withSales" | "noSales") => void;
+  pendingSalesFilter: "all" | "withPendingSales" | "fullyPaidSales" | "zeroAmountAndPaid";
+  onPendingSalesFilterChange: (filter: "all" | "withPendingSales" | "fullyPaidSales" | "zeroAmountAndPaid") => void;
+  availableUsers?: {id: string, name: string, email: string}[];
+  availableStatuses?: string[];
 }
 
 export default function TaskTableView({
@@ -6698,7 +6710,19 @@ export default function TaskTableView({
   status,
   onStatusChange,
   dateFilter,
-  onDateFilterChange
+  onDateFilterChange,
+  selectedCategories,
+  onCategoriesChange,
+  selectedAssignees,
+  onAssigneesChange,
+  selectedAssigners,
+  onAssignersChange,
+  salesFilter,
+  onSalesFilterChange,
+  pendingSalesFilter,
+  onPendingSalesFilterChange,
+  availableUsers,
+  availableStatuses
 }: Props) {
   const [editMode, setEditMode] = useState(false);
   const [editedValues, setEditedValues] = useState<{ [key: string]: number }>(
@@ -6709,22 +6733,13 @@ export default function TaskTableView({
   // Use a separate state for filtered tasks to avoid re-filtering on every render
   const [filteredTasks, setFilteredTasks] = useState<Task[]>(tasks || []);
   const [isSaving, setIsSaving] = useState<string | null>(null);
-  const [teamMembers, setTeamMembers] = useState<{ id: string; name: string; email: string }[]>([]);
+  const [teamMembers, setTeamMembers] = useState<{ id: string; name: string; email: string }[]>(availableUsers || []);
 
   useEffect(() => {
-    const fetchTeamMembers = async () => {
-      try {
-        const res = await fetch("/api/team-members");
-        if (res.ok) {
-          const data = await res.json();
-          setTeamMembers(data);
-        }
-      } catch (err) {
-        console.error("Failed to fetch team members:", err);
-      }
-    };
-    fetchTeamMembers();
-  }, []);
+    if (availableUsers && availableUsers.length > 0) {
+      setTeamMembers(availableUsers);
+    }
+  }, [availableUsers]);
 
   // ✅ The `copy` column is now initialized as a visible column
   const [visibleColumns, setVisibleColumns] = useState<string[]>([
@@ -7128,6 +7143,18 @@ export default function TaskTableView({
         onStatusChange={onStatusChange}
         dateFilter={dateFilter}
         onDateFilterChange={onDateFilterChange}
+        selectedCategories={selectedCategories}
+        onCategoriesChange={onCategoriesChange}
+        selectedAssignees={selectedAssignees}
+        onAssigneesChange={onAssigneesChange}
+        selectedAssigners={selectedAssigners}
+        onAssignersChange={onAssignersChange}
+        salesFilter={salesFilter}
+        onSalesFilterChange={onSalesFilterChange}
+        pendingSalesFilter={pendingSalesFilter}
+        onPendingSalesFilterChange={onPendingSalesFilterChange}
+        availableUsers={availableUsers}
+        availableStatuses={availableStatuses}
       />
 
       <div className="overflow-x-auto">

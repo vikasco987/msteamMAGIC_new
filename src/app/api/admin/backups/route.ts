@@ -55,3 +55,32 @@ export async function GET() {
   }
 }
 
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const fileName = searchParams.get("file");
+    const bucket = process.env.MY_AWS_S3_BACKUP_BUCKET;
+
+    if (!bucket || !fileName) {
+      return NextResponse.json({ error: 'Missing bucket or filename' }, { status: 400 });
+    }
+
+    const { DeleteObjectCommand } = await import("@aws-sdk/client-s3");
+    
+    const command = new DeleteObjectCommand({
+      Bucket: bucket,
+      Key: `backups/${fileName}`,
+    });
+
+    await s3Client.send(command);
+
+    return NextResponse.json({ message: 'Backup deleted successfully' });
+  } catch (error: any) {
+    console.error('Delete Backup Error:', error);
+    return NextResponse.json({ 
+      error: 'Failed to delete backup', 
+      details: error.message 
+    }, { status: 500 });
+  }
+}
+

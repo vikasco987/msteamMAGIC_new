@@ -17,7 +17,8 @@ import {
   FileCode,
   Eye,
   XCircle,
-  Loader2
+  Loader2,
+  Trash2
 } from "lucide-react";
 
 interface Backup {
@@ -39,6 +40,7 @@ export default function BackupDashboard() {
   // Snapshot States
   const [viewMode, setViewMode] = useState<'live' | 'snapshot'>('live');
   const [mountingId, setMountingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [snapshotLabel, setSnapshotLabel] = useState("");
   const [snapshotDb, setSnapshotDb] = useState<string | null>(null);
   const [backingUp, setBackingUp] = useState(false);
@@ -212,6 +214,29 @@ export default function BackupDashboard() {
       alert("Failed to connect to backup service");
     } finally {
       setBackingUp(false);
+    }
+  };
+
+  const handleDelete = async (id: string, fileName: string) => {
+    if (!confirm(`Are you sure you want to permanently delete backup: ${fileName}?`)) return;
+
+    try {
+      setDeletingId(id);
+      const res = await fetch(`/api/admin/backups?file=${encodeURIComponent(fileName)}`, {
+        method: "DELETE",
+      });
+      
+      if (res.ok) {
+        setBackups(prev => prev.filter(b => b.id !== id));
+      } else {
+        const data = await res.json();
+        alert("Delete failed: " + (data.error || "Unknown error"));
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
+      alert("Failed to connect to delete service");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -598,6 +623,13 @@ export default function BackupDashboard() {
                               className="p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-gray-400 hover:text-white transition"
                             >
                               <Download size={14} />
+                            </button>
+                            <button 
+                              onClick={() => handleDelete(backup.id, backup.fileName)}
+                              disabled={deletingId === backup.id}
+                              className="p-2 rounded-lg bg-red-500/5 border border-red-500/10 text-red-400 hover:bg-red-500/20 transition disabled:opacity-50"
+                            >
+                              {deletingId === backup.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                             </button>
                           </div>
                         </td>
