@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { FaRegClipboard, FaTimes, FaUserEdit, FaCrown, FaEllipsisV, FaRegStickyNote, FaTrashAlt } from "react-icons/fa";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { MoreVertical, Copy, History, DollarSign, Pin, Trash2, Layers } from "lucide-react";
+import { MoreVertical, Copy, History, DollarSign, Pin, Trash2, Layers, Share2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useUser } from "@clerk/nextjs";
 import type { Task } from "../../types/task";
@@ -433,6 +433,18 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
                     >
                       <Copy size={12} className="text-slate-400" />
                       COPY DETAILS
+                    </DropdownMenu.Item>
+
+                    <DropdownMenu.Item 
+                      onClick={() => {
+                        const sharedUrl = `${window.location.origin}/shared/${task.id}`;
+                        navigator.clipboard.writeText(sharedUrl);
+                        toast.success("Public share link copied!");
+                      }}
+                      className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50 rounded-lg cursor-pointer outline-none"
+                    >
+                      <Share2 size={12} className="text-indigo-400" />
+                      SHARE CARD LINK
                     </DropdownMenu.Item>
 
                     {onFloatRequest && (
