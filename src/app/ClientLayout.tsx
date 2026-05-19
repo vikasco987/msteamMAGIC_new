@@ -9,7 +9,7 @@ import {
   useUser,
 } from '@clerk/nextjs';
 import { useEffect, useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, usePathname } from 'next/navigation';
 import Sidebar from '../app/components/Sidebar';
 import AttendanceTicker from '../app/components/AttendanceTicker';
 import { Search, Bell, Command, Sun, Moon } from 'lucide-react';
@@ -17,7 +17,9 @@ import { Search, Bell, Command, Sun, Moon } from 'lucide-react';
 function ClientLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser();
   const searchParams = useSearchParams();
-  const isFullView = searchParams.get('fullview') === 'true';
+  const pathname = usePathname();
+  const isSharedPage = pathname.startsWith('/shared/');
+  const isFullView = searchParams.get('fullview') === 'true' || isSharedPage;
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
