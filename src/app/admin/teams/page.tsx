@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import Select from 'react-select';
 
 interface User {
     id: string;
@@ -293,18 +294,36 @@ export default function TeamManagementPage() {
                                 
                                 <div>
                                     <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">To (New Account)</label>
-                                    <select
-                                        value={migrateToUser}
-                                        onChange={(e) => setMigrateToUser(e.target.value)}
-                                        className="w-full p-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                                    >
-                                        <option value="">Select destination user...</option>
-                                        {users.filter(u => u.clerkId !== migrateFromUser.clerkId).map(u => (
-                                            <option key={u.clerkId} value={u.clerkId}>
-                                                {u.name} ({u.email})
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <Select
+                                        options={users.filter(u => u.clerkId !== migrateFromUser.clerkId).map(u => ({
+                                            value: u.clerkId,
+                                            label: `${u.name} (${u.email})`
+                                        }))}
+                                        value={
+                                            migrateToUser 
+                                                ? { 
+                                                    value: migrateToUser, 
+                                                    label: `${users.find(u => u.clerkId === migrateToUser)?.name || ''} (${users.find(u => u.clerkId === migrateToUser)?.email || ''})` 
+                                                  } 
+                                                : null
+                                        }
+                                        onChange={(option: any) => setMigrateToUser(option?.value || '')}
+                                        placeholder="Search destination user..."
+                                        className="text-sm font-medium text-slate-900"
+                                        styles={{
+                                            control: (baseStyles, state) => ({
+                                                ...baseStyles,
+                                                padding: '4px',
+                                                borderRadius: '0.75rem',
+                                                borderColor: state.isFocused ? '#f59e0b' : '#cbd5e1',
+                                                boxShadow: state.isFocused ? '0 0 0 1px #f59e0b' : 'none',
+                                                '&:hover': {
+                                                    borderColor: '#f59e0b'
+                                                }
+                                            })
+                                        }}
+                                        isSearchable
+                                    />
                                 </div>
                             </div>
 
