@@ -11,7 +11,9 @@ import {
     Crown,
     ChevronRight,
     Loader2,
-    CheckCircle2
+    CheckCircle2,
+    ArrowRightLeft,
+    AlertTriangle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -32,6 +34,12 @@ export default function TeamManagementPage() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+
+    // Migration State
+    const [isMigrateModalOpen, setIsMigrateModalOpen] = useState(false);
+    const [migrateFromUser, setMigrateFromUser] = useState<User | null>(null);
+    const [migrateToUser, setMigrateToUser] = useState<string>('');
+    const [migrating, setMigrating] = useState(false);
 
     useEffect(() => {
         if (isLoaded && currentUser) {
@@ -98,6 +106,43 @@ export default function TeamManagementPage() {
             toast.error("An error occurred");
         } finally {
             setUpdatingUserId(null);
+        }
+    };
+
+    const handleMigrateData = async () => {
+        if (!migrateFromUser || !migrateToUser) {
+            toast.error("Please select a destination user");
+            return;
+        }
+        if (migrateFromUser.clerkId === migrateToUser) {
+            toast.error("Source and destination cannot be the same");
+            return;
+        }
+
+        setMigrating(true);
+        try {
+            const res = await fetch('/api/admin/users/transfer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fromUserId: migrateFromUser.clerkId,
+                    toUserId: migrateToUser
+                })
+            });
+
+            if (res.ok) {
+                toast.success("Data migrated successfully");
+                setIsMigrateModalOpen(false);
+                setMigrateFromUser(null);
+                setMigrateToUser('');
+            } else {
+                const data = await res.json();
+                toast.error(data.error || "Migration failed");
+            }
+        } catch (error) {
+            toast.error("An error occurred during migration");
+        } finally {
+            setMigrating(false);
         }
     };
 
@@ -181,6 +226,20 @@ export default function TeamManagementPage() {
                                         {updatingUserId === u.clerkId ? <Loader2 size={14} className="animate-spin" /> : (u.isTeamLeader ? "REVOKE TL" : "MAKE TL")}
                                     </button>
                                 </div>
+                                
+                                <div className="flex flex-col items-end">
+                                    <span className="text-[10px] font-black uppercase text-slate-400 mb-1">Actions</span>
+                                    <button
+                                        onClick={() => {
+                                            setMigrateFromUser(u);
+                                            setIsMigrateModalOpen(true);
+                                        }}
+                                        className="px-4 py-2 rounded-xl text-xs font-black transition-all bg-amber-100 text-amber-700 hover:bg-amber-200 border border-amber-200 flex items-center gap-2"
+                                    >
+                                        <ArrowRightLeft size={14} />
+                                        MIGRATE DATA
+                                    </button>
+                                </div>
 
                                 <div className="flex flex-col items-end">
                                     <span className="text-[10px] font-black uppercase text-slate-400 mb-1">Assigned Leader</span>
@@ -201,6 +260,76 @@ export default function TeamManagementPage() {
                     ))}
                 </div>
             </div>
+
+            {/* Migration Modal */}
+            <AnimatePresence>
+                {isMigrateModalOpen && migrateFromUser && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white rounded-[24px] p-6 max-w-lg w-full shadow-2xl border border-slate-200"
+                        >
+                            <div className="flex items-center gap-3 text-amber-600 mb-4">
+                                <AlertTriangle size={24} />
+                                <h2 className="text-xl font-black">Migrate Account Data</h2>
+                            </div>
+                            
+                            <p className="text-sm text-slate-600 mb-6 font-medium">
+                                You are about to migrate all data (Tasks, CRM Forms, Attendance, Payments, etc.) from <strong className="text-slate-900">{migrateFromUser.name}</strong> to a new account.
+                                This action is permanent.
+                            </p>
+
+                            <div className="space-y-4 mb-6">
+                                <div>
+                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">From (Old Account)</label>
+                                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-700">
+                                        {migrateFromUser.name} ({migrateFromUser.email})
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">To (New Account)</label>
+                                    <select
+                                        value={migrateToUser}
+                                        onChange={(e) => setMigrateToUser(e.target.value)}
+                                        className="w-full p-3 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                    >
+                                        <option value="">Select destination user...</option>
+                                        {users.filter(u => u.clerkId !== migrateFromUser.clerkId).map(u => (
+                                            <option key={u.clerkId} value={u.clerkId}>
+                                                {u.name} ({u.email})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                                <button
+                                    onClick={() => {
+                                        setIsMigrateModalOpen(false);
+                                        setMigrateToUser('');
+                                    }}
+                                    disabled={migrating}
+                                    className="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50"
+                                >
+                                    CANCEL
+                                </button>
+                                <button
+                                    onClick={handleMigrateData}
+                                    disabled={migrating || !migrateToUser}
+                                    className="px-5 py-2.5 rounded-xl text-sm font-black text-white bg-amber-600 hover:bg-amber-700 transition-colors shadow-lg shadow-amber-600/20 disabled:opacity-50 flex items-center gap-2"
+                                >
+                                    {migrating ? <Loader2 size={16} className="animate-spin" /> : <ArrowRightLeft size={16} />}
+                                    {migrating ? "MIGRATING..." : "CONFIRM MIGRATION"}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
