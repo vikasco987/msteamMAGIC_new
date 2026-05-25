@@ -26,6 +26,7 @@ interface User {
     role: string;
     isTeamLeader: boolean;
     leaderId: string | null;
+    banned?: boolean;
 }
 
 export default function TeamManagementPage() {
@@ -210,6 +211,7 @@ export default function TeamManagementPage() {
                                             {u.role}
                                         </span>
                                         {u.isTeamLeader && <span className="text-[10px] bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full uppercase tracking-tighter font-black">TL Priority</span>}
+                                        {u.banned && <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full uppercase tracking-tighter font-black">BANNED</span>}
                                     </h3>
                                     <p className="text-sm font-bold text-slate-400">{u.email}</p>
                                 </div>

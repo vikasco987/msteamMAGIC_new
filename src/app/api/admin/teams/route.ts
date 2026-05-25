@@ -26,9 +26,9 @@ export async function GET(req: NextRequest) {
         // Fetch all users from Clerk to ensure sync
         const clerkUsersResponse = await client.users.getUserList({ limit: 500 });
         const clerkUsers = clerkUsersResponse.data;
+        console.log("Fetched users from Clerk count:", clerkUsers.length);
 
         const formattedUsers = clerkUsers
-            .filter((u: any) => !u.banned)
             .map(u => {
             const dbUser = users.find(du => du.clerkId === u.id);
             return {
@@ -39,7 +39,8 @@ export async function GET(req: NextRequest) {
                 role: (u.publicMetadata?.role as string) || "user",
                 isTeamLeader: dbUser?.isTeamLeader || false,
                 leaderId: dbUser?.leaderId || null,
-                synced: !!dbUser
+                synced: !!dbUser,
+                banned: u.banned
             };
         });
 
