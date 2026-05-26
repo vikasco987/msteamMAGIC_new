@@ -15,8 +15,8 @@ export async function GET(req: NextRequest) {
         }
 
         const client = await clerkClient();
-        const requester = await client.users.getUser(userId);
-        const requesterRole = String(requester.publicMetadata?.role || "user").toLowerCase();
+        const requester = await prisma.user.findUnique({ where: { clerkId: userId } });
+        const requesterRole = String(requester?.role || "user").toLowerCase();
 
         // Only MASTER can manage teams
         if (requesterRole !== "master") {
