@@ -4,14 +4,12 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
     try {
-        const { userId } = await auth();
+        const { userId, sessionClaims } = await auth();
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const client = await clerkClient();
-        const requester = await client.users.getUser(userId);
-        const requesterRole = String(requester.publicMetadata?.role || "user").toLowerCase();
+        const requesterRole = String((sessionClaims?.publicMetadata as any)?.role || "user").toLowerCase();
 
         // Only MASTER can transfer data
         if (requesterRole !== "master") {

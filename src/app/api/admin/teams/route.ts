@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 
+// Global cache for clerk users to avoid extremely slow API load times
+let cachedClerkUsers: any[] | null = null;
+let clerkUsersCacheTime = 0;
+const CACHE_DURATION_MS = 60000; // 1 minute
+
 export async function GET(req: NextRequest) {
     try {
         const { userId } = await auth();
@@ -23,9 +28,16 @@ export async function GET(req: NextRequest) {
             orderBy: { name: 'asc' }
         });
 
-        // Fetch all users from Clerk to ensure sync
-        const clerkUsersResponse = await client.users.getUserList({ limit: 500 });
-        const clerkUsers = clerkUsersResponse.data;
+        // Fetch all users from Clerk to ensure sync (WITH CACHING)
+        let clerkUsers: any[];
+        if (cachedClerkUsers && Date.now() - clerkUsersCacheTime < CACHE_DURATION_MS) {
+            clerkUsers = cachedClerkUsers;
+        } else {
+            const clerkUsersResponse = await client.users.getUserList({ limit: 500 });
+            clerkUsers = clerkUsersResponse.data;
+            cachedClerkUsers = clerkUsers;
+            clerkUsersCacheTime = Date.now();
+        }
         console.log("Fetched users from Clerk count:", clerkUsers.length);
 
         const formattedUsers = clerkUsers

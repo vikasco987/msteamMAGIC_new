@@ -20,11 +20,9 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
 
-  experimental: {
-    turbo: {
-      resolveAlias: {
-        internmap: "internmap",
-      },
+  turbopack: {
+    resolveAlias: {
+      internmap: "internmap",
     },
   },
 };
