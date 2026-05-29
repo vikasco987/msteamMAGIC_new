@@ -10,13 +10,20 @@ const google = createGoogleGenerativeAI({
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
-    const imageFile = formData.get('image') as File | null;
+    const imageFiles = formData.getAll('images') as File[];
     
-    if (!imageFile) {
-      return NextResponse.json({ error: 'No image provided' }, { status: 400 });
+    if (!imageFiles || imageFiles.length === 0) {
+      return NextResponse.json({ error: 'No images provided' }, { status: 400 });
     }
 
-    const buffer = Buffer.from(await imageFile.arrayBuffer());
+    const contentParts: any[] = [
+      { type: 'text', text: 'Extract the following details from these images (which may include business cards, menus, or documents). If a field is not present, return an empty string.' }
+    ];
+
+    for (const file of imageFiles) {
+      const buffer = Buffer.from(await file.arrayBuffer());
+      contentParts.push({ type: 'image', image: buffer });
+    }
 
     const result = await generateObject({
       model: google('gemini-2.5-flash'),
@@ -33,10 +40,7 @@ export async function POST(req: Request) {
       messages: [
         {
           role: 'user',
-          content: [
-            { type: 'text', text: 'Extract the following details from this business card, menu, or document image. If a field is not present, return an empty string.' },
-            { type: 'image', image: buffer }
-          ]
+          content: contentParts
         }
       ],
     });

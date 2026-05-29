@@ -1928,6 +1928,7 @@ export default function UploadsStep(props: UploadsStepProps) {
   const [isSearching, setIsSearching] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [aiFiles, setAiFiles] = useState<File[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -1944,26 +1945,32 @@ export default function UploadsStep(props: UploadsStepProps) {
     e.preventDefault();
     setIsDragOver(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      // Simulate input change event
-      const fakeEvent = {
-        target: { files: e.dataTransfer.files, value: '' }
-      } as unknown as React.ChangeEvent<HTMLInputElement>;
-      handleAIExtract(fakeEvent);
+      const filesArray = Array.from(e.dataTransfer.files);
+      setAiFiles(prev => [...prev, ...filesArray]);
     }
   };
 
-  const handleAIExtract = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const filesArray = Array.from(e.target.files);
+      setAiFiles(prev => [...prev, ...filesArray]);
+    }
+    e.target.value = '';
+  };
+
+  const triggerAIExtract = async () => {
+    if (aiFiles.length === 0) return;
 
     setIsExtracting(true);
-    const toastId = toast.loading("🤖 Analyzing document with AI...", {
+    const toastId = toast.loading(`🤖 Analyzing ${aiFiles.length} document(s) with AI...`, {
       style: { borderRadius: "10px", background: "#333", color: "#fff", fontSize: "13px" }
     });
 
     try {
       const formData = new FormData();
-      formData.append("image", file);
+      aiFiles.forEach(file => {
+        formData.append("images", file);
+      });
 
       const res = await fetch("/api/ai/extract-details", {
         method: "POST",
@@ -1984,15 +1991,15 @@ export default function UploadsStep(props: UploadsStepProps) {
       if (data.pincode) setPincode(data.pincode);
 
       toast.success("✨ Form auto-filled successfully!", { id: toastId });
+      setAiFiles([]); // Clear files after successful extraction
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Failed to extract details", { id: toastId });
     } finally {
       setIsExtracting(false);
-      // Reset input so the same file can be uploaded again if needed
-      e.target.value = '';
     }
   };
+
 
 
   // Search suggestions when name changes
@@ -2106,21 +2113,35 @@ export default function UploadsStep(props: UploadsStepProps) {
                   </p>
                 </div>
               </div>
-              <div className="relative group w-full sm:w-auto">
-                <input 
-                  type="file" 
-                  accept="image/*"
-                  onChange={handleAIExtract}
-                  disabled={isExtracting}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-10" 
-                />
-                <button 
-                  disabled={isExtracting}
-                  className={`w-full sm:w-auto text-white px-6 py-3.5 rounded-xl font-bold transition-all duration-300 shadow-md flex items-center justify-center gap-2 disabled:opacity-70 ${isDragOver ? 'bg-indigo-600 scale-110' : 'bg-slate-900 group-hover:bg-indigo-600'}`}
-                >
-                  {isExtracting ? <Loader2 size={18} className="animate-spin" /> : <UploadCloud size={18} />}
-                  {isExtracting ? "Analyzing Document..." : "Upload Image"}
-                </button>
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                {aiFiles.length > 0 && (
+                  <button
+                    onClick={triggerAIExtract}
+                    disabled={isExtracting}
+                    className="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white px-6 py-3.5 rounded-xl font-bold transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-70 z-20"
+                  >
+                    {isExtracting ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
+                    {isExtracting ? "Analyzing..." : `Scan ${aiFiles.length} Image${aiFiles.length > 1 ? 's' : ''}`}
+                  </button>
+                )}
+                
+                <div className="relative group w-full sm:w-auto">
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    multiple
+                    onChange={handleFileSelect}
+                    disabled={isExtracting}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-10" 
+                  />
+                  <button 
+                    disabled={isExtracting}
+                    className={`w-full sm:w-auto text-white px-6 py-3.5 rounded-xl font-bold transition-all duration-300 shadow-md flex items-center justify-center gap-2 disabled:opacity-70 ${isDragOver ? 'bg-indigo-600 scale-110' : 'bg-slate-900 group-hover:bg-indigo-600'}`}
+                  >
+                    <UploadCloud size={18} />
+                    {aiFiles.length > 0 ? "Add More" : "Upload Images"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
