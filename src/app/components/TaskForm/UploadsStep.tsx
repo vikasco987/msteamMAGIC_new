@@ -1848,7 +1848,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import FileDropzone from "./FileDropzone";
-import { Search, Loader2, User, MapPin } from "lucide-react";
+import { Search, Loader2, User, MapPin, Sparkles, UploadCloud } from "lucide-react";
 import toast from "react-hot-toast";
 
 // Define TabType locally or import it if it's defined in a shared types file
@@ -1926,7 +1926,50 @@ export default function UploadsStep(props: UploadsStepProps) {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleAIExtract = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsExtracting(true);
+    const toastId = toast.loading("🤖 Analyzing document with AI...", {
+      style: { borderRadius: "10px", background: "#333", color: "#fff", fontSize: "13px" }
+    });
+
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const res = await fetch("/api/ai/extract-details", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "Extraction failed");
+
+      if (data.customerName) setCustomerName(data.customerName);
+      if (data.shopName) setShopName(data.shopName);
+      if (data.phone) setPhone(data.phone);
+      if (data.email) setEmail(data.email);
+      if (data.fullAddress) setFullAddress(data.fullAddress);
+      if (data.city) setCity(data.city);
+      if (data.state) setState(data.state);
+      if (data.pincode) setPincode(data.pincode);
+
+      toast.success("✨ Form auto-filled successfully!", { id: toastId });
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Failed to extract details", { id: toastId });
+    } finally {
+      setIsExtracting(false);
+      // Reset input so the same file can be uploaded again if needed
+      e.target.value = '';
+    }
+  };
 
 
   // Search suggestions when name changes
@@ -2021,6 +2064,37 @@ export default function UploadsStep(props: UploadsStepProps) {
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {step === 1 && (
         <>
+          {/* ✨ AI Magic Auto-Fill Banner */}
+          <div className="mb-8 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-[2px] rounded-[2rem] shadow-lg shadow-indigo-200/50">
+            <div className="bg-white/95 backdrop-blur-xl rounded-[2rem] p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center text-indigo-600 shadow-inner">
+                  <Sparkles size={26} className={isExtracting ? "animate-spin" : "animate-pulse"} />
+                </div>
+                <div>
+                  <h3 className="font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 text-lg tracking-tight">AI Magic Auto-Fill</h3>
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">Upload a visiting card or document to auto-fill details instantly.</p>
+                </div>
+              </div>
+              <div className="relative group w-full sm:w-auto">
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={handleAIExtract}
+                  disabled={isExtracting}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-10" 
+                />
+                <button 
+                  disabled={isExtracting}
+                  className="w-full sm:w-auto bg-slate-900 group-hover:bg-indigo-600 text-white px-6 py-3.5 rounded-xl font-bold transition-all duration-300 shadow-md flex items-center justify-center gap-2 disabled:opacity-70"
+                >
+                  {isExtracting ? <Loader2 size={18} className="animate-spin" /> : <UploadCloud size={18} />}
+                  {isExtracting ? "Analyzing Document..." : "Upload Image"}
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* 🏛️ Section 1: Customer Identity & Address */}
       <section className="relative">
         <div className="flex items-center gap-3 mb-6">
