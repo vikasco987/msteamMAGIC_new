@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     const buffer = Buffer.from(await imageFile.arrayBuffer());
 
     const result = await generateObject({
-      model: google('gemini-1.5-flash'),
+      model: google('gemini-2.5-flash'),
       schema: z.object({
         customerName: z.string().describe("Customer or Owner's full name. Return empty string if not found."),
         shopName: z.string().describe("Business, shop, or restaurant name. Return empty string if not found."),
