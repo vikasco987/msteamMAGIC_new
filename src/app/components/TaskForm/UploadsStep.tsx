@@ -1849,6 +1849,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import FileDropzone from "./FileDropzone";
 import { Search, Loader2, User, MapPin } from "lucide-react";
+import toast from "react-hot-toast";
 
 // Define TabType locally or import it if it's defined in a shared types file
 type TabType = "license" | "swiggy" | "zomato" | "combo" | "photo" | "account" | "other";
