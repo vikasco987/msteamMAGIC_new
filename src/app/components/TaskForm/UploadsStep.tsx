@@ -1956,11 +1956,14 @@ export default function UploadsStep(props: UploadsStepProps) {
     const lookupPincode = async () => {
       if (pincode.length === 6) {
         try {
-          const res = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
-          const data = await res.json();
+          const res = await fetch(`/api/pincode/${pincode}`);
+          let data = await res.json();
           
-          if (data && data[0]?.Status === "Success") {
-            const postOffice = data[0].PostOffice[0];
+          // The local proxy might return an object (v1 API) instead of an array (v2 API)
+          const result = Array.isArray(data) ? data[0] : data;
+
+          if (result && result.Status === "Success") {
+            const postOffice = result.PostOffice[0];
             if (postOffice) {
               setCity(postOffice.District);
               setState(postOffice.State);
