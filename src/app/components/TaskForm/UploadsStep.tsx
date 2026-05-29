@@ -1927,7 +1927,30 @@ export default function UploadsStep(props: UploadsStepProps) {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+  
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+  
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      // Simulate input change event
+      const fakeEvent = {
+        target: { files: e.dataTransfer.files, value: '' }
+      } as unknown as React.ChangeEvent<HTMLInputElement>;
+      handleAIExtract(fakeEvent);
+    }
+  };
 
   const handleAIExtract = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -2065,15 +2088,22 @@ export default function UploadsStep(props: UploadsStepProps) {
       {step === 1 && (
         <>
           {/* ✨ AI Magic Auto-Fill Banner */}
-          <div className="mb-8 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-[2px] rounded-[2rem] shadow-lg shadow-indigo-200/50">
-            <div className="bg-white/95 backdrop-blur-xl rounded-[2rem] p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div 
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`mb-8 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-[2px] rounded-[2rem] shadow-lg shadow-indigo-200/50 transition-all duration-300 ${isDragOver ? 'scale-105 shadow-2xl ring-4 ring-indigo-300' : ''}`}
+          >
+            <div className={`bg-white/95 backdrop-blur-xl rounded-[2rem] p-6 flex flex-col sm:flex-row items-center justify-between gap-4 transition-colors ${isDragOver ? 'bg-indigo-50/95' : ''}`}>
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center text-indigo-600 shadow-inner">
+                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center text-indigo-600 shadow-inner ${isDragOver ? 'animate-bounce' : ''}`}>
                   <Sparkles size={26} className={isExtracting ? "animate-spin" : "animate-pulse"} />
                 </div>
                 <div>
                   <h3 className="font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 text-lg tracking-tight">AI Magic Auto-Fill</h3>
-                  <p className="text-xs text-slate-500 font-medium mt-0.5">Upload a visiting card or document to auto-fill details instantly.</p>
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">
+                    {isDragOver ? "Drop image here to scan!" : "Upload or drag a visiting card/document to auto-fill details."}
+                  </p>
                 </div>
               </div>
               <div className="relative group w-full sm:w-auto">
@@ -2086,7 +2116,7 @@ export default function UploadsStep(props: UploadsStepProps) {
                 />
                 <button 
                   disabled={isExtracting}
-                  className="w-full sm:w-auto bg-slate-900 group-hover:bg-indigo-600 text-white px-6 py-3.5 rounded-xl font-bold transition-all duration-300 shadow-md flex items-center justify-center gap-2 disabled:opacity-70"
+                  className={`w-full sm:w-auto text-white px-6 py-3.5 rounded-xl font-bold transition-all duration-300 shadow-md flex items-center justify-center gap-2 disabled:opacity-70 ${isDragOver ? 'bg-indigo-600 scale-110' : 'bg-slate-900 group-hover:bg-indigo-600'}`}
                 >
                   {isExtracting ? <Loader2 size={18} className="animate-spin" /> : <UploadCloud size={18} />}
                   {isExtracting ? "Analyzing Document..." : "Upload Image"}
