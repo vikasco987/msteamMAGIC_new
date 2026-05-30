@@ -34,38 +34,41 @@ export async function POST(
         return NextResponse.json({ success: false, message: "Phone number must be exactly 10 digits" }, { status: 400 });
       }
 
+      // Razorpay Payment Link payload
       const orderId = "LNK_" + Date.now();
-      const orderUrl = env === "PROD" ? "https://api.cashfree.com/pg/orders" : "https://sandbox.cashfree.com/pg/orders";
-
-      const orderResponse = await axios.post(
-        orderUrl,
-        {
-          order_id: orderId,
-          order_amount: finalAmount,
-          order_currency: "INR",
-          customer_details: {
-            customer_id: email ? email.replace(/[^a-zA-Z0-9_-]/g, "_") : "guest_" + Date.now(),
-            customer_name: name || "Customer",
-            customer_email: email || "customer@example.com",
-            customer_phone: phone || "9999999999",
-          },
-          order_meta: {
-            return_url: `https://magicscale.in/payment-success?order_id=${orderId}`,
-            total_amount: (parseFloat(totalServicePrice) || finalAmount).toString(),
-          },
+      
+      const razorpayPayload = {
+        amount: finalAmount,
+        currency: "INR",
+        description: purpose || "Service Payment",
+        customer: {
+          name: name || "Customer",
+          email: email || "customer@example.com",
+          contact: phone || "9999999999"
         },
+        referenceId: orderId,
+        callbackUrl: `https://magicscale.in/payment-success?order_id=${orderId}`,
+        callbackMethod: "get"
+      };
+
+      const rpResponse = await axios.post(
+        "https://payments.magicscale.in/api/payments/razorpay/link",
+        razorpayPayload,
         {
           headers: {
-            "x-client-id": appId,
-            "x-client-secret": secretKey,
-            "x-api-version": "2022-09-01",
             "Content-Type": "application/json",
           },
         }
       );
 
-      const sessionId = orderResponse.data.payment_session_id;
-      const checkoutUrl = `https://magicscale.in/api/cashfree/checkout?session_id=${sessionId}&env=${env.toLowerCase()}`;
+      // The wrapper API or Razorpay returns short_url and id
+      const responseData = rpResponse.data;
+      const checkoutUrl = responseData.short_url || responseData.data?.short_url || responseData.paymentLink;
+      const sessionId = responseData.id || responseData.data?.id || "RP_" + Date.now();
+
+      if (!checkoutUrl) {
+        throw new Error("Failed to get payment link from Razorpay");
+      }
 
       // Store in DB
       // @ts-ignore - Handle possible delay in type generation
