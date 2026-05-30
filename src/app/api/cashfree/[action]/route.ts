@@ -116,7 +116,8 @@ export async function POST(
       return NextResponse.json({
         success: true,
         link_url: shortUrl, // Return the short URL
-        order_id: orderId
+        order_id: orderId,
+        original_url: checkoutUrl
       });
 
     } catch (error: any) {

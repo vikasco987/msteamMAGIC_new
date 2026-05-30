@@ -31,6 +31,7 @@ const PaymentPortal = () => {
   const [searching, setSearching] = useState(false);
   const [loading, setLoading] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [originalLink, setOriginalLink] = useState<string | null>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [fetchingHistory, setFetchingHistory] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -158,6 +159,7 @@ const PaymentPortal = () => {
       });
       if (res.data.success) {
         setGeneratedLink(res.data.link_url);
+        setOriginalLink(res.data.original_url);
         toast.success("Payment link generated!");
       }
     } catch (err: any) { 
@@ -219,7 +221,7 @@ const PaymentPortal = () => {
             {['new', 'pending', 'history'].map((m) => (
               <button
                 key={m}
-                onClick={() => { setMode(m); setUserFound(false); setGeneratedLink(null); }}
+                onClick={() => { setMode(m); setUserFound(false); setGeneratedLink(null); setOriginalLink(null); }}
                 className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all relative overflow-hidden ${
                   mode === m ? 'text-white' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
                 }`}
@@ -468,7 +470,14 @@ const PaymentPortal = () => {
                         <p className="text-[10px] font-black uppercase opacity-60 tracking-[0.2em]">Secure Checkout Link</p>
                         <Sparkles size={14} className="text-white/40" />
                       </div>
-                      <p className="font-mono text-xs break-all line-clamp-2 opacity-90 select-all leading-relaxed">{generatedLink}</p>
+                      <p className="font-mono text-xs break-all line-clamp-2 opacity-90 select-all leading-relaxed mb-4">{generatedLink}</p>
+                      
+                      {originalLink && (
+                        <div className="pt-4 border-t border-white/10">
+                          <p className="text-[9px] font-black uppercase opacity-60 tracking-[0.2em] mb-2">Original Razorpay Link</p>
+                          <p className="font-mono text-[11px] break-all line-clamp-2 opacity-80 select-all leading-relaxed text-indigo-200">{originalLink}</p>
+                        </div>
+                      )}
                     </div>
                     
                     <div className="grid grid-cols-1 gap-4">
@@ -537,7 +546,7 @@ const PaymentPortal = () => {
                     </div>
                     
                     <button 
-                      onClick={() => setGeneratedLink(null)} 
+                      onClick={() => { setGeneratedLink(null); setOriginalLink(null); }} 
                       className="w-full py-4 text-center text-[10px] font-black uppercase tracking-[0.3em] opacity-60 hover:opacity-100 transition-opacity flex items-center justify-center gap-2"
                     >
                       <LayoutGrid size={12} /> New Generation
