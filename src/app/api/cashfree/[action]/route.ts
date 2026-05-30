@@ -52,7 +52,7 @@ export async function POST(
       };
 
       const rpResponse = await axios.post(
-        "https://payments.magicscale.in/api/payments/razorpay/link",
+        "https://payments.magicscale.in/api/payments/razorpay/payment-links",
         razorpayPayload,
         {
           headers: {
