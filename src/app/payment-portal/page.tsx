@@ -412,7 +412,7 @@ const PaymentPortal = () => {
                             <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                             <input 
                               type="email" name="email" value={formData.email} 
-                              onChange={handleChange} placeholder="customer@example.com" required 
+                              onChange={handleChange} placeholder="customer@example.com (Optional)" 
                               className="w-full pl-16 pr-8 py-5 rounded-[1.5rem] bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 outline-none font-bold text-slate-900 dark:text-white transition-all shadow-inner" 
                             />
                           </div>
