@@ -11,7 +11,7 @@ import {
     Zap, Layout, CloudOff, Lock, Pin, PinOff, BarChart3, Activity, Sparkles,
     Palette, Eye, EyeOff, GripVertical, ArrowUp, ArrowDown, ArrowUpDown,
     Minimize2, Bot, RefreshCw, Send, Wifi, Target, Quote, TrendingUp, AlertCircle,
-    Settings2, ClipboardList, Trash2
+    Settings2, ClipboardList, Trash2, Check
 } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';

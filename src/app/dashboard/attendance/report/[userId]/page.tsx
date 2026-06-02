@@ -54,16 +54,16 @@ function ReportContent() {
         // Optimized: Fetch only this user's summary from rankings
         const rankRes = await fetch(`/api/attendance/employeerank?month=${month}`);
         const rankings = await rankRes.json();
-        const userSummary = rankings.find((r: any) => r.userId === userId);
+        const userSummary = Array.isArray(rankings) ? rankings.find((r: any) => r.userId === userId) : null;
         
         // Fetch only this month's logs (still fetching all for now as API might not support user-specific yet, but we'll filter efficiently)
         const logRes = await fetch(`/api/attendance/list?month=${month}&all=true`);
         const allLogs = await logRes.json();
-        const userLogs = allLogs.filter((l: any) => l.userId === userId)
+        const userLogs = Array.isArray(allLogs) ? allLogs.filter((l: any) => l.userId === userId)
           .map((r: any) => ({
              ...r, 
              date: new Date(r.date).toISOString().slice(0, 10) 
-          }));
+          })) : [];
         
         setLogs(userLogs);
         
@@ -138,9 +138,27 @@ function ReportContent() {
             Dashboard
           </button>
           <div className="flex items-center gap-4">
-            <div className="hidden md:flex flex-col items-end mr-4">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Report Cycle</p>
-              <p className="text-sm font-black text-slate-900">{month}</p>
+            <div className="flex flex-col items-end mr-4 group relative">
+              <label htmlFor="month-filter" className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 cursor-pointer group-hover:text-indigo-500 transition-colors">Report Cycle</label>
+              <select 
+                id="month-filter"
+                value={month}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    router.push(`/dashboard/attendance/report/${userId}?month=${e.target.value}`);
+                  }
+                }}
+                className="text-sm font-black text-slate-900 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 cursor-pointer transition-all"
+              >
+                {Array.from({ length: 12 }).map((_, i) => {
+                  const d = new Date();
+                  d.setDate(1);
+                  d.setMonth(d.getMonth() - i);
+                  const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                  const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                  return <option key={val} value={val}>{label}</option>;
+                })}
+              </select>
             </div>
             <button onClick={() => window.print()} className="flex items-center gap-2 px-8 py-3 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95">
               <Printer size={18} />
