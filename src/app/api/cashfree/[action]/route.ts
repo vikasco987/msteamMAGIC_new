@@ -34,8 +34,8 @@ export async function POST(
         return NextResponse.json({ success: false, message: "Phone number must be exactly 10 digits" }, { status: 400 });
       }
 
-      // Call magicscale-backend to generate the link and save to its database
-      const backendUrl = "https://magicscale-backend.vercel.app/api/cashfree/create-link";
+      // Call magicscale.in to generate the link and save to its database
+      const backendUrl = "https://magicscale.in/api/cashfree/create-link";
       const msResponse = await axios.post(backendUrl, body);
       const data = msResponse.data;
 
