@@ -92,8 +92,8 @@ export async function POST(
 
       // Generate Short Link
       const shortId = crypto.randomBytes(3).toString("hex"); // 6 chars
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://magicscale.in';
-      const shortUrl = `${appUrl}/p/${shortId}`;
+      const origin = req.headers.get("origin") || process.env.NEXT_PUBLIC_APP_URL || 'https://team.kravy.in';
+      const shortUrl = `${origin}/p/${shortId}`;
 
       if (!(prisma as any).shortLink) {
         console.error("❌ ERROR: shortLink model is missing from Prisma Client. PLEASE RESTART SERVER.");
