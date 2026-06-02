@@ -34,44 +34,20 @@ export async function POST(
         return NextResponse.json({ success: false, message: "Phone number must be exactly 10 digits" }, { status: 400 });
       }
 
-      // Razorpay Payment Link payload
-      const orderId = "LNK_" + Date.now();
-      
-      const razorpayPayload = {
-        amount: finalAmount,
-        currency: "INR",
-        description: purpose || "Service Payment",
-        customer: {
-          name: name || "Customer",
-          email: email || "customer@example.com",
-          contact: phone || "9999999999"
-        },
-        referenceId: orderId,
-        callbackUrl: `https://magicscale.in/payment-success?order_id=${orderId}`,
-        callbackMethod: "get"
-      };
+      // Call magicscale-backend to generate the link and save to its database
+      const backendUrl = "https://magicscale-backend.vercel.app/api/cashfree/create-link";
+      const msResponse = await axios.post(backendUrl, body);
+      const data = msResponse.data;
 
-      const rpResponse = await axios.post(
-        "https://payments.magicscale.in/api/payments/razorpay/payment-links",
-        razorpayPayload,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-          },
-        }
-      );
-
-      // The wrapper API or Razorpay returns short_url and id
-      const responseData = rpResponse.data;
-      const checkoutUrl = responseData.short_url || responseData.data?.short_url || responseData.paymentLink;
-      const sessionId = responseData.id || responseData.data?.id || "RP_" + Date.now();
-
-      if (!checkoutUrl) {
-        throw new Error("Failed to get payment link from Razorpay");
+      if (!data.success) {
+        throw new Error(data.message || "Failed to generate link via MagicScale API");
       }
 
-      // Store in DB
+      const checkoutUrl = data.original_url;
+      const orderId = data.order_id;
+      const shortUrl = data.link_url;
+
+      // Store in local DB so it appears on msteam dashboard
       // @ts-ignore - Handle possible delay in type generation
       await prisma.cashfreeLink.create({
         data: {
@@ -83,40 +59,16 @@ export async function POST(
           totalAmount: parseFloat(totalServicePrice) || finalAmount,
           purpose: purpose || "Service Payment",
           paymentLink: checkoutUrl,
-          paymentSessionId: sessionId,
+          paymentSessionId: "PROXIED",
           createdBy: createdBy || "Unknown",
           creatorId: creatorId || null,
           status: "pending"
         }
       });
 
-      // Generate Short Link
-      const shortId = crypto.randomBytes(3).toString("hex"); // 6 chars
-      const origin = req.headers.get("origin") || process.env.NEXT_PUBLIC_APP_URL || 'https://team.kravy.in';
-      const shortUrl = `${origin}/p/${shortId}`;
-
-      if (!(prisma as any).shortLink) {
-        console.error("❌ ERROR: shortLink model is missing from Prisma Client. PLEASE RESTART SERVER.");
-        return NextResponse.json({
-          success: true,
-          link_url: checkoutUrl, // Fallback to long URL if shortener is not ready
-          order_id: orderId,
-          warning: "Short link could not be generated. Please restart server."
-        });
-      }
-
-      await (prisma as any).shortLink.create({
-        data: {
-          shortId,
-          originalUrl: checkoutUrl,
-          orderId: orderId,
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
-        }
-      });
-
       return NextResponse.json({
         success: true,
-        link_url: shortUrl, // Return the short URL
+        link_url: shortUrl, // Returns the magicscale.in short URL
         order_id: orderId,
         original_url: checkoutUrl
       });
