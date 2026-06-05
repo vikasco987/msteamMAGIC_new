@@ -17,14 +17,15 @@ export async function POST(
   if (action === "create-link") {
     try {
       const body = await req.json();
-      const { name, email, phone, amount, totalServicePrice, purpose, createdBy, creatorId } = body;
-      const finalAmount = parseFloat(amount || totalServicePrice || "0");
+      const { name, email, phone, amount, totalServicePrice, purpose, createdBy, creatorId, acceptPartial, firstMinPartialAmount } = body;
+      const billedAmount = acceptPartial && firstMinPartialAmount ? parseFloat(firstMinPartialAmount) : parseFloat(amount || totalServicePrice || "0");
+      const finalTotalAmount = parseFloat(totalServicePrice) || parseFloat(amount || "0");
 
       if (!appId || !secretKey) {
         return NextResponse.json({ success: false, message: "Cashfree API keys missing" }, { status: 500 });
       }
 
-      if (!finalAmount || finalAmount <= 0) {
+      if (!finalTotalAmount || finalTotalAmount <= 0) {
         return NextResponse.json({ success: false, message: "Valid amount is required" }, { status: 400 });
       }
 
@@ -55,8 +56,8 @@ export async function POST(
           name: name || "Customer",
           email: email || "",
           phone: phone || "",
-          amount: finalAmount,
-          totalAmount: parseFloat(totalServicePrice) || finalAmount,
+          amount: billedAmount,
+          totalAmount: finalTotalAmount,
           purpose: purpose || "Service Payment",
           paymentLink: checkoutUrl,
           paymentSessionId: "PROXIED",
@@ -229,56 +230,17 @@ export async function GET(
     const orderId = searchParams.get("order_id");
     if (!orderId) return NextResponse.json({ success: false, message: "Order ID required" }, { status: 400 });
 
-    const appId = process.env.CASHFREE_APP_ID?.trim();
-    const secretKey = process.env.CASHFREE_SECRET_KEY?.trim();
-    const env = process.env.CASHFREE_ENV?.trim()?.toUpperCase() || "PROD";
-
-    if (!appId || !secretKey) {
-      return NextResponse.json({ success: false, message: "Cashfree API keys missing" }, { status: 500 });
-    }
-
     try {
-      const fetchStatus = async (targetEnv: string) => {
-        const url = targetEnv === "PROD" 
-          ? `https://api.cashfree.com/pg/orders/${orderId}` 
-          : `https://sandbox.cashfree.com/pg/orders/${orderId}`;
-        
-        return axios.get(url, {
-          headers: {
-            "x-client-id": appId,
-            "x-client-secret": secretKey,
-            "x-api-version": "2022-09-01",
-          },
-        });
-      };
+      // Proxy status check to magicscale.in backend to handle actual status tracking (whether Razorpay or Cashfree)
+      const backendUrl = `https://magicscale.in/api/cashfree/check-status?order_id=${orderId}`;
+      const msResponse = await axios.get(backendUrl);
+      const data = msResponse.data;
 
-      let orderResponse;
-      try {
-        orderResponse = await fetchStatus(env);
-      } catch (err: any) {
-        // If not found in primary env, try the other one
-        const alternateEnv = env === "PROD" ? "TEST" : "PROD";
-        console.log(`Order ${orderId} not found in ${env}, trying ${alternateEnv}...`);
-        orderResponse = await fetchStatus(alternateEnv);
+      if (!data.success) {
+        throw new Error(data.message || "Failed to check status via MagicScale API");
       }
 
-      const cashfreeStatus = orderResponse.data.order_status?.toUpperCase(); 
-      console.log(`ORDER STATUS FOR ${orderId}:`, cashfreeStatus);
-
-      let finalStatus = "pending";
-      if (cashfreeStatus === "PAID" || cashfreeStatus === "SUCCESS") finalStatus = "paid";
-      else if (cashfreeStatus === "EXPIRED") finalStatus = "expired";
-      else if (cashfreeStatus === "TERMINATED" || cashfreeStatus === "FAILED") finalStatus = "failed";
-
-      // If still pending, check payments array
-      if (finalStatus === "pending" && orderResponse.data.order_amount > 0) {
-        const paymentsUrl = (env === "PROD" ? `https://api.cashfree.com/pg/orders/${orderId}` : `https://sandbox.cashfree.com/pg/orders/${orderId}`) + "/payments";
-        const paymentsResponse = await axios.get(paymentsUrl, {
-          headers: { "x-client-id": appId, "x-client-secret": secretKey, "x-api-version": "2022-09-01" },
-        });
-        const hasSuccess = paymentsResponse.data.some((p: any) => p.payment_status?.toUpperCase() === "SUCCESS");
-        if (hasSuccess) finalStatus = "paid";
-      }
+      const finalStatus = data.status || "pending";
 
       // Update local DB
       await prisma.cashfreeLink.update({
@@ -287,9 +249,8 @@ export async function GET(
       });
 
       return NextResponse.json({ success: true, status: finalStatus });
-
     } catch (error: any) {
-      console.error("Cashfree Status Error:", error.response?.data || error.message);
+      console.error("Status Check Proxy Error:", error.response?.data || error.message);
       return NextResponse.json({ 
         success: false, 
         message: error.response?.data?.message || error.message 

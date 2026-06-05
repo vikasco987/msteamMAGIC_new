@@ -565,7 +565,7 @@ export default function KamTableView() {
     );
   };
 
-  const exportCSV = () => {
+  const exportExcel = () => {
     const exportData = filteredAndSortedTasks.map((task, index) => ({
       "S. No.": index + 1,
       Title: task.title,
@@ -604,7 +604,7 @@ export default function KamTableView() {
     const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
     const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
     saveAs(blob, `Account_Handling_Tasks_Report_${Date.now()}.xlsx`);
-    toast.success("CSV exported successfully!");
+    toast.success("Excel exported successfully!");
   };
 
   const uniqueAssigneeNames = useMemo(() => {
@@ -852,9 +852,9 @@ export default function KamTableView() {
 
         <button
           className="inline-flex items-center bg-green-600 text-white font-medium px-4 py-2 rounded-lg shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200 ease-in-out"
-          onClick={exportCSV}
+          onClick={exportExcel}
         >
-          <FaDownload className="inline mr-2 -ml-1" /> Export CSV
+          <FaDownload className="inline mr-2 -ml-1" /> Export Excel
         </button>
       </div>
 

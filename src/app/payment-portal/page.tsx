@@ -151,12 +151,20 @@ const PaymentPortal = () => {
     setLoading(true);
     setGeneratedLink(null);
     try {
-      const res = await axios.post(`${API_BASE_URL}/create-link`, {
+      const payload: any = {
         ...formData,
         createdBy: currentUser.fullName || currentUser.username || currentUser.emailAddresses[0]?.emailAddress || "CRM User",
         creatorId: currentUser.id,
         purpose: mode === "pending" ? `Balance: ${formData.purpose}` : (paymentType === "partial" ? `Partial: ${formData.purpose}` : formData.purpose)
-      });
+      };
+
+      if (paymentType === "partial") {
+        payload.acceptPartial = true;
+        payload.firstMinPartialAmount = Number(formData.amount);
+        payload.amount = formData.totalServicePrice;
+      }
+
+      const res = await axios.post(`${API_BASE_URL}/create-link`, payload);
       if (res.data.success) {
         setGeneratedLink(res.data.link_url);
         setOriginalLink(res.data.original_url);
