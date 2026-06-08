@@ -140,9 +140,10 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { FaTimes, FaStickyNote, FaUserCircle } from "react-icons/fa";
+import { FaTimes, FaStickyNote, FaUserCircle, FaTrashAlt } from "react-icons/fa";
 import { useUser } from "@clerk/nextjs";
 import axios from "axios";
+import toast from "react-hot-toast";
 import { Note } from "../../../types/note";
 
 interface NotesModalProps {
@@ -201,6 +202,19 @@ export default function NotesModal({ taskId, initialNotes, onClose }: NotesModal
     }
   };
 
+  const deleteNote = async (noteId: string | undefined) => {
+    if (!noteId) return;
+    if (!window.confirm("Are you sure you want to delete this note?")) return;
+    try {
+      await axios.delete(`/api/notes/${noteId}`);
+      setNotes((prev) => prev.filter((n) => n.id !== noteId));
+      toast.success("Note deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting note:", error);
+      toast.error("Failed to delete note.");
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex justify-center items-center p-4">
       <div className="bg-yellow-50 border border-yellow-200 w-[95%] max-w-lg p-6 rounded-xl shadow-2xl relative transform rotate-1 hover:rotate-0 transition-transform duration-300 ease-in-out">
@@ -233,15 +247,26 @@ export default function NotesModal({ taskId, initialNotes, onClose }: NotesModal
                     <span className="text-gray-400">•</span>{" "}
                     {new Date(note.createdAt).toLocaleString()}
                   </div>
-                  <button 
-                    onClick={() => {
-                      const mention = `@${note.authorName || note.authorEmail?.split('@')[0] || "User"} `;
-                      setInput((prev) => prev ? prev + `\n${mention}` : mention);
-                    }}
-                    className="text-purple-600 hover:text-purple-800 font-medium bg-purple-50 px-2 py-0.5 rounded transition-colors"
-                  >
-                    Reply
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => {
+                        const mention = `@${note.authorName || note.authorEmail?.split('@')[0] || "User"} `;
+                        setInput((prev) => prev ? prev + `\n${mention}` : mention);
+                      }}
+                      className="text-purple-600 hover:text-purple-800 font-medium bg-purple-50 px-2 py-0.5 rounded transition-colors"
+                    >
+                      Reply
+                    </button>
+                    {userRole === "master" && (
+                      <button
+                        onClick={() => deleteNote(note.id)}
+                        className="text-red-500 hover:text-red-700 font-medium bg-red-50 px-2 py-0.5 rounded transition-colors"
+                        title="Delete Note"
+                      >
+                        <FaTrashAlt size={12} />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <p className="text-sm text-gray-800 whitespace-pre-line leading-relaxed">{note.content}</p>
               </div>
