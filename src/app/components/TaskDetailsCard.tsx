@@ -496,8 +496,15 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
             
             <div className="space-y-2">
               {task.notes.map((note, idx) => (
-                <div key={idx} className="text-xs text-amber-900 font-bold leading-relaxed border-l-2 border-amber-300 pl-3 py-0.5">
-                  {note.content}
+                <div key={idx} className="border-l-2 border-amber-300 pl-3 py-1 mb-2 last:mb-0">
+                  <div className="flex items-center gap-1.5 text-[9px] text-amber-700/70 mb-0.5 uppercase tracking-wider font-bold">
+                    <span>{note.authorName || note.authorEmail?.split('@')[0] || "Unknown"}</span>
+                    <span>•</span>
+                    <span>{note.createdAt ? new Date(note.createdAt).toLocaleDateString() + ' ' + new Date(note.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "No Date"}</span>
+                  </div>
+                  <div className="text-xs text-amber-900 font-bold leading-relaxed whitespace-pre-wrap">
+                    {note.content}
+                  </div>
                 </div>
               ))}
             </div>
