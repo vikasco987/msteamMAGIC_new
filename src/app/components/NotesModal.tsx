@@ -156,8 +156,9 @@ export default function NotesModal({ taskId, initialNotes, onClose }: NotesModal
   const [notes, setNotes] = useState<Note[]>(initialNotes ? [...initialNotes] : []);
   const [input, setInput] = useState("");
 
-  const userRole = user?.publicMetadata?.role;
-  const isAuthorized = userRole === "admin" || userRole === "seller" || userRole === "master";
+  const userRole = user?.publicMetadata?.role as string | undefined;
+  // Allow all logged-in users to see notes if they have access to the task modal
+  const isAuthorized = Boolean(userRole);
 
   // ✅ Wait for user to load
   if (!isLoaded || !isAuthorized) return null;
@@ -223,13 +224,24 @@ export default function NotesModal({ taskId, initialNotes, onClose }: NotesModal
           ) : (
             notes.map((note) => (
               <div key={note.id || note.content + note.createdAt} className="border-b border-gray-100 pb-3 last:border-b-0">
-                <div className="text-xs text-gray-600 mb-1 flex items-center gap-1">
-                  <FaUserCircle className="text-gray-400" />
-                  <span className="font-semibold text-gray-700">
-                    {note.authorName || note.authorEmail || "Unknown User"}
-                  </span>{" "}
-                  <span className="text-gray-400">•</span>{" "}
-                  {new Date(note.createdAt).toLocaleString()}
+                <div className="text-xs text-gray-600 mb-1 flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    <FaUserCircle className="text-gray-400" />
+                    <span className="font-semibold text-gray-700">
+                      {note.authorName || note.authorEmail || "Unknown User"}
+                    </span>{" "}
+                    <span className="text-gray-400">•</span>{" "}
+                    {new Date(note.createdAt).toLocaleString()}
+                  </div>
+                  <button 
+                    onClick={() => {
+                      const mention = `@${note.authorName || note.authorEmail?.split('@')[0] || "User"} `;
+                      setInput((prev) => prev ? prev + `\n${mention}` : mention);
+                    }}
+                    className="text-purple-600 hover:text-purple-800 font-medium bg-purple-50 px-2 py-0.5 rounded transition-colors"
+                  >
+                    Reply
+                  </button>
                 </div>
                 <p className="text-sm text-gray-800 whitespace-pre-line leading-relaxed">{note.content}</p>
               </div>
