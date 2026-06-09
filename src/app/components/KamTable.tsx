@@ -570,32 +570,42 @@ export default function KamTableView() {
       "S. No.": index + 1,
       Title: task.title,
       Status: task.status,
-      "Shop Name": task.shopName,
-      "Customer Name": task.customerName,
-      "Package Amount": task.packageAmount,
-      "Start Date": task.startDate ? format(new Date(task.startDate), "dd MMM yyyy") : "",
-      "End Date": task.endDate ? format(new Date(task.endDate), "dd MMM yyyy") : "",
+      Tags: task.tags?.join(", ") || "",
+      "Shop Name": task.shopName || task.customFields?.shopName || "",
+      "Outlet Name": task.outletName || task.customFields?.outletName || "",
+      "Customer Name": task.customerName || task.customFields?.customerName || "",
+      Phone: task.phone || task.customFields?.phone || "",
+      Email: task.email || task.customFields?.email || "",
+      Location: task.location || task.customFields?.location || "",
+      "Package Amount": task.packageAmount || task.customFields?.packageAmount || "",
+      "Start Date": task.startDate ? format(new Date(task.startDate), "dd MMM yyyy") : (task.customFields?.startDate ? format(new Date(task.customFields.startDate), "dd MMM yyyy") : ""),
+      "End Date": task.endDate ? format(new Date(task.endDate), "dd MMM yyyy") : (task.customFields?.endDate ? format(new Date(task.customFields.endDate), "dd MMM yyyy") : ""),
       "Days Left": task.endDate ? differenceInDays(new Date(task.endDate), new Date()) : "",
-      Timeline: task.timeline,
-      Assigner: task.assignerName,
-      // Assignee:
-      //   task.assignees?.map((a) => a?.name || a?.email).filter(Boolean).join(", ") ||
-      //   task.assigneeName ||
-      //   "—",
-
+      Timeline: task.timeline || task.customFields?.timeline || "",
+      Assigner: task.assignerName || "—",
       Assignee:
         (task.assignees?.map((a) => a?.name ?? a?.email).filter(Boolean).join(", ")) ??
         task.assigneeName ??
         "—",
-
-      Amount: task.amount,
+      "Task Amount": task.amount,
       Received: task.received,
       "Pending Amount": (Number(task.amount) || 0) - (Number(task.received) || 0),
-      "Created At": task.createdAt
-        ? format(new Date(task.createdAt), "dd MMM yyyy, HH:mm")
+      "Created Date": task.createdAt
+        ? format(new Date(task.createdAt), "dd MMM yyyy, HH:mm:ss")
         : "",
+      "Updated Date": task.updatedAt
+        ? format(new Date(task.updatedAt), "dd MMM yyyy, HH:mm:ss")
+        : "",
+      "Subtasks Status": task.subtasks?.map(st => `${st.title}: ${st.completed ? 'Done' : 'Pending'}`).join(" | ") || "",
+      "Account Number": task.accountNumber || task.customFields?.accountNumber || "",
+      "IFSC Code": task.ifscCode || task.customFields?.ifscCode || "",
+      "Rest ID": task.restId || task.customFields?.restId || "",
+      "Aadhaar URL": task.aadhaarUrl || "",
+      "PAN URL": task.panUrl || "",
+      "Selfie URL": task.selfieUrl || "",
+      "Cheque URL": task.chequeUrl || "",
+      "Menu URLs": task.menuCardUrls?.join(", ") || "",
       "Highlight Color": task.highlightColor || "",
-      ...(task.customFields || {}),
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
