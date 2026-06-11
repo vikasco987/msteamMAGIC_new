@@ -34,6 +34,8 @@ const getInvoiceNo = (paymentId: string) => {
 
 const getState = (p: any) => {
     let state = "Delhi";
+    
+    // First Priority: GSTIN
     const stateCodes: { [key: string]: string } = {
         "07": "Delhi", "06": "Haryana", "09": "Uttar Pradesh", "27": "Maharashtra", "08": "Rajasthan", "33": "Tamil Nadu", "24": "Gujarat"
     };
@@ -41,14 +43,47 @@ const getState = (p: any) => {
         const code = p.gstin.substring(0, 2);
         if (stateCodes[code]) return stateCodes[code];
     }
+    
+    // Second Priority: Extract Pincode from Address
     if (p.address) {
+        const pinMatch = p.address.match(/\b[1-9][0-9]{5}\b/);
+        if (pinMatch) {
+            const pincode = pinMatch[0];
+            const prefix = parseInt(pincode.substring(0, 2), 10);
+            if (prefix === 11) return "Delhi";
+            if (prefix >= 12 && prefix <= 13) return "Haryana";
+            if (prefix >= 14 && prefix <= 16) return "Punjab";
+            if (prefix === 17) return "Himachal Pradesh";
+            if (prefix >= 18 && prefix <= 19) return "Jammu & Kashmir";
+            if (prefix >= 20 && prefix <= 28) return prefix === 24 ? "Uttarakhand" : "Uttar Pradesh";
+            if (prefix >= 30 && prefix <= 34) return "Rajasthan";
+            if (prefix >= 36 && prefix <= 39) return "Gujarat";
+            if (prefix >= 40 && prefix <= 44) return "Maharashtra";
+            if (prefix >= 45 && prefix <= 48) return "Madhya Pradesh";
+            if (prefix === 49) return "Chhattisgarh";
+            if (prefix >= 50 && prefix <= 53) return "Andhra Pradesh / Telangana";
+            if (prefix >= 56 && prefix <= 59) return "Karnataka";
+            if (prefix >= 60 && prefix <= 64) return "Tamil Nadu";
+            if (prefix >= 67 && prefix <= 69) return "Kerala";
+            if (prefix >= 70 && prefix <= 74) return "West Bengal";
+            if (prefix >= 75 && prefix <= 77) return "Odisha";
+            if (prefix === 78) return "Assam";
+            if (prefix >= 80 && prefix <= 84) return "Bihar";
+            if (prefix === 85) return "Jharkhand";
+        }
+
+        // Third Priority: Text search in address
         const lowerAddr = p.address.toLowerCase();
         if (lowerAddr.includes("haryana")) return "Haryana";
-        if (lowerAddr.includes("up") || lowerAddr.includes("uttar pradesh") || lowerAddr.includes("noida")) return "Uttar Pradesh";
-        if (lowerAddr.includes("maharashtra") || lowerAddr.includes("mumbai")) return "Maharashtra";
-        if (lowerAddr.includes("gujarat") || lowerAddr.includes("ahmedabad")) return "Gujarat";
+        if (lowerAddr.includes("up") || lowerAddr.includes("uttar pradesh") || lowerAddr.includes("noida") || lowerAddr.includes("ghaziabad")) return "Uttar Pradesh";
+        if (lowerAddr.includes("maharashtra") || lowerAddr.includes("mumbai") || lowerAddr.includes("pune")) return "Maharashtra";
+        if (lowerAddr.includes("gujarat") || lowerAddr.includes("ahmedabad") || lowerAddr.includes("surat")) return "Gujarat";
         if (lowerAddr.includes("rajasthan") || lowerAddr.includes("jaipur")) return "Rajasthan";
+        if (lowerAddr.includes("delhi") || lowerAddr.includes("new delhi")) return "Delhi";
+        if (lowerAddr.includes("karnataka") || lowerAddr.includes("bangalore") || lowerAddr.includes("bengaluru")) return "Karnataka";
+        if (lowerAddr.includes("punjab") || lowerAddr.includes("chandigarh")) return "Punjab";
     }
+    
     return state;
 };
 
