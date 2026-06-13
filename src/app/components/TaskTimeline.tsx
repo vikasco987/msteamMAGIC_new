@@ -1221,6 +1221,48 @@ export default function TaskTimeline() {
                   </div>
                 </div>
 
+                <div className="bg-white p-5 rounded-xl shadow-sm space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-gray-800">Files & Attachments</h3>
+                    <label className="cursor-pointer text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors font-medium flex items-center gap-1">
+                      <FaPlus /> Add File
+                      <input 
+                        type="file" 
+                        accept="image/*,application/pdf"
+                        className="hidden" 
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleNewAttachmentUpload(file);
+                          e.target.value = '';
+                        }} 
+                      />
+                    </label>
+                  </div>
+                  
+                  {uploadStatus && (
+                    <div className="text-sm p-2 bg-blue-50 text-blue-700 rounded-lg text-center animate-pulse font-medium">
+                      {uploadStatus}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {selectedTask.attachments?.map((url, idx) => (
+                      <AttachmentItem
+                        key={`${url}-${idx}`}
+                        url={url}
+                        index={idx}
+                        onReupload={handleReuploadAttachment}
+                        onDelete={handleDeleteAttachment}
+                      />
+                    ))}
+                    {(!selectedTask.attachments || selectedTask.attachments.length === 0) && !uploadStatus && (
+                      <div className="col-span-full text-center py-6 text-gray-400 text-sm bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                        No files attached yet.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <PaymentSection
                   selectedTask={selectedTask}
                   user={user}
