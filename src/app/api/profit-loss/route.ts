@@ -51,6 +51,10 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
+    const generalExpenses = await prisma.generalExpense.findMany({
+      orderBy: { date: "desc" }
+    });
+
     let totalRevenue = 0;
     let totalExpense = 0;
 
@@ -130,6 +134,40 @@ export async function GET(req: NextRequest) {
       updateMap(monthReportMap, monthKey);
     });
 
+    // Add General Expenses to maps and summary
+    generalExpenses.forEach(exp => {
+      const date = new Date(exp.date);
+      const d = date.getDate().toString().padStart(2, '0');
+      const m = (date.getMonth() + 1).toString().padStart(2, '0');
+      const y = date.getFullYear();
+      
+      const dayKey = `${y}-${m}-${d}`;
+      const monthKey = `${y}-${m}`;
+      
+      const dCopy = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const dayNum = dCopy.getUTCDay() || 7;
+      dCopy.setUTCDate(dCopy.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(dCopy.getUTCFullYear(),0,1));
+      const weekNo = Math.ceil((((dCopy.getTime() - yearStart.getTime()) / 86400000) + 1)/7);
+      const weekKey = `${dCopy.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
+
+      const expAmt = exp.amount;
+      totalExpense += expAmt;
+
+      const addExpenseToMap = (map: Record<string, any>, key: string) => {
+        if (!map[key]) {
+          map[key] = { dateKey: key, totalRevenue: 0, totalReceived: 0, totalExpense: 0, netProfit: 0, cashProfit: 0, tasksCount: 0 };
+        }
+        map[key].totalExpense += expAmt;
+        map[key].netProfit -= expAmt;
+        map[key].cashProfit -= expAmt;
+      };
+
+      addExpenseToMap(dayReportMap, dayKey);
+      addExpenseToMap(weekReportMap, weekKey);
+      addExpenseToMap(monthReportMap, monthKey);
+    });
+
     return NextResponse.json({
       summary: {
         totalRevenue,
@@ -139,6 +177,7 @@ export async function GET(req: NextRequest) {
         cashProfit: totalReceived - totalExpense,
       },
       tasks: formattedTasks,
+      generalExpenses,
       dayReport: Object.values(dayReportMap).sort((a, b) => b.dateKey.localeCompare(a.dateKey)),
       weekReport: Object.values(weekReportMap).sort((a, b) => b.dateKey.localeCompare(a.dateKey)),
       monthReport: Object.values(monthReportMap).sort((a, b) => b.dateKey.localeCompare(a.dateKey))

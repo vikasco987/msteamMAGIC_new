@@ -561,3 +561,13 @@ model ShortLink {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+model GeneralExpense {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  amount    Float
+  date      DateTime
+  remarks   String?
+  createdAt DateTime @default(now())
+}
+

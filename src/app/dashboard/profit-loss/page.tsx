@@ -39,18 +39,31 @@ type ReportEntry = {
   tasksCount: number;
 };
 
+type GeneralExpense = {
+  id: string;
+  title: string;
+  amount: number;
+  date: string;
+  remarks: string | null;
+  createdAt: string;
+};
+
 export default function ProfitLossDashboard() {
   const [tasks, setTasks] = useState<TaskStats[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [dayReport, setDayReport] = useState<ReportEntry[]>([]);
   const [weekReport, setWeekReport] = useState<ReportEntry[]>([]);
   const [monthReport, setMonthReport] = useState<ReportEntry[]>([]);
+  const [generalExpenses, setGeneralExpenses] = useState<GeneralExpense[]>([]);
   const [loading, setLoading] = useState(true);
   const [calcBasis, setCalcBasis] = useState<"total" | "received">("total");
-  const [activeTab, setActiveTab] = useState<"all" | "day" | "week" | "month">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "day" | "week" | "month" | "expenses">("all");
   
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState({ revenue: 0, received: 0, deliveryCharge: 0, costPrice: 0 });
+
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [expenseForm, setExpenseForm] = useState({ title: "", amount: "", date: new Date().toISOString().split("T")[0], remarks: "" });
 
   useEffect(() => {
     async function fetchData() {
@@ -66,6 +79,7 @@ export default function ProfitLossDashboard() {
         setDayReport(data.dayReport || []);
         setWeekReport(data.weekReport || []);
         setMonthReport(data.monthReport || []);
+        setGeneralExpenses(data.generalExpenses || []);
       } catch (err: any) {
         toast.error(err.message);
       } finally {
@@ -159,6 +173,41 @@ export default function ProfitLossDashboard() {
     }
   };
 
+  const handleExpenseSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const toastId = toast.loading("Adding expense...");
+    try {
+      const res = await fetch("/api/expenses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(expenseForm)
+      });
+      if (!res.ok) throw new Error("Failed to add expense");
+      
+      toast.success("Expense added successfully!", { id: toastId });
+      setShowExpenseModal(false);
+      setExpenseForm({ title: "", amount: "", date: new Date().toISOString().split("T")[0], remarks: "" });
+      
+      // Reload to recalculate reports and fetch new expenses
+      window.location.reload();
+    } catch (err: any) {
+      toast.error(err.message, { id: toastId });
+    }
+  };
+
+  const handleExpenseDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this expense?")) return;
+    const toastId = toast.loading("Deleting expense...");
+    try {
+      const res = await fetch(`/api/expenses?id=${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete expense");
+      toast.success("Expense deleted successfully!", { id: toastId });
+      window.location.reload();
+    } catch (err: any) {
+      toast.error(err.message, { id: toastId });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -178,22 +227,32 @@ export default function ProfitLossDashboard() {
           <p className="text-slate-500 font-medium">Track expenses and revenue for Printer and Software tasks.</p>
         </div>
         
-        {/* Toggle Switch */}
-        <div className="bg-slate-100 p-1.5 rounded-2xl inline-flex relative shadow-inner">
+        {/* Toggle Switch & Add Expense Button */}
+        <div className="flex flex-col sm:flex-row items-center gap-4">
           <button 
-            onClick={() => setCalcBasis("total")}
-            className={`relative z-10 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 ${calcBasis === "total" ? "text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+            onClick={() => setShowExpenseModal(true)}
+            className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-[14px] shadow-sm transition-colors text-sm flex items-center gap-2"
           >
-            Total Amount Basis
+            <Package size={16} />
+            Add Manual Expense
           </button>
-          <button 
-            onClick={() => setCalcBasis("received")}
-            className={`relative z-10 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 ${calcBasis === "received" ? "text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
-          >
-            Received Basis
-          </button>
-          {/* Animated Background Pill */}
-          <div className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-white rounded-xl shadow-sm transition-transform duration-300 ease-out ${calcBasis === "total" ? "translate-x-0" : "translate-x-[calc(100%+12px)]"}`} />
+
+          <div className="bg-slate-100 p-1.5 rounded-2xl inline-flex relative shadow-inner">
+            <button 
+              onClick={() => setCalcBasis("total")}
+              className={`relative z-10 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 ${calcBasis === "total" ? "text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+            >
+              Total Amount Basis
+            </button>
+            <button 
+              onClick={() => setCalcBasis("received")}
+              className={`relative z-10 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 ${calcBasis === "received" ? "text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+            >
+              Received Basis
+            </button>
+            {/* Animated Background Pill */}
+            <div className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-white rounded-xl shadow-sm transition-transform duration-300 ease-out ${calcBasis === "total" ? "translate-x-0" : "translate-x-[calc(100%+12px)]"}`} />
+          </div>
         </div>
       </div>
 
@@ -240,6 +299,7 @@ export default function ProfitLossDashboard() {
           { label: "Day Report", key: "day" },
           { label: "Week Report", key: "week" },
           { label: "Month Report", key: "month" },
+          { label: "Other Expenses", key: "expenses" },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -372,7 +432,52 @@ export default function ProfitLossDashboard() {
       </div>
       )}
 
-      {activeTab !== "all" && (
+      {activeTab === "expenses" && (
+        <div className="bg-white border border-slate-200 rounded-[2rem] overflow-hidden shadow-sm">
+          <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+            <h3 className="font-bold text-slate-800">Other Manual Expenses</h3>
+            <span className="text-xs font-medium text-slate-400">{generalExpenses.length} items found</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-slate-50/80 text-slate-500 font-bold text-[10px] uppercase tracking-widest">
+                <tr>
+                  <th className="px-6 py-4">Expense Title</th>
+                  <th className="px-6 py-4">Date</th>
+                  <th className="px-6 py-4">Amount</th>
+                  <th className="px-6 py-4">Remarks / Employee Name</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {generalExpenses.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-12 text-center text-slate-400 font-medium">
+                      No manual expenses found.
+                    </td>
+                  </tr>
+                ) : (
+                  generalExpenses.map((exp) => (
+                    <tr key={exp.id} className="hover:bg-slate-50/50 transition-colors group">
+                      <td className="px-6 py-4 font-bold text-slate-800">{exp.title}</td>
+                      <td className="px-6 py-4 text-slate-600">{new Date(exp.date).toLocaleDateString()}</td>
+                      <td className="px-6 py-4 font-black text-rose-600">₹{exp.amount.toLocaleString()}</td>
+                      <td className="px-6 py-4 text-slate-500 italic text-xs">{exp.remarks || "-"}</td>
+                      <td className="px-6 py-4 text-right">
+                        <button onClick={() => handleExpenseDelete(exp.id)} className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-100 transition-colors ml-auto opacity-0 group-hover:opacity-100">
+                          <X size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab !== "all" && activeTab !== "expenses" && (
         <div className="bg-white border border-slate-200 rounded-[2rem] overflow-hidden shadow-sm">
           <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
             <h3 className="font-bold text-slate-800">
@@ -418,6 +523,54 @@ export default function ProfitLossDashboard() {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Add Expense Modal */}
+      {showExpenseModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+              <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                <Package className="text-rose-500" size={20} />
+                Add Manual Expense
+              </h3>
+              <button onClick={() => setShowExpenseModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleExpenseSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Expense Title</label>
+                <input required type="text" placeholder="e.g. Employee Salary" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/50 focus:border-rose-500 transition-all font-medium text-slate-800" value={expenseForm.title} onChange={e => setExpenseForm({...expenseForm, title: e.target.value})} />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Amount (₹)</label>
+                  <input required type="number" placeholder="0" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/50 focus:border-rose-500 transition-all font-black text-slate-800" value={expenseForm.amount} onChange={e => setExpenseForm({...expenseForm, amount: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Date</label>
+                  <input required type="date" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/50 focus:border-rose-500 transition-all font-medium text-slate-800" value={expenseForm.date} onChange={e => setExpenseForm({...expenseForm, date: e.target.value})} />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Remarks / Employee Name</label>
+                <input type="text" placeholder="e.g. Paid to Rahul" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/50 focus:border-rose-500 transition-all font-medium text-slate-800" value={expenseForm.remarks} onChange={e => setExpenseForm({...expenseForm, remarks: e.target.value})} />
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button type="button" onClick={() => setShowExpenseModal(false)} className="flex-1 px-4 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" className="flex-1 px-4 py-3 rounded-xl font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-lg shadow-rose-200 transition-all">
+                  Save Expense
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
