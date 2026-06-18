@@ -59,6 +59,11 @@ export default function ProfitLossDashboard() {
   const [calcBasis, setCalcBasis] = useState<"total" | "received">("total");
   const [activeTab, setActiveTab] = useState<"all" | "day" | "week" | "month" | "expenses">("all");
   
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+  });
+  
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState({ revenue: 0, received: 0, deliveryCharge: 0, costPrice: 0 });
 
@@ -67,8 +72,9 @@ export default function ProfitLossDashboard() {
 
   useEffect(() => {
     async function fetchData() {
+      setLoading(true);
       try {
-        const res = await fetch("/api/profit-loss");
+        const res = await fetch(`/api/profit-loss?month=${selectedMonth}`);
         if (!res.ok) {
           const err = await res.json();
           throw new Error(err.error || "Failed to load profit loss data");
@@ -87,7 +93,7 @@ export default function ProfitLossDashboard() {
       }
     }
     fetchData();
-  }, []);
+  }, [selectedMonth]);
 
   const handleEdit = (task: TaskStats) => {
     setEditingId(task.id);
@@ -227,9 +233,25 @@ export default function ProfitLossDashboard() {
           <p className="text-slate-500 font-medium">Track expenses and revenue for Printer and Software tasks.</p>
         </div>
         
-        {/* Toggle Switch & Add Expense Button */}
+        {/* Toggle Switch, Filter & Add Expense Button */}
         <div className="flex flex-col sm:flex-row items-center gap-4">
-          <button 
+          <select 
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+          >
+            <option value="all">All Time</option>
+            {/* Generate last 12 months dynamically */}
+            {Array.from({ length: 12 }).map((_, i) => {
+              const d = new Date();
+              d.setMonth(d.getMonth() - i);
+              const val = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+              const label = d.toLocaleDateString('default', { month: 'short', year: 'numeric' });
+              return <option key={val} value={val}>{label}</option>;
+            })}
+          </select>
+
+          <button  
             onClick={() => setShowExpenseModal(true)}
             className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-[14px] shadow-sm transition-colors text-sm flex items-center gap-2"
           >

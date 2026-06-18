@@ -41,17 +41,41 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden: Master access required" }, { status: 403 });
     }
 
+    const { searchParams } = new URL(req.url);
+    const monthParam = searchParams.get('month');
+
+    let dateFilter: any = {};
+    let expDateFilter: any = {};
+    if (monthParam && monthParam !== "all") {
+      const [yearStr, monthStr] = monthParam.split("-");
+      const startDate = new Date(Date.UTC(parseInt(yearStr), parseInt(monthStr) - 1, 1));
+      const endDate = new Date(Date.UTC(parseInt(yearStr), parseInt(monthStr), 1));
+      
+      dateFilter = {
+        createdAt: { gte: startDate, lt: endDate }
+      };
+      expDateFilter = {
+        date: { gte: startDate, lt: endDate }
+      };
+    }
+
     const tasks = await prisma.task.findMany({
       where: {
-        OR: [
-          { title: { contains: "Printer", mode: "insensitive" } },
-          { title: { contains: "Software", mode: "insensitive" } },
+        AND: [
+          {
+            OR: [
+              { title: { contains: "Printer", mode: "insensitive" } },
+              { title: { contains: "Software", mode: "insensitive" } },
+            ]
+          },
+          dateFilter
         ]
       },
       orderBy: { createdAt: "desc" },
     });
 
     const generalExpenses = await prisma.generalExpense.findMany({
+      where: expDateFilter,
       orderBy: { date: "desc" }
     });
 
