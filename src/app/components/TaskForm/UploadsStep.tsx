@@ -1852,7 +1852,7 @@ import { Search, Loader2, User, MapPin, Sparkles, UploadCloud } from "lucide-rea
 import toast from "react-hot-toast";
 
 // Define TabType locally or import it if it's defined in a shared types file
-type TabType = "license" | "swiggy" | "zomato" | "combo" | "photo" | "account" | "other";
+type TabType = "license" | "swiggy" | "zomato" | "combo" | "photo" | "account" | "other" | "printer" | "printer_software";
 
 interface UploadsStepProps {
   activeTab: TabType | ""; // Changed to allow empty string
@@ -1890,6 +1890,14 @@ interface UploadsStepProps {
   setStartDate: (value: string) => void;
   setEndDate: (value: string) => void;
   setTimeline: (value: string) => void;
+  awbNumber: string;
+  setAwbNumber: (value: string) => void;
+  softwareDuration: string;
+  setSoftwareDuration: (value: string) => void;
+  deliveryCharge: string;
+  setDeliveryCharge: (value: string) => void;
+  costPrice: string;
+  setCostPrice: (value: string) => void;
   fullAddress: string;
   city: string;
   state: string;
@@ -1920,7 +1928,9 @@ export default function UploadsStep(props: UploadsStepProps) {
     packageAmount, setPackageAmount, startDate, setStartDate,
     endDate, setEndDate, timeline, setTimeline,
     fullAddress, setFullAddress, city, setCity, state, setState,
-    country, setCountry, pincode, setPincode, step
+    country, setCountry, pincode, setPincode, awbNumber, setAwbNumber,
+    softwareDuration, setSoftwareDuration, deliveryCharge, setDeliveryCharge,
+    costPrice, setCostPrice, step
   } = props;
 
   const [suggestions, setSuggestions] = useState<any[]>([]);
@@ -2263,7 +2273,7 @@ export default function UploadsStep(props: UploadsStepProps) {
         </div>
 
         <div className="space-y-4 bg-amber-50/30 p-6 rounded-[2rem] border border-amber-100/50">
-          {(activeTab === "license" || activeTab === "other") && (
+          {(activeTab === "license" || activeTab === "other" || activeTab === "printer" || activeTab === "printer_software") && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className={labelClass}>🏪 Shop Name</label>
@@ -2286,6 +2296,28 @@ export default function UploadsStep(props: UploadsStepProps) {
                 <label className={labelClass}>📧 Contact Email</label>
                 <input className={inputClass} placeholder="email@example.com" value={email} onChange={e => setEmail(e.target.value)} />
               </div>
+              {activeTab === "printer_software" && (
+                <div className="md:col-span-2">
+                  <label className={labelClass}>⏳ Software Duration *</label>
+                  <input className={inputClass} placeholder="e.g. 1 Year, 6 Months" value={softwareDuration} onChange={e => setSoftwareDuration(e.target.value)} required />
+                </div>
+              )}
+              {(activeTab === "printer" || activeTab === "printer_software") && (
+                <>
+                  <div className="md:col-span-2">
+                    <label className={labelClass}>📦 AWB Tracking Number *</label>
+                    <input className={inputClass} placeholder="Enter AWB Tracking Number" value={awbNumber} onChange={e => setAwbNumber(e.target.value)} required />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className={labelClass}>🚚 Delivery Charge</label>
+                    <input className={inputClass} placeholder="Enter Delivery Charge (Optional)" value={deliveryCharge} onChange={e => setDeliveryCharge(e.target.value)} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className={labelClass}>💸 Base Cost Price</label>
+                    <input className={inputClass} placeholder="Cost of Printer/Hardware (for P&L)" value={costPrice} onChange={e => setCostPrice(e.target.value)} />
+                  </div>
+                </>
+              )}
             </div>
           )}
 

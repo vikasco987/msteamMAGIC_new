@@ -227,17 +227,26 @@ const CRMDrawer: React.FC<CRMDrawerProps> = ({
                                                                         <div className="relative group/upload h-full">
                                                                             <input
                                                                                 type="file"
-                                                                                onChange={(e) => {
+                                                                                onChange={async (e) => {
                                                                                     const file = e.target.files?.[0];
                                                                                     if (file) {
                                                                                         const currentFiles = String(val || "").split(",").filter(Boolean);
                                                                                         if (currentFiles.length >= 4) { toast.error("Matrix limit reached"); return; }
-                                                                                        toast.loading("Uploading...");
-                                                                                        setTimeout(() => {
-                                                                                            handleUpdateCellValue(selectedResponse.id, col.id, [...currentFiles, "https://images.unsplash.com/photo-1621252179027-94459d278660?auto=format"].join(","), isInternal);
-                                                                                            toast.dismiss();
-                                                                                            toast.success("Uploaded");
-                                                                                        }, 1000);
+                                                                                        const loadingToast = toast.loading("Uploading...");
+                                                                                        try {
+                                                                                            const formData = new FormData();
+                                                                                            formData.append("file", file);
+                                                                                            const res = await fetch("/api/upload", {
+                                                                                                method: "POST",
+                                                                                                body: formData,
+                                                                                            });
+                                                                                            if (!res.ok) throw new Error("Upload failed");
+                                                                                            const data = await res.json();
+                                                                                            handleUpdateCellValue(selectedResponse.id, col.id, [...currentFiles, data.url].join(","), isInternal);
+                                                                                            toast.success("Uploaded", { id: loadingToast });
+                                                                                        } catch (err) {
+                                                                                            toast.error("Upload failed", { id: loadingToast });
+                                                                                        }
                                                                                     }
                                                                                 }}
                                                                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"

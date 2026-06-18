@@ -522,6 +522,10 @@ model BusinessSettings {
   // Terms
   terms          String?
   signatureUrl   String?
+  
+  // Hardware defaults
+  defaultPrinterCost String?
+
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }

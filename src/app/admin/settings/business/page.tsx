@@ -41,7 +41,8 @@ export default function BusinessSettingsPage() {
     accountNumber: "",
     ifscCode: "",
     terms: "",
-    signatureUrl: ""
+    signatureUrl: "",
+    defaultPrinterCost: ""
   });
 
   useEffect(() => {
@@ -67,7 +68,8 @@ export default function BusinessSettingsPage() {
           accountNumber: data.accountNumber || "",
           ifscCode: data.ifscCode || "",
           terms: data.terms || "",
-          signatureUrl: data.signatureUrl || ""
+          signatureUrl: data.signatureUrl || "",
+          defaultPrinterCost: data.defaultPrinterCost || ""
         });
       }
     } catch (error) {
@@ -229,6 +231,20 @@ export default function BusinessSettingsPage() {
                     value={formData.website}
                     onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                   />
+                </div>
+
+                <div>
+                  <label className={labelClass}>🖨️ Default Printer Cost</label>
+                  <input
+                    className={inputClass}
+                    placeholder="e.g. 1500"
+                    type="number"
+                    value={formData.defaultPrinterCost}
+                    onChange={(e) => setFormData({ ...formData, defaultPrinterCost: e.target.value })}
+                  />
+                  <p className="mt-2 text-[9px] text-slate-400 font-bold uppercase tracking-widest ml-1">
+                    Auto-fills base cost in task creation for P&L tracking.
+                  </p>
                 </div>
 
                 <div className="md:col-span-2">

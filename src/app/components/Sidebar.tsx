@@ -62,6 +62,7 @@ const NAVIGATION_GROUPS = [
       { label: 'Follow-up Board', icon: Calendar, href: '/dashboard/followups', roles: ['admin', 'master', 'seller', 'tl', 'manager'] },
       { label: 'Call Report', icon: PhoneCall, href: '/call-report', roles: ['admin', 'master', 'seller', 'tl'] },
       { label: 'Financial Ecosystem', icon: FileSpreadsheet, href: '/admin/reports/payments', roles: ['admin', 'master', 'tl'] },
+      { label: 'Profit & Loss', icon: FileSpreadsheet, href: '/dashboard/profit-loss', roles: ['admin', 'master'] },
       { label: 'Payment Portal', icon: CreditCard, href: '/payment-portal', roles: ['admin', 'master', 'seller', 'tl', 'user', 'manager', 'intern', 'guest'] },
     ]
   },

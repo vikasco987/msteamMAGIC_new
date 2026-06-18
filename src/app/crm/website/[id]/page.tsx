@@ -6620,18 +6620,26 @@ export default function CRMSpreadsheetPage() {
                                                                                                 <div className="relative group/upload h-full">
                                                                                                     <input
                                                                                                         type="file"
-                                                                                                        onChange={(e) => {
+                                                                                                        onChange={async (e) => {
                                                                                                             const file = e.target.files?.[0];
                                                                                                             if (file) {
                                                                                                                 const currentFiles = String(val || "").split(",").filter(Boolean);
                                                                                                                 if (currentFiles.length >= 4) { toast.error("Matrix storage limit reached (4 artifacts max)"); return; }
-                                                                                                                toast.loading("Encrypting Artifact...");
-                                                                                                                setTimeout(() => {
-                                                                                                                    const mockUrl = currentFiles.length === 0 ? "https://images.unsplash.com/photo-1621252179027-94459d278660?auto=format&fit=crop&q=80&w=200" : "https://images.unsplash.com/photo-1574169208507-84376144848b?auto=format&fit=crop&q=80&w=200";
-                                                                                                                    handleUpdateValue(selectedResponse.id, col.id, [...currentFiles, mockUrl].join(","), isInternal);
-                                                                                                                    toast.dismiss();
-                                                                                                                    toast.success("Artifact Synchronized");
-                                                                                                                }, 1500);
+                                                                                                                const loadingToast = toast.loading("Encrypting Artifact...");
+                                                                                                                try {
+                                                                                                                    const formData = new FormData();
+                                                                                                                    formData.append("file", file);
+                                                                                                                    const res = await fetch("/api/upload", {
+                                                                                                                        method: "POST",
+                                                                                                                        body: formData,
+                                                                                                                    });
+                                                                                                                    if (!res.ok) throw new Error("Upload failed");
+                                                                                                                    const data = await res.json();
+                                                                                                                    handleUpdateValue(selectedResponse.id, col.id, [...currentFiles, data.url].join(","), isInternal);
+                                                                                                                    toast.success("Artifact Synchronized", { id: loadingToast });
+                                                                                                                } catch (err) {
+                                                                                                                    toast.error("Upload failed", { id: loadingToast });
+                                                                                                                }
                                                                                                             }
                                                                                                         }}
                                                                                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"

@@ -753,6 +753,10 @@ interface CustomFieldsInput {
   state?: string;
   country?: string;
   pincode?: string;
+  awbNumber?: string;
+  softwareDuration?: string;
+  deliveryCharge?: string;
+  costPrice?: string;
   fields?: Field[];
   // Also include file URLs if they are part of customFields in the body
   aadhaarUrl?: string;
@@ -813,6 +817,10 @@ export async function POST(req: NextRequest) {
       state,
       country,
       pincode,
+      awbNumber,
+      softwareDuration,
+      deliveryCharge,
+      costPrice,
       fields = [],
       aadhaarUrl,
       panUrl,
@@ -892,6 +900,10 @@ export async function POST(req: NextRequest) {
           state: toNullableString(state),
           country: toNullableString(country),
           pincode: toNullableString(pincode),
+          awbNumber: toNullableString(awbNumber),
+          softwareDuration: toNullableString(softwareDuration),
+          deliveryCharge: toNullableString(deliveryCharge),
+          costPrice: toNullableString(costPrice),
           assignerId: userId,
           assignerName: assignerName,
           assignerEmail: assignerEmail,

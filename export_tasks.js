@@ -3,7 +3,15 @@ const XLSX = require('xlsx');
 const prisma = new PrismaClient();
 
 async function main() {
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
   const tasks = await prisma.task.findMany({
+    where: {
+      createdAt: {
+        gte: sixMonthsAgo
+      }
+    },
     include: {
       notes: true,
       subtasks: true,

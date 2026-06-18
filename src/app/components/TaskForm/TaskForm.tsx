@@ -380,7 +380,7 @@ import CustomFieldsStep from "./CustomFieldsStep"; // Assuming this component ex
 import { uploadToCloudinary } from "./utils"; // Assuming this utility function exists
 
 // Define TabType more broadly to include all categories
-type TabType = "license" | "swiggy" | "zomato" | "combo" | "photo" | "account" | "other";
+type TabType = "license" | "swiggy" | "zomato" | "combo" | "photo" | "account" | "other" | "printer" | "printer_software";
 
 type CustomField = {
   label: string;
@@ -390,7 +390,6 @@ type CustomField = {
 
 const LOCAL_STORAGE_KEY = "onboarding-task-form";
 
-// Define TASK_CATEGORIES here as it's used for setting the title
 const TASK_CATEGORIES = [
   { label: "🍽️ Zomato Onboarding", value: "zomato" },
   { label: "🍔 Swiggy Onboarding", value: "swiggy" },
@@ -398,6 +397,8 @@ const TASK_CATEGORIES = [
   { label: "🧾 Food License", value: "license" },
   { label: "📸 Photo Upload", value: "photo" },
   { label: "📂 Account Handling", value: "account" },
+  { label: "🖨️ Printer Setup", value: "printer" },
+  { label: "🖨️💻 Printer + Software", value: "printer_software" },
   { label: "🛠️ Other", value: "other" },
 ];
 
@@ -429,6 +430,10 @@ const initialFormState = {
   state: "",
   country: "India",
   pincode: "",
+  awbNumber: "",
+  softwareDuration: "",
+  deliveryCharge: "",
+  costPrice: "",
 };
 
 export default function TaskForm() {
@@ -438,6 +443,7 @@ export default function TaskForm() {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState("");
+  const [defaultPrinterCost, setDefaultPrinterCost] = useState("");
 
   // Helper to update individual formData fields
   // ✅ FIX: Changed 'value: any' to 'value: unknown'
@@ -446,7 +452,7 @@ export default function TaskForm() {
   };
 
   const resetForm = () => {
-    setFormData(initialFormState);
+    setFormData({ ...initialFormState, costPrice: defaultPrinterCost });
     setStep(0);
   };
 
@@ -478,6 +484,10 @@ export default function TaskForm() {
           state: parsed.state || initialFormState.state,
           country: parsed.country || initialFormState.country,
           pincode: parsed.pincode || initialFormState.pincode,
+          awbNumber: parsed.awbNumber || initialFormState.awbNumber,
+          softwareDuration: parsed.softwareDuration || initialFormState.softwareDuration,
+          deliveryCharge: parsed.deliveryCharge || initialFormState.deliveryCharge,
+          costPrice: parsed.costPrice || initialFormState.costPrice,
         });
         setStep(parsed.step || 0);
       } catch (e) {
@@ -488,6 +498,25 @@ export default function TaskForm() {
       }
     }
   }, []);
+
+  // Fetch Business Settings for default Printer Cost
+  useEffect(() => {
+    fetch("/api/admin/settings/business")
+      .then(res => res.json())
+      .then(data => {
+        if (data.defaultPrinterCost) {
+          setDefaultPrinterCost(data.defaultPrinterCost);
+        }
+      })
+      .catch(err => console.error("Failed to load business settings:", err));
+  }, []);
+
+  // Auto-fill costPrice when selecting a printer category, if it's empty
+  useEffect(() => {
+    if ((formData.activeTab === "printer" || formData.activeTab === "printer_software") && !formData.costPrice && defaultPrinterCost) {
+      updateFormData("costPrice", defaultPrinterCost);
+    }
+  }, [formData.activeTab, defaultPrinterCost]);
 
   useEffect(() => {
     const stateToSave = {
@@ -542,6 +571,20 @@ export default function TaskForm() {
       if (formData.customerName.trim().toLowerCase() === formData.shopName.trim().toLowerCase()) {
         alert("⚠️ Customer Name and Shop/Outlet Name cannot be the same. Please provide distinct names.");
         return;
+      }
+
+      if (formData.activeTab === "printer" || formData.activeTab === "printer_software") {
+        if (!formData.awbNumber || formData.awbNumber.trim() === "") {
+          alert("⚠️ AWB Tracking Number is compulsory.");
+          return;
+        }
+      }
+
+      if (formData.activeTab === "printer_software") {
+        if (!formData.softwareDuration || formData.softwareDuration.trim() === "") {
+          alert("⚠️ Software Duration is compulsory for Printer + Software.");
+          return;
+        }
       }
     }
 
@@ -624,6 +667,10 @@ export default function TaskForm() {
           state: formData.state.trim(),
           country: formData.country.trim(),
           pincode: formData.pincode.trim(),
+          awbNumber: formData.awbNumber.trim(),
+          softwareDuration: formData.softwareDuration.trim(),
+          deliveryCharge: formData.deliveryCharge.trim(),
+          costPrice: formData.costPrice.trim(),
           fields: uploadedCustomFields,
         },
       };
@@ -745,11 +792,19 @@ export default function TaskForm() {
               state={formData.state}
               country={formData.country}
               pincode={formData.pincode}
+              awbNumber={formData.awbNumber}
+              softwareDuration={formData.softwareDuration}
+              deliveryCharge={formData.deliveryCharge}
+              costPrice={formData.costPrice}
               setFullAddress={(val) => updateFormData("fullAddress", val)}
               setCity={(val) => updateFormData("city", val)}
               setState={(val) => updateFormData("state", val)}
               setCountry={(val) => updateFormData("country", val)}
               setPincode={(val) => updateFormData("pincode", val)}
+              setAwbNumber={(val) => updateFormData("awbNumber", val)}
+              setSoftwareDuration={(val) => updateFormData("softwareDuration", val)}
+              setDeliveryCharge={(val) => updateFormData("deliveryCharge", val)}
+              setCostPrice={(val) => updateFormData("costPrice", val)}
               setAadhaarFile={(files) => updateFormData("aadhaarFile", files)}
               setPanFile={(files) => updateFormData("panFile", files)}
               setSelfieFile={(files) => updateFormData("selfieFile", files)}
