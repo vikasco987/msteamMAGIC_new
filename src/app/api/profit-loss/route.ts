@@ -44,8 +44,8 @@ export async function GET(req: NextRequest) {
     const tasks = await prisma.task.findMany({
       where: {
         OR: [
-          { title: { contains: "Printer Setup", mode: "insensitive" } },
-          { title: { contains: "Printer + Software", mode: "insensitive" } },
+          { title: { contains: "Printer", mode: "insensitive" } },
+          { title: { contains: "Software", mode: "insensitive" } },
         ]
       },
       orderBy: { createdAt: "desc" },
