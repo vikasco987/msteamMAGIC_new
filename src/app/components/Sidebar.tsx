@@ -62,7 +62,7 @@ const NAVIGATION_GROUPS = [
       { label: 'Follow-up Board', icon: Calendar, href: '/dashboard/followups', roles: ['admin', 'master', 'seller', 'tl', 'manager'] },
       { label: 'Call Report', icon: PhoneCall, href: '/call-report', roles: ['admin', 'master', 'seller', 'tl'] },
       { label: 'Financial Ecosystem', icon: FileSpreadsheet, href: '/admin/reports/payments', roles: ['admin', 'master', 'tl'] },
-      { label: 'Profit & Loss', icon: FileSpreadsheet, href: '/dashboard/profit-loss', roles: ['admin', 'master'] },
+      { label: 'Profit & Loss', icon: FileSpreadsheet, href: '/dashboard/profit-loss', roles: ['master'] },
       { label: 'Payment Portal', icon: CreditCard, href: '/payment-portal', roles: ['admin', 'master', 'seller', 'tl', 'user', 'manager', 'intern', 'guest'] },
     ]
   },
@@ -352,7 +352,7 @@ export default function Sidebar() {
               // If we have dynamic permissions, they override or restrict
               if (dynamicPermissions && dynamicPermissions.length > 0) {
                 // Safety Lock: Master should always see Access Control & Business Setup to avoid locking out
-                if (userRole === 'master' && (i.label === 'Access Control' || i.label === 'Business Setup' || i.label === 'Payment Portal')) return true;
+                if (userRole === 'master' && (i.label === 'Access Control' || i.label === 'Business Setup' || i.label === 'Payment Portal' || i.label === 'Profit & Loss')) return true;
                 
                 return dynamicPermissions.includes(i.label);
               }

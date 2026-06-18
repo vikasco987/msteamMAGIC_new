@@ -10,8 +10,10 @@ type TaskStats = {
   status: string;
   createdAt: string;
   revenue: number;
+  received: number;
   expense: number;
   profit: number;
+  cashProfit: number;
   deliveryCharge: number;
   costPrice: number;
   customerName: string;
@@ -21,17 +23,34 @@ type TaskStats = {
 
 type Summary = {
   totalRevenue: number;
+  totalReceived: number;
   totalExpense: number;
   netProfit: number;
+  cashProfit: number;
+};
+
+type ReportEntry = {
+  dateKey: string;
+  totalRevenue: number;
+  totalReceived: number;
+  totalExpense: number;
+  netProfit: number;
+  cashProfit: number;
+  tasksCount: number;
 };
 
 export default function ProfitLossDashboard() {
   const [tasks, setTasks] = useState<TaskStats[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [dayReport, setDayReport] = useState<ReportEntry[]>([]);
+  const [weekReport, setWeekReport] = useState<ReportEntry[]>([]);
+  const [monthReport, setMonthReport] = useState<ReportEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [calcBasis, setCalcBasis] = useState<"total" | "received">("total");
+  const [activeTab, setActiveTab] = useState<"all" | "day" | "week" | "month">("all");
   
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState({ revenue: 0, deliveryCharge: 0, costPrice: 0 });
+  const [editValues, setEditValues] = useState({ revenue: 0, received: 0, deliveryCharge: 0, costPrice: 0 });
 
   useEffect(() => {
     async function fetchData() {
@@ -42,8 +61,11 @@ export default function ProfitLossDashboard() {
           throw new Error(err.error || "Failed to load profit loss data");
         }
         const data = await res.json();
-        setTasks(data.tasks);
+        setTasks(data.tasks || []);
         setSummary(data.summary);
+        setDayReport(data.dayReport || []);
+        setWeekReport(data.weekReport || []);
+        setMonthReport(data.monthReport || []);
       } catch (err: any) {
         toast.error(err.message);
       } finally {
@@ -57,6 +79,7 @@ export default function ProfitLossDashboard() {
     setEditingId(task.id);
     setEditValues({
       revenue: task.revenue,
+      received: task.received,
       deliveryCharge: task.deliveryCharge,
       costPrice: task.costPrice
     });
@@ -75,6 +98,7 @@ export default function ProfitLossDashboard() {
         body: JSON.stringify({
           taskId,
           revenue: editValues.revenue,
+          received: editValues.received,
           deliveryCharge: editValues.deliveryCharge,
           costPrice: editValues.costPrice
         })
@@ -89,13 +113,16 @@ export default function ProfitLossDashboard() {
         if (t.id === taskId) {
           const newExp = editValues.deliveryCharge + editValues.costPrice;
           const newProfit = editValues.revenue - newExp;
+          const newCashProfit = editValues.received - newExp;
           return {
             ...t,
             revenue: editValues.revenue,
+            received: editValues.received,
             deliveryCharge: editValues.deliveryCharge,
             costPrice: editValues.costPrice,
             expense: newExp,
-            profit: newProfit
+            profit: newProfit,
+            cashProfit: newCashProfit
           };
         }
         return t;
@@ -109,15 +136,19 @@ export default function ProfitLossDashboard() {
         
         const oldExp = oldTask.expense;
         const oldRev = oldTask.revenue;
+        const oldRec = oldTask.received;
         const newExp = editValues.deliveryCharge + editValues.costPrice;
         
         const revDiff = editValues.revenue - oldRev;
+        const recDiff = editValues.received - oldRec;
         const expDiff = newExp - oldExp;
 
         return {
           totalRevenue: prev.totalRevenue + revDiff,
+          totalReceived: prev.totalReceived + recDiff,
           totalExpense: prev.totalExpense + expDiff,
-          netProfit: prev.netProfit + (revDiff - expDiff)
+          netProfit: prev.netProfit + (revDiff - expDiff),
+          cashProfit: prev.cashProfit + (recDiff - expDiff)
         };
       });
 
@@ -136,12 +167,35 @@ export default function ProfitLossDashboard() {
     );
   }
 
-  const isProfit = summary && summary.netProfit >= 0;
+  const activeProfit = summary ? (calcBasis === "total" ? summary.netProfit : summary.cashProfit) : 0;
+  const isProfit = activeProfit >= 0;
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <h1 className="text-3xl font-black text-slate-800 tracking-tight mb-2">💸 Profit & Loss Dashboard</h1>
-      <p className="text-slate-500 mb-8 font-medium">Track expenses and revenue for Printer and Software tasks.</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-black text-slate-800 tracking-tight mb-2">💸 Profit & Loss Dashboard</h1>
+          <p className="text-slate-500 font-medium">Track expenses and revenue for Printer and Software tasks.</p>
+        </div>
+        
+        {/* Toggle Switch */}
+        <div className="bg-slate-100 p-1.5 rounded-2xl inline-flex relative shadow-inner">
+          <button 
+            onClick={() => setCalcBasis("total")}
+            className={`relative z-10 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 ${calcBasis === "total" ? "text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+          >
+            Total Amount Basis
+          </button>
+          <button 
+            onClick={() => setCalcBasis("received")}
+            className={`relative z-10 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 ${calcBasis === "received" ? "text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+          >
+            Received Basis
+          </button>
+          {/* Animated Background Pill */}
+          <div className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-white rounded-xl shadow-sm transition-transform duration-300 ease-out ${calcBasis === "total" ? "translate-x-0" : "translate-x-[calc(100%+12px)]"}`} />
+        </div>
+      </div>
 
       {summary && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
@@ -150,8 +204,8 @@ export default function ProfitLossDashboard() {
               <DollarSign size={24} />
             </div>
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Revenue</p>
-              <h2 className="text-3xl font-black text-slate-800">₹{summary.totalRevenue.toLocaleString()}</h2>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{calcBasis === "total" ? "Total Revenue" : "Total Received"}</p>
+              <h2 className="text-3xl font-black text-slate-800">₹{(calcBasis === "total" ? summary.totalRevenue : summary.totalReceived).toLocaleString()}</h2>
             </div>
           </div>
 
@@ -170,15 +224,36 @@ export default function ProfitLossDashboard() {
               {isProfit ? <TrendingUp size={24} /> : <TrendingDown size={24} />}
             </div>
             <div>
-              <p className={`text-[10px] font-black uppercase tracking-widest ${isProfit ? 'text-indigo-500' : 'text-rose-500'}`}>Net {isProfit ? 'Profit' : 'Loss'}</p>
+              <p className={`text-[10px] font-black uppercase tracking-widest ${isProfit ? 'text-indigo-500' : 'text-rose-500'}`}>Net {isProfit ? 'Profit' : 'Loss'} ({calcBasis === "total" ? "Accrued" : "Cash"})</p>
               <h2 className={`text-3xl font-black ${isProfit ? 'text-indigo-900' : 'text-rose-900'}`}>
-                {isProfit ? '+' : '-'}₹{Math.abs(summary.netProfit).toLocaleString()}
+                {isProfit ? '+' : '-'}₹{Math.abs(activeProfit).toLocaleString()}
               </h2>
             </div>
           </div>
         </div>
       )}
 
+      {/* Tabs */}
+      <div className="flex space-x-2 border-b mt-8 overflow-x-auto pb-1 mb-6">
+        {[
+          { label: "All Tasks", key: "all" },
+          { label: "Day Report", key: "day" },
+          { label: "Week Report", key: "week" },
+          { label: "Month Report", key: "month" },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key as any)}
+            className={`px-4 py-2 font-bold text-sm border-b-2 whitespace-nowrap transition-colors ${
+              activeTab === tab.key ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-400 hover:text-slate-600"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "all" && (
       <div className="bg-white border border-slate-200 rounded-[2rem] overflow-hidden shadow-sm">
         <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
           <h3 className="font-bold text-slate-800">Task Breakdown</h3>
@@ -191,7 +266,7 @@ export default function ProfitLossDashboard() {
                 <th className="px-6 py-4">Task Info</th>
                 <th className="px-6 py-4">Customer</th>
                 <th className="px-6 py-4">Type</th>
-                <th className="px-6 py-4">Revenue</th>
+                <th className="px-6 py-4">{calcBasis === "total" ? "Revenue" : "Received"}</th>
                 <th className="px-6 py-4">Expenses</th>
                 <th className="px-6 py-4">Profit/Loss</th>
                 <th className="px-6 py-4 text-right">Actions</th>
@@ -226,17 +301,20 @@ export default function ProfitLossDashboard() {
                     </td>
                     <td className="px-6 py-4">
                       {editingId === task.id ? (
-                        <div className="flex items-center gap-1">
-                          <span className="text-slate-500 font-bold">₹</span>
-                          <input 
-                            type="number" 
-                            className="w-20 bg-white border border-indigo-200 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            value={editValues.revenue}
-                            onChange={(e) => setEditValues({...editValues, revenue: Number(e.target.value)})}
-                          />
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-1 text-xs">
+                            <span className="text-slate-400 w-10">Total:</span>
+                            <span className="text-slate-500 font-bold">₹</span>
+                            <input type="number" className="w-16 bg-white border border-indigo-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500" value={editValues.revenue} onChange={(e) => setEditValues({...editValues, revenue: Number(e.target.value)})} />
+                          </div>
+                          <div className="flex items-center gap-1 text-xs">
+                            <span className="text-slate-400 w-10">Recv:</span>
+                            <span className="text-slate-500 font-bold">₹</span>
+                            <input type="number" className="w-16 bg-white border border-indigo-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500" value={editValues.received} onChange={(e) => setEditValues({...editValues, received: Number(e.target.value)})} />
+                          </div>
                         </div>
                       ) : (
-                        <span className="font-black text-slate-700">₹{task.revenue.toLocaleString()}</span>
+                        <span className="font-black text-slate-700">₹{(calcBasis === "total" ? task.revenue : task.received).toLocaleString()}</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
@@ -264,8 +342,8 @@ export default function ProfitLossDashboard() {
                       {editingId === task.id ? (
                         <span className="text-xs text-slate-400 italic">Auto-calculated...</span>
                       ) : (
-                        <span className={`px-3 py-1.5 rounded-xl text-xs font-black shadow-sm ${task.profit >= 0 ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-rose-100 text-rose-700 border border-rose-200'}`}>
-                          {task.profit >= 0 ? '+' : '-'}₹{Math.abs(task.profit).toLocaleString()}
+                        <span className={`px-3 py-1.5 rounded-xl text-xs font-black shadow-sm ${(calcBasis === "total" ? task.profit : task.cashProfit) >= 0 ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-rose-100 text-rose-700 border border-rose-200'}`}>
+                          {(calcBasis === "total" ? task.profit : task.cashProfit) >= 0 ? '+' : '-'}₹{Math.abs(calcBasis === "total" ? task.profit : task.cashProfit).toLocaleString()}
                         </span>
                       )}
                     </td>
@@ -292,6 +370,57 @@ export default function ProfitLossDashboard() {
           </table>
         </div>
       </div>
+      )}
+
+      {activeTab !== "all" && (
+        <div className="bg-white border border-slate-200 rounded-[2rem] overflow-hidden shadow-sm">
+          <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+            <h3 className="font-bold text-slate-800">
+              {activeTab === "day" ? "Daily" : activeTab === "week" ? "Weekly" : "Monthly"} Report
+            </h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-slate-50/80 text-slate-500 font-bold text-[10px] uppercase tracking-widest">
+                <tr>
+                  <th className="px-6 py-4">Period</th>
+                  <th className="px-6 py-4">Total Tasks</th>
+                  <th className="px-6 py-4">{calcBasis === "total" ? "Total Revenue" : "Total Received"}</th>
+                  <th className="px-6 py-4">Total Expenses</th>
+                  <th className="px-6 py-4">Profit/Loss</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {(activeTab === "day" ? dayReport : activeTab === "week" ? weekReport : monthReport).length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-12 text-center text-slate-400 font-medium">
+                      No data available for this report.
+                    </td>
+                  </tr>
+                ) : (
+                  (activeTab === "day" ? dayReport : activeTab === "week" ? weekReport : monthReport).map((report) => (
+                    <tr key={report.dateKey} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-6 py-4 font-bold text-slate-800">{report.dateKey}</td>
+                      <td className="px-6 py-4 text-slate-600 font-medium">{report.tasksCount} tasks</td>
+                      <td className="px-6 py-4 font-black text-slate-700">
+                        ₹{(calcBasis === "total" ? report.totalRevenue : report.totalReceived).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 font-black text-rose-600">
+                        ₹{report.totalExpense.toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-3 py-1.5 rounded-xl text-xs font-black shadow-sm ${(calcBasis === "total" ? report.netProfit : report.cashProfit) >= 0 ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-rose-100 text-rose-700 border border-rose-200'}`}>
+                          {(calcBasis === "total" ? report.netProfit : report.cashProfit) >= 0 ? '+' : '-'}₹{Math.abs(calcBasis === "total" ? report.netProfit : report.cashProfit).toLocaleString()}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

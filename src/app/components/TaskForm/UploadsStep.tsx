@@ -2312,10 +2312,6 @@ export default function UploadsStep(props: UploadsStepProps) {
                     <label className={labelClass}>🚚 Delivery Charge</label>
                     <input className={inputClass} placeholder="Enter Delivery Charge (Optional)" value={deliveryCharge} onChange={e => setDeliveryCharge(e.target.value)} />
                   </div>
-                  <div className="md:col-span-2">
-                    <label className={labelClass}>💸 Base Cost Price</label>
-                    <input className={inputClass} placeholder="Cost of Printer/Hardware (for P&L)" value={costPrice} onChange={e => setCostPrice(e.target.value)} />
-                  </div>
                 </>
               )}
             </div>
