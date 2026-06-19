@@ -128,7 +128,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       "title", "status", "amount", "received", "description",
       "highlightColor", "assignerEmail", "assigneeEmail",
       "assignerName", "assigneeName", "assigneeId", "assigneeIds", "assignerId",
-      "isHidden"
+      "isHidden", "aadhaarUrl", "panUrl", "selfieUrl", "chequeUrl", "attachments", "menuCardUrls"
     ];
 
     const logs: string[] = [];

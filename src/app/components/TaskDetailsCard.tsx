@@ -16,7 +16,8 @@ import ReassignTaskModal from "./ReassignTaskModal";
 import CloneTaskButton from "./CloneTaskButton";
 import PaymentRemarkModal from "./PaymentRemarkModal";
 import TaskActivityModal from "./TaskActivityModal";
-import { FaHandHoldingUsd, FaCommentsDollar, FaHistory } from "react-icons/fa";
+import UploadDocumentModal from "./UploadDocumentModal";
+import { FaHandHoldingUsd, FaCommentsDollar, FaHistory, FaCloudUploadAlt } from "react-icons/fa";
 
 interface Props {
   task: Task;
@@ -185,6 +186,7 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
   const [showOwnerModal, setShowOwnerModal] = useState(false);
   const [showRecoveryModal, setShowRecoveryModal] = useState(false);
   const [showActivityModal, setShowActivityModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   const cf = task.customFields || {};
   const showTitle = task.title !== cf.shopName && task.title !== cf.outletName;
@@ -428,6 +430,14 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
                     </DropdownMenu.Item>
 
                     <DropdownMenu.Item 
+                      onClick={() => setShowUploadModal(true)}
+                      className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-lg cursor-pointer outline-none"
+                    >
+                      <FaCloudUploadAlt size={12} className="text-slate-400" />
+                      UPLOAD MISSING DOCS
+                    </DropdownMenu.Item>
+
+                    <DropdownMenu.Item 
                       onClick={copyAllFields}
                       className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-lg cursor-pointer outline-none"
                     >
@@ -572,25 +582,36 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
           )}
 
           {/* Attachments Section */}
-          {task.attachments && task.attachments.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-slate-100">
-              <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Attachments</p>
-              <div className="grid grid-cols-1 gap-1.5">
-                {task.attachments.map((url, i) => {
-                  const label = getLabelFromUrl(url);
-                  return (
+          {(() => {
+            const allDocs = [
+              ...(task.attachments || []).map(url => ({ url, label: getLabelFromUrl(url) })),
+              ...(task.aadhaarUrl ? [{ url: task.aadhaarUrl, label: "🆔 Aadhaar Card" }] : []),
+              ...(task.panUrl ? [{ url: task.panUrl, label: "💳 PAN Card" }] : []),
+              ...(task.selfieUrl ? [{ url: task.selfieUrl, label: "🤳 Selfie Photo" }] : []),
+              ...(task.chequeUrl ? [{ url: task.chequeUrl, label: "🏦 Cheque/Bank Document" }] : []),
+              ...(task.menuCardUrls || []).map((url, i) => ({ url, label: `📄 Menu Card ${task.menuCardUrls && task.menuCardUrls.length > 1 ? i + 1 : ''}`.trim() })),
+            ];
+
+            if (allDocs.length === 0) return null;
+
+            return (
+              <div className="mt-3 pt-3 border-t border-slate-100">
+                <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Attachments & Documents</p>
+                <div className="grid grid-cols-1 gap-1.5">
+                  {allDocs.map((doc, i) => (
                     <div key={i} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg group hover:bg-slate-100 transition-colors">
-                      <span className="text-xs font-bold text-slate-600 truncate mr-2">{label}</span>
+                      <span className="text-xs font-bold text-slate-600 truncate mr-2">{doc.label}</span>
                       <div className="flex gap-2">
-                        <button onClick={() => setPreviewUrl(url)} className="text-[10px] font-black text-indigo-600 uppercase">View</button>
-                        <button onClick={() => handleDownload(url)} className="text-[10px] font-black text-emerald-600 uppercase">Save</button>
+                        <button onClick={() => setPreviewUrl(doc.url)} className="text-[10px] font-black text-indigo-600 uppercase hover:underline">View</button>
+                        <button onClick={() => handleDownload(doc.url)} className="text-[10px] font-black text-emerald-600 uppercase hover:underline">Save</button>
                       </div>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
+
 
           {/* Footer Meta Details */}
           <div className="mt-4 pt-3 border-t border-slate-100 flex flex-col gap-2">
@@ -736,6 +757,14 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
             taskId={task.id}
             taskTitle={task.title}
             onClose={() => setShowActivityModal(false)}
+          />
+        )}
+
+        {showUploadModal && (
+          <UploadDocumentModal 
+            task={task} 
+            onClose={() => setShowUploadModal(false)} 
+            onUploadSuccess={(payload) => onUpdateTask?.(task.id, payload)} 
           />
         )}
       </AnimatePresence>
