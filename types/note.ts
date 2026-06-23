@@ -7,5 +7,8 @@ export type Note = {
   createdAt: string; // ISO string or Date
   authorName?: string;
   authorEmail?: string;
+  fileUrl?: string;
+  reactions?: { emoji: string; userId: string; userName: string }[];
+  readBy?: string[];
 };
 //l;kjhjkl///asdfgbncxz

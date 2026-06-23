@@ -139,10 +139,11 @@
 
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
-import { FaTimes, FaStickyNote, FaUserCircle, FaTrashAlt } from "react-icons/fa";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { FaTimes, FaStickyNote, FaUserCircle, FaTrashAlt, FaPaperclip, FaSpinner, FaSmile } from "react-icons/fa";
 import { useUser } from "@clerk/nextjs";
 import axios from "axios";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Note } from "../../../types/note";
 
@@ -156,6 +157,12 @@ export default function NotesModal({ taskId, initialNotes, onClose }: NotesModal
   const { user, isLoaded } = useUser();
   const [notes, setNotes] = useState<Note[]>(initialNotes ? [...initialNotes] : []);
   const [input, setInput] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [activeReactionNote, setActiveReactionNote] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const EMOJI_OPTIONS = ["👍", "❤️", "😂", "🎉", "👀", "🙏"];
 
   const userRole = user?.publicMetadata?.role as string | undefined;
   // Allow all logged-in users to see notes if they have access to the task modal
@@ -169,17 +176,26 @@ export default function NotesModal({ taskId, initialNotes, onClose }: NotesModal
     try {
       const res = await axios.get<Note[]>(`/api/notes?taskId=${taskId}`);
       setNotes(res.data);
+      
+      // Mark notes as read in the background
+      // Mark notes as read in the background and refresh data
+      if (user?.id) {
+        await axios.post('/api/notes/mark-read', { taskId });
+        router.refresh();
+      }
     } catch (error) {
       console.error("Error fetching notes:", error);
     }
-  }, [taskId]);
+  }, [taskId, user?.id]);
 
   useEffect(() => {
     fetchNotes();
   }, [fetchNotes]);
 
   const addNote = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() && !file) return;
+
+    setIsUploading(true);
 
     const authorName = `${user?.firstName || ""} ${user?.lastName || ""}`.trim();
     const authorEmail =
@@ -188,17 +204,31 @@ export default function NotesModal({ taskId, initialNotes, onClose }: NotesModal
       "unknown@example.com";
 
     try {
+      let uploadedFileUrl = "";
+
+      if (file) {
+        const formData = new FormData();
+        formData.append("file", file);
+        const uploadRes = await axios.post("/api/upload", formData);
+        uploadedFileUrl = uploadRes.data.url;
+      }
+
       const res = await axios.post<Note>("/api/notes", {
-        taskId, // ✅ Correct task ID
+        taskId,
         content: input,
         authorName,
         authorEmail,
+        fileUrl: uploadedFileUrl || undefined,
       });
 
-      setNotes((prev) => [...prev, res.data]);
+      setNotes((prev) => [res.data, ...prev]);
       setInput("");
+      setFile(null);
     } catch (error) {
       console.error("Error adding note:", error);
+      toast.error("Failed to add note.");
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -212,6 +242,33 @@ export default function NotesModal({ taskId, initialNotes, onClose }: NotesModal
     } catch (error) {
       console.error("Error deleting note:", error);
       toast.error("Failed to delete note.");
+    }
+  };
+
+  const toggleReaction = async (noteId: string | undefined, emoji: string) => {
+    if (!noteId || !user) return;
+    
+    // Optimistic update
+    setNotes(prev => prev.map(note => {
+      if (note.id !== noteId) return note;
+      const reactions = note.reactions || [];
+      const existingIdx = reactions.findIndex((r: any) => r.userId === user.id && r.emoji === emoji);
+      let newReactions = [...reactions];
+      if (existingIdx > -1) {
+        newReactions.splice(existingIdx, 1);
+      } else {
+        newReactions.push({ emoji, userId: user.id, userName: user.fullName || "User" });
+      }
+      return { ...note, reactions: newReactions };
+    }));
+    
+    setActiveReactionNote(null);
+
+    try {
+      await axios.post(`/api/notes/${noteId}/react`, { emoji });
+    } catch (error) {
+      console.error("Error reacting to note:", error);
+      toast.error("Failed to add reaction");
     }
   };
 
@@ -268,26 +325,118 @@ export default function NotesModal({ taskId, initialNotes, onClose }: NotesModal
                     )}
                   </div>
                 </div>
-                <p className="text-sm text-gray-800 whitespace-pre-line leading-relaxed">{note.content}</p>
+                <p className="text-sm text-gray-800 whitespace-pre-line leading-relaxed mb-2">{note.content}</p>
+                
+                {/* Image / Attachment Previews */}
+                {note.fileUrl && (
+                  <div className="mt-2 mb-2">
+                    {note.fileUrl.match(/\.(jpeg|jpg|png|webp|gif)$/i) ? (
+                      <a href={note.fileUrl} target="_blank" rel="noopener noreferrer">
+                        <img src={note.fileUrl} alt="Attachment" className="max-w-full h-auto max-h-48 rounded-lg border border-gray-200 shadow-sm hover:opacity-90 transition-opacity" />
+                      </a>
+                    ) : (
+                      <a href={note.fileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 bg-blue-50 px-3 py-2 rounded-lg border border-blue-100">
+                        <FaPaperclip /> View Attachment
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {/* Reactions Section */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Render existing reactions grouped by emoji */}
+                  {Object.entries(
+                    (note.reactions || []).reduce((acc: any, r: any) => {
+                      if (!acc[r.emoji]) acc[r.emoji] = [];
+                      acc[r.emoji].push(r);
+                      return acc;
+                    }, {})
+                  ).map(([emoji, users]: [string, any]) => {
+                    const hasReacted = users.some((u: any) => u.userId === user?.id);
+                    return (
+                      <button
+                        key={emoji}
+                        onClick={() => toggleReaction(note.id, emoji)}
+                        title={users.map((u: any) => u.userName).join(", ")}
+                        className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full border transition-colors ${
+                          hasReacted ? "bg-purple-100 border-purple-300" : "bg-gray-50 border-gray-200 hover:bg-gray-100"
+                        }`}
+                      >
+                        <span>{emoji}</span>
+                        <span className="text-gray-600 font-medium">{users.length}</span>
+                      </button>
+                    );
+                  })}
+                  
+                  {/* Add Reaction Button */}
+                  <div className="relative">
+                    <button 
+                      onClick={() => setActiveReactionNote(activeReactionNote === note.id ? null : note.id!)}
+                      className="text-gray-400 hover:text-gray-600 p-1 bg-gray-50 rounded-full border border-gray-200 hover:bg-gray-100 transition-colors"
+                      title="Add Reaction"
+                    >
+                      <FaSmile size={14} />
+                    </button>
+                    {activeReactionNote === note.id && (
+                      <div className="absolute top-8 left-0 z-10 bg-white border border-gray-200 shadow-xl rounded-full px-2 py-1 flex items-center gap-1 animate-in fade-in zoom-in-95 duration-100">
+                        {EMOJI_OPTIONS.map(emoji => (
+                          <button
+                            key={emoji}
+                            onClick={() => toggleReaction(note.id, emoji)}
+                            className="hover:scale-125 transition-transform text-lg"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             ))
           )}
         </div>
 
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Write a new note here..."
-          rows={4}
-          className="w-full p-3 border border-yellow-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-yellow-100 text-gray-800 placeholder-gray-500 resize-y transition-all duration-200"
-          aria-label="Write a new note"
-        />
+        {file && (
+          <div className="mb-2 p-2 bg-purple-50 rounded-lg flex items-center justify-between border border-purple-100">
+            <span className="text-sm text-purple-700 truncate font-medium">{file.name}</span>
+            <button onClick={() => setFile(null)} className="text-red-500 hover:text-red-700">
+              <FaTimes />
+            </button>
+          </div>
+        )}
+
+        <div className="relative">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Write a new note here..."
+            rows={3}
+            className="w-full p-3 pr-12 border border-yellow-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-yellow-100 text-gray-800 placeholder-gray-500 resize-none transition-all duration-200"
+            aria-label="Write a new note"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="absolute bottom-3 right-3 p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-100 rounded-full transition-colors"
+            title="Attach a file"
+            disabled={isUploading}
+          >
+            <FaPaperclip size={18} />
+          </button>
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={(e) => setFile(e.target.files?.[0] || null)} 
+            className="hidden" 
+          />
+        </div>
 
         <button
           onClick={addNote}
-          className="mt-4 w-full bg-gradient-to-r from-purple-600 to-purple-800 text-white px-5 py-2.5 rounded-lg shadow-md hover:from-purple-700 hover:to-purple-900 transition-all duration-200 ease-in-out font-semibold text-lg tracking-wide"
+          disabled={isUploading || (!input.trim() && !file)}
+          className="mt-4 w-full flex justify-center items-center gap-2 bg-gradient-to-r from-purple-600 to-purple-800 text-white px-5 py-2.5 rounded-lg shadow-md hover:from-purple-700 hover:to-purple-900 transition-all duration-200 ease-in-out font-semibold text-lg tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Add Note
+          {isUploading ? <><FaSpinner className="animate-spin" /> Sending...</> : 'Send'}
         </button>
       </div>
     </div>

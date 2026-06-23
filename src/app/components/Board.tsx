@@ -466,8 +466,17 @@ export default function Board() {
               <Droppable droppableId={col.id}>
                 {(provided) => (
                   <div {...provided.droppableProps} ref={provided.innerRef} className="max-h-[75vh] overflow-y-auto pr-2 flex flex-col gap-4 custom-scrollbar">
-                    {filteredTasks.filter(t => (t.status || "").toLowerCase() === col.id.toLowerCase()).map((task, index) => (
-                      <Draggable key={task.id} draggableId={task.id} index={index}>
+                    {filteredTasks
+                      .filter(t => (t.status || "").toLowerCase() === col.id.toLowerCase())
+                        .sort((a, b) => {
+                          const aUnread = (a.notes || []).filter(n => n.authorEmail !== user?.primaryEmailAddress?.emailAddress && !(n.readBy || []).includes(user?.id || "")).length;
+                          const bUnread = (b.notes || []).filter(n => n.authorEmail !== user?.primaryEmailAddress?.emailAddress && !(n.readBy || []).includes(user?.id || "")).length;
+                          if (aUnread > 0 && bUnread === 0) return -1;
+                          if (aUnread === 0 && bUnread > 0) return 1;
+                          return 0; // fallback to original order
+                        })
+                      .map((task, index) => (
+                        <Draggable key={task.id} draggableId={task.id} index={index}>
                         {(provided) => (
                           <div
                             ref={provided.innerRef}

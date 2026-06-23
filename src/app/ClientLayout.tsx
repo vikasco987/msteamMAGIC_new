@@ -38,7 +38,7 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
       <div className="flex flex-col flex-1 overflow-hidden relative">
 
         {/* 🪄 Smart Global Header */}
-        {!isFullView && (
+          {!isFullView && (
           <header className="h-[72px] flex items-center justify-between px-8 bg-white/80 backdrop-blur-md border-b border-slate-200 z-30 sticky top-0">
 
             <div className="flex items-center gap-6">

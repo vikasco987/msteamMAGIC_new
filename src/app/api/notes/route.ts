@@ -83,6 +83,7 @@ interface CreateNoteRequestBody {
   content: string;
   authorName?: string;
   authorEmail?: string;
+  fileUrl?: string;
 }
 
 export async function GET(req: NextRequest) {
@@ -118,9 +119,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body: CreateNoteRequestBody = await req.json();
-    const { taskId, content, authorName, authorEmail } = body;
+    const { taskId, content, authorName, authorEmail, fileUrl } = body;
 
-    if (!taskId || !content) {
+    if (!taskId || (!content && !fileUrl)) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
@@ -135,9 +136,10 @@ export async function POST(req: NextRequest) {
     const note = await prisma.note.create({
       data: {
         taskId: task.id,
-        content,
+        content: content || "Sent an attachment",
         authorName,
         authorEmail,
+        fileUrl,
       },
     });
 

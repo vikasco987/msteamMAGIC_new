@@ -17,7 +17,7 @@ import CloneTaskButton from "./CloneTaskButton";
 import PaymentRemarkModal from "./PaymentRemarkModal";
 import TaskActivityModal from "./TaskActivityModal";
 import UploadDocumentModal from "./UploadDocumentModal";
-import { FaHandHoldingUsd, FaCommentsDollar, FaHistory, FaCloudUploadAlt } from "react-icons/fa";
+import { FaHandHoldingUsd, FaCommentsDollar, FaHistory, FaCloudUploadAlt, FaPaperclip } from "react-icons/fa";
 
 interface Props {
   task: Task;
@@ -187,6 +187,12 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
   const [showRecoveryModal, setShowRecoveryModal] = useState(false);
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const { user } = useUser();
+
+  const unreadCount = task.notes?.filter(n => 
+    n.authorEmail !== (user?.primaryEmailAddress?.emailAddress || "") && 
+    !(n.readBy || []).includes(user?.id || "")
+  ).length || 0;
 
   const cf = task.customFields || {};
   const showTitle = task.title !== cf.shopName && task.title !== cf.outletName;
@@ -316,7 +322,19 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
 
   return (
     <>
-      <div className="text-sm text-gray-700 space-y-3 overflow-hidden">
+      <div className={`text-sm text-gray-700 space-y-3 overflow-visible relative ${unreadCount > 0 ? "ring-2 ring-red-400 bg-red-50/20 p-2 rounded-2xl" : ""}`}>
+        {/* Unread Badge Alert */}
+        {unreadCount > 0 && (
+          <div className="absolute -top-3 -right-3 z-20">
+            <div className="relative">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping"></span>
+              <span className="relative inline-flex items-center justify-center rounded-full h-7 w-7 bg-red-600 text-[10px] font-black text-white shadow-lg border-2 border-white ring-2 ring-red-200">
+                {unreadCount}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Header with Title and Control Icons */}
         <div className="flex items-start justify-between gap-3">
           {showTitle && (
@@ -494,7 +512,8 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="mb-3 p-3 bg-amber-50/80 rounded-2xl border border-amber-200 shadow-sm relative overflow-hidden group"
+            onClick={() => setShowNotesModal(true)}
+            className="mb-3 p-3 bg-amber-50/80 rounded-2xl border border-amber-200 shadow-sm relative overflow-hidden group cursor-pointer hover:bg-amber-100 transition-colors"
           >
             {/* Sticky note decoration */}
             <div className="absolute top-0 right-0 w-8 h-8 bg-amber-200/20 rounded-bl-3xl" />
@@ -515,6 +534,28 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
                   <div className="text-xs text-amber-900 font-bold leading-relaxed whitespace-pre-wrap">
                     {note.content}
                   </div>
+                  {note.fileUrl && (
+                    <div className="mt-1">
+                      <span className="inline-flex items-center gap-1 text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded border border-amber-200">
+                        <FaPaperclip size={10} /> Attachment 
+                      </span>
+                    </div>
+                  )}
+                  {note.reactions && note.reactions.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {Object.entries(
+                        note.reactions.reduce((acc: any, r: any) => {
+                          if (!acc[r.emoji]) acc[r.emoji] = [];
+                          acc[r.emoji].push(r.userName || "User");
+                          return acc;
+                        }, {})
+                      ).map(([emoji, users]: [string, any]) => (
+                        <span key={emoji} title={users.join(", ")} className="text-[10px] bg-amber-200/50 text-amber-900 px-1.5 py-0.5 rounded-full border border-amber-300 font-medium shadow-sm cursor-help">
+                          {emoji} {users.length}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

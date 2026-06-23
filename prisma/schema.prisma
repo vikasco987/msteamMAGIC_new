@@ -87,9 +87,13 @@ model Note {
   content      String
   createdAt    DateTime @default(now())
 
+  fileUrl      String?
+
   authorName   String?
   authorEmail  String?
   mentions     String[] @default([]) // Array of Clerk user IDs
+  reactions    Json[]   @default([]) // Array of { emoji: string, userId: string, userName: string }
+  readBy       String[] @default([]) // Array of Clerk user IDs who have read this note
 
   taskId       String @db.ObjectId
   task         Task   @relation(fields: [taskId], references: [id])
