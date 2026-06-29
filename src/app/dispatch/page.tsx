@@ -103,6 +103,9 @@ export default function DispatchDashboard() {
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-black text-slate-800">{activeTab}</h1>
           <div className="flex gap-4">
+            <a href="/dispatch/track" className="px-4 py-2 bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-emerald-200 transition-colors flex items-center">
+              Track AWB 🔍
+            </a>
             <button 
               onClick={handleSync} 
               disabled={syncing}
@@ -110,7 +113,7 @@ export default function DispatchDashboard() {
             >
               {syncing ? "Syncing..." : "Sync Delhivery"}
             </button>
-            <a href="/inventory" className="px-4 py-2 bg-slate-800 text-white rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-slate-700 transition-colors">
+            <a href="/inventory" className="px-4 py-2 bg-slate-800 text-white rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-slate-700 transition-colors flex items-center">
               Manage Inventory
             </a>
           </div>
