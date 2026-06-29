@@ -35,6 +35,10 @@ interface BoardFiltersProps {
   allStatuses: string[];
   allAssignees: string[];
   allAssigners: string[];
+  showAllTasksMode: boolean;
+  setShowAllTasksMode: (val: boolean) => void;
+  exportToExcel: () => void;
+  activeTasksCount: number;
 }
 
 export const BoardFilters: React.FC<BoardFiltersProps> = ({
@@ -58,6 +62,10 @@ export const BoardFilters: React.FC<BoardFiltersProps> = ({
   allStatuses,
   allAssignees,
   allAssigners,
+  showAllTasksMode,
+  setShowAllTasksMode,
+  exportToExcel,
+  activeTasksCount,
 }) => {
   const [openDropdown, setOpenDropdown] = useState<
     "category" | "assignee" | "assigner" | "status" | "date" | null
@@ -204,8 +212,16 @@ export const BoardFilters: React.FC<BoardFiltersProps> = ({
       className="flex flex-wrap items-center gap-3 p-4 bg-white shadow-sm rounded-lg border border-gray-200"
       ref={dropdownRef}
     >
+      {/* 📊 Title & Count */}
+      <div className="flex flex-col mr-2 hidden md:flex">
+        <span className="text-lg font-black text-slate-900 tracking-tight leading-none">Team Board</span>
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+          {activeTasksCount} Active Tasks
+        </span>
+      </div>
+
       {/* 🔍 Search */}
-      <div className="relative flex-grow max-w-sm">
+      <div className="relative flex-grow max-w-xs">
         <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
           type="text"
@@ -355,6 +371,26 @@ export const BoardFilters: React.FC<BoardFiltersProps> = ({
             <option value="desc">Descending</option>
             <option value="asc">Ascending</option>
           </select>
+        </div>
+
+        {/* 🛠️ Action Buttons */}
+        <div className="flex items-center gap-2 ml-2 md:border-l border-gray-200 md:pl-4">
+          <button
+            onClick={() => setShowAllTasksMode(!showAllTasksMode)}
+            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+              showAllTasksMode
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            {showAllTasksMode ? "Hide Archived" : "Show All"}
+          </button>
+          <button
+            onClick={exportToExcel}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-emerald-100 hover:bg-emerald-100 transition-colors"
+          >
+            Export
+          </button>
         </div>
       </div>
     </div>

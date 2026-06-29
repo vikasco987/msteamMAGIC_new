@@ -369,11 +369,6 @@ export default function Board() {
       const isHidden = !showAllTasksMode && task.isHidden;
 
       return matchesSearch && matchesCategory && matchesDate && matchesStatus && matchesAssigner && !isHidden;
-    }).sort((a, b) => {
-      const valA = a[sortBy] || "";
-      const valB = b[sortBy] || "";
-      const dir = sortDirection === "asc" ? 1 : -1;
-      return valA < valB ? -1 * dir : valA > valB ? 1 * dir : 0;
     });
   }, [tasks, filterText, selectedCategories, selectedDates, selectedAssigners, sortBy, sortDirection, showAllTasksMode, pendingChanges]);
 
@@ -405,32 +400,6 @@ export default function Board() {
     <div className="p-4 bg-slate-50 min-h-screen">
       <audio ref={audioRef} src="/notification.wav" preload="auto" />
 
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Team Board</h1>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
-            {filteredTasks.length} Active Tasks
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowAllTasksMode(!showAllTasksMode)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${showAllTasksMode ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-100 text-slate-600'
-              }`}
-          >
-            {showAllTasksMode ? "Hide Archived" : "Show All"}
-          </button>
-
-          <button
-            onClick={exportToExcel}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-bold uppercase tracking-wider border border-emerald-100 hover:bg-emerald-100 transition-colors"
-          >
-            <FaFileExcel /> Export
-          </button>
-        </div>
-      </div>
-
       <BoardFilters
         filterText={filterText}
         setFilterText={setFilterText}
@@ -452,6 +421,10 @@ export default function Board() {
         allStatuses={allStatuses}
         allAssignees={allAssignees}
         allAssigners={allAssigners}
+        showAllTasksMode={showAllTasksMode}
+        setShowAllTasksMode={setShowAllTasksMode}
+        exportToExcel={exportToExcel}
+        activeTasksCount={filteredTasks.length}
       />
 
       <DragDropContext onDragEnd={onDragEnd}>
@@ -468,13 +441,7 @@ export default function Board() {
                   <div {...provided.droppableProps} ref={provided.innerRef} className="max-h-[75vh] overflow-y-auto pr-2 flex flex-col gap-4 custom-scrollbar">
                     {filteredTasks
                       .filter(t => (t.status || "").toLowerCase() === col.id.toLowerCase())
-                        .sort((a, b) => {
-                          const aUnread = (a.notes || []).filter(n => n.authorEmail !== user?.primaryEmailAddress?.emailAddress && !(n.readBy || []).includes(user?.id || "")).length;
-                          const bUnread = (b.notes || []).filter(n => n.authorEmail !== user?.primaryEmailAddress?.emailAddress && !(n.readBy || []).includes(user?.id || "")).length;
-                          if (aUnread > 0 && bUnread === 0) return -1;
-                          if (aUnread === 0 && bUnread > 0) return 1;
-                          return 0; // fallback to original order
-                        })
+                        // No custom sorting – keep tasks in their original order
                       .map((task, index) => (
                         <Draggable key={task.id} draggableId={task.id} index={index}>
                         {(provided) => (

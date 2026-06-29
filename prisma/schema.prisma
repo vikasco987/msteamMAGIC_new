@@ -68,6 +68,7 @@ model Task {
   paymentRemarks  PaymentRemark[] 
   payments        Payment[]       // 👈 NEW relation for separate payments
   activities      Activity[]
+  dispatchLog     DispatchLog?
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime?
@@ -575,3 +576,35 @@ model GeneralExpense {
   createdAt DateTime @default(now())
 }
 
+// 📦 New Model for Inventory Items
+model InventoryItem {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String   @unique // e.g., "Printer", "Printer Plus Software"
+  sku         String?  @unique
+  quantity    Int      @default(0) // Total stock available
+  type        String   // "HARDWARE" or "SOFTWARE"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  dispatches  DispatchLog[]
+}
+
+// 🚚 New Model for Tracking / Dispatch
+model DispatchLog {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  awbNumber       String   @unique
+  courierName     String?  // e.g., "Delhivery", "BlueDart"
+  trackingStatus  String   @default("Pending") // Pending, In Transit, Delivered, RTO
+  dispatchDate    DateTime?
+
+  inventoryItemId String   @db.ObjectId
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  
+  taskId          String   @unique @db.ObjectId
+  task            Task     @relation(fields: [taskId], references: [id])
+
+  history         Json[]   @default([]) // Array of { status, changedBy, changedAt }
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}

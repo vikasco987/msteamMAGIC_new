@@ -960,6 +960,45 @@ export async function POST(req: NextRequest) {
 
     console.log("✅ Task created:", task.id);
 
+    // 📦 Auto-dispatch logic for Printers
+    if (body.activeTab === "printer" || body.activeTab === "printer_software") {
+      const validAwb = toNullableString(awbNumber);
+      if (validAwb) {
+        try {
+          // Try to find the "Printer" inventory item
+          let printerItem = await prisma.inventoryItem.findUnique({ where: { name: "Printer" } });
+          
+          // If not exists, create a default one with 0 stock
+          if (!printerItem) {
+            printerItem = await prisma.inventoryItem.create({
+              data: { name: "Printer", type: "HARDWARE", quantity: 0 }
+            });
+          }
+
+          // Create the dispatch log
+          await prisma.dispatchLog.create({
+            data: {
+              awbNumber: validAwb,
+              inventoryItemId: printerItem.id,
+              taskId: task.id,
+              trackingStatus: "Pending",
+              dispatchDate: new Date()
+            }
+          });
+
+          // Deduct 1 from inventory
+          await prisma.inventoryItem.update({
+            where: { id: printerItem.id },
+            data: { quantity: { decrement: 1 } }
+          });
+
+          console.log(`📦 Dispatch created for AWB ${validAwb} and stock deducted`);
+        } catch (e) {
+          console.error("❌ Failed to auto-dispatch:", e);
+        }
+      }
+    }
+
     // Log creation activity
     const creatorName = clerkUser.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ''}`.trim() : clerkUser.username || "Unknown";
     await logActivity({
