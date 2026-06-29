@@ -8,6 +8,7 @@ export default function DispatchDashboard() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("All Shipments");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
   
   // State for the Task Details Modal
   const [selectedLog, setSelectedLog] = useState<any | null>(null);
@@ -54,6 +55,25 @@ export default function DispatchDashboard() {
     }
   };
 
+  const handleSync = async () => {
+    try {
+      setSyncing(true);
+      const res = await fetch("/api/dispatch/sync", { method: "POST" });
+      const data = await res.json();
+      if (data.updatedCount !== undefined) {
+        alert(`Successfully synced ${data.updatedCount} shipments from Delhivery.`);
+        fetchDispatches();
+      } else {
+        alert("Error syncing: " + (data.error || "Unknown error"));
+      }
+    } catch (e) {
+      console.error("Sync error:", e);
+      alert("Failed to sync.");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-slate-50 relative">
       {/* Sidebar */}
@@ -82,9 +102,18 @@ export default function DispatchDashboard() {
       <div className="flex-1 p-6 md:p-8 overflow-y-auto">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-black text-slate-800">{activeTab}</h1>
-          <a href="/inventory" className="px-4 py-2 bg-slate-800 text-white rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-slate-700 transition-colors">
-            Manage Inventory
-          </a>
+          <div className="flex gap-4">
+            <button 
+              onClick={handleSync} 
+              disabled={syncing}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-indigo-700 transition-colors disabled:opacity-50"
+            >
+              {syncing ? "Syncing..." : "Sync Delhivery"}
+            </button>
+            <a href="/inventory" className="px-4 py-2 bg-slate-800 text-white rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-slate-700 transition-colors">
+              Manage Inventory
+            </a>
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
