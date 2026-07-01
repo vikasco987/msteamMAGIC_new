@@ -139,6 +139,8 @@
 //   "pendingAmount",
 //   "attachments",
 //   "paymentProofs",
+    "afe",
+    "tracking",
 // ];
 
 // export default function TaskTableView({ tasks, user, onTasksUpdate }: Props) {
@@ -1326,6 +1328,8 @@
 //   "pendingAmount",
 //   "attachments",
 //   "paymentProofs",
+    "afe",
+    "tracking",
 // ];
 
 // export default function TaskTableView({ tasks, user, onTasksUpdate }: Props) {
@@ -2538,6 +2542,8 @@
 //   "pendingAmount",
 //   "attachments",
 //   "paymentProofs",
+    "afe",
+    "tracking",
 // ];
 
 // export default function TaskTableView({ tasks, user, onTasksUpdate }: Props) {
@@ -3708,6 +3714,8 @@
 //   "pendingAmount",
 //   "attachments",
 //   "paymentProofs",
+    "afe",
+    "tracking",
 // ];
 
 // export default function TaskTableView({ tasks, user, onTasksUpdate }: Props) {
@@ -6760,6 +6768,8 @@ export default function TaskTableView({
     "copy",
     "attachments",
     "paymentProofs",
+    "afe",
+    "tracking",
   ]);
 
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
@@ -7253,6 +7263,18 @@ export default function TaskTableView({
                   🧾 Payment Proofs
                 </th>
               )}
+              {visibleColumns.includes("afe") && (
+                <th className="px-3 py-2 text-xs font-bold tracking-wide text-gray-700 border border-gray-200 text-right w-28 cursor-pointer" onClick={() => handleSort("afe")}>
+                  <div className="flex items-center justify-end">
+                    <FaRupeeSign className="mr-1" /> AFE {getSortIcon("afe")}
+                  </div>
+                </th>
+              )}
+              {visibleColumns.includes("tracking") && (
+                <th className="px-3 py-2 text-xs font-bold tracking-wide text-gray-700 border border-gray-200 text-center w-24">
+                  Tracking
+                </th>
+              )}
             </tr>
           </thead>
 
@@ -7619,6 +7641,27 @@ export default function TaskTableView({
                           </button>
                         ) : (
                           <span className="text-gray-400">—</span>
+                        )}
+                      </td>
+                    )}
+                    {visibleColumns.includes("afe") && (
+                      <td className="border border-gray-200 px-3 py-2 whitespace-nowrap text-right font-medium text-gray-700">
+                        {task.customFields?.afe !== undefined && task.customFields.afe !== "" ? `₹${Number(task.customFields.afe).toLocaleString("en-IN")}` : "—"}
+                      </td>
+                    )}
+                    {visibleColumns.includes("tracking") && (
+                      <td className="border border-gray-200 px-3 py-2 whitespace-nowrap text-center">
+                        {task.title?.toLowerCase().includes("printer") ? (
+                          <a 
+                            href={`/dispatch/track?awb=${task.id}`} 
+                            target="_blank" 
+                            rel="noreferrer"
+                            className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline flex items-center justify-center gap-1"
+                          >
+                            Track ↗
+                          </a>
+                        ) : (
+                          <span className="text-gray-400 text-xs">—</span>
                         )}
                       </td>
                     )}

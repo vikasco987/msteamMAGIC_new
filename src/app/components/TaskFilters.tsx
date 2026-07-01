@@ -48,6 +48,8 @@
 //   "pendingAmount",
 //   "attachments",
 //   "paymentProofs",
+  "afe",
+  "tracking",
 // ];
 
 // // FIX: Updated `value` fields to be plain text (no emojis)
@@ -732,6 +734,8 @@
 //   "pendingAmount",
 //   "attachments",
 //   "paymentProofs",
+  "afe",
+  "tracking",
 // ];
 
 // // FIX: Updated `value` fields to be plain text (no emojis)
@@ -1278,6 +1282,8 @@ const ALL_COLUMNS = [
   "pendingAmount",
   "attachments",
   "paymentProofs",
+  "afe",
+  "tracking",
 ];
 
 // FIX: Updated `value` fields to be plain text (no emojis)
