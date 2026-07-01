@@ -7264,9 +7264,9 @@ export default function TaskTableView({
                 </th>
               )}
               {visibleColumns.includes("afe") && (
-                <th className="px-3 py-2 text-xs font-bold tracking-wide text-gray-700 border border-gray-200 text-right w-28 cursor-pointer" onClick={() => handleSort("afe")}>
+                <th className="px-3 py-2 text-xs font-bold tracking-wide text-gray-700 border border-gray-200 text-right w-28 cursor-pointer">
                   <div className="flex items-center justify-end">
-                    <FaRupeeSign className="mr-1" /> AFE {getSortIcon("afe")}
+                    <FaRupeeSign className="mr-1" /> AFE
                   </div>
                 </th>
               )}
