@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(req: Request) {
   try {
@@ -7,10 +8,24 @@ export async function GET(req: Request) {
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const awb = searchParams.get("awb");
+    let awb = searchParams.get("awb");
 
     if (!awb) {
-      return NextResponse.json({ error: "AWB number is required" }, { status: 400 });
+      return NextResponse.json({ error: "AWB number or Task ID is required" }, { status: 400 });
+    }
+    
+    awb = awb.trim();
+
+    // Check if it's a 24-char Task ID (ObjectId)
+    if (/^[0-9a-fA-F]{24}$/.test(awb)) {
+      const dispatchLog = await prisma.dispatchLog.findUnique({
+        where: { taskId: awb }
+      });
+      if (dispatchLog) {
+        awb = dispatchLog.awbNumber;
+      } else {
+        return NextResponse.json({ error: "No shipment found for this Task ID" }, { status: 404 });
+      }
     }
 
     const DELHIVERY_API_TOKEN = process.env.DELHIVERY_API_TOKEN;

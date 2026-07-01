@@ -77,6 +77,33 @@ export const TaskTableBody: React.FC<TaskTableBodyProps> = ({
               // Format the creation date
               return <td key={col} className="border px-3 py-2">{format(new Date(task.createdAt), "dd MMM yyyy")}</td>;
             }
+            if (col === "afe") {
+              const afeValue = task.customFields?.afe || "—";
+              return (
+                <td key={col} className="border px-3 py-2 font-medium text-gray-700 text-right">
+                  {afeValue !== "—" ? `₹${Number(afeValue).toLocaleString("en-IN")}` : "—"}
+                </td>
+              );
+            }
+            if (col === "tracking") {
+              const isPrinterTask = task.title?.toLowerCase().includes("printer");
+              return (
+                <td key={col} className="border px-3 py-2 text-center">
+                  {isPrinterTask ? (
+                    <a 
+                      href={`/dispatch/track?awb=${task.id}`} 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline flex items-center justify-center gap-1"
+                    >
+                      Track ↗
+                    </a>
+                  ) : (
+                    <span className="text-gray-400 text-xs">—</span>
+                  )}
+                </td>
+              );
+            }
             if (col === "location") {
               const locationText = task.customFields?.location;
               return (

@@ -52,12 +52,12 @@ export default function TrackAWBPage() {
             📦
           </div>
           <h1 className="text-3xl font-black text-slate-800 tracking-tight mb-2">Track Shipment</h1>
-          <p className="text-slate-500 font-medium mb-8">Enter your AWB number to get real-time status updates.</p>
+          <p className="text-slate-500 font-medium mb-8">Enter your AWB number or Task ID to get real-time status updates.</p>
           
           <form onSubmit={handleTrack} className="flex gap-4 max-w-lg mx-auto">
             <input 
               type="text" 
-              placeholder="Enter AWB Number (e.g. 55784810000464)" 
+              placeholder="Enter AWB or Task ID" 
               value={awb}
               onChange={(e) => setAwb(e.target.value)}
               className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all font-bold text-slate-700"
