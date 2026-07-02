@@ -239,7 +239,7 @@ export async function POST(req: NextRequest) {
     const finalUpdates = updates || (field ? { [field]: value } : {});
 
     for (const [f, v] of Object.entries(finalUpdates)) {
-      if (!["amount", "received", "assigneeIds", "assignerName", "assignerEmail", "assigneeId", "assigneeName", "assigneeEmail", "shopName", "phone", "email"].includes(f)) {
+      if (!["amount", "received", "assigneeIds", "assignerName", "assignerEmail", "assigneeId", "assigneeName", "assigneeEmail", "shopName", "phone", "email", "afe"].includes(f)) {
         return NextResponse.json({ error: `Unsupported field: ${f}` }, { status: 400 });
       }
 
@@ -302,7 +302,7 @@ export async function POST(req: NextRequest) {
     // 3. Sync Other Redundant Fields (Top-level <-> customFields)
     const syncableFields = [
       "phone", "email", "shopName", "location", "accountNumber", "ifscCode",
-      "restId", "customerName", "packageAmount", "startDate", "endDate", "timeline"
+      "restId", "customerName", "packageAmount", "startDate", "endDate", "timeline", "afe"
     ];
 
     const existingCF = { ...(existingTask.customFields as any || (dataToUpdate.customFields as any) || {}) };
