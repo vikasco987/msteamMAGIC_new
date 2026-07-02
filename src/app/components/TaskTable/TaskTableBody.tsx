@@ -78,20 +78,26 @@ export const TaskTableBody: React.FC<TaskTableBodyProps> = ({
               return <td key={col} className="border px-3 py-2">{format(new Date(task.createdAt), "dd MMM yyyy")}</td>;
             }
             if (col === "afe") {
+              const isPrinterTask = task.title?.toLowerCase().includes("printer") || task.title?.toLowerCase().includes("printer + software") || task.activeTab === "printer" || task.activeTab === "printer_software";
               const afeValue = task.customFields?.afe || "—";
               return (
                 <td key={col} className="border px-3 py-2 font-medium text-gray-700 text-right">
-                  {afeValue !== "—" ? `₹${Number(afeValue).toLocaleString("en-IN")}` : "—"}
+                  {isPrinterTask ? (
+                    afeValue !== "—" ? `₹${Number(afeValue).toLocaleString("en-IN")}` : "—"
+                  ) : (
+                    <span className="text-gray-400">—</span>
+                  )}
                 </td>
               );
             }
             if (col === "tracking") {
-              const isPrinterTask = task.title?.toLowerCase().includes("printer");
+              const isPrinterTask = task.title?.toLowerCase().includes("printer") || task.title?.toLowerCase().includes("printer + software") || task.activeTab === "printer" || task.activeTab === "printer_software";
+              const awbNumber = task.customFields?.awbNumber || task.customFields?.awb;
               return (
                 <td key={col} className="border px-3 py-2 text-center">
-                  {isPrinterTask ? (
+                  {isPrinterTask && awbNumber ? (
                     <a 
-                      href={`/dispatch/track?awb=${task.id}`} 
+                      href={`/dispatch/track?awb=${awbNumber}`} 
                       target="_blank" 
                       rel="noreferrer"
                       className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline flex items-center justify-center gap-1"
