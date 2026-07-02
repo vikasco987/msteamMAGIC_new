@@ -4,8 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(req: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Removed auth check to allow public access to tracking link
 
     const { searchParams } = new URL(req.url);
     let awb = searchParams.get("awb");
