@@ -237,6 +237,7 @@ export async function POST(req: NextRequest) {
     };
 
     const finalUpdates = updates || (field ? { [field]: value } : {});
+    let customFieldsUpdate: any = null;
 
     for (const [f, v] of Object.entries(finalUpdates)) {
       if (!["amount", "received", "assigneeIds", "assignerName", "assignerEmail", "assigneeId", "assigneeName", "assigneeEmail", "shopName", "phone", "email", "afe"].includes(f)) {
@@ -246,6 +247,10 @@ export async function POST(req: NextRequest) {
       if (f === "amount" || f === "received") {
         if (typeof v !== 'number' && v !== null) {
           return NextResponse.json({ error: `Invalid value for ${f}. Must be number/null.` }, { status: 400 });
+        }
+      } else if (f === "afe") {
+        if (typeof v !== 'number' && typeof v !== 'string' && v !== null) {
+          return NextResponse.json({ error: `Invalid value for ${f}. Must be number/string/null.` }, { status: 400 });
         }
       } else if (f === "assigneeIds") {
         if (!Array.isArray(v)) {
@@ -257,8 +262,13 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // @ts-ignore
-      dataToUpdate[f] = v;
+      if (f === "afe") {
+        if (!customFieldsUpdate) customFieldsUpdate = {};
+        customFieldsUpdate.afe = v;
+      } else {
+        // @ts-ignore
+        dataToUpdate[f] = v;
+      }
     }
 
     // --- 🌍 SYNC LOGIC ---
@@ -302,11 +312,16 @@ export async function POST(req: NextRequest) {
     // 3. Sync Other Redundant Fields (Top-level <-> customFields)
     const syncableFields = [
       "phone", "email", "shopName", "location", "accountNumber", "ifscCode",
-      "restId", "customerName", "packageAmount", "startDate", "endDate", "timeline", "afe"
+      "restId", "customerName", "packageAmount", "startDate", "endDate", "timeline"
     ];
 
     const existingCF = { ...(existingTask.customFields as any || (dataToUpdate.customFields as any) || {}) };
     let cfNeedsUpdate = false;
+
+    if (customFieldsUpdate) {
+      Object.assign(existingCF, customFieldsUpdate);
+      cfNeedsUpdate = true;
+    }
 
     for (const f of syncableFields) {
       if ((dataToUpdate as any)[f] !== undefined && existingCF[f] !== undefined) {

@@ -880,6 +880,7 @@ export async function POST(req: NextRequest) {
         updatedAt: new Date(),
 
         customFields: {
+          activeTab: toNullableString(body.activeTab || (body.customFields as any)?.activeTab),
           phone: toNullableString(phone),
           email: toNullableString(email),
           shopName: toNullableString(shopName),

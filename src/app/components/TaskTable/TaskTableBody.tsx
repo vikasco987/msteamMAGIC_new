@@ -78,7 +78,12 @@ export const TaskTableBody: React.FC<TaskTableBodyProps> = ({
               return <td key={col} className="border px-3 py-2">{format(new Date(task.createdAt), "dd MMM yyyy")}</td>;
             }
             if (col === "afe") {
-              const isPrinterTask = task.title?.toLowerCase().includes("printer") || task.title?.toLowerCase().includes("printer + software") || task.activeTab === "printer" || task.activeTab === "printer_software";
+              const isPrinterTask = task.title?.toLowerCase().includes("printer") || 
+                                    task.title?.toLowerCase().includes("printer + software") || 
+                                    task.activeTab === "printer" || 
+                                    task.activeTab === "printer_software" ||
+                                    task.customFields?.activeTab === "printer" ||
+                                    task.customFields?.activeTab === "printer_software";
               const afeValue = task.customFields?.afe || "—";
               const key = `${task.id}-afe`;
               return (
@@ -103,7 +108,12 @@ export const TaskTableBody: React.FC<TaskTableBodyProps> = ({
               );
             }
             if (col === "tracking") {
-              const isPrinterTask = task.title?.toLowerCase().includes("printer") || task.title?.toLowerCase().includes("printer + software") || task.activeTab === "printer" || task.activeTab === "printer_software";
+              const isPrinterTask = task.title?.toLowerCase().includes("printer") || 
+                                    task.title?.toLowerCase().includes("printer + software") || 
+                                    task.activeTab === "printer" || 
+                                    task.activeTab === "printer_software" ||
+                                    task.customFields?.activeTab === "printer" ||
+                                    task.customFields?.activeTab === "printer_software";
               const awbNumber = task.customFields?.awbNumber || task.customFields?.awb;
               return (
                 <td key={col} className="border px-3 py-2 text-center">
