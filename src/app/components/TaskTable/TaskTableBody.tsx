@@ -132,6 +132,39 @@ export const TaskTableBody: React.FC<TaskTableBodyProps> = ({
                 </td>
               );
             }
+            if (col === "trackingStatus") {
+              const isPrinterTask = task.title?.toLowerCase().includes("printer") || 
+                                    task.title?.toLowerCase().includes("printer + software") || 
+                                    task.activeTab === "printer" || 
+                                    task.activeTab === "printer_software" ||
+                                    task.customFields?.activeTab === "printer" ||
+                                    task.customFields?.activeTab === "printer_software";
+              const shipmentStatus = (task as any).dispatchLog?.trackingStatus || "—";
+              return (
+                <td key={col} className="border px-3 py-2 text-center font-semibold">
+                  {isPrinterTask ? (
+                    shipmentStatus !== "—" ? (
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold
+                        ${
+                          shipmentStatus.toLowerCase() === "delivered" 
+                            ? "bg-green-100 text-green-700" 
+                            : shipmentStatus.toLowerCase() === "rto" 
+                            ? "bg-red-100 text-red-700" 
+                            : shipmentStatus.toLowerCase() === "pending"
+                            ? "bg-gray-100 text-gray-700"
+                            : "bg-blue-100 text-blue-700"
+                        }`}>
+                        {shipmentStatus}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )
+                  ) : (
+                    <span className="text-gray-400">—</span>
+                  )}
+                </td>
+              );
+            }
             if (col === "location") {
               const locationText = task.customFields?.location;
               return (

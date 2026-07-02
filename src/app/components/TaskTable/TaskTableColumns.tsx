@@ -144,6 +144,11 @@ export const TaskTableColumns: React.FC<TaskTableColumnsProps> = ({
               Tracking
             </th>
           )}
+          {columns.includes("trackingStatus") && (
+            <th className="px-3 py-2 text-xs font-bold tracking-wide text-gray-700 border border-gray-200 text-center w-32">
+              Shipment Status
+            </th>
+          )}
         </tr>
       </thead>
     </>

@@ -1128,6 +1128,7 @@ export async function GET(req: NextRequest) {
         include: {
           subtasks: true,
           notes: true,
+          dispatchLog: true,
         },
       });
 
@@ -1318,10 +1319,10 @@ export async function GET(req: NextRequest) {
         fetchedTasks = await prisma.task.findMany({
           where,
           orderBy,
-          include: !listView ? {
-            subtasks: true,
-            notes: true,
-          } : undefined,
+          include: {
+            ...(!listView ? { subtasks: true, notes: true } : {}),
+            dispatchLog: true,
+          },
         });
 
         // Apply complex in-memory filters
@@ -1344,10 +1345,10 @@ export async function GET(req: NextRequest) {
             orderBy,
             skip,
             take: limit,
-            include: !listView ? {
-              subtasks: true,
-              notes: true,
-            } : undefined,
+            include: {
+              ...(!listView ? { subtasks: true, notes: true } : {}),
+              dispatchLog: true,
+            },
           }),
           prisma.task.count({ where })
         ]);

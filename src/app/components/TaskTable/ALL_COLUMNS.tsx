@@ -17,4 +17,5 @@ export const ALL_COLUMNS = [
   "pendingAmount",
   "afe", // Added AFE
   "tracking",
+  "trackingStatus",
 ];
