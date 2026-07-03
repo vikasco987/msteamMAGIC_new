@@ -69,6 +69,7 @@ model Task {
   payments        Payment[]       // 👈 NEW relation for separate payments
   activities      Activity[]
   dispatchLog     DispatchLog?
+  serialNumbers   SerialNumber[]
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime?
@@ -618,6 +619,7 @@ model SerialNumber {
   inventoryItemId String        @db.ObjectId
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
   taskId          String?       @db.ObjectId
+  task            Task?         @relation(fields: [taskId], references: [id])
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }

@@ -16,6 +16,13 @@ export async function GET(req: Request) {
       include: {
         serialNumbers: {
           where: status ? { status } : undefined,
+          include: {
+            task: {
+              include: {
+                dispatchLog: true
+              }
+            }
+          },
           orderBy: { number: "asc" }
         }
       }

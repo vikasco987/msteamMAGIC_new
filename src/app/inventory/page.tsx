@@ -1,11 +1,15 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { Search, Printer, RotateCcw, AlertTriangle, CheckCircle, Clock, Truck, ShieldAlert } from "lucide-react";
 
 export default function InventoryDashboard() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
+  // Tab control: "stock" or "tracker"
+  const [activeDashboardTab, setActiveDashboardTab] = useState<"stock" | "tracker">("stock");
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [newItemData, setNewItemData] = useState({ name: "", sku: "", quantity: "0", type: "HARDWARE" });
 
@@ -23,6 +27,11 @@ export default function InventoryDashboard() {
   const [loadingSerials, setLoadingSerials] = useState(false);
   const [submittingSerials, setSubmittingSerials] = useState(false);
 
+  // Printer Tracking Dashboard states
+  const [trackerSerials, setTrackerSerials] = useState<any[]>([]);
+  const [loadingTracker, setLoadingTracker] = useState(false);
+  const [trackerSearch, setTrackerSearch] = useState("");
+
   const fetchInventory = async () => {
     try {
       setLoading(true);
@@ -36,9 +45,28 @@ export default function InventoryDashboard() {
     }
   };
 
+  const fetchTrackerSerials = async () => {
+    try {
+      setLoadingTracker(true);
+      const res = await fetch("/api/inventory/serial-numbers?itemName=Printer");
+      const data = await res.json();
+      setTrackerSerials(data.serialNumbers || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingTracker(false);
+    }
+  };
+
   useEffect(() => {
     fetchInventory();
   }, []);
+
+  useEffect(() => {
+    if (activeDashboardTab === "tracker") {
+      fetchTrackerSerials();
+    }
+  }, [activeDashboardTab]);
 
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -148,8 +176,6 @@ export default function InventoryDashboard() {
   };
 
   const handleUpdateSerialStatus = async (serialId: string, newStatus: string) => {
-    if (!selectedItem) return;
-
     try {
       const res = await fetch("/api/inventory/serial-numbers", {
         method: "PATCH",
@@ -161,7 +187,12 @@ export default function InventoryDashboard() {
       });
 
       if (res.ok) {
-        await fetchItemSerials(selectedItem.name);
+        if (selectedItem) {
+          await fetchItemSerials(selectedItem.name);
+        }
+        if (activeDashboardTab === "tracker") {
+          await fetchTrackerSerials();
+        }
         fetchInventory();
       }
     } catch (e) {
@@ -170,7 +201,6 @@ export default function InventoryDashboard() {
   };
 
   const handleDeleteSerial = async (serialId: string) => {
-    if (!selectedItem) return;
     if (!confirm("Are you sure you want to delete this serial number from inventory?")) return;
 
     try {
@@ -184,7 +214,12 @@ export default function InventoryDashboard() {
       });
 
       if (res.ok) {
-        await fetchItemSerials(selectedItem.name);
+        if (selectedItem) {
+          await fetchItemSerials(selectedItem.name);
+        }
+        if (activeDashboardTab === "tracker") {
+          await fetchTrackerSerials();
+        }
         fetchInventory();
       }
     } catch (e) {
@@ -192,20 +227,90 @@ export default function InventoryDashboard() {
     }
   };
 
+  // Filtered tracker serials based on search term
+  const filteredTrackerSerials = trackerSerials.filter((s) => {
+    const term = trackerSearch.toLowerCase();
+    const matchesSerial = s.number.toLowerCase().includes(term);
+    const matchesShop = s.task?.shopName?.toLowerCase().includes(term) || s.task?.customerName?.toLowerCase().includes(term);
+    const matchesAwb = s.task?.dispatchLog?.awbNumber?.toLowerCase().includes(term);
+    const matchesCourier = s.task?.dispatchLog?.courierName?.toLowerCase().includes(term);
+    return matchesSerial || matchesShop || matchesAwb || matchesCourier;
+  });
+
+  // Helper to render shipment/serial badges
+  const renderStatusBadge = (serial: any) => {
+    if (serial.status === "Defective") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-100">
+          <AlertTriangle size={12} /> Defective
+        </span>
+      );
+    }
+    if (serial.status === "Available") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100">
+          <CheckCircle size={12} /> In Stock
+        </span>
+      );
+    }
+    
+    // If shipped, read task's dispatchLog status
+    const trackingStatus = serial.task?.dispatchLog?.trackingStatus || "Shipped";
+    if (trackingStatus === "Delivered") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-500 text-white shadow-sm shadow-emerald-500/20">
+          <CheckCircle size={12} /> Delivered
+        </span>
+      );
+    }
+    if (trackingStatus === "In Transit") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-500 text-white shadow-sm shadow-amber-500/20">
+          <Truck size={12} /> In Transit
+        </span>
+      );
+    }
+    if (trackingStatus.toLowerCase().includes("rto")) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-rose-600 text-white shadow-sm shadow-rose-600/20 animate-pulse">
+          <RotateCcw size={12} /> RTO Return
+        </span>
+      );
+    }
+    if (trackingStatus === "Out for Delivery") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-sky-500 text-white shadow-sm shadow-sky-500/20">
+          <Truck size={12} /> Out for Delivery
+        </span>
+      );
+    }
+    
+    // Default Shipped
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-100">
+        <Clock size={12} /> Pending Ship
+      </span>
+    );
+  };
+
   return (
     <div className="p-6 md:p-8 bg-slate-50 min-h-screen">
       <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
+        
+        {/* Header Block */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-black text-slate-800 tracking-tight">Inventory Management</h1>
+            <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+              <Printer className="text-indigo-600" size={26} /> Inventory & Device Center
+            </h1>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
-              Track Hardware & Software Stock
+              Track Hardware Items, Serial Numbers, and Live Courier Dispatches
             </p>
           </div>
 
           <div className="flex gap-4">
-            <a href="/dispatch" className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-indigo-100 transition-colors">
-              Dispatch Dashboard
+            <a href="/dispatch" className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-indigo-100 transition-colors flex items-center">
+              Dispatch Dashboard ➔
             </a>
             <button 
               onClick={() => setShowAddModal(true)}
@@ -216,44 +321,194 @@ export default function InventoryDashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {loading ? (
-            <p className="text-slate-400 font-bold p-4 text-center col-span-3">Loading inventory...</p>
-          ) : items.length === 0 ? (
-            <p className="text-slate-400 font-bold p-4 text-center col-span-3">No inventory items found. Add one to get started.</p>
-          ) : (
-            items.map((item) => (
-              <div key={item.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider ${
-                      item.type === "HARDWARE" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"
-                    }`}>
-                      {item.type}
-                    </span>
-                    {item.sku && <span className="text-xs font-mono text-slate-400">{item.sku}</span>}
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-800 mb-1">{item.name}</h3>
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-slate-100 flex items-end justify-between">
-                  <div>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">In Stock</p>
-                    <p className={`text-3xl font-black ${item.quantity > 5 ? "text-slate-800" : "text-rose-600"}`}>
-                      {item.quantity}
-                    </p>
-                  </div>
-                  <button 
-                    onClick={() => handleOpenEditStock(item)}
-                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 uppercase tracking-wider"
-                  >
-                    Edit Stock
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
+        {/* Tab Controls */}
+        <div className="flex border-b border-slate-200 mb-6 gap-6">
+          <button
+            onClick={() => setActiveDashboardTab("stock")}
+            className={`pb-3 font-bold text-sm transition-all relative ${
+              activeDashboardTab === "stock"
+                ? "text-indigo-600 border-b-2 border-indigo-600"
+                : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            📦 Stock Overview
+          </button>
+          <button
+            onClick={() => setActiveDashboardTab("tracker")}
+            className={`pb-3 font-bold text-sm transition-all relative flex items-center gap-1.5 ${
+              activeDashboardTab === "tracker"
+                ? "text-indigo-600 border-b-2 border-indigo-600"
+                : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            🕵️‍♂️ Printer Tracking Dashboard
+          </button>
         </div>
+
+        {/* Tab 1: Stock Overview */}
+        {activeDashboardTab === "stock" && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {loading ? (
+              <p className="text-slate-400 font-bold p-4 text-center col-span-3">Loading inventory...</p>
+            ) : items.length === 0 ? (
+              <p className="text-slate-400 font-bold p-4 text-center col-span-3">No inventory items found. Add one to get started.</p>
+            ) : (
+              items.map((item) => (
+                <div key={item.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between hover:shadow-md transition-all duration-300">
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider ${
+                        item.type === "HARDWARE" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"
+                      }`}>
+                        {item.type}
+                      </span>
+                      {item.sku && <span className="text-xs font-mono text-slate-400">{item.sku}</span>}
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800 mb-1">{item.name}</h3>
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t border-slate-100 flex items-end justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">In Stock</p>
+                      <p className={`text-3xl font-black ${item.quantity > 5 ? "text-slate-800" : "text-rose-600"}`}>
+                        {item.quantity}
+                      </p>
+                    </div>
+                    <button 
+                      onClick={() => handleOpenEditStock(item)}
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-800 uppercase tracking-wider"
+                    >
+                      Edit Stock
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* Tab 2: Printer Tracking Dashboard */}
+        {activeDashboardTab === "tracker" && (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            {/* Toolbar */}
+            <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+              <div className="relative w-full sm:max-w-xs">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search Serial, Shop, AWB..."
+                  value={trackerSearch}
+                  onChange={(e) => setTrackerSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-white"
+                />
+              </div>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+                Total Devices Registered: {trackerSerials.length}
+              </p>
+            </div>
+
+            {/* Tracker Table */}
+            <div className="overflow-x-auto">
+              {loadingTracker ? (
+                <p className="text-slate-400 font-bold text-center py-8">Loading printer list...</p>
+              ) : filteredTrackerSerials.length === 0 ? (
+                <p className="text-slate-400 font-bold text-center py-8">No matching printer units found.</p>
+              ) : (
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200">
+                      <th className="p-4 font-black uppercase text-slate-400 tracking-widest">Serial Number</th>
+                      <th className="p-4 font-black uppercase text-slate-400 tracking-widest">Real-time Status</th>
+                      <th className="p-4 font-black uppercase text-slate-400 tracking-widest">Shipped Customer</th>
+                      <th className="p-4 font-black uppercase text-slate-400 tracking-widest">AWB & Tracking</th>
+                      <th className="p-4 font-black uppercase text-slate-400 tracking-widest text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredTrackerSerials.map((serial) => {
+                      const dispatch = serial.task?.dispatchLog;
+                      return (
+                        <tr key={serial.id} className="border-b hover:bg-slate-50/50 transition-colors">
+                          {/* 1. Serial number */}
+                          <td className="p-4 font-mono font-bold text-slate-800 text-sm">
+                            {serial.number}
+                          </td>
+                          {/* 2. Real-time Status */}
+                          <td className="p-4">
+                            {renderStatusBadge(serial)}
+                          </td>
+                          {/* 3. Customer */}
+                          <td className="p-4">
+                            {serial.task ? (
+                              <div>
+                                <p className="font-bold text-slate-700">{serial.task.shopName || serial.task.customerName}</p>
+                                <p className="text-[10px] text-slate-400 mt-0.5">ID: {serial.task.id.slice(-6)}</p>
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 italic">Unassigned (In stock)</span>
+                            )}
+                          </td>
+                          {/* 4. AWB details */}
+                          <td className="p-4">
+                            {dispatch ? (
+                              <div>
+                                <p className="font-bold text-slate-700">{dispatch.awbNumber}</p>
+                                <p className="text-[10px] text-indigo-600 mt-0.5 font-bold uppercase flex gap-1 items-center">
+                                  <span>{dispatch.courierName || "Courier"}</span>
+                                  <a href={`/dispatch/track?awb=${dispatch.awbNumber}`} className="hover:underline">
+                                    🔍 Live Track ↗
+                                  </a>
+                                </p>
+                              </div>
+                            ) : (
+                              <span className="text-slate-400">-</span>
+                            )}
+                          </td>
+                          {/* 5. Actions */}
+                          <td className="p-4 text-right">
+                            <div className="flex gap-2 justify-end items-center">
+                              {serial.task && (
+                                <a
+                                  href={`/team-board?task=${serial.task.id}`}
+                                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold uppercase rounded text-[10px] tracking-wider transition-colors"
+                                >
+                                  View Task
+                                </a>
+                              )}
+                              {serial.status === "Available" && (
+                                <button
+                                  onClick={() => handleUpdateSerialStatus(serial.id, "Defective")}
+                                  className="px-2 py-1 bg-rose-50 text-rose-700 border border-rose-100 rounded text-[10px] uppercase font-bold"
+                                >
+                                  Defective
+                                </button>
+                              )}
+                              {serial.status === "Defective" && (
+                                <button
+                                  onClick={() => handleUpdateSerialStatus(serial.id, "Available")}
+                                  className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded text-[10px] uppercase font-bold"
+                                >
+                                  Make Available
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleDeleteSerial(serial.id)}
+                                className="p-1 hover:bg-slate-200 text-slate-400 hover:text-rose-600 rounded transition-colors"
+                                title="Delete device"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Add Modal */}
