@@ -620,6 +620,7 @@ model SerialNumber {
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
   taskId          String?       @db.ObjectId
   task            Task?         @relation(fields: [taskId], references: [id])
+  remarks         String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }

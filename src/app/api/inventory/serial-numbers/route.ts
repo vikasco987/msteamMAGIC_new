@@ -129,7 +129,7 @@ export async function PATCH(req: Request) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { id, status, deleteAction } = body;
+    const { id, status, deleteAction, remarks } = body;
 
     if (!id) {
       return NextResponse.json({ error: "Serial ID is required" }, { status: 400 });
@@ -158,9 +158,13 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ success: true, message: "Serial deleted" }, { status: 200 });
     }
 
+    const updateData: any = {};
+    if (status !== undefined) updateData.status = status;
+    if (remarks !== undefined) updateData.remarks = remarks;
+
     const updated = await prisma.serialNumber.update({
       where: { id },
-      data: { status }
+      data: updateData
     });
 
     if (serial.status === "Available" && status !== "Available") {

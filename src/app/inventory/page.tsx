@@ -32,6 +32,10 @@ export default function InventoryDashboard() {
   const [loadingTracker, setLoadingTracker] = useState(false);
   const [trackerSearch, setTrackerSearch] = useState("");
 
+  // Remarks editing states
+  const [editingRemarksId, setEditingRemarksId] = useState<string | null>(null);
+  const [remarksInput, setRemarksInput] = useState("");
+
   const fetchInventory = async () => {
     try {
       setLoading(true);
@@ -214,6 +218,32 @@ export default function InventoryDashboard() {
       });
 
       if (res.ok) {
+        if (selectedItem) {
+          await fetchItemSerials(selectedItem.name);
+        }
+        if (activeDashboardTab === "tracker") {
+          await fetchTrackerSerials();
+        }
+        fetchInventory();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSaveRemarks = async (serialId: string) => {
+    try {
+      const res = await fetch("/api/inventory/serial-numbers", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: serialId,
+          remarks: remarksInput
+        })
+      });
+
+      if (res.ok) {
+        setEditingRemarksId(null);
         if (selectedItem) {
           await fetchItemSerials(selectedItem.name);
         }
@@ -421,6 +451,7 @@ export default function InventoryDashboard() {
                       <th className="p-4 font-black uppercase text-slate-400 tracking-widest">Real-time Status</th>
                       <th className="p-4 font-black uppercase text-slate-400 tracking-widest">Shipped Customer</th>
                       <th className="p-4 font-black uppercase text-slate-400 tracking-widest">AWB & Tracking</th>
+                      <th className="p-4 font-black uppercase text-slate-400 tracking-widest">Remarks / Notes</th>
                       <th className="p-4 font-black uppercase text-slate-400 tracking-widest text-right">Actions</th>
                     </tr>
                   </thead>
@@ -464,7 +495,51 @@ export default function InventoryDashboard() {
                               <span className="text-slate-400">-</span>
                             )}
                           </td>
-                          {/* 5. Actions */}
+                          {/* 5. Remarks */}
+                          <td className="p-4 max-w-[200px]">
+                            {editingRemarksId === serial.id ? (
+                              <div className="flex items-center gap-1.5">
+                                <input
+                                  type="text"
+                                  value={remarksInput}
+                                  onChange={(e) => setRemarksInput(e.target.value)}
+                                  className="p-1 border border-slate-200 rounded text-xs w-full bg-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium"
+                                  autoFocus
+                                />
+                                <button
+                                  onClick={() => handleSaveRemarks(serial.id)}
+                                  className="p-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded font-bold text-xs"
+                                  title="Save"
+                                >
+                                  ✓
+                                </button>
+                                <button
+                                  onClick={() => setEditingRemarksId(null)}
+                                  className="p-1 bg-slate-200 hover:bg-slate-300 text-slate-600 rounded font-bold text-xs"
+                                  title="Cancel"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ) : (
+                              <div
+                                onClick={() => {
+                                  setEditingRemarksId(serial.id);
+                                  setRemarksInput(serial.remarks || "");
+                                }}
+                                className="cursor-pointer text-slate-600 hover:text-indigo-600 transition-colors py-1 group flex items-center justify-between gap-1"
+                                title="Click to edit remark"
+                              >
+                                <span className={serial.remarks ? "font-medium" : "text-slate-300 italic"}>
+                                  {serial.remarks || "Add note..."}
+                                </span>
+                                <span className="opacity-0 group-hover:opacity-100 text-[10px] text-indigo-500 font-bold ml-1 transition-opacity shrink-0">
+                                  📝 Edit
+                                </span>
+                              </div>
+                            )}
+                          </td>
+                          {/* 6. Actions */}
                           <td className="p-4 text-right">
                             <div className="flex gap-2 justify-end items-center">
                               {serial.task && (
