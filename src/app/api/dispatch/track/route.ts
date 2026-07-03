@@ -18,6 +18,7 @@ export async function GET(req: Request) {
     let isTaskId = false;
     let previousDispatches: any[] = [];
     let activeAwb: string | null = null;
+    let customerPhone: string | null = null;
 
     // Check if it's a 24-char Task ID (ObjectId)
     if (/^[0-9a-fA-F]{24}$/.test(awb)) {
@@ -30,6 +31,7 @@ export async function GET(req: Request) {
         isTaskId = true;
         activeAwb = task.dispatchLog.awbNumber;
         previousDispatches = (task.customFields as any)?.previousDispatches || [];
+        customerPhone = task.phone || (task.customFields as any)?.phone || null;
         awb = task.dispatchLog.awbNumber;
       } else {
         return NextResponse.json({ error: "No shipment found for this Task ID" }, { status: 404 });
@@ -53,6 +55,7 @@ export async function GET(req: Request) {
         isTaskId: true,
         activeAwb,
         previousDispatches,
+        customerPhone,
         activeTracking: data
       }, { status: 200 });
     }

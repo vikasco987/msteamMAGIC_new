@@ -12,6 +12,7 @@ function TrackAWBContent() {
   const [loading, setLoading] = useState(false);
   const [trackingData, setTrackingData] = useState<any | null>(null);
   const [previousDispatches, setPreviousDispatches] = useState<any[]>([]);
+  const [customerPhone, setCustomerPhone] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [initialFetchDone, setInitialFetchDone] = useState(false);
 
@@ -34,8 +35,10 @@ function TrackAWBContent() {
       if (data.isTaskId) {
         finalData = data.activeTracking;
         setPreviousDispatches(data.previousDispatches || []);
+        setCustomerPhone(data.customerPhone || null);
       } else {
         // If tracking by a direct AWB, don't clear previous dispatches unless they differ
+        setCustomerPhone(null);
       }
       
       if (finalData.Error) {
@@ -153,6 +156,11 @@ function TrackAWBContent() {
                 {trackingData.Consignee?.City && (
                   <p className="text-xs text-slate-400 mt-1">
                     {trackingData.Consignee.City}, {trackingData.Consignee.State} - {trackingData.Consignee.PinCode}
+                  </p>
+                )}
+                {customerPhone && (
+                  <p className="text-sm font-semibold text-slate-600 mt-3 flex items-center gap-1.5 pt-2 border-t border-slate-200/50">
+                    <span>📞</span> {customerPhone}
                   </p>
                 )}
               </div>
