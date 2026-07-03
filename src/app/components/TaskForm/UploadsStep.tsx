@@ -2338,41 +2338,23 @@ export default function UploadsStep(props: UploadsStepProps) {
                       <p className="text-xs text-slate-400 font-bold animate-pulse py-2">Loading available serial numbers...</p>
                     ) : (
                       <div className="flex flex-col gap-2">
-                        <select
+                        <input
+                          list="available-serials"
                           className={inputClass}
-                          value={isCustomSerial ? "__custom__" : serialNumber}
-                          onChange={(e) => {
-                            if (e.target.value === "__custom__") {
-                              setIsCustomSerial(true);
-                              setSerialNumber("");
-                            } else {
-                              setIsCustomSerial(false);
-                              setSerialNumber(e.target.value);
-                            }
-                          }}
-                        >
-                          <option value="">-- Select Available Serial Number (Optional) --</option>
+                          placeholder="Search or enter Serial Number (Optional)"
+                          value={serialNumber}
+                          onChange={(e) => setSerialNumber(e.target.value)}
+                        />
+                        <datalist id="available-serials">
                           {availableSerials.map((s) => (
                             <option key={s.id} value={s.number}>
                               {s.number} (Available)
                             </option>
                           ))}
-                          <option value="__custom__">+ Add Custom/New Serial Number...</option>
-                        </select>
-
-                        {isCustomSerial && (
-                          <div className="animate-in fade-in duration-300">
-                            <input
-                              className={inputClass}
-                              placeholder="Enter custom serial number"
-                              value={serialNumber}
-                              onChange={(e) => setSerialNumber(e.target.value)}
-                            />
-                            <p className="text-[10px] text-amber-600 font-bold mt-1">
-                              ⚠️ Note: This serial number will be automatically registered and marked as shipped.
-                            </p>
-                          </div>
-                        )}
+                        </datalist>
+                        <p className="text-[10px] text-slate-500 font-medium mt-1">
+                          💡 You can select an available serial number or type a new one to register it automatically.
+                        </p>
                       </div>
                     )}
                   </div>
