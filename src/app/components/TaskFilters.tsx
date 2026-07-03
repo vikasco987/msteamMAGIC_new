@@ -1284,6 +1284,7 @@ const ALL_COLUMNS = [
   "paymentProofs",
   "afe",
   "tracking",
+  "trackingStatus",
 ];
 
 // FIX: Updated `value` fields to be plain text (no emojis)

@@ -265,6 +265,7 @@ export async function POST(req: NextRequest) {
       if (f === "afe") {
         if (!customFieldsUpdate) customFieldsUpdate = {};
         customFieldsUpdate.afe = v;
+        customFieldsUpdate.costPrice = v !== null ? String(v) : null;
       } else {
         // @ts-ignore
         dataToUpdate[f] = v;

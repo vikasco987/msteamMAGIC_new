@@ -6770,6 +6770,7 @@ export default function TaskTableView({
     "paymentProofs",
     "afe",
     "tracking",
+    "trackingStatus",
   ]);
 
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
@@ -6862,7 +6863,7 @@ export default function TaskTableView({
 
   const handleInputChange = (
     taskId: string,
-    field: "amount" | "received",
+    field: "amount" | "received" | "afe",
     value: number
   ) => {
     const key = `${taskId}-${field}`;
@@ -6985,7 +6986,7 @@ export default function TaskTableView({
 
   const handleBlur = async (
     taskId: string,
-    field: "amount" | "received"
+    field: "amount" | "received" | "afe"
   ) => {
     // Only allow admin to update amount or received
     if ((field === "amount" || field === "received") && role !== "master") {
@@ -7006,7 +7007,9 @@ export default function TaskTableView({
     const originalValue =
       field === "amount"
         ? Number(originalTask?.amount) || 0
-        : Number(originalTask?.received) || 0;
+        : field === "received"
+        ? Number(originalTask?.received) || 0
+        : Number(originalTask?.customFields?.afe || originalTask?.customFields?.costPrice) || 0;
 
     if (typeof value === "number" && !isNaN(value) && value !== originalValue) {
       setIsSaving(key);
@@ -7042,17 +7045,56 @@ export default function TaskTableView({
           // Optimistic update: Update local state immediately
           setLocalTasks((prevTasks) =>
             prevTasks.map((task) =>
-              task.id === taskId ? { ...task, [field]: value } : task
+              task.id === taskId
+                ? {
+                    ...task,
+                    ...(field === "afe"
+                      ? {
+                          customFields: {
+                            ...(task.customFields as any || {}),
+                            afe: value,
+                            costPrice: String(value),
+                          },
+                        }
+                      : { [field]: value }),
+                  }
+                : task
             )
           );
           setFilteredTasks((prevFilteredTasks) =>
             prevFilteredTasks.map((task) =>
-              task.id === taskId ? { ...task, [field]: value } : task
+              task.id === taskId
+                ? {
+                    ...task,
+                    ...(field === "afe"
+                      ? {
+                          customFields: {
+                            ...(task.customFields as any || {}),
+                            afe: value,
+                            costPrice: String(value),
+                          },
+                        }
+                      : { [field]: value }),
+                  }
+                : task
             )
           );
           // No full refetch needed, but if onTasksUpdate is provided, call it with the updated localTasks
           onTasksUpdate?.(localTasks.map((task) =>
-            task.id === taskId ? { ...task, [field]: value } : task
+            task.id === taskId
+              ? {
+                  ...task,
+                  ...(field === "afe"
+                    ? {
+                        customFields: {
+                          ...(task.customFields as any || {}),
+                          afe: value,
+                          costPrice: String(value),
+                        },
+                      }
+                    : { [field]: value }),
+                }
+              : task
           ));
 
           setEditedValues((prev) => {
@@ -7275,6 +7317,11 @@ export default function TaskTableView({
                   Tracking
                 </th>
               )}
+              {visibleColumns.includes("trackingStatus") && (
+                <th className="px-3 py-2 text-xs font-bold tracking-wide text-gray-700 border border-gray-200 text-center w-32">
+                  Shipment Status
+                </th>
+              )}
             </tr>
           </thead>
 
@@ -7314,6 +7361,15 @@ export default function TaskTableView({
                 const pending = amount - received;
                 const rowNumber = (currentPage - 1) * limit + index + 1;
                 const hasNotes = (notesMap[task.id]?.length || 0) > 0;
+                const isPrinterTask = 
+                  task.title?.toLowerCase().includes("printer") || 
+                  task.title?.toLowerCase().includes("printer + software") || 
+                  task.activeTab === "printer" || 
+                  task.activeTab === "printer_software" ||
+                  task.customFields?.activeTab === "printer" ||
+                  task.customFields?.activeTab === "printer_software";
+                const awbNumber = task.customFields?.awbNumber || task.customFields?.awb;
+                const shipmentStatus = (task as any).dispatchLog?.trackingStatus || "—";
 
                 return (
                   <tr
@@ -7646,14 +7702,48 @@ export default function TaskTableView({
                     )}
                     {visibleColumns.includes("afe") && (
                       <td className="border border-gray-200 px-3 py-2 whitespace-nowrap text-right font-medium text-gray-700">
-                        {task.customFields?.afe !== undefined && task.customFields.afe !== "" ? `₹${Number(task.customFields.afe).toLocaleString("en-IN")}` : "—"}
+                        {isPrinterTask ? (
+                          editMode ? (
+                            <div className="relative">
+                              <input
+                                type="number"
+                                value={
+                                  editedValues[`${task.id}-afe`] !== undefined
+                                    ? (isNaN(editedValues[`${task.id}-afe`]) ? "" : editedValues[`${task.id}-afe`])
+                                    : (task.customFields?.afe || task.customFields?.costPrice || "")
+                                }
+                                onChange={(e) =>
+                                  handleInputChange(
+                                    task.id,
+                                    "afe",
+                                    parseFloat(e.target.value)
+                                  )
+                                }
+                                onBlur={(e) => handleBlur(task.id, "afe")}
+                                className="w-full p-1 border border-gray-300 rounded-md text-right text-gray-900 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                placeholder="AFE"
+                              />
+                              {isSaving === `${task.id}-afe` && (
+                                <FaSpinner className="absolute right-2 top-1/2 transform -translate-y-1/2 animate-spin text-blue-500" />
+                              )}
+                            </div>
+                          ) : (
+                            (task.customFields?.afe || task.customFields?.costPrice) ? (
+                              `₹${Number(task.customFields?.afe || task.customFields?.costPrice).toLocaleString("en-IN")}`
+                            ) : (
+                              "—"
+                            )
+                          )
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
                       </td>
                     )}
                     {visibleColumns.includes("tracking") && (
                       <td className="border border-gray-200 px-3 py-2 whitespace-nowrap text-center">
-                        {task.title?.toLowerCase().includes("printer") ? (
+                        {isPrinterTask && (awbNumber || task.id) ? (
                           <a 
-                            href={`/dispatch/track?awb=${task.id}`} 
+                            href={`/dispatch/track?awb=${awbNumber || task.id}`} 
                             target="_blank" 
                             rel="noreferrer"
                             className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline flex items-center justify-center gap-1"
@@ -7662,6 +7752,30 @@ export default function TaskTableView({
                           </a>
                         ) : (
                           <span className="text-gray-400 text-xs">—</span>
+                        )}
+                      </td>
+                    )}
+                    {visibleColumns.includes("trackingStatus") && (
+                      <td className="border border-gray-200 px-3 py-2 whitespace-nowrap text-center font-semibold">
+                        {isPrinterTask ? (
+                          shipmentStatus !== "—" ? (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold
+                              ${
+                                shipmentStatus.toLowerCase() === "delivered" 
+                                  ? "bg-green-100 text-green-700" 
+                                  : shipmentStatus.toLowerCase() === "rto" 
+                                  ? "bg-red-100 text-red-700" 
+                                  : shipmentStatus.toLowerCase() === "pending"
+                                  ? "bg-gray-100 text-gray-700"
+                                  : "bg-blue-100 text-blue-700"
+                              }`}>
+                              {shipmentStatus}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )
+                        ) : (
+                          <span className="text-gray-400">—</span>
                         )}
                       </td>
                     )}
