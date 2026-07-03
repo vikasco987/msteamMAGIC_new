@@ -271,6 +271,31 @@ export default function InventoryDashboard() {
     return matchesSerial || matchesShop || matchesAwb || matchesCourier;
   });
 
+  // --- Summary Metrics Calculations ---
+  const totalRegistered = trackerSerials.length;
+  const inStockAvailable = trackerSerials.filter(s => s.status === "Available").length;
+  const defectiveCount = trackerSerials.filter(s => s.status === "Defective").length;
+  
+  let inTransitCount = 0;
+  let deliveredCount = 0;
+  let rtoCount = 0;
+  let pendingShipCount = 0;
+
+  trackerSerials.forEach(s => {
+    if (s.status === "Shipped") {
+      const trackingStatus = s.task?.dispatchLog?.trackingStatus || "Pending";
+      if (trackingStatus === "Delivered") {
+        deliveredCount++;
+      } else if (trackingStatus === "In Transit" || trackingStatus === "Out for Delivery") {
+        inTransitCount++;
+      } else if (trackingStatus.toLowerCase().includes("rto")) {
+        rtoCount++;
+      } else {
+        pendingShipCount++;
+      }
+    }
+  });
+
   // Helper to render shipment/serial badges
   const renderStatusBadge = (serial: any) => {
     if (serial.status === "Defective") {
@@ -439,6 +464,34 @@ export default function InventoryDashboard() {
               <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">
                 Total Devices Registered: {trackerSerials.length}
               </p>
+            </div>
+
+            {/* Metric Cards Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-4 p-5 border-b border-slate-100 bg-slate-50/20">
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Devices</p>
+                <p className="text-2xl font-black text-slate-800 mt-2">{totalRegistered}</p>
+              </div>
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">In Stock</p>
+                <p className="text-2xl font-black text-emerald-700 mt-2">{inStockAvailable}</p>
+              </div>
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">In Transit</p>
+                <p className="text-2xl font-black text-indigo-700 mt-2">{inTransitCount}</p>
+              </div>
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <p className="text-[10px] font-black text-sky-600 uppercase tracking-widest">Delivered</p>
+                <p className="text-2xl font-black text-sky-700 mt-2">{deliveredCount}</p>
+              </div>
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest">RTO Return</p>
+                <p className="text-2xl font-black text-rose-700 mt-2">{rtoCount}</p>
+              </div>
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Defective</p>
+                <p className="text-2xl font-black text-amber-700 mt-2">{defectiveCount}</p>
+              </div>
             </div>
 
             {/* Tracker Table */}
