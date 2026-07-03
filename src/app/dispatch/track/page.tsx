@@ -79,6 +79,28 @@ function TrackAWBContent() {
     fetchTracking(awb);
   };
 
+  const getDeliveryAttemptsInfo = () => {
+    if (!trackingData || !Array.isArray(trackingData.Scans)) return null;
+
+    const outForDeliveryScans = trackingData.Scans.filter((scanWrap: any) => {
+      const scanDetail = scanWrap.ScanDetail?.Scan || "";
+      const scanInstructions = scanWrap.ScanDetail?.Instructions || "";
+      return scanDetail.toLowerCase().includes("out for delivery") || 
+             scanInstructions.toLowerCase().includes("out for delivery");
+    });
+
+    const attemptsMade = outForDeliveryScans.length;
+    const maxAttempts = 3;
+    const remainingAttempts = Math.max(0, maxAttempts - attemptsMade);
+    const isLastAttempt = remainingAttempts === 0 && !trackingData.Status?.Status?.toLowerCase().includes("delivered");
+
+    return {
+      attemptsMade,
+      remainingAttempts,
+      isLastAttempt
+    };
+  };
+
   const getExpectedDeliveryBadge = () => {
     if (!trackingData?.ExpectedDeliveryDate) return null;
     try {
@@ -115,13 +137,14 @@ function TrackAWBContent() {
     return null;
   };
 
-  const getStepIndex = (statusStr: string) => {
+  const getStepIndex = (statusStr: string, instructionsStr: string) => {
     const s = (statusStr || "").toLowerCase();
-    if (s.includes("delivered")) return 5;
-    if (s.includes("rto") || s.includes("return")) return 5;
-    if (s.includes("out for delivery")) return 4;
-    if (s.includes("in transit") || s.includes("transit") || s.includes("scanned")) return 3;
-    if (s.includes("dispatched") || s.includes("manifest")) return 2;
+    const inst = (instructionsStr || "").toLowerCase();
+    if (s.includes("delivered") || inst.includes("delivered")) return 5;
+    if (s.includes("rto") || s.includes("return") || inst.includes("rto") || inst.includes("return")) return 5;
+    if (s.includes("out for delivery") || inst.includes("out for delivery")) return 4;
+    if (s.includes("in transit") || s.includes("transit") || s.includes("scanned") || inst.includes("in transit") || inst.includes("transit") || inst.includes("scanned")) return 3;
+    if (s.includes("dispatched") || s.includes("manifest") || inst.includes("dispatched") || inst.includes("manifest")) return 2;
     return 1;
   };
 
@@ -212,8 +235,9 @@ function TrackAWBContent() {
           {/* Step Progress Tracker */}
           {(() => {
             const currentStatus = trackingData.Status?.Status || "";
-            const activeStep = getStepIndex(currentStatus);
-            const isRTO = currentStatus.toLowerCase().includes("rto") || currentStatus.toLowerCase().includes("return");
+            const currentInstructions = trackingData.Status?.Instructions || "";
+            const activeStep = getStepIndex(currentStatus, currentInstructions);
+            const isRTO = currentStatus.toLowerCase().includes("rto") || currentStatus.toLowerCase().includes("return") || currentInstructions.toLowerCase().includes("rto") || currentInstructions.toLowerCase().includes("return");
             
             const steps = [
               { name: "Ordered", icon: "📝" },
@@ -359,6 +383,51 @@ function TrackAWBContent() {
                       {trackingData.PickUpDate ? format(new Date(trackingData.PickUpDate), "dd MMM, yy") : "N/A"}
                     </p>
                   </div>
+                  {(() => {
+                    const attemptsInfo = getDeliveryAttemptsInfo();
+                    if (!attemptsInfo) return null;
+                    return (
+                      <div className="col-span-2 border-t border-slate-200/50 pt-4 mt-2">
+                        <div className="flex justify-between items-center mb-2">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Delivery Attempts</p>
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider uppercase
+                            ${attemptsInfo.isLastAttempt 
+                              ? "bg-rose-50 text-rose-600 border border-rose-100 animate-pulse" 
+                              : "bg-slate-100 text-slate-600 border border-slate-200"
+                            }`}>
+                            {attemptsInfo.attemptsMade} / 3 Attempts
+                          </span>
+                        </div>
+                        
+                        {/* Progress Bar of attempts */}
+                        <div className="flex gap-1.5 mt-1.5">
+                          {[1, 2, 3].map((num) => {
+                            const isAttempted = num <= attemptsInfo.attemptsMade;
+                            return (
+                              <div 
+                                key={num} 
+                                className={`h-2 flex-1 rounded-full ${
+                                  isAttempted 
+                                    ? (attemptsInfo.isLastAttempt ? 'bg-rose-500 animate-pulse' : 'bg-indigo-600') 
+                                    : 'bg-slate-200'
+                                }`}
+                              ></div>
+                            );
+                          })}
+                        </div>
+
+                        {attemptsInfo.isLastAttempt && (
+                          <div className="mt-3 bg-rose-50 text-rose-700 p-2.5 rounded-xl border border-rose-100 text-[11px] font-bold leading-normal flex items-start gap-2">
+                            <span className="text-sm mt-0.5">⚠️</span>
+                            <div>
+                              <p className="font-black text-rose-800">Final Delivery Attempt!</p>
+                              <p className="font-medium text-rose-600 mt-0.5">3 attempts have been made. Please contact the consignee immediately to prevent RTO return.</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
