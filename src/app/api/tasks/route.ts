@@ -832,6 +832,19 @@ export async function POST(req: NextRequest) {
     } = body.customFields as CustomFieldsInput ?? {}; // ✅ Added type assertion for better type safety
 
 
+    if (serialNumber) {
+      const cleanSerial = serialNumber.trim();
+      const existing = await prisma.serialNumber.findUnique({
+        where: { number: cleanSerial }
+      });
+      if (existing && existing.status !== "Available") {
+        return NextResponse.json(
+          { error: `⚠️ Serial number ${cleanSerial} is already shipped or registered in inventory!` },
+          { status: 400 }
+        );
+      }
+    }
+
     const safeAttachments = body.attachments ?? [];
 
     // ✅ Fix: Replace 'any' with 'Field' and add type guard for 'url'

@@ -112,6 +112,13 @@ export async function POST(req: Request) {
       });
     }
 
+    if (addedCount === 0 && errors.length > 0) {
+      return NextResponse.json({
+        success: false,
+        error: `⚠️ Duplicate Serial Number: ${errors.map(e => e.replace("Serial ", "").replace(" already exists.", "")).join(", ")} already exists!`
+      }, { status: 400 });
+    }
+
     return NextResponse.json({
       success: true,
       addedCount,

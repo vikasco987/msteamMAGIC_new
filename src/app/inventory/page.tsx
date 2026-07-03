@@ -162,6 +162,10 @@ export default function InventoryDashboard() {
       });
 
       const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "⚠️ Failed to add serial numbers.");
+        return;
+      }
       if (data.success) {
         setSerialNumbersText("");
         await fetchItemSerials(selectedItem.name);
