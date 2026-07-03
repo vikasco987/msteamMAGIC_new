@@ -136,6 +136,47 @@ export const TaskTableBody: React.FC<TaskTableBodyProps> = ({
                 </td>
               );
             }
+            if (col === "attemptsLeft") {
+              const isPrinterTask = task.title?.toLowerCase().includes("printer") || 
+                                    task.title?.toLowerCase().includes("printer + software") || 
+                                    task.activeTab === "printer" || 
+                                    task.activeTab === "printer_software" ||
+                                    task.customFields?.activeTab === "printer" ||
+                                    task.customFields?.activeTab === "printer_software";
+              
+              if (!isPrinterTask) {
+                return <td key={col} className="border px-3 py-2 text-center text-gray-400">—</td>;
+              }
+
+              const attemptsMade = (task as any).dispatchLog?.attemptsMade ?? 0;
+              const shipmentStatus = (task as any).dispatchLog?.trackingStatus?.toLowerCase() || "";
+              const maxAttempts = 3;
+              const remaining = Math.max(0, maxAttempts - attemptsMade);
+              
+              // If Delivered or RTO, maybe don't highlight attempts left, just show them or -
+              if (shipmentStatus === "delivered" || shipmentStatus === "rto") {
+                return <td key={col} className="border px-3 py-2 text-center text-gray-400">—</td>;
+              }
+
+              let bgColor = "bg-transparent";
+              let textColor = "text-gray-700 font-medium";
+              
+              if (remaining === 2) {
+                bgColor = "bg-orange-100";
+                textColor = "text-orange-800 font-bold animate-pulse";
+              } else if (remaining === 1 || remaining === 0) {
+                bgColor = "bg-red-100";
+                textColor = "text-red-800 font-bold animate-pulse";
+              }
+
+              return (
+                <td key={col} className={`border px-3 py-2 text-center transition-colors ${bgColor}`}>
+                  <span className={textColor}>
+                    {remaining} Left
+                  </span>
+                </td>
+              );
+            }
             if (col === "location") {
               const locationText = task.customFields?.location;
               return (

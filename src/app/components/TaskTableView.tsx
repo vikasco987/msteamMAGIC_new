@@ -7367,6 +7367,11 @@ export default function TaskTableView({
                   Shipment Status
                 </th>
               )}
+              {visibleColumns.includes("attemptsLeft") && (
+                <th className="px-3 py-2 text-xs font-bold tracking-wide text-gray-700 border border-gray-200 text-center w-24">
+                  Attempts
+                </th>
+              )}
             </tr>
           </thead>
 
@@ -7868,6 +7873,39 @@ export default function TaskTableView({
                         )}
                       </td>
                     )}
+                    {visibleColumns.includes("attemptsLeft") && (() => {
+                      if (!isPrinterTask) {
+                        return <td className="border border-gray-200 px-3 py-2 whitespace-nowrap text-center text-gray-400">—</td>;
+                      }
+
+                      const attemptsMade = (task as any).dispatchLog?.attemptsMade ?? 0;
+                      const statusLower = shipmentStatus?.toLowerCase() || "";
+                      const maxAttempts = 3;
+                      const remaining = Math.max(0, maxAttempts - attemptsMade);
+                      
+                      if (statusLower === "delivered" || statusLower === "rto" || statusLower === "—") {
+                        return <td className="border border-gray-200 px-3 py-2 whitespace-nowrap text-center text-gray-400">—</td>;
+                      }
+
+                      let bgColor = "bg-transparent";
+                      let textColor = "text-gray-700 font-medium";
+                      
+                      if (remaining === 2) {
+                        bgColor = "bg-orange-100";
+                        textColor = "text-orange-800 font-bold animate-pulse";
+                      } else if (remaining === 1 || remaining === 0) {
+                        bgColor = "bg-red-100";
+                        textColor = "text-red-800 font-bold animate-pulse";
+                      }
+
+                      return (
+                        <td className={`border border-gray-200 px-3 py-2 whitespace-nowrap text-center transition-colors ${bgColor}`}>
+                          <span className={textColor}>
+                            {remaining} Left
+                          </span>
+                        </td>
+                      );
+                    })()}
                   </tr>
                 );
               })

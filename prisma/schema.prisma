@@ -598,6 +598,7 @@ model DispatchLog {
   courierName     String?  // e.g., "Delhivery", "BlueDart"
   trackingStatus  String   @default("Pending") // Pending, In Transit, Delivered, RTO
   dispatchDate    DateTime?
+  attemptsMade    Int      @default(0)
 
   inventoryItemId String   @db.ObjectId
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])

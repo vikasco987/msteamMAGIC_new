@@ -53,20 +53,26 @@ export async function POST(req: Request) {
           const shipmentData = data.ShipmentData[0].Shipment;
           const status = shipmentData?.Status?.Status;
           const instruction = shipmentData?.Status?.Instructions;
+          const scans = shipmentData?.Scans || [];
+          const outForDeliveryScans = scans.filter((s: any) => s.Scan?.Scan?.toLowerCase().includes("out for delivery"));
+          const attemptsMade = outForDeliveryScans.length;
 
-          if (status && status !== dispatch.trackingStatus) {
+          if ((status && status !== dispatch.trackingStatus) || attemptsMade !== (dispatch as any).attemptsMade) {
             await prisma.dispatchLog.update({
               where: { id: dispatch.id },
               data: {
-                trackingStatus: status,
-                history: {
-                  push: {
-                    status: status,
-                    changedBy: "Delhivery System Sync",
-                    changedAt: new Date().toISOString(),
-                    remarks: instruction
+                trackingStatus: status || dispatch.trackingStatus,
+                attemptsMade: attemptsMade,
+                ...(status && status !== dispatch.trackingStatus ? {
+                  history: {
+                    push: {
+                      status: status,
+                      changedBy: "Delhivery System Sync",
+                      changedAt: new Date().toISOString(),
+                      remarks: instruction
+                    }
                   }
-                }
+                } : {})
               }
             });
             updatedCount++;
