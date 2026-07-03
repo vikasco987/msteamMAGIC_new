@@ -149,8 +149,9 @@ function TrackAWBContent() {
                 <h2 className="text-3xl font-black text-white">{trackingData.Status?.Status || "Unknown"}</h2>
                 <p className="text-slate-300 font-medium mt-2 max-w-md">{trackingData.Status?.Instructions || ""}</p>
                 {trackingData.ExpectedDeliveryDate && (
-                  <p className="text-emerald-400 font-bold text-sm mt-3 flex items-center gap-1.5 bg-emerald-950/40 border border-emerald-500/25 px-3 py-1.5 rounded-xl w-fit">
-                    <span>📅</span> Expected Delivery: {format(new Date(trackingData.ExpectedDeliveryDate), "dd MMM yyyy")}
+                  <p className="text-emerald-400 font-bold text-sm mt-3 flex items-center gap-2 bg-emerald-950/40 border border-emerald-500/25 px-3 py-1.5 rounded-xl w-fit">
+                    <span>📅 Expected Delivery: {format(new Date(trackingData.ExpectedDeliveryDate), "dd MMM yyyy")}</span>
+                    <span className="inline-block px-1 py-0.2 text-[8px] font-black tracking-widest uppercase bg-emerald-900/60 text-emerald-300 rounded border border-emerald-800">Delhivery API</span>
                   </p>
                 )}
               </div>
@@ -168,45 +169,73 @@ function TrackAWBContent() {
                 <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2">
                   <span>👤</span> Consignee Details
                 </h3>
-                <p className="font-bold text-slate-700 text-lg mb-1">
-                  {trackingData.Consignee?.Name || "N/A"}
-                  {(shopName || outletName) && (
-                    <span className="text-indigo-600 font-extrabold text-sm block mt-0.5">
-                      🏬 {shopName || outletName}
-                    </span>
-                  )}
-                </p>
-                <p className="text-sm text-slate-500">{trackingData.Destination || "N/A"}</p>
-                {trackingData.Consignee?.City && (
-                  <p className="text-xs text-slate-400 mt-1">
-                    {trackingData.Consignee.City}, {trackingData.Consignee.State} - {trackingData.Consignee.PinCode}
-                  </p>
-                )}
-                {(customerPhone || customerEmail) && (
-                  <div className="mt-3 pt-3 border-t border-slate-200/50 space-y-1.5">
-                    {customerPhone && (
-                      <p className="text-sm font-semibold text-slate-600 flex items-center gap-1.5">
-                        <span>📞</span> {customerPhone}
-                      </p>
-                    )}
-                    {customerEmail && (
-                      <p className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
-                        <span>✉️</span> {customerEmail}
+                <div className="space-y-4">
+                  {/* Name from Delhivery */}
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-slate-700 text-lg">{trackingData.Consignee?.Name || "N/A"}</p>
+                      <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider bg-sky-50 text-sky-600 border border-sky-100/80 rounded">Delhivery</span>
+                    </div>
+                    {/* Destination/Address from Delhivery */}
+                    <p className="text-sm text-slate-500 mt-1">{trackingData.Destination || "N/A"}</p>
+                    {trackingData.Consignee?.City && (
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {trackingData.Consignee.City}, {trackingData.Consignee.State} - {trackingData.Consignee.PinCode}
                       </p>
                     )}
                   </div>
-                )}
+
+                  {/* ShopName from Task DB */}
+                  {(shopName || outletName) && (
+                    <div className="pt-2 border-t border-slate-200/50">
+                      <div className="flex items-center gap-2">
+                        <span className="text-indigo-600 font-extrabold text-sm flex items-center gap-1">
+                          🏬 {shopName || outletName}
+                        </span>
+                        <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-600 border border-indigo-100/80 rounded">Task DB</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Contact/Phone/Email from Task DB */}
+                  {(customerPhone || customerEmail) && (
+                    <div className="pt-3 border-t border-slate-200/50 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Local Database Info</p>
+                        <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-600 border border-indigo-100/80 rounded">Task DB</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {customerPhone && (
+                          <p className="text-sm font-semibold text-slate-600 flex items-center gap-1.5">
+                            <span>📞</span> {customerPhone}
+                          </p>
+                        )}
+                        {customerEmail && (
+                          <p className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
+                            <span>✉️</span> {customerEmail}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               
               <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
-                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2">
-                  <span>📝</span> Shipment Info
-                </h3>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                    <span>📝</span> Shipment Info
+                  </h3>
+                  <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider bg-sky-50 text-sky-600 border border-sky-100/80 rounded">Delhivery</span>
+                </div>
                 <div className="grid grid-cols-2 gap-y-4">
                   {productTitle && (
-                    <div className="col-span-2 border-b border-slate-200/50 pb-2 mb-1">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Product / Item</p>
-                      <p className="font-extrabold text-slate-800 text-sm">{productTitle}</p>
+                    <div className="col-span-2 border-b border-slate-200/50 pb-2 mb-1 flex justify-between items-start">
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Product / Item</p>
+                        <p className="font-extrabold text-slate-800 text-sm">{productTitle}</p>
+                      </div>
+                      <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-600 border border-indigo-100/80 rounded">Task DB</span>
                     </div>
                   )}
                   <div>
