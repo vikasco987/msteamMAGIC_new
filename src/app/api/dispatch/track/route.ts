@@ -44,6 +44,23 @@ export async function GET(req: Request) {
       } else {
         return NextResponse.json({ error: "No shipment found for this Task ID" }, { status: 404 });
       }
+    } else {
+      // It's a direct AWB. Check if we have a matching DispatchLog with a task in the database
+      const dispatchLog = await prisma.dispatchLog.findUnique({
+        where: { awbNumber: awb },
+        include: { task: true }
+      });
+
+      if (dispatchLog && dispatchLog.task) {
+        isTaskId = true; // Set this to true so the frontend loads the task details
+        activeAwb = dispatchLog.awbNumber;
+        previousDispatches = (dispatchLog.task.customFields as any)?.previousDispatches || [];
+        customerPhone = dispatchLog.task.phone || (dispatchLog.task.customFields as any)?.phone || null;
+        customerEmail = dispatchLog.task.email || (dispatchLog.task.customFields as any)?.email || null;
+        productTitle = dispatchLog.task.title || null;
+        shopName = dispatchLog.task.shopName || (dispatchLog.task.customFields as any)?.shopName || null;
+        outletName = dispatchLog.task.outletName || (dispatchLog.task.customFields as any)?.outletName || null;
+      }
     }
 
     const DELHIVERY_API_TOKEN = process.env.DELHIVERY_API_TOKEN;
