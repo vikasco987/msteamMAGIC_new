@@ -1898,6 +1898,8 @@ interface UploadsStepProps {
   setDeliveryCharge: (value: string) => void;
   costPrice: string;
   setCostPrice: (value: string) => void;
+  serialNumber: string;
+  setSerialNumber: (value: string) => void;
   fullAddress: string;
   city: string;
   state: string;
@@ -1930,7 +1932,7 @@ export default function UploadsStep(props: UploadsStepProps) {
     fullAddress, setFullAddress, city, setCity, state, setState,
     country, setCountry, pincode, setPincode, awbNumber, setAwbNumber,
     softwareDuration, setSoftwareDuration, deliveryCharge, setDeliveryCharge,
-    costPrice, setCostPrice, step
+    costPrice, setCostPrice, serialNumber, setSerialNumber, step
   } = props;
 
   const [suggestions, setSuggestions] = useState<any[]>([]);
@@ -1940,6 +1942,28 @@ export default function UploadsStep(props: UploadsStepProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [aiFiles, setAiFiles] = useState<File[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const [availableSerials, setAvailableSerials] = useState<any[]>([]);
+  const [loadingSerials, setLoadingSerials] = useState(false);
+  const [isCustomSerial, setIsCustomSerial] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === "printer" || activeTab === "printer_software") {
+      const loadSerials = async () => {
+        try {
+          setLoadingSerials(true);
+          const res = await fetch("/api/inventory/serial-numbers?itemName=Printer&status=Available");
+          const data = await res.json();
+          setAvailableSerials(data.serialNumbers || []);
+        } catch (e) {
+          console.error("Failed to load serial numbers", e);
+        } finally {
+          setLoadingSerials(false);
+        }
+      };
+      loadSerials();
+    }
+  }, [activeTab]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -2307,6 +2331,50 @@ export default function UploadsStep(props: UploadsStepProps) {
                   <div className="md:col-span-2">
                     <label className={labelClass}>📦 AWB Tracking Number *</label>
                     <input className={inputClass} placeholder="Enter AWB Tracking Number" value={awbNumber} onChange={e => setAwbNumber(e.target.value)} required />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className={labelClass}>🏷️ Printer Serial Number</label>
+                    {loadingSerials ? (
+                      <p className="text-xs text-slate-400 font-bold animate-pulse py-2">Loading available serial numbers...</p>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        <select
+                          className={inputClass}
+                          value={isCustomSerial ? "__custom__" : serialNumber}
+                          onChange={(e) => {
+                            if (e.target.value === "__custom__") {
+                              setIsCustomSerial(true);
+                              setSerialNumber("");
+                            } else {
+                              setIsCustomSerial(false);
+                              setSerialNumber(e.target.value);
+                            }
+                          }}
+                        >
+                          <option value="">-- Select Available Serial Number (Optional) --</option>
+                          {availableSerials.map((s) => (
+                            <option key={s.id} value={s.number}>
+                              {s.number} (Available)
+                            </option>
+                          ))}
+                          <option value="__custom__">+ Add Custom/New Serial Number...</option>
+                        </select>
+
+                        {isCustomSerial && (
+                          <div className="animate-in fade-in duration-300">
+                            <input
+                              className={inputClass}
+                              placeholder="Enter custom serial number"
+                              value={serialNumber}
+                              onChange={(e) => setSerialNumber(e.target.value)}
+                            />
+                            <p className="text-[10px] text-amber-600 font-bold mt-1">
+                              ⚠️ Note: This serial number will be automatically registered and marked as shipped.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="md:col-span-2">
                     <label className={labelClass}>🚚 Delivery Charge</label>

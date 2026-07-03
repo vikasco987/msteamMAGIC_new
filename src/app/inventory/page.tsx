@@ -9,6 +9,20 @@ export default function InventoryDashboard() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newItemData, setNewItemData] = useState({ name: "", sku: "", quantity: "0", type: "HARDWARE" });
 
+  // Edit Stock modal states
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<any | null>(null);
+  
+  // Software fields
+  const [softwareAction, setSoftwareAction] = useState<"increment" | "decrement" | "set">("increment");
+  const [softwareQty, setSoftwareQty] = useState("0");
+
+  // Hardware serial number fields
+  const [serialNumbersText, setSerialNumbersText] = useState("");
+  const [existingSerials, setExistingSerials] = useState<any[]>([]);
+  const [loadingSerials, setLoadingSerials] = useState(false);
+  const [submittingSerials, setSubmittingSerials] = useState(false);
+
   const fetchInventory = async () => {
     try {
       setLoading(true);
@@ -37,6 +51,142 @@ export default function InventoryDashboard() {
       setShowAddModal(false);
       setNewItemData({ name: "", sku: "", quantity: "0", type: "HARDWARE" });
       fetchInventory();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleOpenEditStock = async (item: any) => {
+    setSelectedItem(item);
+    setShowEditModal(true);
+    setSoftwareQty("0");
+    setSerialNumbersText("");
+    setExistingSerials([]);
+
+    if (item.type === "HARDWARE") {
+      await fetchItemSerials(item.name);
+    }
+  };
+
+  const fetchItemSerials = async (itemName: string) => {
+    try {
+      setLoadingSerials(true);
+      const res = await fetch(`/api/inventory/serial-numbers?itemName=${encodeURIComponent(itemName)}`);
+      const data = await res.json();
+      setExistingSerials(data.serialNumbers || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingSerials(false);
+    }
+  };
+
+  const handleUpdateSoftwareStock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedItem) return;
+
+    try {
+      const res = await fetch("/api/inventory", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: selectedItem.id,
+          quantity: softwareQty,
+          action: softwareAction
+        })
+      });
+
+      if (res.ok) {
+        setShowEditModal(false);
+        fetchInventory();
+      } else {
+        alert("Failed to update stock");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleAddSerials = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedItem) return;
+
+    const list = serialNumbersText
+      .split("\n")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+
+    if (list.length === 0) return;
+
+    try {
+      setSubmittingSerials(true);
+      const res = await fetch("/api/inventory/serial-numbers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          itemName: selectedItem.name,
+          serialNumbers: list
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setSerialNumbersText("");
+        await fetchItemSerials(selectedItem.name);
+        fetchInventory();
+        if (data.errors && data.errors.length > 0) {
+          alert(`Added ${data.addedCount} serials. Errors encountered:\n` + data.errors.join("\n"));
+        } else {
+          alert(`Successfully added ${data.addedCount} serials.`);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSubmittingSerials(false);
+    }
+  };
+
+  const handleUpdateSerialStatus = async (serialId: string, newStatus: string) => {
+    if (!selectedItem) return;
+
+    try {
+      const res = await fetch("/api/inventory/serial-numbers", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: serialId,
+          status: newStatus
+        })
+      });
+
+      if (res.ok) {
+        await fetchItemSerials(selectedItem.name);
+        fetchInventory();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDeleteSerial = async (serialId: string) => {
+    if (!selectedItem) return;
+    if (!confirm("Are you sure you want to delete this serial number from inventory?")) return;
+
+    try {
+      const res = await fetch("/api/inventory/serial-numbers", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: serialId,
+          deleteAction: true
+        })
+      });
+
+      if (res.ok) {
+        await fetchItemSerials(selectedItem.name);
+        fetchInventory();
+      }
     } catch (e) {
       console.error(e);
     }
@@ -93,7 +243,10 @@ export default function InventoryDashboard() {
                       {item.quantity}
                     </p>
                   </div>
-                  <button className="text-xs font-bold text-indigo-600 hover:text-indigo-800 uppercase tracking-wider">
+                  <button 
+                    onClick={() => handleOpenEditStock(item)}
+                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 uppercase tracking-wider"
+                  >
                     Edit Stock
                   </button>
                 </div>
@@ -158,6 +311,151 @@ export default function InventoryDashboard() {
                 <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700">Add Item</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Stock Modal */}
+      {showEditModal && selectedItem && (
+        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center mb-4 pb-2 border-b">
+              <div>
+                <h2 className="text-xl font-black text-slate-800">Edit Stock: {selectedItem.name}</h2>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Type: {selectedItem.type}</span>
+              </div>
+              <button onClick={() => setShowEditModal(false)} className="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+            </div>
+
+            {selectedItem.type === "SOFTWARE" ? (
+              /* SOFTWARE EDIT VIEW */
+              <form onSubmit={handleUpdateSoftwareStock} className="flex flex-col gap-4 flex-1">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Select Action</label>
+                  <div className="flex gap-2">
+                    {(["increment", "decrement", "set"] as const).map((act) => (
+                      <button
+                        key={act}
+                        type="button"
+                        onClick={() => setSoftwareAction(act)}
+                        className={`flex-1 py-2 text-xs font-bold uppercase rounded-lg border transition-all ${
+                          softwareAction === act 
+                            ? "bg-indigo-50 border-indigo-600 text-indigo-700" 
+                            : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        {act}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Quantity</label>
+                  <input
+                    required
+                    type="number"
+                    value={softwareQty}
+                    onChange={(e) => setSoftwareQty(e.target.value)}
+                    className="w-full p-2 border border-slate-200 rounded-lg text-sm font-bold"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6 border-t pt-4">
+                  <button type="button" onClick={() => setShowEditModal(false)} className="px-4 py-2 text-slate-500 font-bold text-sm">Cancel</button>
+                  <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700">Update Stock</button>
+                </div>
+              </form>
+            ) : (
+              /* HARDWARE (SERIAL NUMBERS) EDIT VIEW */
+              <div className="flex-1 flex flex-col gap-6 overflow-y-auto pr-1">
+                {/* 1. Add new serial numbers */}
+                <form onSubmit={handleAddSerials} className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <h3 className="text-xs font-black text-slate-600 uppercase tracking-widest mb-2">➕ Add Serial Numbers</h3>
+                  <p className="text-[10px] text-slate-400 mb-2 font-bold uppercase">Enter one unique number/serial per line</p>
+                  <textarea
+                    required
+                    rows={4}
+                    value={serialNumbersText}
+                    onChange={(e) => setSerialNumbersText(e.target.value)}
+                    className="w-full p-2 border border-slate-200 rounded-lg text-xs font-mono"
+                    placeholder="PRN-100021&#10;PRN-100022&#10;PRN-100023"
+                  />
+                  <button
+                    type="submit"
+                    disabled={submittingSerials}
+                    className="w-full mt-3 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs py-2 rounded-lg transition-colors uppercase tracking-wider disabled:opacity-50"
+                  >
+                    {submittingSerials ? "Adding..." : "Add to Stock"}
+                  </button>
+                </form>
+
+                {/* 2. List of existing serial numbers */}
+                <div>
+                  <h3 className="text-xs font-black text-slate-600 uppercase tracking-widest mb-3">📦 Existing Serial Numbers</h3>
+                  {loadingSerials ? (
+                    <p className="text-slate-400 text-xs font-bold text-center py-4">Loading unit serials...</p>
+                  ) : existingSerials.length === 0 ? (
+                    <p className="text-slate-400 text-xs font-bold text-center py-4 italic">No serial numbers assigned. Add some above.</p>
+                  ) : (
+                    <div className="border border-slate-200 rounded-xl overflow-hidden max-h-[220px] overflow-y-auto bg-white">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-slate-50 border-b">
+                            <th className="p-2 font-black uppercase text-slate-500">Number</th>
+                            <th className="p-2 font-black uppercase text-slate-500">Status</th>
+                            <th className="p-2 font-black uppercase text-slate-500 text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {existingSerials.map((s) => (
+                            <tr key={s.id} className="border-b last:border-0 hover:bg-slate-50">
+                              <td className="p-2 font-mono font-bold text-slate-700">{s.number}</td>
+                              <td className="p-2">
+                                <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                                  s.status === "Available" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
+                                  s.status === "Shipped" ? "bg-indigo-50 text-indigo-600 border border-indigo-100" :
+                                  "bg-rose-50 text-rose-600 border border-rose-100"
+                                }`}>
+                                  {s.status}
+                                </span>
+                              </td>
+                              <td className="p-2 text-right flex gap-1.5 justify-end">
+                                {s.status === "Available" && (
+                                  <button
+                                    onClick={() => handleUpdateSerialStatus(s.id, "Defective")}
+                                    className="text-[9px] font-black text-amber-600 hover:text-amber-800 uppercase"
+                                    title="Mark Defective"
+                                  >
+                                    Defective
+                                  </button>
+                                )}
+                                {s.status === "Defective" && (
+                                  <button
+                                    onClick={() => handleUpdateSerialStatus(s.id, "Available")}
+                                    className="text-[9px] font-black text-emerald-600 hover:text-emerald-800 uppercase"
+                                    title="Mark Available"
+                                  >
+                                    Available
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleDeleteSerial(s.id)}
+                                  className="text-[9px] font-black text-rose-600 hover:text-rose-800 uppercase"
+                                  title="Delete Unit"
+                                >
+                                  ✕
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

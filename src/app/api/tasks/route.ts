@@ -764,6 +764,7 @@ interface CustomFieldsInput {
   selfieUrl?: string;
   chequeUrl?: string;
   menuCardUrls?: string[];
+  serialNumber?: string;
 }
 
 // ✅ Add this helper function below imports
@@ -821,6 +822,7 @@ export async function POST(req: NextRequest) {
       softwareDuration,
       deliveryCharge,
       costPrice,
+      serialNumber,
       fields = [],
       aadhaarUrl,
       panUrl,
@@ -905,6 +907,7 @@ export async function POST(req: NextRequest) {
           softwareDuration: toNullableString(softwareDuration),
           deliveryCharge: toNullableString(deliveryCharge),
           costPrice: toNullableString(costPrice),
+          serialNumber: toNullableString(serialNumber),
           assignerId: userId,
           assignerName: assignerName,
           assignerEmail: assignerEmail,
@@ -964,7 +967,9 @@ export async function POST(req: NextRequest) {
     // 📦 Auto-dispatch logic for Printers
     if (body.activeTab === "printer" || body.activeTab === "printer_software") {
       const validAwb = toNullableString(awbNumber);
-      if (validAwb) {
+      const cleanSerial = toNullableString(serialNumber);
+
+      if (validAwb || cleanSerial) {
         try {
           // Try to find the "Printer" inventory item
           let printerItem = await prisma.inventoryItem.findUnique({ where: { name: "Printer" } });
@@ -976,24 +981,58 @@ export async function POST(req: NextRequest) {
             });
           }
 
-          // Create the dispatch log
-          await prisma.dispatchLog.create({
-            data: {
-              awbNumber: validAwb,
-              inventoryItemId: printerItem.id,
-              taskId: task.id,
-              trackingStatus: "Pending",
-              dispatchDate: new Date()
+          if (validAwb) {
+            // Create the dispatch log
+            await prisma.dispatchLog.create({
+              data: {
+                awbNumber: validAwb,
+                inventoryItemId: printerItem.id,
+                taskId: task.id,
+                trackingStatus: "Pending",
+                dispatchDate: new Date()
+              }
+            });
+          }
+
+          let isSerialNumberAvailable = false;
+
+          if (cleanSerial) {
+            const existingSerial = await prisma.serialNumber.findUnique({
+              where: { number: cleanSerial }
+            });
+
+            if (existingSerial) {
+              if (existingSerial.status === "Available") {
+                isSerialNumberAvailable = true;
+              }
+              // Mark as Shipped
+              await prisma.serialNumber.update({
+                where: { id: existingSerial.id },
+                data: { status: "Shipped", taskId: task.id }
+              });
+            } else {
+              // Create new shipped serial (inline creation)
+              await prisma.serialNumber.create({
+                data: {
+                  number: cleanSerial,
+                  status: "Shipped",
+                  inventoryItemId: printerItem.id,
+                  taskId: task.id
+                }
+              });
             }
-          });
+          }
 
-          // Deduct 1 from inventory
-          await prisma.inventoryItem.update({
-            where: { id: printerItem.id },
-            data: { quantity: { decrement: 1 } }
-          });
+          // Deduct 1 from inventory quantity ONLY if we shipped an existing Available serial
+          // OR if no serial number was specified but they created the dispatch log
+          if (isSerialNumberAvailable || (!cleanSerial && validAwb)) {
+            await prisma.inventoryItem.update({
+              where: { id: printerItem.id },
+              data: { quantity: { decrement: 1 } }
+            });
+          }
 
-          console.log(`📦 Dispatch created for AWB ${validAwb} and stock deducted`);
+          console.log(`📦 Auto-dispatch processing complete for task ${task.id}`);
         } catch (e) {
           console.error("❌ Failed to auto-dispatch:", e);
         }

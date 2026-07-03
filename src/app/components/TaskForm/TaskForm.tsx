@@ -434,6 +434,7 @@ const initialFormState = {
   softwareDuration: "",
   deliveryCharge: "",
   costPrice: "",
+  serialNumber: "",
 };
 
 export default function TaskForm() {
@@ -488,6 +489,7 @@ export default function TaskForm() {
           softwareDuration: parsed.softwareDuration || initialFormState.softwareDuration,
           deliveryCharge: parsed.deliveryCharge || initialFormState.deliveryCharge,
           costPrice: parsed.costPrice || initialFormState.costPrice,
+          serialNumber: parsed.serialNumber || initialFormState.serialNumber,
         });
         setStep(parsed.step || 0);
       } catch (e) {
@@ -796,6 +798,7 @@ export default function TaskForm() {
               softwareDuration={formData.softwareDuration}
               deliveryCharge={formData.deliveryCharge}
               costPrice={formData.costPrice}
+              serialNumber={formData.serialNumber}
               setFullAddress={(val) => updateFormData("fullAddress", val)}
               setCity={(val) => updateFormData("city", val)}
               setState={(val) => updateFormData("state", val)}
@@ -805,6 +808,7 @@ export default function TaskForm() {
               setSoftwareDuration={(val) => updateFormData("softwareDuration", val)}
               setDeliveryCharge={(val) => updateFormData("deliveryCharge", val)}
               setCostPrice={(val) => updateFormData("costPrice", val)}
+              setSerialNumber={(val) => updateFormData("serialNumber", val)}
               setAadhaarFile={(files) => updateFormData("aadhaarFile", files)}
               setPanFile={(files) => updateFormData("panFile", files)}
               setSelfieFile={(files) => updateFormData("selfieFile", files)}

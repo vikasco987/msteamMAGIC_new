@@ -587,6 +587,7 @@ model InventoryItem {
   updatedAt   DateTime @updatedAt
 
   dispatches  DispatchLog[]
+  serialNumbers SerialNumber[]
 }
 
 // 🚚 New Model for Tracking / Dispatch
@@ -607,4 +608,16 @@ model DispatchLog {
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+// 🏷️ New Model for tracking specific hardware serial numbers
+model SerialNumber {
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  number          String        @unique
+  status          String        @default("Available") // "Available", "Shipped", "Defective"
+  inventoryItemId String        @db.ObjectId
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  taskId          String?       @db.ObjectId
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
