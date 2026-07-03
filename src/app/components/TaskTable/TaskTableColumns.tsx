@@ -128,17 +128,6 @@ export const TaskTableColumns: React.FC<TaskTableColumnsProps> = ({
               </div>
             </th>
           )}
-          {/* NEW AFE COLUMN HEADER */}
-          {columns.includes("afe") && (
-            <th
-              className="px-3 py-2 text-xs font-bold tracking-wide text-gray-700 border border-gray-200 text-right w-28 cursor-pointer"
-              onClick={() => requestSort("afe")}
-            >
-              <div className="flex items-center justify-end">
-                <FaRupeeSign className="mr-1" /> AFE {getSortIcon("afe")}
-              </div>
-            </th>
-          )}
           {columns.includes("tracking") && (
             <th className="px-3 py-2 text-xs font-bold tracking-wide text-gray-700 border border-gray-200 text-center w-24">
               Tracking

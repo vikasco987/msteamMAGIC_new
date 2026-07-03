@@ -240,7 +240,7 @@ export async function POST(req: NextRequest) {
     let customFieldsUpdate: any = null;
 
     for (const [f, v] of Object.entries(finalUpdates)) {
-      if (!["amount", "received", "assigneeIds", "assignerName", "assignerEmail", "assigneeId", "assigneeName", "assigneeEmail", "shopName", "phone", "email", "afe", "awbNumber"].includes(f)) {
+      if (!["amount", "received", "assigneeIds", "assignerName", "assignerEmail", "assigneeId", "assigneeName", "assigneeEmail", "shopName", "phone", "email", "afe", "awbNumber", "editActiveOnly", "editPrevOnly", "previousDispatches"].includes(f)) {
         return NextResponse.json({ error: `Unsupported field: ${f}` }, { status: 400 });
       }
 
@@ -252,9 +252,13 @@ export async function POST(req: NextRequest) {
         if (typeof v !== 'number' && typeof v !== 'string' && v !== null) {
           return NextResponse.json({ error: `Invalid value for ${f}. Must be number/string/null.` }, { status: 400 });
         }
-      } else if (f === "assigneeIds") {
+      } else if (f === "assigneeIds" || f === "previousDispatches") {
         if (!Array.isArray(v)) {
           return NextResponse.json({ error: `Invalid value for ${f}. Must be an array.` }, { status: 400 });
+        }
+      } else if (f === "editActiveOnly" || f === "editPrevOnly") {
+        if (typeof v !== 'boolean') {
+          return NextResponse.json({ error: `Invalid value for ${f}. Must be boolean.` }, { status: 400 });
         }
       } else {
         if (typeof v !== 'string' && v !== null) {
@@ -266,7 +270,7 @@ export async function POST(req: NextRequest) {
         if (!customFieldsUpdate) customFieldsUpdate = {};
         customFieldsUpdate.afe = v;
         customFieldsUpdate.costPrice = v !== null ? String(v) : null;
-      } else if (f === "awbNumber") {
+      } else if (f === "awbNumber" || f === "editActiveOnly" || f === "editPrevOnly" || f === "previousDispatches") {
         // Handled dynamically below
       } else {
         // @ts-ignore
@@ -326,17 +330,53 @@ export async function POST(req: NextRequest) {
       cfNeedsUpdate = true;
     }
 
-    if (finalUpdates.awbNumber !== undefined) {
+    if (finalUpdates.editPrevOnly) {
+      if (finalUpdates.previousDispatches !== undefined) {
+        existingCF.previousDispatches = finalUpdates.previousDispatches;
+        cfNeedsUpdate = true;
+      }
+    } else if (finalUpdates.editActiveOnly) {
       const newAwb = finalUpdates.awbNumber ? String(finalUpdates.awbNumber).trim() : "";
       if (newAwb) {
-        // Find existing dispatch log
+        // Just update active dispatch log
+        const existingDispatch = await prisma.dispatchLog.findUnique({
+          where: { taskId: taskId }
+        });
+        if (existingDispatch) {
+          await prisma.dispatchLog.update({
+            where: { id: existingDispatch.id },
+            data: { awbNumber: newAwb }
+          });
+        } else {
+          let printerItem = await prisma.inventoryItem.findUnique({ where: { name: "Printer" } });
+          if (!printerItem) {
+            printerItem = await prisma.inventoryItem.create({
+              data: { name: "Printer", type: "HARDWARE", quantity: 0 }
+            });
+          }
+          await prisma.dispatchLog.create({
+            data: {
+              awbNumber: newAwb,
+              inventoryItemId: printerItem.id,
+              taskId: taskId,
+              trackingStatus: "Pending",
+              dispatchDate: new Date()
+            }
+          });
+        }
+        existingCF.awbNumber = newAwb;
+        cfNeedsUpdate = true;
+      }
+    } else if (finalUpdates.awbNumber !== undefined) {
+      // standard RTO / add new AWB flow: archives current active
+      const newAwb = finalUpdates.awbNumber ? String(finalUpdates.awbNumber).trim() : "";
+      if (newAwb) {
         const existingDispatch = await prisma.dispatchLog.findUnique({
           where: { taskId: taskId }
         });
 
         if (existingDispatch) {
           if (existingDispatch.awbNumber !== newAwb) {
-            // Archive the previous dispatch log details
             const prevList = Array.isArray(existingCF.previousDispatches) ? [...existingCF.previousDispatches] : [];
             prevList.push({
               awbNumber: existingDispatch.awbNumber,
@@ -348,7 +388,6 @@ export async function POST(req: NextRequest) {
             existingCF.previousDispatches = prevList;
             cfNeedsUpdate = true;
 
-            // Update dispatch log with new AWB and reset status to Pending
             await prisma.dispatchLog.update({
               where: { id: existingDispatch.id },
               data: {
@@ -367,7 +406,6 @@ export async function POST(req: NextRequest) {
             });
           }
         } else {
-          // If no dispatch log exists, find or create Printer inventory item and create dispatch
           let printerItem = await prisma.inventoryItem.findUnique({ where: { name: "Printer" } });
           if (!printerItem) {
             printerItem = await prisma.inventoryItem.create({
@@ -384,8 +422,6 @@ export async function POST(req: NextRequest) {
             }
           });
         }
-
-        // Save new awbNumber into customFields
         existingCF.awbNumber = newAwb;
         cfNeedsUpdate = true;
       }

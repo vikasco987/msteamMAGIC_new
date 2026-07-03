@@ -7356,13 +7356,6 @@ export default function TaskTableView({
                   🧾 Payment Proofs
                 </th>
               )}
-              {visibleColumns.includes("afe") && (
-                <th className="px-3 py-2 text-xs font-bold tracking-wide text-gray-700 border border-gray-200 text-right w-28 cursor-pointer">
-                  <div className="flex items-center justify-end">
-                    <FaRupeeSign className="mr-1" /> AFE
-                  </div>
-                </th>
-              )}
               {visibleColumns.includes("tracking") && (
                 <th className="px-3 py-2 text-xs font-bold tracking-wide text-gray-700 border border-gray-200 text-center w-24">
                   Tracking
@@ -7746,45 +7739,6 @@ export default function TaskTableView({
                           >
                             View {task.paymentProofs.length} Proof(s)
                           </button>
-                        ) : (
-                          <span className="text-gray-400">—</span>
-                        )}
-                      </td>
-                    )}
-                    {visibleColumns.includes("afe") && (
-                      <td className="border border-gray-200 px-3 py-2 whitespace-nowrap text-right font-medium text-gray-700">
-                        {isPrinterTask ? (
-                          editMode ? (
-                            <div className="relative">
-                              <input
-                                type="number"
-                                value={
-                                  editedValues[`${task.id}-afe`] !== undefined
-                                    ? (isNaN(editedValues[`${task.id}-afe`]) ? "" : editedValues[`${task.id}-afe`])
-                                    : (task.customFields?.afe || task.customFields?.costPrice || "")
-                                }
-                                onChange={(e) =>
-                                  handleInputChange(
-                                    task.id,
-                                    "afe",
-                                    parseFloat(e.target.value)
-                                  )
-                                }
-                                onBlur={(e) => handleBlur(task.id, "afe")}
-                                className="w-full p-1 border border-gray-300 rounded-md text-right text-gray-900 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                                placeholder="AFE"
-                              />
-                              {isSaving === `${task.id}-afe` && (
-                                <FaSpinner className="absolute right-2 top-1/2 transform -translate-y-1/2 animate-spin text-blue-500" />
-                              )}
-                            </div>
-                          ) : (
-                            (task.customFields?.afe || task.customFields?.costPrice) ? (
-                              `₹${Number(task.customFields?.afe || task.customFields?.costPrice).toLocaleString("en-IN")}`
-                            ) : (
-                              "—"
-                            )
-                          )
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}

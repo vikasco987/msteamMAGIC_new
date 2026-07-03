@@ -1282,7 +1282,6 @@ const ALL_COLUMNS = [
   "pendingAmount",
   "attachments",
   "paymentProofs",
-  "afe",
   "tracking",
   "trackingStatus",
 ];
