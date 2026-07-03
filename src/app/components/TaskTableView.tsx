@@ -6536,6 +6536,7 @@ import {
   FaCheckCircle,
   FaReceipt,
   FaTimes,
+  FaWhatsapp,
 } from "react-icons/fa";
 import toast from "react-hot-toast";
 import NotesModal from "../components/NotesModal";
@@ -7773,30 +7774,68 @@ export default function TaskTableView({
                           ) : (
                             <div className="flex flex-col gap-1 items-center">
                               {awbNumber ? (
-                                <a 
-                                  href={`/dispatch/track?awb=${awbNumber}`} 
-                                  target="_blank" 
-                                  rel="noreferrer"
-                                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline flex items-center justify-center gap-1"
-                                >
-                                  Track ({awbNumber}) ↗
-                                </a>
+                                <div className="flex items-center gap-1">
+                                  <a 
+                                    href={`/dispatch/track?awb=${awbNumber}`} 
+                                    target="_blank" 
+                                    rel="noreferrer"
+                                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline flex items-center gap-0.5"
+                                  >
+                                    Track ({awbNumber}) ↗
+                                  </a>
+                                  {(() => {
+                                    const shop = task.shopName || task.customFields?.shopName || "Customer";
+                                    const phone = task.phone || task.customFields?.phone || "";
+                                    if (!phone) return null;
+                                    const cleanedPhone = phone.replace(/\D/g, "");
+                                    const msg = encodeURIComponent(`Dear ${shop}, your Printer package has been shipped. Track your order live here: ${window.location.origin}/dispatch/track?awb=${awbNumber}`);
+                                    return (
+                                      <a
+                                        href={`https://api.whatsapp.com/send?phone=91${cleanedPhone}&text=${msg}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-green-500 hover:text-green-600 text-sm ml-0.5 flex items-center justify-center"
+                                        title="Share Tracking Link on WhatsApp"
+                                      >
+                                        <FaWhatsapp />
+                                      </a>
+                                    );
+                                  })()}
+                                </div>
                               ) : (
                                 <span className="text-gray-400 text-xs">—</span>
                               )}
                               {Array.isArray(task.customFields?.previousDispatches) && 
-                                task.customFields.previousDispatches.map((prev: any, idx: number) => (
-                                  <a
-                                    key={idx}
-                                    href={`/dispatch/track?awb=${prev.awbNumber}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="text-[10px] font-bold text-red-500 hover:text-red-750 underline"
-                                    title={`Previous shipment status: ${prev.trackingStatus || "Unknown"}`}
-                                  >
-                                    RTO: {prev.awbNumber} ↗
-                                  </a>
-                                ))
+                                task.customFields.previousDispatches.map((prev: any, idx: number) => {
+                                  const shop = task.shopName || task.customFields?.shopName || "Customer";
+                                  const phone = task.phone || task.customFields?.phone || "";
+                                  const cleanedPhone = phone.replace(/\D/g, "");
+                                  const msg = encodeURIComponent(`Dear ${shop}, your Printer package (Previous Shipment) RTO tracking link is: ${window.location.origin}/dispatch/track?awb=${prev.awbNumber}`);
+                                  return (
+                                    <div key={idx} className="flex items-center gap-1">
+                                      <a
+                                        href={`/dispatch/track?awb=${prev.awbNumber}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-[10px] font-bold text-red-500 hover:text-red-750 underline"
+                                        title={`Previous shipment status: ${prev.trackingStatus || "Unknown"}`}
+                                      >
+                                        RTO: {prev.awbNumber} ↗
+                                      </a>
+                                      {phone && (
+                                        <a
+                                          href={`https://api.whatsapp.com/send?phone=91${cleanedPhone}&text=${msg}`}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="text-green-400 hover:text-green-500 text-xs ml-0.5 flex items-center justify-center"
+                                          title="Share Previous Tracking Link on WhatsApp"
+                                        >
+                                          <FaWhatsapp />
+                                        </a>
+                                      )}
+                                    </div>
+                                  );
+                                })
                               }
                             </div>
                           )

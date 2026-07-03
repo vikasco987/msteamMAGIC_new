@@ -79,6 +79,52 @@ function TrackAWBContent() {
     fetchTracking(awb);
   };
 
+  const getExpectedDeliveryBadge = () => {
+    if (!trackingData?.ExpectedDeliveryDate) return null;
+    try {
+      const today = new Date();
+      const expected = new Date(trackingData.ExpectedDeliveryDate);
+      
+      const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const expectedDateOnly = new Date(expected.getFullYear(), expected.getMonth(), expected.getDate());
+      const diffTime = expectedDateOnly.getTime() - todayDateOnly.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 0) {
+        return (
+          <div className="mt-3 bg-emerald-500 text-white font-black uppercase text-[10px] tracking-widest px-3 py-1.5 rounded-xl w-fit flex items-center gap-1.5 shadow-lg shadow-emerald-500/25 animate-pulse">
+            <span>📦</span> Arriving Today!
+          </div>
+        );
+      } else if (diffDays === 1) {
+        return (
+          <div className="mt-3 bg-indigo-500 text-white font-black uppercase text-[10px] tracking-widest px-3 py-1.5 rounded-xl w-fit flex items-center gap-1.5 shadow-lg shadow-indigo-500/25">
+            <span>🚚</span> Arriving Tomorrow!
+          </div>
+        );
+      } else if (diffDays > 1 && diffDays <= 3) {
+        return (
+          <div className="mt-3 bg-blue-500 text-white font-black uppercase text-[10px] tracking-widest px-3 py-1.5 rounded-xl w-fit flex items-center gap-1.5 shadow-lg shadow-blue-500/25">
+            <span>📅</span> Arriving in {diffDays} days
+          </div>
+        );
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return null;
+  };
+
+  const getStepIndex = (statusStr: string) => {
+    const s = (statusStr || "").toLowerCase();
+    if (s.includes("delivered")) return 5;
+    if (s.includes("rto") || s.includes("return")) return 5;
+    if (s.includes("out for delivery")) return 4;
+    if (s.includes("in transit") || s.includes("transit") || s.includes("scanned")) return 3;
+    if (s.includes("dispatched") || s.includes("manifest")) return 2;
+    return 1;
+  };
+
   return (
     <div className="w-full max-w-3xl">
       <a href="/dispatch" className="text-sm font-bold text-indigo-600 hover:text-indigo-800 mb-6 inline-block">
@@ -154,6 +200,7 @@ function TrackAWBContent() {
                     <span className="inline-block px-1 py-0.2 text-[8px] font-black tracking-widest uppercase bg-emerald-900/60 text-emerald-300 rounded border border-emerald-800">Delhivery API</span>
                   </p>
                 )}
+                {getExpectedDeliveryBadge()}
               </div>
               <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/10 text-right">
                 <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-1">AWB Number</p>
@@ -161,6 +208,60 @@ function TrackAWBContent() {
               </div>
             </div>
           </div>
+
+          {/* Step Progress Tracker */}
+          {(() => {
+            const currentStatus = trackingData.Status?.Status || "";
+            const activeStep = getStepIndex(currentStatus);
+            const isRTO = currentStatus.toLowerCase().includes("rto") || currentStatus.toLowerCase().includes("return");
+            
+            const steps = [
+              { name: "Ordered", icon: "📝" },
+              { name: "Dispatched", icon: "🚚" },
+              { name: "In Transit", icon: "✈️" },
+              { name: "Out for Delivery", icon: "🛵" },
+              { name: isRTO ? "RTO" : "Delivered", icon: isRTO ? "❌" : "✅" }
+            ];
+
+            return (
+              <div className="bg-slate-50 border-b border-slate-100 p-8 overflow-x-auto">
+                <div className="flex items-center justify-between relative min-w-[500px] max-w-xl mx-auto">
+                  {/* Background Progress Bar Line */}
+                  <div className="absolute left-6 right-6 top-5 h-1 bg-slate-200 rounded-full z-0">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${isRTO ? 'bg-rose-500' : 'bg-indigo-600'}`}
+                      style={{ width: `${((activeStep - 1) / 4) * 100}%` }}
+                    ></div>
+                  </div>
+
+                  {/* Step Nodes */}
+                  {steps.map((step, idx) => {
+                    const stepNum = idx + 1;
+                    const isCompleted = stepNum < activeStep;
+                    const isActive = stepNum === activeStep;
+
+                    let nodeBg = "bg-slate-100 text-slate-400 border-slate-200";
+                    if (isCompleted) {
+                      nodeBg = isRTO ? "bg-rose-100 text-rose-600 border-rose-200" : "bg-indigo-100 text-indigo-600 border-indigo-200";
+                    } else if (isActive) {
+                      nodeBg = isRTO ? "bg-rose-500 text-white border-rose-500 ring-4 ring-rose-100 animate-pulse" : "bg-indigo-500 text-white border-indigo-500 ring-4 ring-indigo-100";
+                    }
+
+                    return (
+                      <div key={idx} className="flex flex-col items-center z-10 relative">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 text-sm font-black transition-all duration-300 ${nodeBg}`}>
+                          {isCompleted && !isActive ? (isRTO && stepNum === 5 ? "❌" : "✓") : step.icon}
+                        </div>
+                        <span className={`text-[9px] font-black uppercase tracking-wider mt-2 bg-white px-2 py-0.5 rounded-full shadow-sm border border-slate-100 ${isActive ? (isRTO ? 'text-rose-600 border-rose-100' : 'text-indigo-600 border-indigo-100') : (isCompleted ? 'text-slate-600' : 'text-slate-400')}`}>
+                          {step.name}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           <div className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
