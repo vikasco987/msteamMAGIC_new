@@ -13,6 +13,10 @@ function TrackAWBContent() {
   const [trackingData, setTrackingData] = useState<any | null>(null);
   const [previousDispatches, setPreviousDispatches] = useState<any[]>([]);
   const [customerPhone, setCustomerPhone] = useState<string | null>(null);
+  const [customerEmail, setCustomerEmail] = useState<string | null>(null);
+  const [productTitle, setProductTitle] = useState<string | null>(null);
+  const [shopName, setShopName] = useState<string | null>(null);
+  const [outletName, setOutletName] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [initialFetchDone, setInitialFetchDone] = useState(false);
 
@@ -36,9 +40,17 @@ function TrackAWBContent() {
         finalData = data.activeTracking;
         setPreviousDispatches(data.previousDispatches || []);
         setCustomerPhone(data.customerPhone || null);
+        setCustomerEmail(data.customerEmail || null);
+        setProductTitle(data.productTitle || null);
+        setShopName(data.shopName || null);
+        setOutletName(data.outletName || null);
       } else {
         // If tracking by a direct AWB, don't clear previous dispatches unless they differ
         setCustomerPhone(null);
+        setCustomerEmail(null);
+        setProductTitle(null);
+        setShopName(null);
+        setOutletName(null);
       }
       
       if (finalData.Error) {
@@ -136,6 +148,11 @@ function TrackAWBContent() {
                 <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mb-1">Current Status</p>
                 <h2 className="text-3xl font-black text-white">{trackingData.Status?.Status || "Unknown"}</h2>
                 <p className="text-slate-300 font-medium mt-2 max-w-md">{trackingData.Status?.Instructions || ""}</p>
+                {trackingData.ExpectedDeliveryDate && (
+                  <p className="text-emerald-400 font-bold text-sm mt-3 flex items-center gap-1.5 bg-emerald-950/40 border border-emerald-500/25 px-3 py-1.5 rounded-xl w-fit">
+                    <span>📅</span> Expected Delivery: {format(new Date(trackingData.ExpectedDeliveryDate), "dd MMM yyyy")}
+                  </p>
+                )}
               </div>
               <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/10 text-right">
                 <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-1">AWB Number</p>
@@ -151,17 +168,33 @@ function TrackAWBContent() {
                 <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2">
                   <span>👤</span> Consignee Details
                 </h3>
-                <p className="font-bold text-slate-700 text-lg mb-1">{trackingData.Consignee?.Name || "N/A"}</p>
+                <p className="font-bold text-slate-700 text-lg mb-1">
+                  {trackingData.Consignee?.Name || "N/A"}
+                  {(shopName || outletName) && (
+                    <span className="text-indigo-600 font-extrabold text-sm block mt-0.5">
+                      🏬 {shopName || outletName}
+                    </span>
+                  )}
+                </p>
                 <p className="text-sm text-slate-500">{trackingData.Destination || "N/A"}</p>
                 {trackingData.Consignee?.City && (
                   <p className="text-xs text-slate-400 mt-1">
                     {trackingData.Consignee.City}, {trackingData.Consignee.State} - {trackingData.Consignee.PinCode}
                   </p>
                 )}
-                {customerPhone && (
-                  <p className="text-sm font-semibold text-slate-600 mt-3 flex items-center gap-1.5 pt-2 border-t border-slate-200/50">
-                    <span>📞</span> {customerPhone}
-                  </p>
+                {(customerPhone || customerEmail) && (
+                  <div className="mt-3 pt-3 border-t border-slate-200/50 space-y-1.5">
+                    {customerPhone && (
+                      <p className="text-sm font-semibold text-slate-600 flex items-center gap-1.5">
+                        <span>📞</span> {customerPhone}
+                      </p>
+                    )}
+                    {customerEmail && (
+                      <p className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
+                        <span>✉️</span> {customerEmail}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
               
@@ -170,6 +203,12 @@ function TrackAWBContent() {
                   <span>📝</span> Shipment Info
                 </h3>
                 <div className="grid grid-cols-2 gap-y-4">
+                  {productTitle && (
+                    <div className="col-span-2 border-b border-slate-200/50 pb-2 mb-1">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Product / Item</p>
+                      <p className="font-extrabold text-slate-800 text-sm">{productTitle}</p>
+                    </div>
+                  )}
                   <div>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Order Type</p>
                     <p className="font-bold text-slate-700">{trackingData.OrderType || "N/A"}</p>

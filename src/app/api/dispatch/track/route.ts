@@ -19,6 +19,10 @@ export async function GET(req: Request) {
     let previousDispatches: any[] = [];
     let activeAwb: string | null = null;
     let customerPhone: string | null = null;
+    let customerEmail: string | null = null;
+    let productTitle: string | null = null;
+    let shopName: string | null = null;
+    let outletName: string | null = null;
 
     // Check if it's a 24-char Task ID (ObjectId)
     if (/^[0-9a-fA-F]{24}$/.test(awb)) {
@@ -32,6 +36,10 @@ export async function GET(req: Request) {
         activeAwb = task.dispatchLog.awbNumber;
         previousDispatches = (task.customFields as any)?.previousDispatches || [];
         customerPhone = task.phone || (task.customFields as any)?.phone || null;
+        customerEmail = task.email || (task.customFields as any)?.email || null;
+        productTitle = task.title || null;
+        shopName = task.shopName || (task.customFields as any)?.shopName || null;
+        outletName = task.outletName || (task.customFields as any)?.outletName || null;
         awb = task.dispatchLog.awbNumber;
       } else {
         return NextResponse.json({ error: "No shipment found for this Task ID" }, { status: 404 });
@@ -56,6 +64,10 @@ export async function GET(req: Request) {
         activeAwb,
         previousDispatches,
         customerPhone,
+        customerEmail,
+        productTitle,
+        shopName,
+        outletName,
         activeTracking: data
       }, { status: 200 });
     }
