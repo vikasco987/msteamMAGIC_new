@@ -240,7 +240,7 @@ export async function POST(req: NextRequest) {
     let customFieldsUpdate: any = null;
 
     for (const [f, v] of Object.entries(finalUpdates)) {
-      if (!["amount", "received", "assigneeIds", "assignerName", "assignerEmail", "assigneeId", "assigneeName", "assigneeEmail", "shopName", "phone", "email", "afe"].includes(f)) {
+      if (!["amount", "received", "assigneeIds", "assignerName", "assignerEmail", "assigneeId", "assigneeName", "assigneeEmail", "shopName", "phone", "email", "afe", "awbNumber"].includes(f)) {
         return NextResponse.json({ error: `Unsupported field: ${f}` }, { status: 400 });
       }
 
@@ -266,6 +266,8 @@ export async function POST(req: NextRequest) {
         if (!customFieldsUpdate) customFieldsUpdate = {};
         customFieldsUpdate.afe = v;
         customFieldsUpdate.costPrice = v !== null ? String(v) : null;
+      } else if (f === "awbNumber") {
+        // Handled dynamically below
       } else {
         // @ts-ignore
         dataToUpdate[f] = v;
@@ -322,6 +324,71 @@ export async function POST(req: NextRequest) {
     if (customFieldsUpdate) {
       Object.assign(existingCF, customFieldsUpdate);
       cfNeedsUpdate = true;
+    }
+
+    if (finalUpdates.awbNumber !== undefined) {
+      const newAwb = finalUpdates.awbNumber ? String(finalUpdates.awbNumber).trim() : "";
+      if (newAwb) {
+        // Find existing dispatch log
+        const existingDispatch = await prisma.dispatchLog.findUnique({
+          where: { taskId: taskId }
+        });
+
+        if (existingDispatch) {
+          if (existingDispatch.awbNumber !== newAwb) {
+            // Archive the previous dispatch log details
+            const prevList = Array.isArray(existingCF.previousDispatches) ? [...existingCF.previousDispatches] : [];
+            prevList.push({
+              awbNumber: existingDispatch.awbNumber,
+              trackingStatus: existingDispatch.trackingStatus,
+              courierName: existingDispatch.courierName,
+              dispatchDate: existingDispatch.dispatchDate,
+              archivedAt: new Date().toISOString()
+            });
+            existingCF.previousDispatches = prevList;
+            cfNeedsUpdate = true;
+
+            // Update dispatch log with new AWB and reset status to Pending
+            await prisma.dispatchLog.update({
+              where: { id: existingDispatch.id },
+              data: {
+                awbNumber: newAwb,
+                trackingStatus: "Pending",
+                dispatchDate: new Date(),
+                history: {
+                  set: [{
+                    status: "Pending",
+                    changedBy: "System (AWB Updated)",
+                    changedAt: new Date().toISOString(),
+                    remarks: "AWB changed by user"
+                  }]
+                }
+              }
+            });
+          }
+        } else {
+          // If no dispatch log exists, find or create Printer inventory item and create dispatch
+          let printerItem = await prisma.inventoryItem.findUnique({ where: { name: "Printer" } });
+          if (!printerItem) {
+            printerItem = await prisma.inventoryItem.create({
+              data: { name: "Printer", type: "HARDWARE", quantity: 0 }
+            });
+          }
+          await prisma.dispatchLog.create({
+            data: {
+              awbNumber: newAwb,
+              inventoryItemId: printerItem.id,
+              taskId: taskId,
+              trackingStatus: "Pending",
+              dispatchDate: new Date()
+            }
+          });
+        }
+
+        // Save new awbNumber into customFields
+        existingCF.awbNumber = newAwb;
+        cfNeedsUpdate = true;
+      }
     }
 
     for (const f of syncableFields) {

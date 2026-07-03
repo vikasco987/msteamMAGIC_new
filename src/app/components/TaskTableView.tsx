@@ -6768,7 +6768,6 @@ export default function TaskTableView({
     "copy",
     "attachments",
     "paymentProofs",
-    "afe",
     "tracking",
     "trackingStatus",
   ]);
@@ -6868,6 +6867,58 @@ export default function TaskTableView({
   ) => {
     const key = `${taskId}-${field}`;
     setEditedValues((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const [editedAwbValues, setEditedAwbValues] = useState<{ [key: string]: string }>({});
+
+  const handleAwbInputChange = (taskId: string, value: string) => {
+    setEditedAwbValues((prev) => ({ ...prev, [taskId]: value }));
+  };
+
+  const handleAwbBlur = async (taskId: string) => {
+    const value = editedAwbValues[taskId];
+    const originalTask = localTasks.find((t) => t.id === taskId);
+    const originalValue = originalTask?.customFields?.awbNumber || "";
+
+    if (value !== undefined && value.trim() !== originalValue) {
+      setIsSaving(`${taskId}-awbNumber`);
+      try {
+        const res = await fetch("/api/tasks/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ taskId, field: "awbNumber", value: value.trim() }),
+        });
+
+        if (!res.ok) {
+          const contentType = res.headers.get("content-type");
+          const errorText = await res.text();
+          let errorMessage = "Failed to update AWB number.";
+          if (contentType && contentType.includes("application/json")) {
+            try {
+              const errorJson = JSON.parse(errorText);
+              errorMessage = errorJson.error || errorMessage;
+            } catch (jsonErr) {
+              errorMessage = "Server returned malformed error.";
+            }
+          }
+          toast.error(errorMessage);
+        } else {
+          toast.success("AWB number updated successfully!");
+          await refetchTasks();
+        }
+      } catch (err) {
+        console.error("Failed to update AWB:", err);
+        toast.error("Network error");
+      } finally {
+        setIsSaving(null);
+      }
+    }
+
+    setEditedAwbValues((prev) => {
+      const newState = { ...prev };
+      delete newState[taskId];
+      return newState;
+    });
   };
 
   const handleDeletePaymentProofSuccess = useCallback((deletedUrl: string) => {
@@ -7741,15 +7792,60 @@ export default function TaskTableView({
                     )}
                     {visibleColumns.includes("tracking") && (
                       <td className="border border-gray-200 px-3 py-2 whitespace-nowrap text-center">
-                        {isPrinterTask && (awbNumber || task.id) ? (
-                          <a 
-                            href={`/dispatch/track?awb=${awbNumber || task.id}`} 
-                            target="_blank" 
-                            rel="noreferrer"
-                            className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline flex items-center justify-center gap-1"
-                          >
-                            Track ↗
-                          </a>
+                        {isPrinterTask ? (
+                          editMode ? (
+                            <div className="relative">
+                              <input
+                                type="text"
+                                value={
+                                  editedAwbValues[task.id] !== undefined
+                                    ? editedAwbValues[task.id]
+                                    : (task.customFields?.awbNumber || "")
+                                }
+                                onChange={(e) =>
+                                  handleAwbInputChange(
+                                    task.id,
+                                    e.target.value
+                                  )
+                                }
+                                onBlur={(e) => handleAwbBlur(task.id)}
+                                className="w-full p-1 border border-gray-300 rounded-md text-center text-gray-900 focus:ring-blue-500 focus:border-blue-500 text-sm font-bold"
+                                placeholder="Enter AWB"
+                              />
+                              {isSaving === `${task.id}-awbNumber` && (
+                                <FaSpinner className="absolute right-1 top-1/2 transform -translate-y-1/2 animate-spin text-blue-500" />
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex flex-col gap-1 items-center">
+                              {awbNumber ? (
+                                <a 
+                                  href={`/dispatch/track?awb=${awbNumber}`} 
+                                  target="_blank" 
+                                  rel="noreferrer"
+                                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline flex items-center justify-center gap-1"
+                                >
+                                  Track ({awbNumber}) ↗
+                                </a>
+                              ) : (
+                                <span className="text-gray-400 text-xs">—</span>
+                              )}
+                              {Array.isArray(task.customFields?.previousDispatches) && 
+                                task.customFields.previousDispatches.map((prev: any, idx: number) => (
+                                  <a
+                                    key={idx}
+                                    href={`/dispatch/track?awb=${prev.awbNumber}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-[10px] font-bold text-red-500 hover:text-red-750 underline"
+                                    title={`Previous shipment status: ${prev.trackingStatus || "Unknown"}`}
+                                  >
+                                    RTO: {prev.awbNumber} ↗
+                                  </a>
+                                ))
+                              }
+                            </div>
+                          )
                         ) : (
                           <span className="text-gray-400 text-xs">—</span>
                         )}

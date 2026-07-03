@@ -11,6 +11,7 @@ function TrackAWBContent() {
   const [awb, setAwb] = useState(queryAwb);
   const [loading, setLoading] = useState(false);
   const [trackingData, setTrackingData] = useState<any | null>(null);
+  const [previousDispatches, setPreviousDispatches] = useState<any[]>([]);
   const [error, setError] = useState("");
   const [initialFetchDone, setInitialFetchDone] = useState(false);
 
@@ -28,11 +29,19 @@ function TrackAWBContent() {
         setError(data.error || "Failed to fetch from server.");
         return;
       }
+
+      let finalData = data;
+      if (data.isTaskId) {
+        finalData = data.activeTracking;
+        setPreviousDispatches(data.previousDispatches || []);
+      } else {
+        // If tracking by a direct AWB, don't clear previous dispatches unless they differ
+      }
       
-      if (data.Error) {
-        setError(data.Error);
-      } else if (data.ShipmentData && data.ShipmentData.length > 0) {
-        setTrackingData(data.ShipmentData[0].Shipment);
+      if (finalData.Error) {
+        setError(finalData.Error);
+      } else if (finalData.ShipmentData && finalData.ShipmentData.length > 0) {
+        setTrackingData(finalData.ShipmentData[0].Shipment);
       } else {
         setError("Could not parse shipment data or no data found.");
       }
@@ -92,6 +101,28 @@ function TrackAWBContent() {
           </div>
         )}
       </div>
+
+      {previousDispatches.length > 0 && (
+        <div className="bg-slate-100 rounded-3xl p-6 mb-8 border border-slate-200 shadow-sm">
+          <p className="text-slate-500 font-bold text-xs uppercase tracking-wider mb-3">
+            📦 Previous Shipments (RTO / Returned)
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {previousDispatches.map((prev, idx) => (
+              <button
+                key={idx}
+                onClick={() => {
+                  setAwb(prev.awbNumber);
+                  fetchTracking(prev.awbNumber);
+                }}
+                className="bg-white border border-slate-200 text-slate-700 hover:text-indigo-600 hover:border-indigo-500 hover:ring-2 hover:ring-indigo-100 transition-all rounded-xl px-4 py-2.5 shadow-sm text-xs font-bold flex items-center gap-2"
+              >
+                <span>📦</span> AWB: {prev.awbNumber} ({prev.trackingStatus || "RTO"})
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {trackingData && (
         <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">

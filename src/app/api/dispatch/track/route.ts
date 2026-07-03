@@ -15,13 +15,22 @@ export async function GET(req: Request) {
     
     awb = awb.trim();
 
+    let isTaskId = false;
+    let previousDispatches: any[] = [];
+    let activeAwb: string | null = null;
+
     // Check if it's a 24-char Task ID (ObjectId)
     if (/^[0-9a-fA-F]{24}$/.test(awb)) {
-      const dispatchLog = await prisma.dispatchLog.findUnique({
-        where: { taskId: awb }
+      const task = await prisma.task.findUnique({
+        where: { id: awb },
+        include: { dispatchLog: true }
       });
-      if (dispatchLog) {
-        awb = dispatchLog.awbNumber;
+
+      if (task && task.dispatchLog) {
+        isTaskId = true;
+        activeAwb = task.dispatchLog.awbNumber;
+        previousDispatches = (task.customFields as any)?.previousDispatches || [];
+        awb = task.dispatchLog.awbNumber;
       } else {
         return NextResponse.json({ error: "No shipment found for this Task ID" }, { status: 404 });
       }
@@ -38,6 +47,15 @@ export async function GET(req: Request) {
     );
 
     const data = await response.json();
+
+    if (isTaskId) {
+      return NextResponse.json({
+        isTaskId: true,
+        activeAwb,
+        previousDispatches,
+        activeTracking: data
+      }, { status: 200 });
+    }
 
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
