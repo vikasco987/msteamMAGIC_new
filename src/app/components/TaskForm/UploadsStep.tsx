@@ -2358,7 +2358,10 @@ export default function UploadsStep(props: UploadsStepProps) {
                               : null
                           }
                           formatCreateLabel={(inputValue) => `+ Add Custom/New Serial Number: "${inputValue}"`}
+                          menuPortalTarget={typeof document !== "undefined" ? document.body : null}
+                          menuPosition="fixed"
                           styles={{
+                            menuPortal: (base) => ({ ...base, zIndex: 9999 }),
                             control: (base) => ({
                               ...base,
                               borderRadius: "0.75rem",
