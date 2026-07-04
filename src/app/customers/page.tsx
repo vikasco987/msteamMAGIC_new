@@ -112,6 +112,10 @@ function CustomerList({ refresh }: { refresh: number }) {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
+
   useEffect(() => {
     const fetchCustomers = async () => {
       setLoading(true)
@@ -122,6 +126,7 @@ function CustomerList({ refresh }: { refresh: number }) {
 
         if (res.ok) {
           setCustomers(data)
+          setCurrentPage(1) // reset to first page on refresh
         } else {
           setMessage("❌ " + (data.error || "Failed to load customers"))
         }
@@ -133,6 +138,21 @@ function CustomerList({ refresh }: { refresh: number }) {
     }
     fetchCustomers()
   }, [refresh])
+
+  // Calculate pagination
+  const totalPages = Math.ceil(customers.length / itemsPerPage)
+  const currentCustomers = customers.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
+  const handlePrev = () => {
+    if (currentPage > 1) setCurrentPage(currentPage - 1)
+  }
+
+  const handleNext = () => {
+    if (currentPage < totalPages) setCurrentPage(currentPage + 1)
+  }
 
   return (
     <div className="max-w-6xl mx-auto bg-white p-6 rounded-3xl shadow-xl border border-gray-200">
@@ -157,7 +177,7 @@ function CustomerList({ refresh }: { refresh: number }) {
               </tr>
             </thead>
             <tbody>
-              {customers.map((c, i) => (
+              {currentCustomers.map((c, i) => (
                 <tr
                   key={c.id}
                   className={`text-center hover:bg-indigo-50 transition ${
@@ -174,6 +194,29 @@ function CustomerList({ refresh }: { refresh: number }) {
               ))}
             </tbody>
           </table>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex justify-between items-center mt-6 px-4">
+              <button
+                onClick={handlePrev}
+                disabled={currentPage === 1}
+                className="px-4 py-2 bg-indigo-500 text-white rounded-lg font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-indigo-600 transition"
+              >
+                Previous
+              </button>
+              <span className="text-gray-600 font-medium">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={handleNext}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 bg-indigo-500 text-white rounded-lg font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-indigo-600 transition"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
