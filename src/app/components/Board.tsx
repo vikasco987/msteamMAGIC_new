@@ -363,14 +363,18 @@ export default function Board() {
         selectedStatuses.includes((task.status || "").toLowerCase()) ||
         !!pendingChanges[task.id]; // Always show if we just moved it locally
 
+      const matchesAssignee = selectedAssignees.length === 0 ||
+        (task.assigneeName && selectedAssignees.includes(task.assigneeName)) ||
+        (task.assignees && task.assignees.some((a: any) => a.name && selectedAssignees.includes(a.name)));
+
       const matchesAssigner = selectedAssigners.length === 0 ||
         (task as any).assignerName && selectedAssigners.includes((task as any).assignerName);
 
       const isHidden = !showAllTasksMode && task.isHidden;
 
-      return matchesSearch && matchesCategory && matchesDate && matchesStatus && matchesAssigner && !isHidden;
+      return matchesSearch && matchesCategory && matchesDate && matchesStatus && matchesAssignee && matchesAssigner && !isHidden;
     });
-  }, [tasks, filterText, selectedCategories, selectedDates, selectedAssigners, sortBy, sortDirection, showAllTasksMode, pendingChanges]);
+  }, [tasks, filterText, selectedCategories, selectedDates, selectedStatuses, selectedAssignees, selectedAssigners, sortBy, sortDirection, showAllTasksMode, pendingChanges]);
 
   const allStatuses = useMemo(() => Array.from(new Set(tasks.map(t => t.status))), [tasks]);
   const allAssignees = useMemo(() => {
