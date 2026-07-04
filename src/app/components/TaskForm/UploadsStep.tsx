@@ -1850,6 +1850,7 @@ import React, { useState, useEffect, useRef } from "react";
 import FileDropzone from "./FileDropzone";
 import { Search, Loader2, User, MapPin, Sparkles, UploadCloud } from "lucide-react";
 import toast from "react-hot-toast";
+import CreatableSelect from "react-select/creatable";
 
 // Define TabType locally or import it if it's defined in a shared types file
 type TabType = "license" | "swiggy" | "zomato" | "combo" | "photo" | "account" | "other" | "printer" | "printer_software";
@@ -2338,22 +2339,46 @@ export default function UploadsStep(props: UploadsStepProps) {
                       <p className="text-xs text-slate-400 font-bold animate-pulse py-2">Loading available serial numbers...</p>
                     ) : (
                       <div className="flex flex-col gap-2">
-                        <input
-                          list="available-serials"
-                          className={inputClass}
+                        <CreatableSelect
+                          isClearable
                           placeholder="Search or enter Serial Number (Optional)"
-                          value={serialNumber}
-                          onChange={(e) => setSerialNumber(e.target.value)}
+                          options={availableSerials.map((s) => ({
+                            value: s.number,
+                            label: `${s.number} (Available)`,
+                          }))}
+                          onChange={(newValue) => setSerialNumber(newValue ? newValue.value : "")}
+                          value={
+                            serialNumber
+                              ? {
+                                  value: serialNumber,
+                                  label: availableSerials.find((s) => s.number === serialNumber)
+                                    ? `${serialNumber} (Available)`
+                                    : serialNumber,
+                                }
+                              : null
+                          }
+                          formatCreateLabel={(inputValue) => `+ Add Custom/New Serial Number: "${inputValue}"`}
+                          styles={{
+                            control: (base) => ({
+                              ...base,
+                              borderRadius: "0.75rem",
+                              borderColor: "#e2e8f0",
+                              padding: "0.15rem 0",
+                              boxShadow: "none",
+                              "&:hover": {
+                                borderColor: "#94a3b8",
+                              },
+                            }),
+                            option: (base, state) => ({
+                              ...base,
+                              backgroundColor: state.isFocused ? "#f1f5f9" : "white",
+                              color: "#334155",
+                              cursor: "pointer",
+                            }),
+                          }}
                         />
-                        <datalist id="available-serials">
-                          {availableSerials.map((s) => (
-                            <option key={s.id} value={s.number}>
-                              {s.number} (Available)
-                            </option>
-                          ))}
-                        </datalist>
                         <p className="text-[10px] text-slate-500 font-medium mt-1">
-                          💡 You can select an available serial number or type a new one to register it automatically.
+                          💡 You can select an available serial number or type a new one to register it automatically. Duplicates will be rejected on submission.
                         </p>
                       </div>
                     )}
