@@ -380,7 +380,7 @@ import CustomFieldsStep from "./CustomFieldsStep"; // Assuming this component ex
 import { uploadToCloudinary } from "./utils"; // Assuming this utility function exists
 
 // Define TabType more broadly to include all categories
-type TabType = "license" | "swiggy" | "zomato" | "combo" | "photo" | "account" | "other" | "printer" | "printer_software";
+type TabType = "license" | "swiggy" | "zomato" | "combo" | "photo" | "account" | "other" | "printer" | "printer_software" | "rto_printer";
 
 type CustomField = {
   label: string;
@@ -399,6 +399,7 @@ const TASK_CATEGORIES = [
   { label: "📂 Account Handling", value: "account" },
   { label: "🖨️ Printer Setup", value: "printer" },
   { label: "🖨️💻 Printer + Software", value: "printer_software" },
+  { label: "🔄 RTO Printer", value: "rto_printer" },
   { label: "🛠️ Other", value: "other" },
 ];
 
@@ -435,6 +436,7 @@ const initialFormState = {
   deliveryCharge: "",
   costPrice: "",
   serialNumber: "",
+  rtoReason: "",
 };
 
 export default function TaskForm() {
@@ -490,6 +492,7 @@ export default function TaskForm() {
           deliveryCharge: parsed.deliveryCharge || initialFormState.deliveryCharge,
           costPrice: parsed.costPrice || initialFormState.costPrice,
           serialNumber: parsed.serialNumber || initialFormState.serialNumber,
+          rtoReason: parsed.rtoReason || initialFormState.rtoReason,
         });
         setStep(parsed.step || 0);
       } catch (e) {
@@ -575,9 +578,16 @@ export default function TaskForm() {
         return;
       }
 
-      if (formData.activeTab === "printer" || formData.activeTab === "printer_software") {
+      if (formData.activeTab === "printer" || formData.activeTab === "printer_software" || formData.activeTab === "rto_printer") {
         if (!formData.awbNumber || formData.awbNumber.trim() === "") {
           alert("⚠️ AWB Tracking Number is compulsory.");
+          return;
+        }
+      }
+
+      if (formData.activeTab === "rto_printer") {
+        if (!formData.rtoReason || formData.rtoReason.trim() === "") {
+          alert("⚠️ Reason for RTO is compulsory.");
           return;
         }
       }
@@ -674,6 +684,7 @@ export default function TaskForm() {
           deliveryCharge: formData.deliveryCharge.trim(),
           costPrice: formData.costPrice.trim(),
           serialNumber: formData.serialNumber.trim(),
+          rtoReason: formData.rtoReason.trim(),
           fields: uploadedCustomFields,
         },
       };
@@ -800,6 +811,7 @@ export default function TaskForm() {
               deliveryCharge={formData.deliveryCharge}
               costPrice={formData.costPrice}
               serialNumber={formData.serialNumber}
+              rtoReason={formData.rtoReason}
               setFullAddress={(val) => updateFormData("fullAddress", val)}
               setCity={(val) => updateFormData("city", val)}
               setState={(val) => updateFormData("state", val)}
@@ -810,6 +822,7 @@ export default function TaskForm() {
               setDeliveryCharge={(val) => updateFormData("deliveryCharge", val)}
               setCostPrice={(val) => updateFormData("costPrice", val)}
               setSerialNumber={(val) => updateFormData("serialNumber", val)}
+              setRtoReason={(val) => updateFormData("rtoReason", val)}
               setAadhaarFile={(files) => updateFormData("aadhaarFile", files)}
               setPanFile={(files) => updateFormData("panFile", files)}
               setSelfieFile={(files) => updateFormData("selfieFile", files)}

@@ -1901,6 +1901,8 @@ interface UploadsStepProps {
   setCostPrice: (value: string) => void;
   serialNumber: string;
   setSerialNumber: (value: string) => void;
+  rtoReason: string;
+  setRtoReason: (value: string) => void;
   fullAddress: string;
   city: string;
   state: string;
@@ -1933,7 +1935,8 @@ export default function UploadsStep(props: UploadsStepProps) {
     fullAddress, setFullAddress, city, setCity, state, setState,
     country, setCountry, pincode, setPincode, awbNumber, setAwbNumber,
     softwareDuration, setSoftwareDuration, deliveryCharge, setDeliveryCharge,
-    costPrice, setCostPrice, serialNumber, setSerialNumber, step
+    costPrice, setCostPrice, serialNumber, setSerialNumber,
+    rtoReason, setRtoReason, step
   } = props;
 
   const [suggestions, setSuggestions] = useState<any[]>([]);
@@ -1949,7 +1952,7 @@ export default function UploadsStep(props: UploadsStepProps) {
   const [isCustomSerial, setIsCustomSerial] = useState(false);
 
   useEffect(() => {
-    if (activeTab === "printer" || activeTab === "printer_software") {
+    if (activeTab === "printer" || activeTab === "printer_software" || activeTab === "rto_printer") {
       const loadSerials = async () => {
         try {
           setLoadingSerials(true);
@@ -2298,7 +2301,7 @@ export default function UploadsStep(props: UploadsStepProps) {
         </div>
 
         <div className="space-y-4 bg-amber-50/30 p-6 rounded-[2rem] border border-amber-100/50">
-          {(activeTab === "license" || activeTab === "other" || activeTab === "printer" || activeTab === "printer_software") && (
+          {(activeTab === "license" || activeTab === "other" || activeTab === "printer" || activeTab === "printer_software" || activeTab === "rto_printer") && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className={labelClass}>🏪 Shop Name</label>
@@ -2327,7 +2330,7 @@ export default function UploadsStep(props: UploadsStepProps) {
                   <input className={inputClass} placeholder="e.g. 1 Year, 6 Months" value={softwareDuration} onChange={e => setSoftwareDuration(e.target.value)} required />
                 </div>
               )}
-              {(activeTab === "printer" || activeTab === "printer_software") && (
+              {(activeTab === "printer" || activeTab === "printer_software" || activeTab === "rto_printer") && (
                 <>
                   <div className="md:col-span-2">
                     <label className={labelClass}>📦 AWB Tracking Number *</label>
@@ -2390,6 +2393,12 @@ export default function UploadsStep(props: UploadsStepProps) {
                     <label className={labelClass}>🚚 Delivery Charge</label>
                     <input className={inputClass} placeholder="Enter Delivery Charge (Optional)" value={deliveryCharge} onChange={e => setDeliveryCharge(e.target.value)} />
                   </div>
+                  {activeTab === "rto_printer" && (
+                    <div className="md:col-span-2">
+                      <label className={labelClass}>🔄 Reason for RTO *</label>
+                      <textarea className={`${inputClass} h-20 resize-none`} placeholder="Enter the reason why this printer was returned..." value={rtoReason} onChange={e => setRtoReason(e.target.value)} required />
+                    </div>
+                  )}
                 </>
               )}
             </div>
