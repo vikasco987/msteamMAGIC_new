@@ -673,6 +673,7 @@ export default function TaskForm() {
           softwareDuration: formData.softwareDuration.trim(),
           deliveryCharge: formData.deliveryCharge.trim(),
           costPrice: formData.costPrice.trim(),
+          serialNumber: formData.serialNumber.trim(),
           fields: uploadedCustomFields,
         },
       };
