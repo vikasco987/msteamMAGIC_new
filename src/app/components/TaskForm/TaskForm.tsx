@@ -555,27 +555,29 @@ export default function TaskForm() {
     }
 
     if (step === 1) {
-      // Compulsory fields validation for Merchant Details
-      const requiredFields = {
-        "Customer Name": formData.customerName,
-        "Shop/Outlet Name": formData.shopName,
-        "Phone": formData.phone,
-        "Full Address": formData.fullAddress,
-        "City": formData.city,
-        "State": formData.state,
-        "Pincode": formData.pincode,
-      };
+      if (formData.activeTab !== "rto_printer") {
+        // Compulsory fields validation for Merchant Details
+        const requiredFields = {
+          "Customer Name": formData.customerName,
+          "Shop/Outlet Name": formData.shopName,
+          "Phone": formData.phone,
+          "Full Address": formData.fullAddress,
+          "City": formData.city,
+          "State": formData.state,
+          "Pincode": formData.pincode,
+        };
 
-      for (const [label, value] of Object.entries(requiredFields)) {
-        if (!value || value.trim() === "") {
-          alert(`⚠️ ${label} is compulsory to proceed.`);
+        for (const [label, value] of Object.entries(requiredFields)) {
+          if (!value || value.trim() === "") {
+            alert(`⚠️ ${label} is compulsory to proceed.`);
+            return;
+          }
+        }
+
+        if (formData.customerName.trim().toLowerCase() === formData.shopName.trim().toLowerCase()) {
+          alert("⚠️ Customer Name and Shop/Outlet Name cannot be the same. Please provide distinct names.");
           return;
         }
-      }
-
-      if (formData.customerName.trim().toLowerCase() === formData.shopName.trim().toLowerCase()) {
-        alert("⚠️ Customer Name and Shop/Outlet Name cannot be the same. Please provide distinct names.");
-        return;
       }
 
       if (formData.activeTab === "printer" || formData.activeTab === "printer_software" || formData.activeTab === "rto_printer") {
