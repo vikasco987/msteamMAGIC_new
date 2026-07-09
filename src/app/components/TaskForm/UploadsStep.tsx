@@ -2132,7 +2132,9 @@ export default function UploadsStep(props: UploadsStepProps) {
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {step === 1 && (
         <>
-          {/* ✨ AI Magic Auto-Fill Banner */}
+          {activeTab !== "rto_printer" && (
+            <>
+              {/* ✨ AI Magic Auto-Fill Banner */}
           <div 
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -2287,6 +2289,8 @@ export default function UploadsStep(props: UploadsStepProps) {
           </div>
         </div>
       </section>
+      </>
+      )}
 
       {/* 🚀 Section 2: Service Specific Details */}
       <section>
@@ -2303,8 +2307,10 @@ export default function UploadsStep(props: UploadsStepProps) {
         <div className="space-y-4 bg-amber-50/30 p-6 rounded-[2rem] border border-amber-100/50">
           {(activeTab === "license" || activeTab === "other" || activeTab === "printer" || activeTab === "printer_software" || activeTab === "rto_printer") && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <label className={labelClass}>🏪 Shop Name</label>
+              {activeTab !== "rto_printer" && (
+                <>
+                  <div className="md:col-span-2">
+                    <label className={labelClass}>🏪 Shop Name</label>
                 <input className={inputClass} placeholder="Enter Shop Name" value={shopName} onChange={e => setShopName(e.target.value)} />
               </div>
               <div className="md:col-span-2">
@@ -2324,6 +2330,8 @@ export default function UploadsStep(props: UploadsStepProps) {
                 <label className={labelClass}>📧 Contact Email</label>
                 <input className={inputClass} placeholder="email@example.com" value={email} onChange={e => setEmail(e.target.value)} />
               </div>
+              </>
+              )}
               {activeTab === "printer_software" && (
                 <div className="md:col-span-2">
                   <label className={labelClass}>⏳ Software Duration *</label>
@@ -2389,10 +2397,12 @@ export default function UploadsStep(props: UploadsStepProps) {
                       </div>
                     )}
                   </div>
-                  <div className="md:col-span-2">
-                    <label className={labelClass}>🚚 Delivery Charge</label>
-                    <input className={inputClass} placeholder="Enter Delivery Charge (Optional)" value={deliveryCharge} onChange={e => setDeliveryCharge(e.target.value)} />
-                  </div>
+                  {activeTab !== "rto_printer" && (
+                    <div className="md:col-span-2">
+                      <label className={labelClass}>🚚 Delivery Charge</label>
+                      <input className={inputClass} placeholder="Enter Delivery Charge (Optional)" value={deliveryCharge} onChange={e => setDeliveryCharge(e.target.value)} />
+                    </div>
+                  )}
                   {activeTab === "rto_printer" && (
                     <div className="md:col-span-2">
                       <label className={labelClass}>🔄 Reason for RTO *</label>

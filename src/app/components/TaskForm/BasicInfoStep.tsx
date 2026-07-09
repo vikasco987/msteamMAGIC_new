@@ -5,7 +5,7 @@ import { useAuth } from "@clerk/nextjs";
 import dynamic from "next/dynamic";
 import { Briefcase, Users, Edit3 } from "lucide-react";
 
-type TabType = "license" | "swiggy" | "zomato" | "combo" | "photo" | "account" | "other" | "printer" | "printer_software";
+type TabType = "license" | "swiggy" | "zomato" | "combo" | "photo" | "account" | "other" | "printer" | "printer_software" | "rto_printer";
 
 const ClientSelect = dynamic(() => import("./ClientSelect"), { ssr: false });
 
@@ -24,6 +24,7 @@ const TASK_CATEGORIES = [
   { label: "📂 Account Handling", value: "account" },
   { label: "🖨️ Printer Setup", value: "printer" },
   { label: "🖨️💻 Printer + Software", value: "printer_software" },
+  { label: "🔄 RTO Printer", value: "rto_printer" },
   { label: "🛠️ Other", value: "other" },
 ];
 
