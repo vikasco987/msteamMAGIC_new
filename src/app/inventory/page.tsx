@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Search, Printer, RotateCcw, AlertTriangle, CheckCircle, Clock, Truck, ShieldAlert } from "lucide-react";
+import { Search, Printer, RotateCcw, AlertTriangle, CheckCircle, Clock, Truck, ShieldAlert, Trash2 } from "lucide-react";
 
 export default function InventoryDashboard() {
   const [items, setItems] = useState<any[]>([]);
@@ -85,6 +85,29 @@ export default function InventoryDashboard() {
       fetchInventory();
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleDeleteItem = async (itemId: string, itemName: string) => {
+    if (!confirm(`Are you sure you want to delete "${itemName}"? All associated serial numbers and dispatch logs will also be permanently deleted.`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/inventory?id=${itemId}`, {
+        method: "DELETE"
+      });
+
+      if (res.ok) {
+        alert("Inventory item deleted successfully.");
+        fetchInventory();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to delete inventory item.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("An error occurred while deleting the item.");
     }
   };
 
@@ -413,7 +436,7 @@ export default function InventoryDashboard() {
               <p className="text-slate-400 font-bold p-4 text-center col-span-3">No inventory items found. Add one to get started.</p>
             ) : (
               items.map((item) => (
-                <div key={item.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between hover:shadow-md transition-all duration-300">
+                <div key={item.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between hover:shadow-md transition-all duration-300 relative group">
                   <div>
                     <div className="flex items-center justify-between mb-4">
                       <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider ${
@@ -421,7 +444,16 @@ export default function InventoryDashboard() {
                       }`}>
                         {item.type}
                       </span>
-                      {item.sku && <span className="text-xs font-mono text-slate-400">{item.sku}</span>}
+                      <div className="flex items-center gap-2">
+                        {item.sku && <span className="text-xs font-mono text-slate-400">{item.sku}</span>}
+                        <button
+                          onClick={() => handleDeleteItem(item.id, item.name)}
+                          className="text-slate-300 hover:text-rose-500 transition-colors p-1 rounded-lg hover:bg-rose-50 opacity-0 group-hover:opacity-100"
+                          title="Delete Item"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
                     <h3 className="text-lg font-bold text-slate-800 mb-1">{item.name}</h3>
                   </div>

@@ -88,3 +88,37 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
+
+export async function DELETE(req: Request) {
+  try {
+    const user = await currentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "Item ID is required" }, { status: 400 });
+    }
+
+    // 1. Delete associated Serial Numbers
+    await prisma.serialNumber.deleteMany({
+      where: { inventoryItemId: id }
+    });
+
+    // 2. Delete associated Dispatch Logs
+    await prisma.dispatchLog.deleteMany({
+      where: { inventoryItemId: id }
+    });
+
+    // 3. Delete the Inventory Item
+    await prisma.inventoryItem.delete({
+      where: { id }
+    });
+
+    return NextResponse.json({ success: true, message: "Inventory item deleted successfully" }, { status: 200 });
+  } catch (error) {
+    console.error("DELETE /api/inventory error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
