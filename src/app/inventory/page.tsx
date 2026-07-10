@@ -420,8 +420,8 @@ export default function InventoryDashboard() {
     }
 
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[95vh] flex flex-col border border-slate-200">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-2 sm:p-4">
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl w-full max-w-lg p-4 sm:p-6 max-h-[98vh] sm:max-h-[95vh] flex flex-col border border-slate-200">
           <div className="flex justify-between items-start mb-4 pb-2 border-b">
             <div>
               <div className="flex items-center gap-3">
@@ -512,59 +512,48 @@ export default function InventoryDashboard() {
                 ) : existingSerials.length === 0 ? (
                   <p className="text-slate-400 text-xs font-bold text-center py-4 italic">No serial numbers assigned. Add some above.</p>
                 ) : (
-                  <div className="border border-slate-200 rounded-xl overflow-hidden max-h-[220px] overflow-y-auto bg-white">
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead>
-                        <tr className="bg-slate-50 border-b">
-                          <th className="p-2 font-black uppercase text-slate-500">Number</th>
-                          <th className="p-2 font-black uppercase text-slate-500">Status</th>
-                          <th className="p-2 font-black uppercase text-slate-500 text-right">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {existingSerials.map((s) => (
-                          <tr key={s.id} className="border-b last:border-0 hover:bg-slate-50">
-                            <td className="p-2 font-mono font-bold text-slate-700">{s.number}</td>
-                            <td className="p-2">
-                              <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
-                                s.status === "Available" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
-                                s.status === "Shipped" ? "bg-indigo-50 text-indigo-600 border border-indigo-100" :
-                                "bg-rose-50 text-rose-600 border border-rose-100"
-                              }`}>
-                                {s.status}
-                              </span>
-                            </td>
-                            <td className="p-2 text-right flex gap-1.5 justify-end">
-                              {s.status === "Available" && (
-                                <button
-                                  onClick={() => handleUpdateSerialStatus(s.id, "Defective")}
-                                  className="text-[9px] font-black text-amber-600 hover:text-amber-800 uppercase"
-                                  title="Mark Defective"
-                                >
-                                  Defective
-                                </button>
-                              )}
-                              {s.status === "Defective" && (
-                                <button
-                                  onClick={() => handleUpdateSerialStatus(s.id, "Available")}
-                                  className="text-[9px] font-black text-emerald-600 hover:text-emerald-800 uppercase"
-                                  title="Mark Available"
-                                >
-                                  Available
-                                </button>
-                              )}
-                              <button
-                                onClick={() => handleDeleteSerial(s.id)}
-                                className="text-[9px] font-black text-rose-600 hover:text-rose-800 uppercase"
-                                title="Delete Unit"
-                              >
-                                ✕
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="border border-slate-200 rounded-xl divide-y bg-white max-h-[220px] overflow-y-auto">
+                    {existingSerials.map((s) => (
+                      <div key={s.id} className="p-3 flex items-center justify-between hover:bg-slate-50 gap-2">
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-mono font-bold text-slate-700 text-xs truncate">{s.number}</span>
+                          <div className="mt-1">
+                            <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                              s.status === "Available" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
+                              s.status === "Shipped" ? "bg-indigo-50 text-indigo-600 border border-indigo-100" :
+                              "bg-rose-50 text-rose-600 border border-rose-100"
+                            }`}>
+                              {s.status}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 shrink-0 items-center">
+                          {s.status === "Available" && (
+                            <button
+                              onClick={() => handleUpdateSerialStatus(s.id, "Defective")}
+                              className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-[9px] font-black text-amber-700 rounded border border-amber-100 uppercase transition-all"
+                            >
+                              Defective
+                            </button>
+                          )}
+                          {s.status === "Defective" && (
+                            <button
+                              onClick={() => handleUpdateSerialStatus(s.id, "Available")}
+                              className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-[9px] font-black text-emerald-700 rounded border border-emerald-100 uppercase transition-all"
+                            >
+                              Available
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDeleteSerial(s.id)}
+                            className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded transition-all"
+                            title="Delete Unit"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -936,8 +925,8 @@ export default function InventoryDashboard() {
 
       {/* Edit Stock Modal */}
       {showEditModal && selectedItem && (
-        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl w-full max-w-lg p-4 sm:p-6 max-h-[95vh] flex flex-col">
             <div className="flex justify-between items-start mb-4 pb-2 border-b">
               <div>
                 <div className="flex items-center gap-3">
@@ -1030,59 +1019,48 @@ export default function InventoryDashboard() {
                   ) : existingSerials.length === 0 ? (
                     <p className="text-slate-400 text-xs font-bold text-center py-4 italic">No serial numbers assigned. Add some above.</p>
                   ) : (
-                    <div className="border border-slate-200 rounded-xl overflow-hidden max-h-[220px] overflow-y-auto bg-white">
-                      <table className="w-full text-left border-collapse text-xs">
-                        <thead>
-                          <tr className="bg-slate-50 border-b">
-                            <th className="p-2 font-black uppercase text-slate-500">Number</th>
-                            <th className="p-2 font-black uppercase text-slate-500">Status</th>
-                            <th className="p-2 font-black uppercase text-slate-500 text-right">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {existingSerials.map((s) => (
-                            <tr key={s.id} className="border-b last:border-0 hover:bg-slate-50">
-                              <td className="p-2 font-mono font-bold text-slate-700">{s.number}</td>
-                              <td className="p-2">
-                                <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
-                                  s.status === "Available" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
-                                  s.status === "Shipped" ? "bg-indigo-50 text-indigo-600 border border-indigo-100" :
-                                  "bg-rose-50 text-rose-600 border border-rose-100"
-                                }`}>
-                                  {s.status}
-                                </span>
-                              </td>
-                              <td className="p-2 text-right flex gap-1.5 justify-end">
-                                {s.status === "Available" && (
-                                  <button
-                                    onClick={() => handleUpdateSerialStatus(s.id, "Defective")}
-                                    className="text-[9px] font-black text-amber-600 hover:text-amber-800 uppercase"
-                                    title="Mark Defective"
-                                  >
-                                    Defective
-                                  </button>
-                                )}
-                                {s.status === "Defective" && (
-                                  <button
-                                    onClick={() => handleUpdateSerialStatus(s.id, "Available")}
-                                    className="text-[9px] font-black text-emerald-600 hover:text-emerald-800 uppercase"
-                                    title="Mark Available"
-                                  >
-                                    Available
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => handleDeleteSerial(s.id)}
-                                  className="text-[9px] font-black text-rose-600 hover:text-rose-800 uppercase"
-                                  title="Delete Unit"
-                                >
-                                  ✕
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <div className="border border-slate-200 rounded-xl divide-y bg-white max-h-[220px] overflow-y-auto">
+                      {existingSerials.map((s) => (
+                        <div key={s.id} className="p-3 flex items-center justify-between hover:bg-slate-50 gap-2">
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-mono font-bold text-slate-700 text-xs truncate">{s.number}</span>
+                            <div className="mt-1">
+                              <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                                s.status === "Available" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
+                                s.status === "Shipped" ? "bg-indigo-50 text-indigo-600 border border-indigo-100" :
+                                "bg-rose-50 text-rose-600 border border-rose-100"
+                              }`}>
+                                {s.status}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 shrink-0 items-center">
+                            {s.status === "Available" && (
+                              <button
+                                onClick={() => handleUpdateSerialStatus(s.id, "Defective")}
+                                className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-[9px] font-black text-amber-700 rounded border border-amber-100 uppercase transition-all"
+                              >
+                                Defective
+                              </button>
+                            )}
+                            {s.status === "Defective" && (
+                              <button
+                                onClick={() => handleUpdateSerialStatus(s.id, "Available")}
+                                className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-[9px] font-black text-emerald-700 rounded border border-emerald-100 uppercase transition-all"
+                              >
+                                Available
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleDeleteSerial(s.id)}
+                              className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded transition-all"
+                              title="Delete Unit"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
