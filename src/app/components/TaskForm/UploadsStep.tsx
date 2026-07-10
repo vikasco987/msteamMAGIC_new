@@ -2132,9 +2132,7 @@ export default function UploadsStep(props: UploadsStepProps) {
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {step === 1 && (
         <>
-          {activeTab !== "rto_printer" && (
-            <>
-              {/* ✨ AI Magic Auto-Fill Banner */}
+          {/* ✨ AI Magic Auto-Fill Banner */}
           <div 
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -2289,8 +2287,6 @@ export default function UploadsStep(props: UploadsStepProps) {
           </div>
         </div>
       </section>
-      </>
-      )}
 
       {/* 🚀 Section 2: Service Specific Details */}
       <section>

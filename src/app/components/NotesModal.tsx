@@ -140,7 +140,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { FaTimes, FaStickyNote, FaUserCircle, FaTrashAlt, FaPaperclip, FaSpinner, FaSmile } from "react-icons/fa";
+import { FaTimes, FaStickyNote, FaUserCircle, FaTrashAlt, FaPaperclip, FaSpinner, FaSmile, FaMicrophone } from "react-icons/fa";
 import { useUser } from "@clerk/nextjs";
 import axios from "axios";
 import { useRouter } from "next/navigation";
@@ -160,7 +160,9 @@ export default function NotesModal({ taskId, initialNotes, onClose }: NotesModal
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [activeReactionNote, setActiveReactionNote] = useState<string | null>(null);
+  const [isListening, setIsListening] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<any>(null);
   const router = useRouter();
   const EMOJI_OPTIONS = ["👍", "❤️", "😂", "🎉", "👀", "🙏"];
 
@@ -191,6 +193,80 @@ export default function NotesModal({ taskId, initialNotes, onClose }: NotesModal
   useEffect(() => {
     fetchNotes();
   }, [fetchNotes]);
+
+  // Stop recognition on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+    };
+  }, []);
+
+  const toggleListening = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error("Mic not supported in this browser");
+      return;
+    }
+
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      return;
+    }
+
+    const initialInput = input.trim();
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = "en-IN"; 
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
+      recognition.continuous = true;
+
+      recognition.onstart = () => setIsListening(true);
+      recognition.onend = () => setIsListening(false);
+      recognition.onerror = (event: any) => {
+        setIsListening(false);
+        if (event.error !== 'no-speech') toast.error(`Mic Error: ${event.error}`);
+      };
+
+      const processTranscript = (text: string) => {
+        const dictionary: Record<string, string> = {
+          '\\bcal\\b': 'kal', '\\bcall\\b': 'kal', '\\bperson\\b': 'parson',
+          '\\bhigh\\b': 'hai', '\\bhey\\b': 'hai',
+          '\\bball\\b': 'bol', '\\braha\\b': 'raha', '\\brahow\\b': 'raho',
+          '\\bli\\b': 'liye', '\\blee\\b': 'liye', '\\bkey\\b': 'ke',
+          '\\bkay\\b': 'ke', '\\bmarning\\b': 'morning'
+        };
+        let cleaned = text.toLowerCase();
+        Object.entries(dictionary).forEach(([wrong, right]) => {
+          cleaned = cleaned.replace(new RegExp(wrong, 'gi'), right);
+        });
+        return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+      };
+
+      recognition.onresult = (event: any) => {
+        let fullFinal = "";
+        let fullInterim = "";
+
+        for (let i = 0; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) fullFinal += event.results[i][0].transcript;
+          else fullInterim += event.results[i][0].transcript;
+        }
+
+        const currentTranscript = fullFinal + (fullInterim ? " " + fullInterim : "");
+        const processed = processTranscript(currentTranscript);
+        setInput(initialInput ? initialInput + " " + processed : processed);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (e) {
+      console.error(e);
+      toast.error("Voice typing failed");
+    }
+  };
 
   const addNote = async () => {
     if (!input.trim() && !file) return;
@@ -412,9 +488,20 @@ export default function NotesModal({ taskId, initialNotes, onClose }: NotesModal
             onChange={(e) => setInput(e.target.value)}
             placeholder="Write a new note here..."
             rows={3}
-            className="w-full p-3 pr-12 border border-yellow-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-yellow-100 text-gray-800 placeholder-gray-500 resize-none transition-all duration-200"
+            className="w-full p-3 pr-20 border border-yellow-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-yellow-100 text-gray-800 placeholder-gray-500 resize-none transition-all duration-200"
             aria-label="Write a new note"
           />
+          <button
+            type="button"
+            onClick={toggleListening}
+            className={`absolute bottom-3 right-11 p-2 rounded-full transition-colors ${
+              isListening ? "text-rose-500 bg-rose-100 animate-pulse" : "text-gray-500 hover:text-purple-600 hover:bg-purple-100"
+            }`}
+            title={isListening ? "Listening... Click to stop" : "Speak (Hinglish)"}
+            disabled={isUploading}
+          >
+            <FaMicrophone size={18} />
+          </button>
           <button
             onClick={() => fileInputRef.current?.click()}
             className="absolute bottom-3 right-3 p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-100 rounded-full transition-colors"
