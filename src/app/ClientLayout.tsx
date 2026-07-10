@@ -20,7 +20,7 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isSharedPage = pathname.startsWith('/shared/');
   const isTrackPage = pathname.startsWith('/dispatch/track');
-  const isFullView = searchParams.get('fullview') === 'true' || isSharedPage || isTrackPage;
+  const isFullView = searchParams.get('fullview') === 'true' || searchParams.has('edit') || isSharedPage || isTrackPage;
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {

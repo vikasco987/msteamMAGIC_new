@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Search, Printer, RotateCcw, AlertTriangle, CheckCircle, Clock, Truck, ShieldAlert, Trash2 } from "lucide-react";
+import toast from "react-hot-toast";
 
 export default function InventoryDashboard() {
   const [items, setItems] = useState<any[]>([]);
@@ -36,12 +37,30 @@ export default function InventoryDashboard() {
   const [editingRemarksId, setEditingRemarksId] = useState<string | null>(null);
   const [remarksInput, setRemarksInput] = useState("");
 
+  const hasAutoOpenedRef = useRef(false);
+
   const fetchInventory = async () => {
     try {
       setLoading(true);
       const res = await fetch("/api/inventory");
       const data = await res.json();
-      setItems(data.items || []);
+      const fetchedItems = data.items || [];
+      setItems(fetchedItems);
+
+      // Auto-open modal if specified in query parameter (runs once on initial mount)
+      if (!hasAutoOpenedRef.current) {
+        const params = new URLSearchParams(window.location.search);
+        const editName = params.get("edit");
+        if (editName) {
+          const itemToEdit = fetchedItems.find(
+            (i: any) => i.name.toLowerCase() === editName.toLowerCase()
+          );
+          if (itemToEdit) {
+            handleOpenEditStock(itemToEdit);
+            hasAutoOpenedRef.current = true;
+          }
+        }
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -374,6 +393,187 @@ export default function InventoryDashboard() {
       </span>
     );
   };
+
+  const isEmbedded = typeof window !== "undefined" && new URLSearchParams(window.location.search).has("edit");
+
+  if (isEmbedded) {
+    const editName = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("edit") : null;
+    const itemExists = items.some((i: any) => i.name.toLowerCase() === editName?.toLowerCase());
+
+    if (loading || (!selectedItem && itemExists)) {
+      return (
+        <div className="flex h-screen w-full items-center justify-center bg-slate-50">
+          <div className="flex flex-col items-center gap-3">
+            <div className="animate-spin rounded-full h-8 w-8 border-4 border-indigo-100 border-t-indigo-600"></div>
+            <p className="text-slate-400 font-bold text-xs uppercase tracking-wider">Loading Edit Form...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (!itemExists) {
+      return (
+        <div className="flex h-screen w-full items-center justify-center bg-slate-50">
+          <p className="text-slate-500 font-bold text-sm">⚠️ Inventory Item "{editName}" not found.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[95vh] flex flex-col border border-slate-200">
+          <div className="flex justify-between items-start mb-4 pb-2 border-b">
+            <div>
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-black text-slate-800">Edit Stock: {selectedItem.name}</h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const link = `${window.location.origin}/inventory?edit=${encodeURIComponent(selectedItem.name)}`;
+                    navigator.clipboard.writeText(link);
+                    toast.success("Direct link copied to clipboard!");
+                  }}
+                  className="text-[10px] font-black text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2 py-1 rounded transition-colors uppercase tracking-wider"
+                >
+                  🔗 Copy Link
+                </button>
+              </div>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Type: {selectedItem.type}</span>
+            </div>
+          </div>
+
+          {selectedItem.type === "SOFTWARE" ? (
+            /* SOFTWARE EDIT VIEW */
+            <form onSubmit={handleUpdateSoftwareStock} className="flex flex-col gap-4 flex-1">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Select Action</label>
+                <div className="flex gap-2">
+                  {(["increment", "decrement", "set"] as const).map((act) => (
+                    <button
+                      key={act}
+                      type="button"
+                      onClick={() => setSoftwareAction(act)}
+                      className={`flex-1 py-2 text-xs font-bold uppercase rounded-lg border transition-all ${
+                        softwareAction === act 
+                          ? "bg-indigo-50 border-indigo-600 text-indigo-700" 
+                          : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      {act}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Quantity</label>
+                <input
+                  required
+                  type="number"
+                  value={softwareQty}
+                  onChange={(e) => setSoftwareQty(e.target.value)}
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm font-bold"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6 border-t pt-4">
+                <button type="submit" className="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 shadow-md shadow-indigo-100 transition-all">Update Stock</button>
+              </div>
+            </form>
+          ) : (
+            /* HARDWARE (SERIAL NUMBERS) EDIT VIEW */
+            <div className="flex-1 flex flex-col gap-6 overflow-y-auto pr-1">
+              {/* 1. Add new serial numbers */}
+              <form onSubmit={handleAddSerials} className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <h3 className="text-xs font-black text-slate-600 uppercase tracking-widest mb-2">➕ Add Serial Numbers</h3>
+                <p className="text-[10px] text-slate-400 mb-2 font-bold uppercase">Enter one unique number/serial per line</p>
+                <textarea
+                  required
+                  rows={4}
+                  value={serialNumbersText}
+                  onChange={(e) => setSerialNumbersText(e.target.value)}
+                  className="w-full p-2 border border-slate-200 rounded-lg text-xs font-mono"
+                  placeholder="PRN-100021&#10;PRN-100022&#10;PRN-100023"
+                />
+                <button
+                  type="submit"
+                  disabled={submittingSerials}
+                  className="w-full mt-3 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs py-2 rounded-lg transition-colors uppercase tracking-wider disabled:opacity-50"
+                >
+                  {submittingSerials ? "Adding..." : "Add to Stock"}
+                </button>
+              </form>
+
+              {/* 2. List of existing serial numbers */}
+              <div>
+                <h3 className="text-xs font-black text-slate-600 uppercase tracking-widest mb-3">📦 Existing Serial Numbers</h3>
+                {loadingSerials ? (
+                  <p className="text-slate-400 text-xs font-bold text-center py-4">Loading unit serials...</p>
+                ) : existingSerials.length === 0 ? (
+                  <p className="text-slate-400 text-xs font-bold text-center py-4 italic">No serial numbers assigned. Add some above.</p>
+                ) : (
+                  <div className="border border-slate-200 rounded-xl overflow-hidden max-h-[220px] overflow-y-auto bg-white">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 border-b">
+                          <th className="p-2 font-black uppercase text-slate-500">Number</th>
+                          <th className="p-2 font-black uppercase text-slate-500">Status</th>
+                          <th className="p-2 font-black uppercase text-slate-500 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {existingSerials.map((s) => (
+                          <tr key={s.id} className="border-b last:border-0 hover:bg-slate-50">
+                            <td className="p-2 font-mono font-bold text-slate-700">{s.number}</td>
+                            <td className="p-2">
+                              <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                                s.status === "Available" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
+                                s.status === "Shipped" ? "bg-indigo-50 text-indigo-600 border border-indigo-100" :
+                                "bg-rose-50 text-rose-600 border border-rose-100"
+                              }`}>
+                                {s.status}
+                              </span>
+                            </td>
+                            <td className="p-2 text-right flex gap-1.5 justify-end">
+                              {s.status === "Available" && (
+                                <button
+                                  onClick={() => handleUpdateSerialStatus(s.id, "Defective")}
+                                  className="text-[9px] font-black text-amber-600 hover:text-amber-800 uppercase"
+                                  title="Mark Defective"
+                                >
+                                  Defective
+                                </button>
+                              )}
+                              {s.status === "Defective" && (
+                                <button
+                                  onClick={() => handleUpdateSerialStatus(s.id, "Available")}
+                                  className="text-[9px] font-black text-emerald-600 hover:text-emerald-800 uppercase"
+                                  title="Mark Available"
+                                >
+                                  Available
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleDeleteSerial(s.id)}
+                                className="text-[9px] font-black text-rose-600 hover:text-rose-800 uppercase"
+                                title="Delete Unit"
+                              >
+                                ✕
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 md:p-8 bg-slate-50 min-h-screen">
@@ -738,9 +938,22 @@ export default function InventoryDashboard() {
       {showEditModal && selectedItem && (
         <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] flex flex-col">
-            <div className="flex justify-between items-center mb-4 pb-2 border-b">
+            <div className="flex justify-between items-start mb-4 pb-2 border-b">
               <div>
-                <h2 className="text-xl font-black text-slate-800">Edit Stock: {selectedItem.name}</h2>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-xl font-black text-slate-800">Edit Stock: {selectedItem.name}</h2>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const link = `${window.location.origin}/inventory?edit=${encodeURIComponent(selectedItem.name)}`;
+                      navigator.clipboard.writeText(link);
+                      toast.success("Direct link copied to clipboard!");
+                    }}
+                    className="text-[10px] font-black text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2 py-1 rounded transition-colors uppercase tracking-wider"
+                  >
+                    🔗 Copy Link
+                  </button>
+                </div>
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Type: {selectedItem.type}</span>
               </div>
               <button onClick={() => setShowEditModal(false)} className="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
