@@ -69,6 +69,8 @@ export async function POST(req: Request) {
 
     let addedCount = 0;
     const errors: string[] = [];
+    const creatorName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.username || "System";
+    const creatorEmail = user.emailAddresses?.[0]?.emailAddress || "";
 
     for (const num of serialNumbers) {
       const cleanNum = String(num).trim();
@@ -91,7 +93,9 @@ export async function POST(req: Request) {
           data: {
             number: cleanNum,
             status: "Available",
-            inventoryItemId: inventoryItem.id
+            inventoryItemId: inventoryItem.id,
+            createdByName: creatorName,
+            createdByEmail: creatorEmail
           }
         });
         addedCount++;

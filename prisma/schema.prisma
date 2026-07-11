@@ -622,6 +622,8 @@ model SerialNumber {
   taskId          String?       @db.ObjectId
   task            Task?         @relation(fields: [taskId], references: [id])
   remarks         String?
+  createdByName   String?
+  createdByEmail  String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }

@@ -517,13 +517,16 @@ export default function InventoryDashboard() {
                       <div key={s.id} className="p-3 flex items-center justify-between hover:bg-slate-50 gap-2">
                         <div className="flex flex-col min-w-0">
                           <span className="font-mono font-bold text-slate-700 text-xs truncate">{s.number}</span>
-                          <div className="mt-1">
+                          <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                             <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
                               s.status === "Available" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
                               s.status === "Shipped" ? "bg-indigo-50 text-indigo-600 border border-indigo-100" :
                               "bg-rose-50 text-rose-600 border border-rose-100"
                             }`}>
                               {s.status}
+                            </span>
+                            <span className="text-[9px] text-slate-400">
+                              • By {s.createdByName || "System"} on {new Date(s.createdAt).toLocaleDateString()}
                             </span>
                           </div>
                         </div>
@@ -739,9 +742,15 @@ export default function InventoryDashboard() {
                       return (
                         <tr key={serial.id} className="border-b hover:bg-slate-50/50 transition-colors">
                           {/* 1. Serial number */}
-                          <td className="p-4 font-mono font-bold text-slate-800 text-sm">
-                            {serial.number}
-                          </td>
+                          <td className="p-4">
+                             <p className="font-mono font-bold text-slate-800 text-sm leading-tight">{serial.number}</p>
+                             <p className="text-[10px] text-slate-400 mt-1 font-medium">
+                               Added on {new Date(serial.createdAt).toLocaleDateString()} by{" "}
+                               <span className="font-bold text-slate-500">
+                                 {serial.createdByName || "System"}
+                               </span>
+                             </p>
+                           </td>
                           {/* 2. Real-time Status */}
                           <td className="p-4">
                             {renderStatusBadge(serial)}
@@ -1024,13 +1033,16 @@ export default function InventoryDashboard() {
                         <div key={s.id} className="p-3 flex items-center justify-between hover:bg-slate-50 gap-2">
                           <div className="flex flex-col min-w-0">
                             <span className="font-mono font-bold text-slate-700 text-xs truncate">{s.number}</span>
-                            <div className="mt-1">
+                            <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                               <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
                                 s.status === "Available" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
                                 s.status === "Shipped" ? "bg-indigo-50 text-indigo-600 border border-indigo-100" :
                                 "bg-rose-50 text-rose-600 border border-rose-100"
                               }`}>
                                 {s.status}
+                              </span>
+                              <span className="text-[9px] text-slate-400">
+                                • By {s.createdByName || "System"} on {new Date(s.createdAt).toLocaleDateString()}
                               </span>
                             </div>
                           </div>
