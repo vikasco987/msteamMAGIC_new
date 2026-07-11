@@ -170,6 +170,30 @@ export default function Sidebar() {
 
   if (!mounted) return <div className="w-20 lg:w-64 h-screen bg-[#0f172a]" />;
 
+  const renderStylishName = (name: string) => {
+    const parts = name.trim().split(" ");
+    if (parts.length === 1) {
+      const len = name.length;
+      if (len <= 4) return <span className="text-white">{name}</span>;
+      const half = Math.ceil(len / 2);
+      return (
+        <>
+          <span className="text-white">{name.substring(0, half)}</span>
+          <span className="text-indigo-400 bg-gradient-to-r from-indigo-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">{name.substring(half)}</span>
+        </>
+      );
+    }
+
+    const firstWord = parts[0];
+    const rest = parts.slice(1).join(" ");
+    return (
+      <>
+        <span className="text-white mr-1">{firstWord}</span>
+        <span className="text-indigo-400 bg-gradient-to-r from-indigo-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">{rest}</span>
+      </>
+    );
+  };
+
   return (
     <>
       {/* Mobile Trigger */}
@@ -209,7 +233,7 @@ export default function Sidebar() {
 
         {/* Brand Header */}
         <div className="p-6 flex items-center justify-between relative z-10">
-          <Link href="/" className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3 w-full">
             <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 shrink-0 overflow-hidden">
               {businessLogo ? (
                 <img src={businessLogo} alt="Logo" className="w-full h-full object-cover" />
@@ -223,8 +247,16 @@ export default function Sidebar() {
                 animate={{ opacity: 1, x: 0 }}
                 className="flex flex-col flex-1 min-w-0"
               >
-                <span className="text-xl font-black text-white leading-none tracking-tight uppercase truncate">
-                  {businessName}
+                <span className={`${
+                  businessName.length > 20 
+                    ? "text-xs" 
+                    : businessName.length > 15 
+                      ? "text-[13px] sm:text-sm" 
+                      : businessName.length > 10 
+                        ? "text-sm sm:text-base" 
+                        : "text-[16px] sm:text-lg"
+                } font-black leading-tight tracking-tight uppercase break-words`}>
+                  {renderStylishName(businessName)}
                 </span>
                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-1">Enterprise OS</span>
               </motion.div>
