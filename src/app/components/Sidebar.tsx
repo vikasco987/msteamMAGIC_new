@@ -105,9 +105,23 @@ export default function Sidebar() {
   const roleFromMetadata = user?.publicMetadata?.role as string;
   const userRole = String(isLoaded ? (roleFromMetadata || 'user') : 'user').toLowerCase().trim();
 
+  // --- BRAND IDENTITY ---
+  const [businessName, setBusinessName] = useState<string>("MAGICSCALE");
+  const [businessLogo, setBusinessLogo] = useState<string | null>(null);
+
   // --- DYNAMIC PERMISSIONS ---
   const [dynamicPermissions, setDynamicPermissions] = useState<string[] | null>(null);
   const [pinnedForms, setPinnedForms] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch(`/api/admin/settings/business`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.name) setBusinessName(data.name);
+        if (data.logo) setBusinessLogo(data.logo);
+      })
+      .catch(err => console.error("Sidebar brand identity fetch error:", err));
+  }, []);
 
   useEffect(() => {
     const fetchPinned = () => {
@@ -196,16 +210,22 @@ export default function Sidebar() {
         {/* Brand Header */}
         <div className="p-6 flex items-center justify-between relative z-10">
           <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 shrink-0">
-              <Zap className="text-white fill-white" size={20} />
+            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 shrink-0 overflow-hidden">
+              {businessLogo ? (
+                <img src={businessLogo} alt="Logo" className="w-full h-full object-cover" />
+              ) : (
+                <Zap className="text-white fill-white" size={20} />
+              )}
             </div>
             {!isCollapsed && (
               <motion.div
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="flex flex-col"
+                className="flex flex-col flex-1 min-w-0"
               >
-                <span className="text-xl font-black text-white leading-none tracking-tight">MAGIC<span className="text-indigo-400">SCALE</span></span>
+                <span className="text-xl font-black text-white leading-none tracking-tight uppercase truncate">
+                  {businessName}
+                </span>
                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-1">Enterprise OS</span>
               </motion.div>
             )}
@@ -350,7 +370,7 @@ export default function Sidebar() {
               const hasHardcodedRole = i.roles.includes(userRole);
 
               // If we have dynamic permissions, they override or restrict
-              if (dynamicPermissions && dynamicPermissions.length > 0) {
+              if (dynamicPermissions !== null) {
                 // Safety Lock: Master should always see Access Control & Business Setup to avoid locking out
                 if (userRole === 'master' && (i.label === 'Access Control' || i.label === 'Business Setup' || i.label === 'Payment Portal' || i.label === 'Profit & Loss')) return true;
                 
