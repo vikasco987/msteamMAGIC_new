@@ -38,6 +38,54 @@ export default function InventoryDashboard() {
   const [remarksInput, setRemarksInput] = useState("");
 
   const hasAutoOpenedRef = useRef(false);
+  const serialImageInputRef = useRef<HTMLInputElement>(null);
+  const [extractingSerial, setExtractingSerial] = useState(false);
+
+  const handleExtractSerialFromImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setExtractingSerial(true);
+    const loadingToast = toast.loading("AI is reading serial number from image...");
+
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const res = await fetch("/api/ai/extract-serial", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await res.json();
+      
+      if (!res.ok || data.error) {
+        throw new Error(data.error || "Failed to extract serials");
+      }
+
+      if (data.serials && data.serials.length > 0) {
+        const foundSerials = data.serials.map((s: string) => s.trim()).filter(Boolean);
+        if (foundSerials.length > 0) {
+          setSerialNumbersText(prev => {
+            const currentLines = prev.trim() ? prev.trim().split("\n") : [];
+            const newLines = [...currentLines, ...foundSerials];
+            return newLines.join("\n");
+          });
+          toast.success(`AI successfully extracted ${foundSerials.length} serial number(s)!`, { id: loadingToast });
+        } else {
+          toast.error("AI could not find any readable serial numbers in this image.", { id: loadingToast });
+        }
+      } else {
+        toast.error("AI could not find any readable serial numbers in this image.", { id: loadingToast });
+      }
+    } catch (error: any) {
+      console.error("AI Serial Extraction Error:", error);
+      toast.error(error.message || "Failed to parse image via AI.", { id: loadingToast });
+    } finally {
+      setExtractingSerial(false);
+      if (e.target) e.target.value = ""; // Clear file input
+    }
+  };
 
   const fetchInventory = async () => {
     try {
@@ -486,7 +534,24 @@ export default function InventoryDashboard() {
               {/* 1. Add new serial numbers */}
               <form onSubmit={handleAddSerials} className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                 <h3 className="text-xs font-black text-slate-600 uppercase tracking-widest mb-2">➕ Add Serial Numbers</h3>
-                <p className="text-[10px] text-slate-400 mb-2 font-bold uppercase">Enter one unique number/serial per line</p>
+                <div className="flex justify-between items-center mb-2">
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">Enter one unique number/serial per line</p>
+                  <button
+                    type="button"
+                    disabled={extractingSerial}
+                    onClick={() => serialImageInputRef.current?.click()}
+                    className="flex items-center gap-1 px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black uppercase text-[9px] tracking-wider rounded-lg transition-colors border border-indigo-100 disabled:opacity-50"
+                  >
+                    {extractingSerial ? (
+                      <>
+                        <span className="w-2.5 h-2.5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mr-1"></span>
+                        Reading...
+                      </>
+                    ) : (
+                      "📷 AI Scan Label"
+                    )}
+                  </button>
+                </div>
                 <textarea
                   required
                   rows={4}
@@ -1002,7 +1067,24 @@ export default function InventoryDashboard() {
                 {/* 1. Add new serial numbers */}
                 <form onSubmit={handleAddSerials} className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                   <h3 className="text-xs font-black text-slate-600 uppercase tracking-widest mb-2">➕ Add Serial Numbers</h3>
-                  <p className="text-[10px] text-slate-400 mb-2 font-bold uppercase">Enter one unique number/serial per line</p>
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase">Enter one unique number/serial per line</p>
+                    <button
+                      type="button"
+                      disabled={extractingSerial}
+                      onClick={() => serialImageInputRef.current?.click()}
+                      className="flex items-center gap-1 px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black uppercase text-[9px] tracking-wider rounded-lg transition-colors border border-indigo-100 disabled:opacity-50"
+                    >
+                      {extractingSerial ? (
+                        <>
+                          <span className="w-2.5 h-2.5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mr-1"></span>
+                          Reading...
+                        </>
+                      ) : (
+                        "📷 AI Scan Label"
+                      )}
+                    </button>
+                  </div>
                   <textarea
                     required
                     rows={4}
@@ -1081,6 +1163,14 @@ export default function InventoryDashboard() {
           </div>
         </div>
       )}
+      <input
+        type="file"
+        ref={serialImageInputRef}
+        onChange={handleExtractSerialFromImage}
+        className="hidden"
+        accept="image/*"
+        capture="environment"
+      />
     </div>
   );
 }
