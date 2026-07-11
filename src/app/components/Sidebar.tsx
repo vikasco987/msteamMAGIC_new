@@ -170,27 +170,62 @@ export default function Sidebar() {
 
   if (!mounted) return <div className="w-20 lg:w-64 h-screen bg-[#0f172a]" />;
 
-  const renderStylishName = (name: string) => {
+  const renderStylishBrand = (name: string) => {
     const parts = name.trim().split(" ");
-    if (parts.length === 1) {
-      const len = name.length;
-      if (len <= 4) return <span className="text-white">{name}</span>;
-      const half = Math.ceil(len / 2);
+    
+    // Short name layout
+    if (name.length <= 15 || parts.length <= 2) {
+      let styledName;
+      if (parts.length === 1) {
+        const len = name.length;
+        if (len <= 4) {
+          styledName = <span className="text-white">{name}</span>;
+        } else {
+          const half = Math.ceil(len / 2);
+          styledName = (
+            <>
+              <span className="text-white">{name.substring(0, half)}</span>
+              <span className="text-indigo-400 bg-gradient-to-r from-indigo-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">{name.substring(half)}</span>
+            </>
+          );
+        }
+      } else {
+        styledName = (
+          <>
+            <span className="text-white mr-1">{parts[0]}</span>
+            <span className="text-indigo-400 bg-gradient-to-r from-indigo-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">{parts.slice(1).join(" ")}</span>
+          </>
+        );
+      }
+
       return (
-        <>
-          <span className="text-white">{name.substring(0, half)}</span>
-          <span className="text-indigo-400 bg-gradient-to-r from-indigo-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">{name.substring(half)}</span>
-        </>
+        <div className="flex flex-col justify-center min-w-0">
+          <span className="text-[15px] sm:text-[17px] font-black leading-tight tracking-tight uppercase break-words">
+            {styledName}
+          </span>
+          <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-0.5">Enterprise OS</span>
+        </div>
       );
     }
 
-    const firstWord = parts[0];
-    const rest = parts.slice(1).join(" ");
+    // Long name layout (visual hierarchy)
+    const mainTitleWords = parts.slice(0, 2);
+    const subtitleWords = parts.slice(2);
+    
+    const mainTitleFirst = mainTitleWords[0];
+    const mainTitleRest = mainTitleWords.slice(1).join(" ");
+    
     return (
-      <>
-        <span className="text-white mr-1">{firstWord}</span>
-        <span className="text-indigo-400 bg-gradient-to-r from-indigo-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">{rest}</span>
-      </>
+      <div className="flex flex-col justify-center min-w-0">
+        <span className="text-[13px] sm:text-[14px] font-black leading-tight tracking-tight uppercase break-words">
+          <span className="text-white mr-1">{mainTitleFirst}</span>
+          <span className="text-indigo-400 bg-gradient-to-r from-indigo-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">{mainTitleRest}</span>
+        </span>
+        <span className="text-[9px] font-extrabold text-indigo-300/80 uppercase tracking-wider truncate mt-0.5" title={subtitleWords.join(" ")}>
+          {subtitleWords.join(" ")}
+        </span>
+        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-0.5">Enterprise OS</span>
+      </div>
     );
   };
 
@@ -245,20 +280,9 @@ export default function Sidebar() {
               <motion.div
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="flex flex-col flex-1 min-w-0"
+                className="flex flex-col flex-1 min-w-0 justify-center"
               >
-                <span className={`${
-                  businessName.length > 20 
-                    ? "text-xs" 
-                    : businessName.length > 15 
-                      ? "text-[13px] sm:text-sm" 
-                      : businessName.length > 10 
-                        ? "text-sm sm:text-base" 
-                        : "text-[16px] sm:text-lg"
-                } font-black leading-tight tracking-tight uppercase break-words`}>
-                  {renderStylishName(businessName)}
-                </span>
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-1">Enterprise OS</span>
+                {renderStylishBrand(businessName)}
               </motion.div>
             )}
           </Link>
