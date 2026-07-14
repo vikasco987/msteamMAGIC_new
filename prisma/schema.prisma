@@ -154,8 +154,8 @@ model Payment {
   updatedBy String?
   updatedAt DateTime @default(now())
 
-  taskId    String   @db.ObjectId
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId    String?  @db.ObjectId
+  task      Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@index([taskId])
 }

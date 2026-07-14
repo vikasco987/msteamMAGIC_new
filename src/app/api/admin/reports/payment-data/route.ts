@@ -57,21 +57,23 @@ export async function GET(req: NextRequest) {
       _sum: { received: true }
     });
 
-    const reportData = payments.map(p => ({
-      id: p.id,
-      taskId: p.taskId,
-      date: p.updatedAt,
-      title: p.task.title,
-      shopName: p.task.shopName,
-      customerName: p.task.customerName,
-      phone: (p.task as any).phone,
-      location: (p.task as any).location,
-      totalBudget: p.task.amount || 0,
-      received: p.received || 0,
-      utr: p.utr,
-      updatedBy: p.updatedBy,
-      proof: p.fileUrl
-    }));
+    const reportData = payments
+      .filter(p => p.task)
+      .map(p => ({
+        id: p.id,
+        taskId: p.taskId,
+        date: p.updatedAt,
+        title: p.task!.title,
+        shopName: p.task!.shopName,
+        customerName: p.task!.customerName,
+        phone: (p.task as any).phone,
+        location: (p.task as any).location,
+        totalBudget: p.task!.amount || 0,
+        received: p.received || 0,
+        utr: p.utr,
+        updatedBy: p.updatedBy,
+        proof: p.fileUrl
+      }));
 
     const totalPages = Math.ceil(totalEntries / limit);
 

@@ -66,6 +66,7 @@ export async function GET(req: NextRequest) {
 
     for (const p of payments) {
       const task = p.task;
+      if (!task) continue;
       const cf = (task.customFields as any) || {};
       
       // Get Full Name from Map, fallback to task.assignerName
