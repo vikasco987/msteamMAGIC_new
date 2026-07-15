@@ -172,6 +172,7 @@ export default function FinancialReportPage() {
                 <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[180px]">Shop Name</th>
                 <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[200px]">Location</th>
                 <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[150px]">UTR / Ref</th>
+                <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[150px]">Transaction ID</th>
                 <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[120px]">Amount</th>
                 <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[120px]">Date</th>
                 <th className="px-4 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right pr-10">Actions</th>
@@ -180,7 +181,7 @@ export default function FinancialReportPage() {
             <tbody className="divide-y divide-slate-50">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-32 text-center">
+                  <td colSpan={9} className="py-32 text-center">
                     <div className="flex flex-col items-center gap-4">
                       <div className="w-16 h-16 border-8 border-indigo-600 border-t-transparent rounded-full animate-spin shadow-xl shadow-indigo-100"></div>
                       <p className="text-slate-400 font-black text-xl tracking-tight">Syncing ecosystem data...</p>
@@ -189,7 +190,7 @@ export default function FinancialReportPage() {
                 </tr>
               ) : data.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-32 text-center">
+                  <td colSpan={9} className="py-32 text-center">
                     <p className="text-slate-300 font-black text-2xl">No data found in this ecosystem</p>
                   </td>
                 </tr>
@@ -234,6 +235,11 @@ export default function FinancialReportPage() {
                   <td className="px-4 py-6">
                     <span className="text-xs font-black text-indigo-600 font-mono tracking-tight whitespace-nowrap">
                       {item.utr || "N/A"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-6">
+                    <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest px-3 py-1 bg-emerald-50 rounded-lg">
+                      {item.transactionId || "N/A"}
                     </span>
                   </td>
                   <td className="px-4 py-6">

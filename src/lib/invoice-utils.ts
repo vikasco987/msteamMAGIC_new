@@ -133,7 +133,7 @@ export const generateInvoicePDF = (p: any, businessSettings: any, overrides?: an
     const datePart = new Date(p.updatedAt).toISOString().split('T')[0].replace(/-/g, '');
     const entryId = p.paymentId || p.id || "0";
     const numericHash = Math.abs(entryId.split('').reduce((a: any, b: any) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0)).toString().substring(0, 4);
-    const professionalInvoiceNo = `MS/${datePart}/${numericHash}`;
+    const professionalInvoiceNo = p.invoiceNo || `MS/${datePart}/${numericHash}`;
 
     let rY = detailsY + 10;
     const info = (l: string, v: string, y: number) => {

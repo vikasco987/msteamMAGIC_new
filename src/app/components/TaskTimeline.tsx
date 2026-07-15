@@ -179,6 +179,7 @@ export default function TaskTimeline() {
   const [newSubtask, setNewSubtask] = useState("");
   const [currentUtrInput, setCurrentUtrInput] = useState("");
   const [currentGstinInput, setCurrentGstinInput] = useState("");
+  const [currentModeInput, setCurrentModeInput] = useState("");
   const [uploadStatus, setUploadStatus] = useState("");
   const [paymentUploadStatus, setPaymentUploadStatus] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -684,6 +685,8 @@ export default function TaskTimeline() {
     formData.append("received", currentReceivedInput);
     formData.append("utr", currentUtrInput);
     formData.append("gstin", currentGstinInput);
+    // Append payment mode
+    formData.append("mode", currentModeInput);
 
     const fileInput = (e.target as HTMLFormElement).paymentFile as HTMLInputElement;
     const hasFile = fileInput?.files?.[0];
@@ -720,7 +723,12 @@ export default function TaskTimeline() {
       updatedAt: new Date().toISOString(),
       updatedBy: user?.firstName || "You",
       fileUrl: null,
-      utr: currentUtrInput || null
+      utr: currentUtrInput || null,
+      // Store mode for UI reference
+      // We're adding mode as a custom field in the entry (not in DB schema but for UI display)
+      // Note: PaymentEntry type does not have mode; we can extend it via any
+      // @ts-ignore
+      mode: currentModeInput || null
     };
 
     const currentCustomFields = (selectedTask as any).customFields || {};
@@ -1274,6 +1282,8 @@ export default function TaskTimeline() {
                   setUtr={setCurrentUtrInput}
                   gstin={currentGstinInput}
                   setGstin={setCurrentGstinInput}
+                  mode={currentModeInput}
+                  setMode={setCurrentModeInput}
                   paymentUploadStatus={paymentUploadStatus}
                   setPaymentUploadStatus={setPaymentUploadStatus}
                   handlePaymentSubmit={handlePaymentSubmit}

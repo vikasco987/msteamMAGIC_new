@@ -85,6 +85,7 @@ export async function GET(req: NextRequest) {
         updatedBy: p.updatedBy || "Unknown",
         fileUrl: p.fileUrl,
         invoiceUrl: p.invoiceUrl,
+        invoiceNo: p.invoiceNo,
         utr: p.utr,
         phone: cf.phone || task.phone,
         shopName: cf.shopName || task.shopName,

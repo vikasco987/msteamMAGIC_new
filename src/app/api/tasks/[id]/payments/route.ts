@@ -67,6 +67,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const newReceived = formData.get("received") ? Number(formData.get("received")) : undefined;
     const utr = formData.get("utr") as string | null;
     const gstin = formData.get("gstin") as string | null;
+    const mode = formData.get("mode") as string | null;
 
     const existingTask = await prisma.task.findUnique({
       where: { id: originalTaskId },
@@ -106,31 +107,55 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
     const cleanUtr = utr?.trim() || null;
     const cleanGstin = gstin?.trim() || null;
+    const cleanMode = mode?.trim() || null;
+
+    // 🛡️ Step 0.5: Generate Sequential Invoice Number
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    
+    const countThisMonth = await prisma.payment.count({
+      where: {
+        createdAt: {
+          gte: startOfMonth
+        }
+      }
+    });
+    
+    const yearPart = now.getFullYear().toString().slice(-2);
+    const monthPart = (now.getMonth() + 1).toString().padStart(2, '0');
+    const sequencePart = String(countThisMonth + 1).padStart(4, '0');
+    const generatedInvoiceNo = `INV/${yearPart}${monthPart}/${sequencePart}`;
 
     // 🛡️ Step 1: Create Payment record (Enforce UTR uniqueness)
     try {
       if (cleanUtr) {
         await prisma.payment.create({
-          data: {
-            taskId: originalTaskId,
-            utr: cleanUtr,
-            amount: updatedAmount ?? 0,
-            received: newReceived ?? 0,
-            fileUrl: uploadedFileUrl || null,
-            updatedBy: userName,
-          }
-        });
+        data: {
+          task: { connect: { id: originalTaskId } },
+          utr: cleanUtr,
+          amount: updatedAmount ?? 0,
+          received: newReceived ?? 0,
+          fileUrl: uploadedFileUrl || null,
+          updatedBy: userName,
+          mode: cleanMode ?? undefined,
+          invoiceNo: generatedInvoiceNo,
+          createdAt: new Date(),
+        }
+      });
       } else {
         // If no UTR provided, just create without uniqueness check
         await prisma.payment.create({
-          data: {
-            taskId: originalTaskId,
-            amount: updatedAmount ?? 0,
-            received: newReceived ?? 0,
-            fileUrl: uploadedFileUrl || null,
-            updatedBy: userName,
-          }
-        });
+        data: {
+          task: { connect: { id: originalTaskId } },
+          amount: updatedAmount ?? 0,
+          received: newReceived ?? 0,
+          fileUrl: uploadedFileUrl || null,
+          updatedBy: userName,
+          mode: cleanMode ?? undefined,
+          invoiceNo: generatedInvoiceNo,
+          createdAt: new Date(),
+        }
+      });
       }
     } catch (err: any) {
       if (err.code === "P2002") {
@@ -142,14 +167,16 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     }
 
     // 🛡️ Step 2: Update Task (keep JSON backup as requested)
-    const paymentEntry = {
-      amount: updatedAmount ?? 0,
-      received: newReceived ?? 0,
-      fileUrl: uploadedFileUrl || null,
-      updatedAt: new Date(),
-      updatedBy: userName,
-      utr: cleanUtr,
-    };
+      const paymentEntry = {
+        amount: updatedAmount ?? 0,
+        received: newReceived ?? 0,
+        fileUrl: uploadedFileUrl || null,
+        updatedAt: new Date(),
+        updatedBy: userName,
+        utr: cleanUtr,
+        mode: cleanMode,
+        invoiceNo: generatedInvoiceNo,
+      };
 
     const currentCustomFields = (existingTask.customFields as any) || {};
     const updatedCustomFields = cleanGstin ? { ...currentCustomFields, gstin: cleanGstin } : currentCustomFields;

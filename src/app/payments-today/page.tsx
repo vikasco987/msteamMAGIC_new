@@ -306,8 +306,8 @@ export default function PaymentsTodayPage() {
 
     // Professional Numerical Invoice ID (Date + Sequential-like numeric hash)
     const datePart = new Date(p.updatedAt).toISOString().split('T')[0].replace(/-/g, '');
-    const numericHash = Math.abs(p.paymentId.split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0)).toString().substring(0, 4);
-    const professionalInvoiceNo = `MS/${datePart}/${numericHash}`;
+    const numericHash = Math.abs(p.paymentId.split('').reduce((a: any, b: any) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0)).toString().substring(0, 4);
+    const professionalInvoiceNo = p.invoiceNo || `MS/${datePart}/${numericHash}`;
 
     let rY = detailsY + 10;
     const info = (l: string, v: string, y: number) => {

@@ -39,6 +39,10 @@ interface PaymentSectionProps {
   setReceived: (value: string) => void;
   utr: string;
   setUtr: (value: string) => void;
+  mode: string;
+  setMode: (value: string) => void;
+  gstin: string;
+  setGstin: (value: string) => void;
   paymentUploadStatus: string;
   setPaymentUploadStatus: (status: string) => void;
   handlePaymentSubmit: (e: React.FormEvent) => Promise<void>;
@@ -65,12 +69,16 @@ export default function PaymentSection({
   showPaymentHistory,
   setShowPaymentHistory,
   handleTogglePaymentHistory,
-  fileInputRef
+  fileInputRef,
+  mode,
+  setMode
 }: any) {
   if (!selectedTask) {
     return (
-      <div className="bg-white p-6 rounded-lg shadow-sm text-gray-500 text-sm">
+      <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-0.5 rounded-xl shadow-lg">
+        <div className="bg-white/90 backdrop-blur-md rounded-xl p-6 text-gray-500 text-sm">
         No task selected.
+      </div>
       </div>
     );
   }
@@ -85,7 +93,8 @@ export default function PaymentSection({
   const remainingAmount = (selectedTask.amount || 0) - (selectedTask.received || 0);
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm">
+    <div className="cardContainer bg-gradient-to-r from-purple-600 to-pink-600 p-0.5 rounded-xl shadow-lg transition-transform duration-300 ease-in-out hover:scale-105">
+        <div className="bg-white/90 backdrop-blur-md rounded-xl p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-800">💰 Payment</h3>
         {hasPaymentHistory && (
@@ -128,7 +137,7 @@ export default function PaymentSection({
               step="0.01"
               disabled={isAmountLocked}
               placeholder="Total ₹"
-              className={`block w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500 ${isAmountLocked ? "bg-gray-50 cursor-not-allowed text-gray-400 font-bold" : ""}`}
+              className={`block w-full border border-gray-300 rounded-xl py-2 px-3 text-sm focus:ring-3 focus:ring-purple-500 focus:border-purple-500 transition-shadow ${isAmountLocked ? "bg-gray-100 cursor-not-allowed text-gray-500 font-medium" : "bg-white shadow-sm"} hover:shadow-lg inputGlow`}
             />
           </div>
           <div>
@@ -143,7 +152,7 @@ export default function PaymentSection({
               onChange={(e) => setReceived(e.target.value)}
               step="0.01"
               placeholder="+ Amount ₹"
-              className="block w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500"
+              className="block w-full border border-gray-300 rounded-xl py-2 px-3 text-sm focus:ring-3 focus:ring-purple-500 focus:border-purple-500 transition-shadow hover:shadow-lg inputGlow"
             />
           </div>
         </div>
@@ -163,7 +172,7 @@ export default function PaymentSection({
                 placeholder="07AAAAA0000A1Z5"
                 autoComplete="off"
                 disabled={isGstinLocked}
-                className={`flex-1 border border-gray-200 rounded-xl py-2 px-3 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all ${isGstinLocked ? "bg-slate-50 cursor-not-allowed text-slate-400 font-bold" : "bg-white text-slate-700 font-bold"}`}
+                className={`flex-1 border border-gray-200 rounded-xl py-2 px-3 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all ${isGstinLocked ? "bg-slate-50 cursor-not-allowed text-slate-400 font-bold" : "bg-white text-slate-700 font-bold"} inputGlow`}
               />
               {!isGstinLocked && (
                 <button
@@ -180,7 +189,7 @@ export default function PaymentSection({
                     const detectedState = states[stateCode] || "Other";
                     toast.success(`State: ${detectedState}`, { id: loadingToast });
                   }}
-                  className="shrink-0 h-[36px] bg-blue-600 text-white px-3 rounded-xl hover:bg-blue-700 transition-all text-[9px] font-black uppercase shadow-sm"
+                  className="shrink-0 h-[36px] bg-blue-600 text-white px-3 rounded-xl hover:bg-blue-700 transition-all text-[9px] font-black uppercase shadow-sm hover:scale-[1.02] active:scale-[0.98]"
                 >
                   Fetch
                 </button>
@@ -199,8 +208,26 @@ export default function PaymentSection({
               onChange={(e) => setUtr(e.target.value)}
               placeholder="Enter UTR or TXN"
               autoComplete="off"
-              className="block w-full border border-gray-200 rounded-xl py-2 px-3 text-xs font-bold text-slate-700 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+              className="block w-full border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium text-slate-800 bg-white/90 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all shadow-sm hover:shadow-md inputGlow"
             />
+            {/* Payment Mode Selector */}
+            <label htmlFor="mode" className="block text-xs font-medium text-gray-700 uppercase mt-3 mb-1">Payment Mode</label>
+            <select
+              id="mode"
+              name="mode"
+              value={mode}
+              onChange={(e) => setMode(e.target.value)}
+              className="block w-full border border-gray-300 rounded-xl py-2 px-3 text-sm focus:ring-3 focus:ring-purple-500 focus:border-purple-500 bg-white shadow-sm transition-colors hover:bg-purple-50 selectGlow"
+            >
+              <option value="">Select Mode</option>
+              <option value="PAYMENT_LINK">Payment link</option>
+              <option value="CASH_RECEIVED">Cash received</option>
+              <option value="YES_BANK">Yes bank</option>
+              <option value="PHONE_MERCHANT">Phone pe merchant</option>
+              <option value="INDUSLAND_BANK">Indulsand bank</option>
+              <option value="DELIVERY">Delivery</option>
+              <option value="OTHER">Other</option>
+            </select>
           </div>
         </div>
 
@@ -221,7 +248,7 @@ export default function PaymentSection({
         <button
           type="submit"
           disabled={paymentUploadStatus.includes("Uploading")}
-          className="w-full flex items-center justify-center py-2 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center py-2 px-4 rounded-xl text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed buttonPulse"
         >
           {paymentUploadStatus.includes("Uploading") ? (
             <>
@@ -264,5 +291,6 @@ export default function PaymentSection({
         </div>
       )}
     </div>
+      </div>
   );
 }

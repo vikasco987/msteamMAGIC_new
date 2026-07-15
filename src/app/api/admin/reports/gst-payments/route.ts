@@ -62,6 +62,7 @@ export async function GET(req: NextRequest) {
           "Total Budget": p.task!.amount || 0,
           "Transaction Amount": p.received || 0,
           "UTR / Transaction No.": p.utr || "N/A",
+          "Transaction ID": p.utr || "N/A",
           "Updated By": p.updatedBy || "System",
           "Proof URL": p.fileUrl || "No Proof",
           "Payment #": idx + 1
@@ -86,7 +87,8 @@ export async function GET(req: NextRequest) {
       { wch: 35 }, // Address
       { wch: 15 }, // Total Budget
       { wch: 18 }, // Transaction Amount
-      { wch: 25 }, // UTR
+      { wch: 25 }, // UTR / Transaction No.
+      { wch: 20 }, // Transaction ID
       { wch: 20 }, // Updated By
       { wch: 40 }, // Proof URL
       { wch: 10 }  // Payment #

@@ -99,6 +99,7 @@ interface PaymentEntry {
   address?: string | null;
   customerName?: string | null;
   gstin?: string | null;
+  invoiceNo?: string | null;
 }
 
 export default function SalesRegisterPage() {
@@ -160,13 +161,14 @@ export default function SalesRegisterPage() {
     doc.text(`${new Date(fromDate).toLocaleDateString()} to ${new Date(toDate).toLocaleDateString()}`, pageWidth / 2, 42, { align: 'center' });
 
     const tableHead = [
-      ["Vch Type", "Invoice No", "Date", "Company Name", "Contact", "Phone", "GST NO", "State", "Billing Address", "Taxable Value", "Grand Total"]
+      ["Vch Type", "Invoice No", "Date", "Company Name", "Contact", "Phone", "GST NO", "Transaction ID", "State", "Billing Address", "Taxable Value", "Grand Total"]
     ];
 
     const tableBody = payments.map(p => {
         const taxable = p.received / 1.18;
-        const invNo = getInvoiceNo(p.paymentId);
+        const invNo = p.invoiceNo || getInvoiceNo(p.paymentId);
         const state = getState(p);
+        const transactionId = p.utr || "-";
         
         const roundedTaxable = Math.round(taxable);
         const roundedReceived = Math.round(p.received);
@@ -179,6 +181,7 @@ export default function SalesRegisterPage() {
             p.customerName || p.assignerName || "-",
             p.phone || "-",
             p.gstin || "-",
+            transactionId,
             state,
             p.address || "-",
             roundedTaxable.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 }),
@@ -194,14 +197,14 @@ export default function SalesRegisterPage() {
       headStyles: { fillColor: [51, 51, 51], textColor: [255, 255, 255], fontSize: 7, fontStyle: 'bold' },
       bodyStyles: { fontSize: 6, textColor: [40, 40, 40] },
       columnStyles: {
-        8: { cellWidth: 50 }, // Address column width
-        9: { halign: 'right' },
-        10: { halign: 'right' }
+        9: { cellWidth: 50 },
+        10: { halign: 'right' },
+        11: { halign: 'right' }
       },
       margin: { left: 8, right: 8 }
     });
 
-    const finalY = (doc as any).lastAutoTable.cursor.y + 10;
+    const finalY = ((doc as any).lastAutoTable?.finalY ?? 50) + 10;
     const totalGrand = Math.round(payments.reduce((sum, p) => sum + p.received, 0));
     doc.setFont("helvetica", "bold");
     doc.text(`Total Sales: Rs. ${totalGrand.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, pageWidth - 15, finalY, { align: 'right' });
@@ -218,7 +221,8 @@ export default function SalesRegisterPage() {
 
     const exportData = payments.map(p => {
         const taxable = p.received / 1.18;
-        const invNo = getInvoiceNo(p.paymentId);
+        const invNo = p.invoiceNo || getInvoiceNo(p.paymentId);
+        const transactionId = p.utr || "-";
         
         return {
             "Vch Type": "Sales",
@@ -228,6 +232,7 @@ export default function SalesRegisterPage() {
             "Contact Person": p.customerName || p.assignerName || "-",
             "Phone": p.phone || "-",
             "GST NO": p.gstin || "-",
+            "Transaction ID": transactionId,
             "State": getState(p),
             "Billing Address": p.address || "-",
             "Taxable Value": Math.round(taxable),
@@ -358,13 +363,13 @@ export default function SalesRegisterPage() {
                     const taxable = p.received / 1.18;
                     const datePart = new Date(p.updatedAt).toISOString().split('T')[0].replace(/-/g, '');
                     const numericHash = Math.abs(p.paymentId.split('').reduce((a, b: any) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0)).toString().substring(0, 4);
-                    const invNo = `MS/${datePart}/${numericHash}`;
+                    const invNo = p.invoiceNo || `MS/${datePart}/${numericHash}`;
 
                     return (
                       <tr key={p.paymentId} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'} hover:bg-blue-50/50 transition-colors`}>
                         <td className="px-4 py-5 text-[11px] text-slate-500">Sales</td>
                         <td className="px-4 py-5 text-[11px] font-bold text-teal-600">
-                           {getInvoiceNo(p.paymentId)}
+                           {invNo}
                         </td>
                         <td className="px-4 py-5 text-[11px] text-slate-600">{new Date(p.updatedAt).toLocaleDateString()}</td>
                         <td className="px-4 py-5">
@@ -398,7 +403,7 @@ export default function SalesRegisterPage() {
               {payments.length > 0 && !loading && (
                 <tfoot className="bg-slate-900 text-white">
                   <tr>
-                    <td colSpan={10} className="px-4 py-4 text-[11px] font-black uppercase tracking-widest text-right">Totals</td>
+                    <td colSpan={12} className="px-4 py-4 text-[11px] font-black uppercase tracking-widest text-right">Totals</td>
                     <td className="px-4 py-4 text-right text-[12px] font-bold">
                       ₹{Math.round(payments.reduce((sum, p) => sum + (p.received / 1.18), 0)).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </td>

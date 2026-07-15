@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
         location: (p.task as any).location,
         totalBudget: p.task!.amount || 0,
         received: p.received || 0,
-        utr: p.utr,
+        transactionId: p.utr,
         updatedBy: p.updatedBy,
         proof: p.fileUrl
       }));

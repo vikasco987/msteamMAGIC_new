@@ -152,7 +152,10 @@ model Payment {
   fileUrl   String?
   invoiceUrl String?  // 👈 Link to Cloudinary stored PDF
   updatedBy String?
+  invoiceNo String?
+  createdAt DateTime? @default(now())
   updatedAt DateTime @default(now())
+  mode          String?    // Payment mode selector
 
   taskId    String?  @db.ObjectId
   task      Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
