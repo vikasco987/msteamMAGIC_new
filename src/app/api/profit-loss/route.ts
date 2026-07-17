@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
-import { users } from "@clerk/clerk-sdk-node";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +14,8 @@ interface UserPrivateMetadata {
 
 async function getUserRole(userId: string): Promise<string | null> {
   try {
-    const user = await users.getUser(userId);
+    const client = await clerkClient();
+    const user = await client.users.getUser(userId);
     return (
       (user.publicMetadata as UserPublicMetadata)?.role ||
       (user.privateMetadata as UserPrivateMetadata)?.role ||
