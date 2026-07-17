@@ -416,7 +416,7 @@ export async function GET(req: Request) {
     if (!isPrivileged) {
       if (isTeamLeader && all) {
         const members = await prisma.user.findMany({
-          where: { leaderId: userId } as any,
+          where: { leaderIds: { has: userId } } as any,
           select: { clerkId: true }
         });
         const teamMemberIds = members.map(m => m.clerkId);

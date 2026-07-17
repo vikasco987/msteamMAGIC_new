@@ -108,7 +108,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
               { clerkId: { in: Array.from(taskInvolvedIds) } },
               { email: { in: Array.from(taskInvolvedEmails) } }
             ],
-            leaderId: userId
+            leaderIds: { has: userId }
           },
           select: { clerkId: true }
         });

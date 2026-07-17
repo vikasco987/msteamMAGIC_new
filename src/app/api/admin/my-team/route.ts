@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
 
         // Fetch members where leaderId is the current user
         const members = await prisma.user.findMany({
-            where: dbUser?.role === "MASTER" ? {} : { leaderId: userId },
+            where: dbUser?.role === "MASTER" ? {} : { leaderIds: { has: userId } },
             select: {
                 clerkId: true,
                 name: true,

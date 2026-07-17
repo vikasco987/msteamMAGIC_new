@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
         let teamMemberIds: string[] = [];
         if (isTL) {
             const members = await prisma.user.findMany({
-                where: { leaderId: userId },
+                where: { leaderIds: { has: userId } },
                 select: { clerkId: true }
             });
             teamMemberIds = members.map(m => m.clerkId);

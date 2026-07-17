@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
         let teamMemberIds: string[] = [];
         if (userRole === "TL") {
             const members = await prisma.user.findMany({
-                where: { leaderId: userId },
+                where: { leaderIds: { has: userId } },
                 select: { clerkId: true }
             });
             teamMemberIds = [userId, ...members.map(m => m.clerkId)];

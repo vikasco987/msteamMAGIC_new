@@ -181,7 +181,7 @@ model User {
   role      String   // "ADMIN", "MASTER", "SELLER"
 
   isTeamLeader Boolean @default(false)
-  leaderId     String? // Clerk ID of the Team Leader
+  leaderIds    String[] @default([]) // Clerk IDs of the Team Leaders
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

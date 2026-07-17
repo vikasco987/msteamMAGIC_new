@@ -26,7 +26,7 @@ interface User {
     email: string;
     role: string;
     isTeamLeader: boolean;
-    leaderId: string | null;
+    leaderIds: string[];
     banned?: boolean;
 }
 
@@ -89,18 +89,18 @@ export default function TeamManagementPage() {
         }
     };
 
-    const handleAssignLeader = async (targetUserId: string, leaderId: string | null) => {
+    const handleAssignLeader = async (targetUserId: string, leaderIds: string[]) => {
         setUpdatingUserId(targetUserId);
         try {
             const res = await fetch('/api/admin/teams', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ targetUserId, leaderId })
+                body: JSON.stringify({ targetUserId, leaderIds })
             });
 
             if (res.ok) {
-                toast.success("Leader assigned successfully");
-                setUsers(users.map(u => u.clerkId === targetUserId ? { ...u, leaderId } : u));
+                toast.success("Leaders assigned successfully");
+                setUsers(users.map(u => u.clerkId === targetUserId ? { ...u, leaderIds } : u));
             } else {
                 toast.error("Assignment failed");
             }
@@ -244,19 +244,46 @@ export default function TeamManagementPage() {
                                     </button>
                                 </div>
 
-                                <div className="flex flex-col items-end">
-                                    <span className="text-[10px] font-black uppercase text-slate-400 mb-1">Assigned Leader</span>
-                                    <select
-                                        value={u.leaderId || ''}
-                                        onChange={(e) => handleAssignLeader(u.clerkId, e.target.value || null)}
-                                        disabled={u.isTeamLeader || updatingUserId === u.clerkId}
-                                        className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        <option value="">No Leader</option>
-                                        {teamLeaders.filter(tl => tl.clerkId !== u.clerkId).map(tl => (
-                                            <option key={tl.clerkId} value={tl.clerkId}>{tl.name}</option>
-                                        ))}
-                                    </select>
+                                <div className="flex flex-col items-end w-56">
+                                    <span className="text-[10px] font-black uppercase text-slate-400 mb-1">Assigned Leaders</span>
+                                    <Select
+                                        isMulti
+                                        options={teamLeaders.filter(tl => tl.clerkId !== u.clerkId).map(tl => ({
+                                            value: tl.clerkId,
+                                            label: tl.name
+                                        }))}
+                                        value={
+                                            (u.leaderIds || []).map(id => {
+                                                const tl = teamLeaders.find(t => t.clerkId === id);
+                                                return { value: id, label: tl ? tl.name : id };
+                                            })
+                                        }
+                                        onChange={(selectedOptions: any) => {
+                                            const newLeaderIds = selectedOptions ? selectedOptions.map((opt: any) => opt.value) : [];
+                                            handleAssignLeader(u.clerkId, newLeaderIds);
+                                        }}
+                                        isDisabled={u.isTeamLeader || updatingUserId === u.clerkId}
+                                        placeholder="No Leader..."
+                                        className="text-sm font-medium text-slate-900 w-full text-left"
+                                        styles={{
+                                            control: (baseStyles, state) => ({
+                                                ...baseStyles,
+                                                padding: '2px',
+                                                borderRadius: '0.75rem',
+                                                borderColor: state.isFocused ? '#4f46e5' : '#cbd5e1',
+                                                boxShadow: state.isFocused ? '0 0 0 1px #4f46e5' : 'none',
+                                                minHeight: '42px',
+                                                backgroundColor: (u.isTeamLeader || updatingUserId === u.clerkId) ? '#f8fafc' : 'white',
+                                                '&:hover': {
+                                                    borderColor: '#4f46e5'
+                                                }
+                                            }),
+                                            menu: (baseStyles) => ({
+                                                ...baseStyles,
+                                                zIndex: 50
+                                            })
+                                        }}
+                                    />
                                 </div>
                             </div>
                         </div>

@@ -38,9 +38,9 @@ export async function GET(req: Request) {
         if (!isPrivileged) {
             const memberUser = await prisma.user.findUnique({
                 where: { clerkId: targetMemberId },
-                select: { leaderId: true }
+                select: { leaderIds: true }
             });
-            if (memberUser?.leaderId !== userId && targetMemberId !== userId) {
+            if (!(memberUser?.leaderIds || []).includes(userId) && targetMemberId !== userId) {
                 return NextResponse.json({ error: "Unauthorized access to member data" }, { status: 403 });
             }
         }
@@ -57,7 +57,7 @@ export async function GET(req: Request) {
         });
         const tlIds = allTls.map(t => t.clerkId);
         const members = await prisma.user.findMany({
-            where: { leaderId: { in: tlIds } },
+            where: { leaderIds: { hasSome: tlIds } },
             select: { clerkId: true }
         });
         teamUserIds = [...tlIds, ...members.map(m => m.clerkId)];
@@ -67,7 +67,7 @@ export async function GET(req: Request) {
             leaderId = targetTlId;
         }
         const members = await prisma.user.findMany({
-            where: { leaderId: leaderId },
+            where: { leaderIds: { has: leaderId } },
             select: { clerkId: true }
         });
         teamUserIds = [leaderId, ...members.map(m => m.clerkId)];

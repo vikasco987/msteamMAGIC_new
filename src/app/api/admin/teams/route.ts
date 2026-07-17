@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
                 email: u.emailAddresses[0]?.emailAddress || "N/A",
                 role: (u.publicMetadata?.role as string) || "user",
                 isTeamLeader: dbUser?.isTeamLeader || false,
-                leaderId: dbUser?.leaderId || null,
+                leaderIds: dbUser?.leaderIds || [],
                 synced: !!dbUser,
                 banned: u.banned
             };
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
-        const { targetUserId, isTeamLeader, leaderId } = await req.json();
+        const { targetUserId, isTeamLeader, leaderIds } = await req.json();
 
         if (!targetUserId) {
             return NextResponse.json({ error: "Missing targetUserId" }, { status: 400 });
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
             where: { clerkId: targetUserId },
             update: {
                 isTeamLeader: isTeamLeader !== undefined ? isTeamLeader : undefined,
-                leaderId: leaderId !== undefined ? leaderId : undefined,
+                leaderIds: leaderIds !== undefined ? leaderIds : undefined,
                 name: `${targetUser.firstName || ""} ${targetUser.lastName || ""}`.trim() || targetUser.username || "Unnamed",
                 email: targetUser.emailAddresses[0].emailAddress,
                 role: newRole.toUpperCase()
@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
             create: {
                 clerkId: targetUserId,
                 isTeamLeader: isTeamLeader || false,
-                leaderId: leaderId || null,
+                leaderIds: leaderIds || [],
                 name: `${targetUser.firstName || ""} ${targetUser.lastName || ""}`.trim() || targetUser.username || "Unnamed",
                 email: targetUser.emailAddresses[0].emailAddress,
                 role: newRole.toUpperCase()

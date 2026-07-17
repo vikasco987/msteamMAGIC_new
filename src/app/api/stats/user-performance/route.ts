@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     let teamMemberIds: string[] = [];
     if (isTL) {
       const members = await db.user.findMany({
-        where: { leaderId: userId },
+        where: { leaderIds: { has: userId } },
         select: { clerkId: true }
       });
       teamMemberIds = members.map(m => m.clerkId);

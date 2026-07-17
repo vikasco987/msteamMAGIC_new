@@ -66,7 +66,7 @@ export async function GET(req: Request) {
         });
         const tlIds = allTls.map(t => t.clerkId);
         const members = await prisma.user.findMany({
-            where: { leaderId: { in: tlIds } },
+            where: { leaderIds: { hasSome: tlIds } },
             select: { clerkId: true }
         });
         teamUserIds = [...tlIds, ...members.map(m => m.clerkId)];
@@ -80,7 +80,7 @@ export async function GET(req: Request) {
 
         const leaderUser = targetTlId ? await prisma.user.findUnique({ where: { clerkId: leaderId } }) : dbUser;
         const members = await prisma.user.findMany({
-            where: { leaderId: leaderId },
+            where: { leaderIds: { has: leaderId } },
             select: { clerkId: true }
         });
         
