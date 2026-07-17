@@ -17,6 +17,7 @@ import CloneTaskButton from "./CloneTaskButton";
 import PaymentRemarkModal from "./PaymentRemarkModal";
 import TaskActivityModal from "./TaskActivityModal";
 import UploadDocumentModal from "./UploadDocumentModal";
+import CreateDelhiveryOrderButton from "./CreateDelhiveryOrderButton";
 import { FaHandHoldingUsd, FaCommentsDollar, FaHistory, FaCloudUploadAlt, FaPaperclip } from "react-icons/fa";
 
 interface Props {
@@ -201,6 +202,8 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
   const displayAssignerEmail = task.assigner?.email || task.assignerEmail || "";
   const displayAssigneeName = task.assignees?.map(a => a?.name || a?.email).filter(Boolean).join(", ") || task.assignee?.name || "—";
   const displayAssigneeEmail = task.assignee?.email || task.assigneeEmail || "";
+
+  const isHardwareTask = task.title?.toLowerCase().includes("printer") || task.title?.toLowerCase().includes("hardware") || task.title?.toLowerCase().includes("machine") || false;
 
   const allValues = [
     task.title,
@@ -621,6 +624,21 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
               ))}
             </div>
           )}
+
+          {/* Delhivery Order Button */}
+          <CreateDelhiveryOrderButton 
+            taskId={task.id} 
+            hasAwb={!!cf.awbNumber} 
+            isHardwareTask={isHardwareTask} 
+            onSuccess={(awb) => {
+              if (onUpdateTask) {
+                // Update local state by forcing a refresh or passing updated customFields
+                onUpdateTask(task.id, { 
+                  customFields: { ...cf, awbNumber: awb } 
+                });
+              }
+            }}
+          />
 
           {/* Attachments Section */}
           {(() => {
