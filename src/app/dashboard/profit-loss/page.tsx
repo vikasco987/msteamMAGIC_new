@@ -286,7 +286,7 @@ export default function ProfitLossDashboard() {
             </div>
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{calcBasis === "total" ? "Total Revenue" : "Total Received"}</p>
-              <h2 className="text-3xl font-black text-slate-800">₹{(calcBasis === "total" ? summary.totalRevenue : summary.totalReceived).toLocaleString()}</h2>
+              <h2 className="text-3xl font-black text-slate-800">₹{((calcBasis === "total" ? summary.totalRevenue : summary.totalReceived) ?? 0).toLocaleString()}</h2>
             </div>
           </div>
 
@@ -296,7 +296,7 @@ export default function ProfitLossDashboard() {
             </div>
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Expenses</p>
-              <h2 className="text-3xl font-black text-slate-800">₹{summary.totalExpense.toLocaleString()}</h2>
+              <h2 className="text-3xl font-black text-slate-800">₹{(summary.totalExpense ?? 0).toLocaleString()}</h2>
             </div>
           </div>
 
@@ -307,7 +307,7 @@ export default function ProfitLossDashboard() {
             <div>
               <p className={`text-[10px] font-black uppercase tracking-widest ${isProfit ? 'text-indigo-500' : 'text-rose-500'}`}>Net {isProfit ? 'Profit' : 'Loss'} ({calcBasis === "total" ? "Accrued" : "Cash"})</p>
               <h2 className={`text-3xl font-black ${isProfit ? 'text-indigo-900' : 'text-rose-900'}`}>
-                {isProfit ? '+' : '-'}₹{Math.abs(activeProfit).toLocaleString()}
+                {isProfit ? '+' : '-'}₹{(Math.abs(activeProfit || 0)).toLocaleString()}
               </h2>
             </div>
           </div>
@@ -396,7 +396,7 @@ export default function ProfitLossDashboard() {
                           </div>
                         </div>
                       ) : (
-                        <span className="font-black text-slate-700">₹{(calcBasis === "total" ? task.revenue : task.received).toLocaleString()}</span>
+                        <span className="font-black text-slate-700">₹{((calcBasis === "total" ? task.revenue : task.received) ?? 0).toLocaleString()}</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
@@ -413,7 +413,7 @@ export default function ProfitLossDashboard() {
                         </div>
                       ) : (
                         <>
-                          <div className="font-black text-rose-600">₹{task.expense.toLocaleString()}</div>
+                          <div className="font-black text-rose-600">₹{(task.expense ?? 0).toLocaleString()}</div>
                           <div className="text-[10px] text-slate-400 mt-1 font-medium whitespace-nowrap">
                             (Cost: ₹{task.costPrice} + Del: ₹{task.deliveryCharge})
                           </div>
@@ -425,7 +425,7 @@ export default function ProfitLossDashboard() {
                         <span className="text-xs text-slate-400 italic">Auto-calculated...</span>
                       ) : (
                         <span className={`px-3 py-1.5 rounded-xl text-xs font-black shadow-sm ${(calcBasis === "total" ? task.profit : task.cashProfit) >= 0 ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-rose-100 text-rose-700 border border-rose-200'}`}>
-                          {(calcBasis === "total" ? task.profit : task.cashProfit) >= 0 ? '+' : '-'}₹{Math.abs(calcBasis === "total" ? task.profit : task.cashProfit).toLocaleString()}
+                          {((calcBasis === "total" ? task.profit : task.cashProfit) ?? 0) >= 0 ? '+' : '-'}₹{(Math.abs((calcBasis === "total" ? task.profit : task.cashProfit) || 0)).toLocaleString()}
                         </span>
                       )}
                     </td>
@@ -483,7 +483,7 @@ export default function ProfitLossDashboard() {
                     <tr key={exp.id} className="hover:bg-slate-50/50 transition-colors group">
                       <td className="px-6 py-4 font-bold text-slate-800">{exp.title}</td>
                       <td className="px-6 py-4 text-slate-600">{new Date(exp.date).toLocaleDateString()}</td>
-                      <td className="px-6 py-4 font-black text-rose-600">₹{exp.amount.toLocaleString()}</td>
+                      <td className="px-6 py-4 font-black text-rose-600">₹{(exp.amount ?? 0).toLocaleString()}</td>
                       <td className="px-6 py-4 text-slate-500 italic text-xs">{exp.remarks || "-"}</td>
                       <td className="px-6 py-4 text-right">
                         <button onClick={() => handleExpenseDelete(exp.id)} className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-100 transition-colors ml-auto opacity-0 group-hover:opacity-100">
@@ -530,14 +530,14 @@ export default function ProfitLossDashboard() {
                       <td className="px-6 py-4 font-bold text-slate-800">{report.dateKey}</td>
                       <td className="px-6 py-4 text-slate-600 font-medium">{report.tasksCount} tasks</td>
                       <td className="px-6 py-4 font-black text-slate-700">
-                        ₹{(calcBasis === "total" ? report.totalRevenue : report.totalReceived).toLocaleString()}
+                        ₹{((calcBasis === "total" ? report.totalRevenue : report.totalReceived) ?? 0).toLocaleString()}
                       </td>
                       <td className="px-6 py-4 font-black text-rose-600">
-                        ₹{report.totalExpense.toLocaleString()}
+                        ₹{(report.totalExpense ?? 0).toLocaleString()}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1.5 rounded-xl text-xs font-black shadow-sm ${(calcBasis === "total" ? report.netProfit : report.cashProfit) >= 0 ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-rose-100 text-rose-700 border border-rose-200'}`}>
-                          {(calcBasis === "total" ? report.netProfit : report.cashProfit) >= 0 ? '+' : '-'}₹{Math.abs(calcBasis === "total" ? report.netProfit : report.cashProfit).toLocaleString()}
+                          {((calcBasis === "total" ? report.netProfit : report.cashProfit) ?? 0) >= 0 ? '+' : '-'}₹{(Math.abs((calcBasis === "total" ? report.netProfit : report.cashProfit) || 0)).toLocaleString()}
                         </span>
                       </td>
                     </tr>
