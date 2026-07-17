@@ -1,8 +1,14 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Loader2, TrendingUp, TrendingDown, DollarSign, Package, Edit2, Check, X } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, DollarSign, Package, Edit2, Check, X, AlertTriangle } from "lucide-react";
 import toast from "react-hot-toast";
+
+// Safe number helper — returns 0 for NaN/null/undefined
+const safeNum = (v: any): number => {
+  const n = Number(v);
+  return isNaN(n) || !isFinite(n) ? 0 : n;
+};
 
 type TaskStats = {
   id: string;
@@ -70,24 +76,39 @@ export default function ProfitLossDashboard() {
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [expenseForm, setExpenseForm] = useState({ title: "", amount: "", date: new Date().toISOString().split("T")[0], remarks: "" });
 
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
+      setFetchError(null);
       try {
         const res = await fetch(`/api/profit-loss?month=${selectedMonth}`);
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.error || "Failed to load profit loss data");
+        
+        // Try to parse response as JSON safely
+        let data: any;
+        try {
+          const text = await res.text();
+          data = JSON.parse(text);
+        } catch (parseErr) {
+          throw new Error("Server returned an invalid response. Please try refreshing the page.");
         }
-        const data = await res.json();
-        setTasks(data.tasks || []);
-        setSummary(data.summary);
-        setDayReport(data.dayReport || []);
-        setWeekReport(data.weekReport || []);
-        setMonthReport(data.monthReport || []);
-        setGeneralExpenses(data.generalExpenses || []);
+
+        if (!res.ok) {
+          throw new Error(data?.error || `Server error (${res.status})`);
+        }
+
+        setTasks(Array.isArray(data.tasks) ? data.tasks : []);
+        setSummary(data.summary ?? null);
+        setDayReport(Array.isArray(data.dayReport) ? data.dayReport : []);
+        setWeekReport(Array.isArray(data.weekReport) ? data.weekReport : []);
+        setMonthReport(Array.isArray(data.monthReport) ? data.monthReport : []);
+        setGeneralExpenses(Array.isArray(data.generalExpenses) ? data.generalExpenses : []);
       } catch (err: any) {
-        toast.error(err.message);
+        console.error("Profit-Loss fetch error:", err);
+        const msg = err.message || "Failed to load profit loss data";
+        setFetchError(msg);
+        toast.error(msg);
       } finally {
         setLoading(false);
       }
@@ -222,7 +243,25 @@ export default function ProfitLossDashboard() {
     );
   }
 
-  const activeProfit = summary ? (calcBasis === "total" ? summary.netProfit : summary.cashProfit) : 0;
+  if (fetchError) {
+    return (
+      <div className="flex h-screen items-center justify-center p-8">
+        <div className="bg-white border border-rose-200 rounded-[2rem] p-8 max-w-md text-center shadow-sm">
+          <AlertTriangle className="mx-auto mb-4 text-rose-500" size={40} />
+          <h2 className="text-xl font-black text-slate-800 mb-2">Unable to Load Data</h2>
+          <p className="text-slate-500 text-sm mb-6">{fetchError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-sm transition-colors text-sm"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const activeProfit = summary ? safeNum(calcBasis === "total" ? summary.netProfit : summary.cashProfit) : 0;
   const isProfit = activeProfit >= 0;
 
   return (
@@ -286,7 +325,7 @@ export default function ProfitLossDashboard() {
             </div>
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{calcBasis === "total" ? "Total Revenue" : "Total Received"}</p>
-              <h2 className="text-3xl font-black text-slate-800">₹{((calcBasis === "total" ? summary.totalRevenue : summary.totalReceived) ?? 0).toLocaleString()}</h2>
+              <h2 className="text-3xl font-black text-slate-800">₹{safeNum(calcBasis === "total" ? summary.totalRevenue : summary.totalReceived).toLocaleString()}</h2>
             </div>
           </div>
 
@@ -296,7 +335,7 @@ export default function ProfitLossDashboard() {
             </div>
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Expenses</p>
-              <h2 className="text-3xl font-black text-slate-800">₹{(summary.totalExpense ?? 0).toLocaleString()}</h2>
+              <h2 className="text-3xl font-black text-slate-800">₹{safeNum(summary.totalExpense).toLocaleString()}</h2>
             </div>
           </div>
 
@@ -307,7 +346,7 @@ export default function ProfitLossDashboard() {
             <div>
               <p className={`text-[10px] font-black uppercase tracking-widest ${isProfit ? 'text-indigo-500' : 'text-rose-500'}`}>Net {isProfit ? 'Profit' : 'Loss'} ({calcBasis === "total" ? "Accrued" : "Cash"})</p>
               <h2 className={`text-3xl font-black ${isProfit ? 'text-indigo-900' : 'text-rose-900'}`}>
-                {isProfit ? '+' : '-'}₹{(Math.abs(activeProfit || 0)).toLocaleString()}
+                {isProfit ? '+' : '-'}₹{safeNum(Math.abs(activeProfit)).toLocaleString()}
               </h2>
             </div>
           </div>
@@ -396,7 +435,7 @@ export default function ProfitLossDashboard() {
                           </div>
                         </div>
                       ) : (
-                        <span className="font-black text-slate-700">₹{((calcBasis === "total" ? task.revenue : task.received) ?? 0).toLocaleString()}</span>
+                        <span className="font-black text-slate-700">₹{safeNum(calcBasis === "total" ? task.revenue : task.received).toLocaleString()}</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
@@ -413,9 +452,9 @@ export default function ProfitLossDashboard() {
                         </div>
                       ) : (
                         <>
-                          <div className="font-black text-rose-600">₹{(task.expense ?? 0).toLocaleString()}</div>
+                          <div className="font-black text-rose-600">₹{safeNum(task.expense).toLocaleString()}</div>
                           <div className="text-[10px] text-slate-400 mt-1 font-medium whitespace-nowrap">
-                            (Cost: ₹{task.costPrice} + Del: ₹{task.deliveryCharge})
+                            (Cost: ₹{safeNum(task.costPrice)} + Del: ₹{safeNum(task.deliveryCharge)})
                           </div>
                         </>
                       )}
@@ -424,8 +463,8 @@ export default function ProfitLossDashboard() {
                       {editingId === task.id ? (
                         <span className="text-xs text-slate-400 italic">Auto-calculated...</span>
                       ) : (
-                        <span className={`px-3 py-1.5 rounded-xl text-xs font-black shadow-sm ${(calcBasis === "total" ? task.profit : task.cashProfit) >= 0 ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-rose-100 text-rose-700 border border-rose-200'}`}>
-                          {((calcBasis === "total" ? task.profit : task.cashProfit) ?? 0) >= 0 ? '+' : '-'}₹{(Math.abs((calcBasis === "total" ? task.profit : task.cashProfit) || 0)).toLocaleString()}
+                        <span className={`px-3 py-1.5 rounded-xl text-xs font-black shadow-sm ${safeNum(calcBasis === "total" ? task.profit : task.cashProfit) >= 0 ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-rose-100 text-rose-700 border border-rose-200'}`}>
+                          {safeNum(calcBasis === "total" ? task.profit : task.cashProfit) >= 0 ? '+' : '-'}₹{safeNum(Math.abs(safeNum(calcBasis === "total" ? task.profit : task.cashProfit))).toLocaleString()}
                         </span>
                       )}
                     </td>
@@ -483,7 +522,7 @@ export default function ProfitLossDashboard() {
                     <tr key={exp.id} className="hover:bg-slate-50/50 transition-colors group">
                       <td className="px-6 py-4 font-bold text-slate-800">{exp.title}</td>
                       <td className="px-6 py-4 text-slate-600">{new Date(exp.date).toLocaleDateString()}</td>
-                      <td className="px-6 py-4 font-black text-rose-600">₹{(exp.amount ?? 0).toLocaleString()}</td>
+                      <td className="px-6 py-4 font-black text-rose-600">₹{safeNum(exp.amount).toLocaleString()}</td>
                       <td className="px-6 py-4 text-slate-500 italic text-xs">{exp.remarks || "-"}</td>
                       <td className="px-6 py-4 text-right">
                         <button onClick={() => handleExpenseDelete(exp.id)} className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-100 transition-colors ml-auto opacity-0 group-hover:opacity-100">
@@ -530,14 +569,14 @@ export default function ProfitLossDashboard() {
                       <td className="px-6 py-4 font-bold text-slate-800">{report.dateKey}</td>
                       <td className="px-6 py-4 text-slate-600 font-medium">{report.tasksCount} tasks</td>
                       <td className="px-6 py-4 font-black text-slate-700">
-                        ₹{((calcBasis === "total" ? report.totalRevenue : report.totalReceived) ?? 0).toLocaleString()}
+                        ₹{safeNum(calcBasis === "total" ? report.totalRevenue : report.totalReceived).toLocaleString()}
                       </td>
                       <td className="px-6 py-4 font-black text-rose-600">
-                        ₹{(report.totalExpense ?? 0).toLocaleString()}
+                        ₹{safeNum(report.totalExpense).toLocaleString()}
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`px-3 py-1.5 rounded-xl text-xs font-black shadow-sm ${(calcBasis === "total" ? report.netProfit : report.cashProfit) >= 0 ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-rose-100 text-rose-700 border border-rose-200'}`}>
-                          {((calcBasis === "total" ? report.netProfit : report.cashProfit) ?? 0) >= 0 ? '+' : '-'}₹{(Math.abs((calcBasis === "total" ? report.netProfit : report.cashProfit) || 0)).toLocaleString()}
+                        <span className={`px-3 py-1.5 rounded-xl text-xs font-black shadow-sm ${safeNum(calcBasis === "total" ? report.netProfit : report.cashProfit) >= 0 ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-rose-100 text-rose-700 border border-rose-200'}`}>
+                          {safeNum(calcBasis === "total" ? report.netProfit : report.cashProfit) >= 0 ? '+' : '-'}₹{safeNum(Math.abs(safeNum(calcBasis === "total" ? report.netProfit : report.cashProfit))).toLocaleString()}
                         </span>
                       </td>
                     </tr>

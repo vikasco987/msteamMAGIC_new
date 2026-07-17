@@ -4,6 +4,13 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+// Safe float helper — returns 0 for NaN/null/undefined
+const safeFloat = (v: any): number => {
+  if (v == null || v === "") return 0;
+  const n = parseFloat(String(v));
+  return isNaN(n) || !isFinite(n) ? 0 : n;
+};
+
 interface UserPublicMetadata {
   role?: string;
 }
@@ -85,11 +92,11 @@ export async function GET(req: NextRequest) {
     const formattedTasks = tasks.map((task) => {
       const customFields = task.customFields as any || {};
       
-      const rev = parseFloat(customFields.packageAmount || customFields.amount || task.amount?.toString() || "0");
-      const received = parseFloat(customFields.amountReceived || task.received?.toString() || "0");
+      const rev = safeFloat(customFields.packageAmount || customFields.amount || task.amount);
+      const received = safeFloat(customFields.amountReceived || task.received);
       
-      const delivery = parseFloat(customFields.deliveryCharge || "0");
-      const costPrice = parseFloat(customFields.costPrice || "0");
+      const delivery = safeFloat(customFields.deliveryCharge);
+      const costPrice = safeFloat(customFields.costPrice);
       const exp = delivery + costPrice;
 
       const profit = rev - exp;
@@ -125,7 +132,8 @@ export async function GET(req: NextRequest) {
 
     formattedTasks.forEach(task => {
       const date = new Date(task.createdAt);
-      // Format manual since date-fns might have different locale/version quirks
+      // Skip tasks with invalid dates
+      if (isNaN(date.getTime())) return;
       const d = date.getDate().toString().padStart(2, '0');
       const m = (date.getMonth() + 1).toString().padStart(2, '0');
       const y = date.getFullYear();
@@ -161,6 +169,8 @@ export async function GET(req: NextRequest) {
     // Add General Expenses to maps and summary
     generalExpenses.forEach(exp => {
       const date = new Date(exp.date);
+      // Skip expenses with invalid dates
+      if (isNaN(date.getTime())) return;
       const d = date.getDate().toString().padStart(2, '0');
       const m = (date.getMonth() + 1).toString().padStart(2, '0');
       const y = date.getFullYear();
@@ -175,7 +185,7 @@ export async function GET(req: NextRequest) {
       const weekNo = Math.ceil((((dCopy.getTime() - yearStart.getTime()) / 86400000) + 1)/7);
       const weekKey = `${dCopy.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
 
-      const expAmt = exp.amount;
+      const expAmt = safeFloat(exp.amount);
       totalExpense += expAmt;
 
       const addExpenseToMap = (map: Record<string, any>, key: string) => {
