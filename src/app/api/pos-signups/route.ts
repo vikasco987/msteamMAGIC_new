@@ -144,6 +144,7 @@ export async function GET(req: Request) {
       role: u.role,
       isVerified: u.isVerified,
       posNotes: u.posNotes || "",
+      leadStatus: u.leadStatus || "New Lead",
       createdAt: u.createdAt ? u.createdAt.toISOString() : null
     }));
 

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { format } from "date-fns";
-import { Calendar, Users, TrendingUp, AlertCircle, Loader2, BarChart3, Search, Download, FileText, X } from "lucide-react";
+import { Calendar, Users, TrendingUp, AlertCircle, Loader2, BarChart3, Search, Download, FileText, X, MessageCircle, CheckSquare } from "lucide-react";
 
 interface POSUser {
   id: string;
@@ -14,6 +14,7 @@ interface POSUser {
   role: string;
   isVerified: boolean;
   posNotes?: string;
+  leadStatus?: string;
   createdAt: string;
 }
 
@@ -43,6 +44,10 @@ export default function POSSignupsPage() {
   const [notesText, setNotesText] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
 
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [bulkVerifying, setBulkVerifying] = useState(false);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
+
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(searchQuery);
@@ -65,6 +70,7 @@ export default function POSSignupsPage() {
       const data = await res.json();
       setMetrics(data.metrics);
       setUsers(data.users);
+      setSelectedUserIds([]); // Clear selection when data changes
       if (data.pagination) {
         setTotalPages(data.pagination.totalPages);
       }
@@ -114,6 +120,44 @@ export default function POSSignupsPage() {
     }
   };
 
+  const handleBulkVerify = async () => {
+    if (selectedUserIds.length === 0) return;
+    setBulkVerifying(true);
+    try {
+      const res = await fetch("/api/pos-signups/bulk-verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userIds: selectedUserIds }),
+      });
+      if (!res.ok) throw new Error("Failed to bulk verify");
+      
+      setUsers(users.map(u => selectedUserIds.includes(u.id) ? { ...u, isVerified: true } : u));
+      setSelectedUserIds([]);
+    } catch (err) {
+      alert("Error in bulk verification");
+    } finally {
+      setBulkVerifying(false);
+    }
+  };
+
+  const handleStatusChange = async (userId: string, newStatus: string) => {
+    setStatusUpdatingId(userId);
+    try {
+      const res = await fetch("/api/pos-signups/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, status: newStatus }),
+      });
+      if (!res.ok) throw new Error("Failed to update status");
+      
+      setUsers(users.map(u => u.id === userId ? { ...u, leadStatus: newStatus } : u));
+    } catch (err) {
+      alert("Error updating status");
+    } finally {
+      setStatusUpdatingId(null);
+    }
+  };
+
   const handleExport = async () => {
     try {
       let url = `/api/pos-signups?export=true`;
@@ -122,18 +166,24 @@ export default function POSSignupsPage() {
       
       const res = await fetch(url);
       const data = await res.json();
-      const exportUsers = data.users || [];
+      let exportUsers = data.users || [];
       
-      const csvHeader = "Name,Phone,Email,Role,Status,Notes,Joined At\n";
+      // If users are selected, only export those
+      if (selectedUserIds.length > 0) {
+        exportUsers = exportUsers.filter((u: any) => selectedUserIds.includes(u.id));
+      }
+      
+      const csvHeader = "Name,Phone,Email,Role,Status,Pipeline,Notes,Joined At\n";
       const csvRows = exportUsers.map((u: any) => {
         const name = `"${(u.name || "").replace(/"/g, '""')}"`;
         const phone = `"${u.phone || ""}"`;
         const email = `"${u.email || ""}"`;
         const role = `"${u.role || "USER"}"`;
         const status = u.isVerified ? "Verified" : "Unverified";
+        const pipeline = `"${u.leadStatus || "New Lead"}"`;
         const notes = `"${(u.posNotes || "").replace(/"/g, '""')}"`;
         const joined = `"${u.createdAt ? format(new Date(u.createdAt), "PPp") : ""}"`;
-        return [name, phone, email, role, status, notes, joined].join(",");
+        return [name, phone, email, role, status, pipeline, notes, joined].join(",");
       });
       
       const blob = new Blob([csvHeader + csvRows.join("\n")], { type: 'text/csv' });
@@ -259,11 +309,23 @@ export default function POSSignupsPage() {
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-100">
               <tr>
+                <th className="px-6 py-3 w-10">
+                  <input 
+                    type="checkbox" 
+                    checked={users.length > 0 && selectedUserIds.length === users.length}
+                    onChange={(e) => {
+                      if (e.target.checked) setSelectedUserIds(users.map(u => u.id));
+                      else setSelectedUserIds([]);
+                    }}
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  />
+                </th>
                 <th className="px-6 py-3">Name</th>
                 <th className="px-6 py-3">Phone</th>
                 <th className="px-6 py-3">Email</th>
                 <th className="px-6 py-3">Role</th>
                 <th className="px-6 py-3">Status</th>
+                <th className="px-6 py-3">Pipeline</th>
                 <th className="px-6 py-3">Notes</th>
                 <th className="px-6 py-3">Joined At</th>
               </tr>
@@ -271,15 +333,40 @@ export default function POSSignupsPage() {
             <tbody className="divide-y divide-slate-100">
               {!loading && users.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
+                  <td colSpan={9} className="px-6 py-8 text-center text-slate-500">
                     No sign-ups found.
                   </td>
                 </tr>
               )}
               {users.map((u) => (
-                <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
+                <tr key={u.id} className={`hover:bg-slate-50/50 transition-colors ${selectedUserIds.includes(u.id) ? 'bg-indigo-50/30' : ''}`}>
+                  <td className="px-6 py-4">
+                    <input 
+                      type="checkbox" 
+                      checked={selectedUserIds.includes(u.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) setSelectedUserIds([...selectedUserIds, u.id]);
+                        else setSelectedUserIds(selectedUserIds.filter(id => id !== u.id));
+                      }}
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                    />
+                  </td>
                   <td className="px-6 py-4 font-medium text-slate-800">{u.name || "N/A"}</td>
-                  <td className="px-6 py-4 text-slate-800 font-medium">{u.phone || "—"}</td>
+                  <td className="px-6 py-4 text-slate-800 font-medium">
+                    <div className="flex items-center gap-2">
+                      {u.phone || "—"}
+                      {u.phone && (
+                        <a 
+                          href={`https://wa.me/${u.phone.replace(/[^0-9]/g, '')}?text=Hello ${encodeURIComponent(u.name || 'User')}, Welcome to Billgsoftware!`}
+                          target="_blank" rel="noopener noreferrer"
+                          className="text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-full transition-colors flex-shrink-0"
+                          title="Message on WhatsApp"
+                        >
+                          <MessageCircle size={16} />
+                        </a>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-6 py-4 text-slate-600">{u.email}</td>
                   <td className="px-6 py-4">
                     <span className="bg-slate-100 text-slate-600 text-xs px-2 py-1 rounded-md font-semibold">
@@ -299,12 +386,25 @@ export default function POSSignupsPage() {
                         <button
                           onClick={() => handleVerify(u.id)}
                           disabled={verifyingId === u.id}
-                          className="text-[10px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-2 py-1 rounded-md transition-colors disabled:opacity-50 disabled:cursor-wait"
+                          className="text-[10px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-2 py-1 rounded-md transition-colors disabled:opacity-50 disabled:cursor-wait whitespace-nowrap"
                         >
                           {verifyingId === u.id ? "..." : "Verify Now"}
                         </button>
                       </div>
                     )}
+                  </td>
+                  <td className="px-6 py-4">
+                    <select
+                      value={u.leadStatus || "New Lead"}
+                      onChange={(e) => handleStatusChange(u.id, e.target.value)}
+                      disabled={statusUpdatingId === u.id}
+                      className="border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-50 cursor-pointer min-w-[110px]"
+                    >
+                      <option value="New Lead">New Lead</option>
+                      <option value="Contacted">Contacted</option>
+                      <option value="Demo Scheduled">Demo Scheduled</option>
+                      <option value="Converted">Converted</option>
+                    </select>
                   </td>
                   <td className="px-6 py-4">
                     <button 
@@ -347,6 +447,43 @@ export default function POSSignupsPage() {
           </div>
         </div>
       </div>
+
+      {/* Floating Bulk Actions Bar */}
+      {selectedUserIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-6 z-40 animate-in slide-in-from-bottom-5">
+          <div className="flex items-center gap-2">
+            <span className="bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">
+              {selectedUserIds.length}
+            </span>
+            <span className="text-sm font-semibold text-slate-300">Selected</span>
+          </div>
+          <div className="h-6 w-px bg-slate-700" />
+          <div className="flex gap-3">
+            <button
+              onClick={handleBulkVerify}
+              disabled={bulkVerifying}
+              className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
+            >
+              {bulkVerifying ? <Loader2 size={16} className="animate-spin" /> : <CheckSquare size={16} />}
+              Verify Selected
+            </button>
+            <button
+              onClick={handleExport}
+              className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors"
+            >
+              <Download size={16} />
+              Export Selected
+            </button>
+            <button
+              onClick={() => setSelectedUserIds([])}
+              className="p-2 hover:bg-slate-800 rounded-full text-slate-400 transition-colors"
+              title="Clear selection"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* CRM Notes Modal */}
       {notesModalOpen && selectedUserForNotes && (
