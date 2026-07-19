@@ -25,18 +25,20 @@ interface Metrics {
 export default function POSSignupsPage() {
   const { user } = useUser();
   const [date, setDate] = useState<string>("");
+  const [page, setPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
   const [users, setUsers] = useState<POSUser[]>([]);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const fetchData = async (filterDate?: string) => {
+  const fetchData = async (filterDate?: string, pageNum = 1) => {
     setLoading(true);
     setError("");
     try {
-      let url = "/api/pos-signups";
+      let url = `/api/pos-signups?page=${pageNum}`;
       if (filterDate) {
-        url += `?date=${filterDate}`;
+        url += `&date=${filterDate}`;
       }
       const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to fetch signups data");
@@ -44,6 +46,9 @@ export default function POSSignupsPage() {
       const data = await res.json();
       setMetrics(data.metrics);
       setUsers(data.users);
+      if (data.pagination) {
+        setTotalPages(data.pagination.totalPages);
+      }
     } catch (err: any) {
       setError(err.message || "An error occurred");
     } finally {
@@ -53,18 +58,20 @@ export default function POSSignupsPage() {
 
   // Fetch initial data
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchData(date, page);
+  }, [page]);
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setDate(val);
-    fetchData(val);
+    setPage(1); // Reset to first page when date changes
+    fetchData(val, 1);
   };
 
   const handleClearDate = () => {
     setDate("");
-    fetchData();
+    setPage(1);
+    fetchData("", 1);
   };
 
   return (
@@ -159,6 +166,29 @@ export default function POSSignupsPage() {
               ))}
             </tbody>
           </table>
+        </div>
+        
+        {/* Pagination Controls */}
+        <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between">
+          <span className="text-sm text-slate-500">
+            Page <span className="font-medium text-slate-900">{page}</span> of <span className="font-medium text-slate-900">{totalPages}</span>
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1 || loading}
+              className="px-4 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages || loading}
+              className="px-4 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
     </div>

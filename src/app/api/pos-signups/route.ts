@@ -74,7 +74,14 @@ export async function GET(req: Request) {
       query = {};
     }
 
-    const recentUsersCursor = collection.find(query).sort({ createdAt: -1 }).limit(100);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = 20;
+    const skip = (page - 1) * limit;
+
+    const totalFiltered = await collection.countDocuments(query);
+    const totalPages = Math.ceil(totalFiltered / limit);
+
+    const recentUsersCursor = collection.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit);
     const recentUsersRaw = await recentUsersCursor.toArray();
 
     // Fetch Business Profiles to get phone numbers
@@ -112,6 +119,11 @@ export async function GET(req: Request) {
         today: usersToday,
         last7Days: usersLast7Days,
         last30Days: usersLast30Days
+      },
+      pagination: {
+        currentPage: page,
+        totalPages: totalPages === 0 ? 1 : totalPages,
+        totalItems: totalFiltered
       },
       users: recentUsers
     });
