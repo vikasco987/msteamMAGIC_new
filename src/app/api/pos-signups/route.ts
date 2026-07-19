@@ -82,6 +82,7 @@ export async function GET(req: Request) {
       id: u._id.toString(),
       name: u.name,
       email: u.email,
+      phone: u.phone,
       role: u.role,
       isVerified: u.isVerified,
       createdAt: u.createdAt ? u.createdAt.toISOString() : null

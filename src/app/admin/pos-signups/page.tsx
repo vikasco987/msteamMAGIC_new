@@ -9,6 +9,7 @@ interface POSUser {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   role: string;
   isVerified: boolean;
   createdAt: string;
@@ -119,6 +120,7 @@ export default function POSSignupsPage() {
             <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-100">
               <tr>
                 <th className="px-6 py-3">Name</th>
+                <th className="px-6 py-3">Phone</th>
                 <th className="px-6 py-3">Email</th>
                 <th className="px-6 py-3">Role</th>
                 <th className="px-6 py-3">Status</th>
@@ -136,6 +138,7 @@ export default function POSSignupsPage() {
               {users.map((u) => (
                 <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="px-6 py-4 font-medium text-slate-800">{u.name || "N/A"}</td>
+                  <td className="px-6 py-4 text-slate-800 font-medium">{u.phone || "—"}</td>
                   <td className="px-6 py-4 text-slate-600">{u.email}</td>
                   <td className="px-6 py-4">
                     <span className="bg-slate-100 text-slate-600 text-xs px-2 py-1 rounded-md font-semibold">
