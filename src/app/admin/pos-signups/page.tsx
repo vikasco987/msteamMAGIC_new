@@ -127,6 +127,7 @@ export default function POSSignupsPage() {
               Clear
             </button>
           )}
+          </div>
         </div>
       </div>
 
