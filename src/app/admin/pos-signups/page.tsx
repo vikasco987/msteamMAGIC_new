@@ -320,6 +320,7 @@ export default function POSSignupsPage() {
                     className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                   />
                 </th>
+                <th className="px-6 py-3">Joined At</th>
                 <th className="px-6 py-3">Name</th>
                 <th className="px-6 py-3">Phone</th>
                 <th className="px-6 py-3">Email</th>
@@ -327,7 +328,6 @@ export default function POSSignupsPage() {
                 <th className="px-6 py-3">Status</th>
                 <th className="px-6 py-3">Pipeline</th>
                 <th className="px-6 py-3">Notes</th>
-                <th className="px-6 py-3">Joined At</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -350,6 +350,9 @@ export default function POSSignupsPage() {
                       }}
                       className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                     />
+                  </td>
+                  <td className="px-6 py-4 text-slate-500 font-medium">
+                    {u.createdAt ? format(new Date(u.createdAt), "PPp") : "Unknown"}
                   </td>
                   <td className="px-6 py-4 font-medium text-slate-800">{u.name || "N/A"}</td>
                   <td className="px-6 py-4 text-slate-800 font-medium">
@@ -414,9 +417,6 @@ export default function POSSignupsPage() {
                     >
                       <FileText size={18} className={u.posNotes ? "text-indigo-500 fill-indigo-50" : ""} />
                     </button>
-                  </td>
-                  <td className="px-6 py-4 text-slate-500">
-                    {u.createdAt ? format(new Date(u.createdAt), "PPp") : "Unknown"}
                   </td>
                 </tr>
               ))}
