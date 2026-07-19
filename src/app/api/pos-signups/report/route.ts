@@ -27,6 +27,7 @@ export async function GET(req: Request) {
     
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get('page') || '1');
+    const month = searchParams.get('month'); // Format: YYYY-MM
     const limit = 20;
     const skip = (page - 1) * limit;
 
@@ -34,24 +35,49 @@ export async function GET(req: Request) {
     const db = client.db("Billgsoftware");
     const collection = db.collection("User");
 
-    // First, count total distinct days to calculate total pages
-    const countPipeline = [
-      {
-        $group: {
-          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }
-        }
-      },
-      {
-        $count: "totalDays"
+    // Build the match stage if a month is provided
+    let matchStage = null;
+    if (month) {
+      const [yearStr, monthStr] = month.split('-');
+      if (yearStr && monthStr) {
+        const year = parseInt(yearStr);
+        const m = parseInt(monthStr);
+        // Start of selected month
+        const startDate = new Date(Date.UTC(year, m - 1, 1));
+        // Start of next month
+        const endDate = new Date(Date.UTC(year, m, 1));
+        
+        matchStage = {
+          $match: {
+            createdAt: {
+              $gte: startDate,
+              $lt: endDate
+            }
+          }
+        };
       }
-    ];
+    }
+
+    // First, count total distinct days to calculate total pages
+    const countPipeline: any[] = [];
+    if (matchStage) countPipeline.push(matchStage);
+    countPipeline.push({
+      $group: {
+        _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }
+      }
+    });
+    countPipeline.push({
+      $count: "totalDays"
+    });
     
     const countResult = await collection.aggregate(countPipeline).toArray();
     const totalDays = countResult.length > 0 ? countResult[0].totalDays : 0;
     const totalPages = Math.ceil(totalDays / limit);
 
     // Then, fetch the paginated report
-    const pipeline = [
+    const pipeline: any[] = [];
+    if (matchStage) pipeline.push(matchStage);
+    pipeline.push(
       {
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
@@ -61,7 +87,7 @@ export async function GET(req: Request) {
       { $sort: { _id: -1 } },
       { $skip: skip },
       { $limit: limit }
-    ];
+    );
 
     const reportRaw = await collection.aggregate(pipeline).toArray();
 
