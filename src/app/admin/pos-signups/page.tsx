@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { format } from "date-fns";
-import { Calendar, Users, TrendingUp, AlertCircle, Loader2, BarChart3 } from "lucide-react";
+import { Calendar, Users, TrendingUp, AlertCircle, Loader2, BarChart3, Search, Download, FileText, X } from "lucide-react";
 
 interface POSUser {
   id: string;
@@ -13,6 +13,7 @@ interface POSUser {
   phone?: string;
   role: string;
   isVerified: boolean;
+  posNotes?: string;
   createdAt: string;
 }
 
@@ -33,15 +34,31 @@ export default function POSSignupsPage() {
   const [loading, setLoading] = useState(true);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  const fetchData = async (filterDate?: string, pageNum = 1) => {
+  const [notesModalOpen, setNotesModalOpen] = useState(false);
+  const [selectedUserForNotes, setSelectedUserForNotes] = useState<POSUser | null>(null);
+  const [notesText, setNotesText] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setPage(1);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  const fetchData = async (filterDate?: string, pageNum = 1, search = "") => {
     setLoading(true);
     setError("");
     try {
       let url = `/api/pos-signups?page=${pageNum}`;
-      if (filterDate) {
-        url += `&date=${filterDate}`;
-      }
+      if (filterDate) url += `&date=${filterDate}`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+      
       const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to fetch signups data");
       
@@ -60,20 +77,20 @@ export default function POSSignupsPage() {
 
   // Fetch initial data
   useEffect(() => {
-    fetchData(date, page);
-  }, [page]);
+    fetchData(date, page, debouncedSearch);
+  }, [page, debouncedSearch]);
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setDate(val);
     setPage(1); // Reset to first page when date changes
-    fetchData(val, 1);
+    fetchData(val, 1, debouncedSearch);
   };
 
   const handleClearDate = () => {
     setDate("");
     setPage(1);
-    fetchData("", 1);
+    fetchData("", 1, debouncedSearch);
   };
 
   const handleVerify = async (userId: string) => {
@@ -97,6 +114,66 @@ export default function POSSignupsPage() {
     }
   };
 
+  const handleExport = async () => {
+    try {
+      let url = `/api/pos-signups?export=true`;
+      if (date) url += `&date=${date}`;
+      if (debouncedSearch) url += `&search=${encodeURIComponent(debouncedSearch)}`;
+      
+      const res = await fetch(url);
+      const data = await res.json();
+      const exportUsers = data.users || [];
+      
+      const csvHeader = "Name,Phone,Email,Role,Status,Notes,Joined At\n";
+      const csvRows = exportUsers.map((u: any) => {
+        const name = `"${(u.name || "").replace(/"/g, '""')}"`;
+        const phone = `"${u.phone || ""}"`;
+        const email = `"${u.email || ""}"`;
+        const role = `"${u.role || "USER"}"`;
+        const status = u.isVerified ? "Verified" : "Unverified";
+        const notes = `"${(u.posNotes || "").replace(/"/g, '""')}"`;
+        const joined = `"${u.createdAt ? format(new Date(u.createdAt), "PPp") : ""}"`;
+        return [name, phone, email, role, status, notes, joined].join(",");
+      });
+      
+      const blob = new Blob([csvHeader + csvRows.join("\n")], { type: 'text/csv' });
+      const dlUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = dlUrl;
+      a.download = `pos-signups-${format(new Date(), "yyyy-MM-dd")}.csv`;
+      a.click();
+    } catch (err) {
+      alert("Failed to export data");
+    }
+  };
+
+  const openNotesModal = (u: POSUser) => {
+    setSelectedUserForNotes(u);
+    setNotesText(u.posNotes || "");
+    setNotesModalOpen(true);
+  };
+
+  const handleSaveNotes = async () => {
+    if (!selectedUserForNotes) return;
+    setSavingNotes(true);
+    try {
+      const res = await fetch("/api/pos-signups/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: selectedUserForNotes.id, notes: notesText }),
+      });
+      if (!res.ok) throw new Error("Failed to save notes");
+      
+      // Update local state
+      setUsers(users.map(u => u.id === selectedUserForNotes.id ? { ...u, posNotes: notesText } : u));
+      setNotesModalOpen(false);
+    } catch (err) {
+      alert("Error saving notes");
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -104,7 +181,17 @@ export default function POSSignupsPage() {
           <h1 className="text-2xl font-black text-slate-800">POS Sign-ups Monitor</h1>
           <p className="text-sm text-slate-500">Live sign-up tracking from Billgsoftware POS database</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 mt-4 md:mt-0">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input
+              type="text"
+              placeholder="Search by name, phone, email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-4 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none w-64 shadow-sm"
+            />
+          </div>
           <Link 
             href="/admin/pos-signups/monthly-report" 
             className="flex items-center gap-2 bg-purple-50 text-purple-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-purple-100 transition-colors border border-purple-100 shadow-sm"
@@ -119,17 +206,24 @@ export default function POSSignupsPage() {
             <TrendingUp size={16} />
             Daily Report
           </Link>
-          <div className="flex items-center gap-2">
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-emerald-100 transition-colors border border-emerald-100 shadow-sm"
+          >
+            <Download size={16} />
+            Export CSV
+          </button>
+          <div className="flex items-center gap-2 ml-auto">
             <input
             type="date"
             value={date}
             onChange={handleDateChange}
-            className="border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
+            className="border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
           />
           {date && (
             <button
               onClick={handleClearDate}
-              className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-lg transition-colors font-medium"
+              className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-lg transition-colors font-medium shadow-sm"
             >
               Clear
             </button>
@@ -170,6 +264,7 @@ export default function POSSignupsPage() {
                 <th className="px-6 py-3">Email</th>
                 <th className="px-6 py-3">Role</th>
                 <th className="px-6 py-3">Status</th>
+                <th className="px-6 py-3">Notes</th>
                 <th className="px-6 py-3">Joined At</th>
               </tr>
             </thead>
@@ -211,6 +306,15 @@ export default function POSSignupsPage() {
                       </div>
                     )}
                   </td>
+                  <td className="px-6 py-4">
+                    <button 
+                      onClick={() => openNotesModal(u)}
+                      className="group flex items-center justify-center p-2 rounded-lg hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 transition-colors"
+                      title={u.posNotes || "Add Note"}
+                    >
+                      <FileText size={18} className={u.posNotes ? "text-indigo-500 fill-indigo-50" : ""} />
+                    </button>
+                  </td>
                   <td className="px-6 py-4 text-slate-500">
                     {u.createdAt ? format(new Date(u.createdAt), "PPp") : "Unknown"}
                   </td>
@@ -243,6 +347,51 @@ export default function POSSignupsPage() {
           </div>
         </div>
       </div>
+
+      {/* CRM Notes Modal */}
+      {notesModalOpen && selectedUserForNotes && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h2 className="text-lg font-black text-slate-800">
+                Notes for {selectedUserForNotes.name || "User"}
+              </h2>
+              <button 
+                onClick={() => setNotesModalOpen(false)}
+                className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <textarea
+                value={notesText}
+                onChange={(e) => setNotesText(e.target.value)}
+                placeholder="Write a follow up note, status, or remark..."
+                className="w-full h-32 p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none text-sm"
+              />
+            </div>
+            
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
+              <button 
+                onClick={() => setNotesModalOpen(false)}
+                className="px-5 py-2 text-slate-600 font-bold hover:bg-slate-200 rounded-lg transition-colors text-sm"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleSaveNotes}
+                disabled={savingNotes}
+                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition-colors text-sm disabled:opacity-50 flex items-center gap-2"
+              >
+                {savingNotes ? <Loader2 size={16} className="animate-spin" /> : null}
+                Save Note
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

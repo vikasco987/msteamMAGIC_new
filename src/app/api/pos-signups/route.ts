@@ -27,6 +27,8 @@ export async function GET(req: Request) {
     
     const { searchParams } = new URL(req.url);
     const dateParam = searchParams.get('date');
+    const searchQuery = searchParams.get('search');
+    const isExport = searchParams.get('export') === 'true';
 
     const client = await getMongoClient();
     const db = client.db("Billgsoftware");
@@ -59,24 +61,55 @@ export async function GET(req: Request) {
       createdAt: { $gte: last30Days, $lte: todayEnd }
     });
 
-    // If a specific date is requested, filter by that date
+    // Advanced Global Search Logic
+    let searchFilter: any = null;
+    if (searchQuery) {
+      const searchRegex = new RegExp(searchQuery, 'i');
+      
+      // 1. Search in BusinessProfile for phone number matching the search
+      const matchedProfiles = await db.collection("BusinessProfile").find({
+        contactPersonPhone: { $regex: searchRegex }
+      }).toArray();
+      
+      const matchedClerkIds = new Set<string>();
+      matchedProfiles.forEach(p => {
+        if (p.userId) matchedClerkIds.add(p.userId);
+        if (p.createdBy) matchedClerkIds.add(p.createdBy);
+      });
+
+      // 2. Build the $or condition for User collection
+      searchFilter = {
+        $or: [
+          { name: { $regex: searchRegex } },
+          { email: { $regex: searchRegex } },
+          { clerkId: { $in: Array.from(matchedClerkIds) } }
+        ]
+      };
+    }
+
+    // Combine date filter and search filter
     let query: any = {};
+    const conditions = [];
+
     if (dateParam) {
       const selectedDate = new Date(dateParam);
       selectedDate.setHours(0, 0, 0, 0);
       const selectedDateEnd = new Date(selectedDate);
       selectedDateEnd.setHours(23, 59, 59, 999);
-      query = {
-        createdAt: { $gte: selectedDate, $lte: selectedDateEnd }
-      };
-    } else {
-      // By default, let's fetch the last 100 users to prevent massive payloads
-      query = {};
+      conditions.push({ createdAt: { $gte: selectedDate, $lte: selectedDateEnd } });
+    }
+
+    if (searchFilter) {
+      conditions.push(searchFilter);
+    }
+
+    if (conditions.length > 0) {
+      query = { $and: conditions };
     }
 
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = 20;
-    const skip = (page - 1) * limit;
+    const limit = isExport ? 5000 : 20; // If export, fetch a large amount (e.g. 5000)
+    const skip = isExport ? 0 : (page - 1) * limit;
 
     const totalFiltered = await collection.countDocuments(query);
     const totalPages = Math.ceil(totalFiltered / limit);
@@ -110,6 +143,7 @@ export async function GET(req: Request) {
       phone: u.phone || phoneMap.get(u.clerkId) || null,
       role: u.role,
       isVerified: u.isVerified,
+      posNotes: u.posNotes || "",
       createdAt: u.createdAt ? u.createdAt.toISOString() : null
     }));
 
