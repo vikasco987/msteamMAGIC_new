@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
+import Link from "next/link";
 import { format } from "date-fns";
 import { Calendar, Users, TrendingUp, AlertCircle, Loader2 } from "lucide-react";
 
@@ -103,8 +104,16 @@ export default function POSSignupsPage() {
           <h1 className="text-2xl font-black text-slate-800">POS Sign-ups Monitor</h1>
           <p className="text-sm text-slate-500">Live sign-up tracking from Billgsoftware POS database</p>
         </div>
-        <div className="flex items-center gap-2">
-          <input
+        <div className="flex items-center gap-3">
+          <Link 
+            href="/admin/pos-signups/report" 
+            className="flex items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-100 transition-colors border border-indigo-100 shadow-sm"
+          >
+            <TrendingUp size={16} />
+            Daily Report
+          </Link>
+          <div className="flex items-center gap-2">
+            <input
             type="date"
             value={date}
             onChange={handleDateChange}
