@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import { CalendarDays, ArrowLeft, TrendingUp, X, Loader2, Phone, Mail, User } from "lucide-react";
 
@@ -11,10 +12,12 @@ interface DailyReport {
   count: number;
 }
 
-export default function POSDailyReportPage() {
+function DailyReportContent() {
   const { user } = useUser();
+  const searchParams = useSearchParams();
+  const initialMonth = searchParams.get("month") || "";
   const [page, setPage] = useState<number>(1);
-  const [month, setMonth] = useState<string>(""); // Format: YYYY-MM
+  const [month, setMonth] = useState<string>(initialMonth); // Format: YYYY-MM
   const [totalPages, setTotalPages] = useState<number>(1);
   const [reportData, setReportData] = useState<DailyReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -265,5 +268,13 @@ export default function POSDailyReportPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function POSDailyReportPage() {
+  return (
+    <Suspense fallback={<div className="p-12 text-center text-slate-400">Loading Report...</div>}>
+      <DailyReportContent />
+    </Suspense>
   );
 }

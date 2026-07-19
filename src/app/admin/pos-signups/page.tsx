@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { format } from "date-fns";
-import { Calendar, Users, TrendingUp, AlertCircle, Loader2 } from "lucide-react";
+import { Calendar, Users, TrendingUp, AlertCircle, Loader2, BarChart3 } from "lucide-react";
 
 interface POSUser {
   id: string;
@@ -105,6 +105,13 @@ export default function POSSignupsPage() {
           <p className="text-sm text-slate-500">Live sign-up tracking from Billgsoftware POS database</p>
         </div>
         <div className="flex items-center gap-3">
+          <Link 
+            href="/admin/pos-signups/monthly-report" 
+            className="flex items-center gap-2 bg-purple-50 text-purple-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-purple-100 transition-colors border border-purple-100 shadow-sm"
+          >
+            <BarChart3 size={16} />
+            Monthly Report
+          </Link>
           <Link 
             href="/admin/pos-signups/report" 
             className="flex items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-100 transition-colors border border-indigo-100 shadow-sm"
