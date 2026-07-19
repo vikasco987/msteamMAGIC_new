@@ -77,12 +77,30 @@ export async function GET(req: Request) {
     const recentUsersCursor = collection.find(query).sort({ createdAt: -1 }).limit(100);
     const recentUsersRaw = await recentUsersCursor.toArray();
 
+    // Fetch Business Profiles to get phone numbers
+    const clerkIds = recentUsersRaw.map(u => u.clerkId).filter(Boolean);
+    const businessProfiles = await db.collection("BusinessProfile").find({
+      $or: [
+        { userId: { $in: clerkIds } },
+        { createdBy: { $in: clerkIds } }
+      ]
+    }).toArray();
+
+    // Create a map for quick lookup
+    const phoneMap = new Map();
+    businessProfiles.forEach(bp => {
+      if (bp.contactPersonPhone) {
+        if (bp.userId) phoneMap.set(bp.userId, bp.contactPersonPhone);
+        if (bp.createdBy) phoneMap.set(bp.createdBy, bp.contactPersonPhone);
+      }
+    });
+
     // Map to a cleaner format and convert ObjectIds/Dates to string
     const recentUsers = recentUsersRaw.map(u => ({
       id: u._id.toString(),
       name: u.name,
       email: u.email,
-      phone: u.phone,
+      phone: u.phone || phoneMap.get(u.clerkId) || null,
       role: u.role,
       isVerified: u.isVerified,
       createdAt: u.createdAt ? u.createdAt.toISOString() : null
