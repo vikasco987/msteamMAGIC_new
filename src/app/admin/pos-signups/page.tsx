@@ -30,6 +30,7 @@ export default function POSSignupsPage() {
   const [users, setUsers] = useState<POSUser[]>([]);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   const fetchData = async (filterDate?: string, pageNum = 1) => {
@@ -72,6 +73,27 @@ export default function POSSignupsPage() {
     setDate("");
     setPage(1);
     fetchData("", 1);
+  };
+
+  const handleVerify = async (userId: string) => {
+    setVerifyingId(userId);
+    setError("");
+    try {
+      const res = await fetch("/api/pos-signups/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to verify user");
+      
+      // Update local state to reflect verification instantly
+      setUsers(users.map(u => u.id === userId ? { ...u, isVerified: true } : u));
+    } catch (err: any) {
+      setError(err.message || "An error occurred during verification");
+    } finally {
+      setVerifyingId(null);
+    }
   };
 
   return (
@@ -154,9 +176,22 @@ export default function POSSignupsPage() {
                   </td>
                   <td className="px-6 py-4">
                     {u.isVerified ? (
-                      <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">Verified</span>
+                      <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider flex items-center gap-1 w-fit">
+                        Verified
+                      </span>
                     ) : (
-                      <span className="text-amber-600 bg-amber-50 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">Unverified</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-amber-600 bg-amber-50 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">
+                          Unverified
+                        </span>
+                        <button
+                          onClick={() => handleVerify(u.id)}
+                          disabled={verifyingId === u.id}
+                          className="text-[10px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-2 py-1 rounded-md transition-colors disabled:opacity-50 disabled:cursor-wait"
+                        >
+                          {verifyingId === u.id ? "..." : "Verify Now"}
+                        </button>
+                      </div>
                     )}
                   </td>
                   <td className="px-6 py-4 text-slate-500">
