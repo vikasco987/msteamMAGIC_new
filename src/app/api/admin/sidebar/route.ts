@@ -23,12 +23,12 @@ export async function GET(req: NextRequest) {
             'Dashboard', 'Team Board', 'Create Task', 'Assigned Task',
             'Recovery Hub', 'KAM Strategy', 'Sales Matrix', 'Team Sales', 'My Growth', 'CRM Forms', 'Follow-up Board', 'Call Report', 'Financial Ecosystem', 'Payment Portal', 'Payment Analytics',
             'Attendance', 'Tish Control', 'Employee Insights', 'Activity Log', 'Lifecycle Report', 'Customers',
-            'Agreements', 'Timeline', 'Access Control', 'Team Management', 'DB Backups'
+            'Agreements', 'Timeline', 'Access Control', 'Team Management', 'DB Backups', 'POS Sign-ups'
         ];
 
         const DEFAULT_PERMISSIONS: Record<string, string[]> = {
-            master: ['Dashboard', 'Team Board', 'Create Task', 'Assigned Task', 'Recovery Hub', 'KAM Strategy', 'Sales Matrix', 'Team Sales', 'My Growth', 'CRM Forms', 'Follow-up Board', 'Call Report', 'Financial Ecosystem', 'Payment Portal', 'Payment Analytics', 'Attendance', 'Tish Control', 'Activity Log', 'Lifecycle Report', 'Customers', 'Agreements', 'Timeline', 'DB Backups'],
-            admin: ['Dashboard', 'Team Board', 'Create Task', 'Assigned Task', 'Recovery Hub', 'KAM Strategy', 'Team Sales', 'My Growth', 'CRM Forms', 'Follow-up Board', 'Call Report', 'Financial Ecosystem', 'Payment Portal', 'Payment Analytics', 'Attendance', 'Tish Control', 'Activity Log', 'Lifecycle Report', 'Customers', 'Agreements', 'Timeline'],
+            master: ['Dashboard', 'Team Board', 'Create Task', 'Assigned Task', 'Recovery Hub', 'KAM Strategy', 'Sales Matrix', 'Team Sales', 'My Growth', 'CRM Forms', 'Follow-up Board', 'Call Report', 'Financial Ecosystem', 'Payment Portal', 'Payment Analytics', 'Attendance', 'Tish Control', 'Activity Log', 'Lifecycle Report', 'Customers', 'Agreements', 'Timeline', 'DB Backups', 'POS Sign-ups'],
+            admin: ['Dashboard', 'Team Board', 'Create Task', 'Assigned Task', 'Recovery Hub', 'KAM Strategy', 'Team Sales', 'My Growth', 'CRM Forms', 'Follow-up Board', 'Call Report', 'Financial Ecosystem', 'Payment Portal', 'Payment Analytics', 'Attendance', 'Tish Control', 'Activity Log', 'Lifecycle Report', 'Customers', 'Agreements', 'Timeline', 'POS Sign-ups'],
             tl: ['Dashboard', 'Team Board', 'Create Task', 'Assigned Task', 'Recovery Hub', 'KAM Strategy', 'Team Sales', 'My Growth', 'CRM Forms', 'Follow-up Board', 'Call Report', 'Financial Ecosystem', 'Payment Portal', 'Attendance', 'Tish Control', 'Activity Log', 'Lifecycle Report', 'Customers', 'Agreements', 'Timeline'],
             seller: ['Dashboard', 'Team Board', 'Create Task', 'Assigned Task', 'Recovery Hub', 'KAM Strategy', 'My Growth', 'CRM Forms', 'Follow-up Board', 'Call Report', 'Payment Portal', 'Attendance', 'Activity Log', 'Customers', 'Agreements', 'Timeline'],
             user: ['Team Board', 'Create Task', 'CRM Forms', 'Activity Log', 'Payment Portal'],
