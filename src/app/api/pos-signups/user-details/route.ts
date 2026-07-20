@@ -49,27 +49,74 @@ export async function GET(req: Request) {
        conditions.push({ clerkId: userId });
     }
 
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const skip = (page - 1) * limit;
+
     const query = { $or: conditions };
 
     if (type === 'bills') {
-      const billsRaw = await db.collection("Bill").find(query).sort({ createdAt: -1 }).toArray();
+      const total = await db.collection("Bill").countDocuments(query);
+      const billsRaw = await db.collection("Bill").find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).toArray();
+      
       const bills = billsRaw.map(b => ({
         id: b._id.toString(),
+        billNo: b.billNo || b.invoiceNo || b.billNumber || "—",
         total: b.total,
         customerName: b.customerName || b.contactPerson || "Unknown",
+        paymentMode: b.paymentMode || b.paymentMethod || "—",
         createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : null
       }));
-      return NextResponse.json({ bills });
+      
+      return NextResponse.json({ 
+        success: true, 
+        data: { 
+          bills, 
+          total, 
+          totalPages: Math.ceil(total / limit),
+          currentPage: page 
+        } 
+      });
     } else {
-      const itemsRaw = await db.collection("Item").find(query).sort({ createdAt: -1 }).toArray();
+      const total = await db.collection("Item").countDocuments(query);
+      
+      // Use aggregate to lookup Category name
+      const itemsRaw = await db.collection("Item").aggregate([
+        { $match: query },
+        { $sort: { createdAt: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $lookup: {
+            from: "Category",
+            let: { catId: "$categoryId" },
+            pipeline: [
+              { $match: { $expr: { $eq: ["$_id", { $toObjectId: "$$catId" }] } } }
+            ],
+            as: "category"
+          }
+        }
+      ]).toArray();
+      
       const items = itemsRaw.map(i => ({
         id: i._id.toString(),
         name: i.name,
         price: i.sellingPrice || i.price,
+        categoryName: i.category && i.category.length > 0 ? i.category[0].name : "Uncategorized",
         taxStatus: i.taxStatus || "Without Tax",
-        isActive: i.isActive
+        isActive: i.isActive,
+        createdAt: i.createdAt ? new Date(i.createdAt).toISOString() : null
       }));
-      return NextResponse.json({ items });
+      
+      return NextResponse.json({ 
+        success: true, 
+        data: { 
+          items, 
+          total, 
+          totalPages: Math.ceil(total / limit),
+          currentPage: page 
+        } 
+      });
     }
 
   } catch (error: any) {

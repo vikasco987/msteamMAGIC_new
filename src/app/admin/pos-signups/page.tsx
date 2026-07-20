@@ -55,21 +55,33 @@ export default function POSSignupsPage() {
   const [detailsModal, setDetailsModal] = useState<{ open: boolean; type: "bills" | "items"; user: POSUser | null }>({ open: false, type: "bills", user: null });
   const [detailsData, setDetailsData] = useState<any[]>([]);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsPage, setDetailsPage] = useState(1);
+  const [detailsTotalPages, setDetailsTotalPages] = useState(1);
+  const [detailsTotalItems, setDetailsTotalItems] = useState(0);
 
-  const openDetailsModal = async (u: POSUser, type: "bills" | "items") => {
-    setDetailsModal({ open: true, type, user: u });
+  const fetchDetailsData = async (u: POSUser, type: "bills" | "items", pageNum = 1) => {
     setDetailsLoading(true);
-    setDetailsData([]);
     try {
-      const res = await fetch(`/api/pos-signups/user-details?userId=${u.id}&clerkId=${u.clerkId || ''}&type=${type}`);
-      const data = await res.json();
-      if (type === "bills") setDetailsData(data.bills || []);
-      else setDetailsData(data.items || []);
+      const res = await fetch(`/api/pos-signups/user-details?userId=${u.id}&clerkId=${u.clerkId || ''}&type=${type}&page=${pageNum}&limit=20`);
+      const resData = await res.json();
+      if (!resData.success) throw new Error("Failed");
+      
+      const { data } = resData;
+      setDetailsData(type === "bills" ? data.bills : data.items);
+      setDetailsPage(data.currentPage || 1);
+      setDetailsTotalPages(data.totalPages || 1);
+      setDetailsTotalItems(data.total || 0);
     } catch (err) {
-      alert("Failed to fetch details");
+      alert("Unable to load data. Please try again.");
     } finally {
       setDetailsLoading(false);
     }
+  };
+
+  const openDetailsModal = (u: POSUser, type: "bills" | "items") => {
+    setDetailsModal({ open: true, type, user: u });
+    setDetailsData([]);
+    fetchDetailsData(u, type, 1);
   };
 
   useEffect(() => {
@@ -589,8 +601,8 @@ export default function POSSignupsPage() {
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
                 <span className="capitalize">{detailsModal.type}</span> for {detailsModal.user.name}
-                <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-md text-xs font-bold">
-                  {detailsData.length}
+                <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-md text-xs font-bold">
+                  {detailsTotalItems} Total
                 </span>
               </h2>
               <button 
@@ -613,16 +625,19 @@ export default function POSSignupsPage() {
                 </div>
               ) : (
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50 text-slate-500 font-medium sticky top-0 border-b border-slate-100">
+                  <thead className="bg-slate-50 text-slate-500 font-medium sticky top-0 border-b border-slate-100 z-10">
                     {detailsModal.type === "bills" ? (
                       <tr>
+                        <th className="px-6 py-3">Bill No</th>
                         <th className="px-6 py-3">Date</th>
                         <th className="px-6 py-3">Customer</th>
-                        <th className="px-6 py-3 text-right">Total Amount</th>
+                        <th className="px-6 py-3">Payment</th>
+                        <th className="px-6 py-3 text-right">Amount</th>
                       </tr>
                     ) : (
                       <tr>
                         <th className="px-6 py-3">Item Name</th>
+                        <th className="px-6 py-3">Category</th>
                         <th className="px-6 py-3">Tax Status</th>
                         <th className="px-6 py-3 text-right">Price</th>
                         <th className="px-6 py-3 text-center">Status</th>
@@ -632,13 +647,16 @@ export default function POSSignupsPage() {
                   <tbody className="divide-y divide-slate-100">
                     {detailsModal.type === "bills" ? detailsData.map((b: any) => (
                       <tr key={b.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-3 font-medium text-slate-800">{b.billNo}</td>
                         <td className="px-6 py-3 text-slate-600">{b.createdAt ? format(new Date(b.createdAt), "PPp") : "—"}</td>
                         <td className="px-6 py-3 font-medium text-slate-800">{b.customerName}</td>
+                        <td className="px-6 py-3 text-slate-600">{b.paymentMode}</td>
                         <td className="px-6 py-3 text-right font-black text-slate-800">₹{b.total}</td>
                       </tr>
                     )) : detailsData.map((i: any) => (
                       <tr key={i.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-3 font-medium text-slate-800">{i.name}</td>
+                        <td className="px-6 py-3 text-slate-600">{i.categoryName}</td>
                         <td className="px-6 py-3 text-slate-600">{i.taxStatus}</td>
                         <td className="px-6 py-3 text-right font-black text-slate-800">₹{i.price}</td>
                         <td className="px-6 py-3 text-center">
@@ -652,6 +670,30 @@ export default function POSSignupsPage() {
                 </table>
               )}
             </div>
+            
+            {detailsTotalPages > 1 && (
+              <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                <span className="text-sm text-slate-500">
+                  Page <span className="font-medium text-slate-900">{detailsPage}</span> of <span className="font-medium text-slate-900">{detailsTotalPages}</span>
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => fetchDetailsData(detailsModal.user!, detailsModal.type, detailsPage - 1)}
+                    disabled={detailsPage === 1 || detailsLoading}
+                    className="px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-100 disabled:opacity-50 transition-colors"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => fetchDetailsData(detailsModal.user!, detailsModal.type, detailsPage + 1)}
+                    disabled={detailsPage >= detailsTotalPages || detailsLoading}
+                    className="px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-100 disabled:opacity-50 transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
