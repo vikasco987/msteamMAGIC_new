@@ -15,6 +15,10 @@ interface POSUser {
   isVerified: boolean;
   posNotes?: string;
   leadStatus?: string;
+  isDisabled?: boolean;
+  billsCount?: number;
+  itemsCount?: number;
+  clerkId?: string;
   createdAt: string;
 }
 
@@ -47,6 +51,26 @@ export default function POSSignupsPage() {
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [bulkVerifying, setBulkVerifying] = useState(false);
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
+
+  const [detailsModal, setDetailsModal] = useState<{ open: boolean; type: "bills" | "items"; user: POSUser | null }>({ open: false, type: "bills", user: null });
+  const [detailsData, setDetailsData] = useState<any[]>([]);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+
+  const openDetailsModal = async (u: POSUser, type: "bills" | "items") => {
+    setDetailsModal({ open: true, type, user: u });
+    setDetailsLoading(true);
+    setDetailsData([]);
+    try {
+      const res = await fetch(`/api/pos-signups/user-details?userId=${u.id}&clerkId=${u.clerkId || ''}&type=${type}`);
+      const data = await res.json();
+      if (type === "bills") setDetailsData(data.bills || []);
+      else setDetailsData(data.items || []);
+    } catch (err) {
+      alert("Failed to fetch details");
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -173,17 +197,20 @@ export default function POSSignupsPage() {
         exportUsers = exportUsers.filter((u: any) => selectedUserIds.includes(u.id));
       }
       
-      const csvHeader = "Name,Phone,Email,Role,Status,Pipeline,Notes,Joined At\n";
+      const csvHeader = "Name,Phone,Email,Role,Status,Account Status,Pipeline,Bills,Items,Notes,Joined At\n";
       const csvRows = exportUsers.map((u: any) => {
         const name = `"${(u.name || "").replace(/"/g, '""')}"`;
         const phone = `"${u.phone || ""}"`;
         const email = `"${u.email || ""}"`;
         const role = `"${u.role || "USER"}"`;
         const status = u.isVerified ? "Verified" : "Unverified";
+        const accStatus = u.isDisabled ? "Deactivated" : "Active";
         const pipeline = `"${u.leadStatus || "New Lead"}"`;
+        const bills = u.billsCount || 0;
+        const items = u.itemsCount || 0;
         const notes = `"${(u.posNotes || "").replace(/"/g, '""')}"`;
         const joined = `"${u.createdAt ? format(new Date(u.createdAt), "PPp") : ""}"`;
-        return [name, phone, email, role, status, pipeline, notes, joined].join(",");
+        return [name, phone, email, role, status, accStatus, pipeline, bills, items, notes, joined].join(",");
       });
       
       const blob = new Blob([csvHeader + csvRows.join("\n")], { type: 'text/csv' });
@@ -326,6 +353,9 @@ export default function POSSignupsPage() {
                 <th className="px-6 py-3">Email</th>
                 <th className="px-6 py-3">Role</th>
                 <th className="px-6 py-3">Status</th>
+                <th className="px-6 py-3">Account</th>
+                <th className="px-6 py-3">Bills</th>
+                <th className="px-6 py-3">Items</th>
                 <th className="px-6 py-3">Pipeline</th>
                 <th className="px-6 py-3">Notes</th>
               </tr>
@@ -395,6 +425,29 @@ export default function POSSignupsPage() {
                         </button>
                       </div>
                     )}
+                  </td>
+                  <td className="px-6 py-4">
+                    {u.isDisabled ? (
+                      <span className="text-red-600 bg-red-50 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">Deactivated</span>
+                    ) : (
+                      <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">Active</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    <button 
+                      onClick={() => openDetailsModal(u, "bills")}
+                      className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors w-16 text-center"
+                    >
+                      {u.billsCount || 0}
+                    </button>
+                  </td>
+                  <td className="px-6 py-4">
+                    <button 
+                      onClick={() => openDetailsModal(u, "items")}
+                      className="bg-purple-50 text-purple-700 hover:bg-purple-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors w-16 text-center"
+                    >
+                      {u.itemsCount || 0}
+                    </button>
                   </td>
                   <td className="px-6 py-4">
                     <select
@@ -525,6 +578,79 @@ export default function POSSignupsPage() {
                 {savingNotes ? <Loader2 size={16} className="animate-spin" /> : null}
                 Save Note
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Details Drill-down Modal */}
+      {detailsModal.open && detailsModal.user && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                <span className="capitalize">{detailsModal.type}</span> for {detailsModal.user.name}
+                <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-md text-xs font-bold">
+                  {detailsData.length}
+                </span>
+              </h2>
+              <button 
+                onClick={() => setDetailsModal({ open: false, type: "bills", user: null })}
+                className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-0 overflow-y-auto flex-1">
+              {detailsLoading ? (
+                <div className="flex flex-col items-center justify-center p-12 text-slate-400 gap-3">
+                  <Loader2 size={32} className="animate-spin text-indigo-500" />
+                  <p className="text-sm font-medium">Loading {detailsModal.type}...</p>
+                </div>
+              ) : detailsData.length === 0 ? (
+                <div className="p-12 text-center text-slate-500">
+                  No {detailsModal.type} found for this user.
+                </div>
+              ) : (
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-50 text-slate-500 font-medium sticky top-0 border-b border-slate-100">
+                    {detailsModal.type === "bills" ? (
+                      <tr>
+                        <th className="px-6 py-3">Date</th>
+                        <th className="px-6 py-3">Customer</th>
+                        <th className="px-6 py-3 text-right">Total Amount</th>
+                      </tr>
+                    ) : (
+                      <tr>
+                        <th className="px-6 py-3">Item Name</th>
+                        <th className="px-6 py-3">Tax Status</th>
+                        <th className="px-6 py-3 text-right">Price</th>
+                        <th className="px-6 py-3 text-center">Status</th>
+                      </tr>
+                    )}
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {detailsModal.type === "bills" ? detailsData.map((b: any) => (
+                      <tr key={b.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-3 text-slate-600">{b.createdAt ? format(new Date(b.createdAt), "PPp") : "—"}</td>
+                        <td className="px-6 py-3 font-medium text-slate-800">{b.customerName}</td>
+                        <td className="px-6 py-3 text-right font-black text-slate-800">₹{b.total}</td>
+                      </tr>
+                    )) : detailsData.map((i: any) => (
+                      <tr key={i.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-3 font-medium text-slate-800">{i.name}</td>
+                        <td className="px-6 py-3 text-slate-600">{i.taxStatus}</td>
+                        <td className="px-6 py-3 text-right font-black text-slate-800">₹{i.price}</td>
+                        <td className="px-6 py-3 text-center">
+                          <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${i.isActive ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}>
+                            {i.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         </div>

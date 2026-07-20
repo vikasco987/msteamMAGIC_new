@@ -135,6 +135,34 @@ export async function GET(req: Request) {
       }
     });
 
+    // Aggregations for Bills and Items counts
+    const userIdsStr = recentUsersRaw.map(u => u._id.toString());
+    const allIds = [...userIdsStr, ...clerkIds];
+
+    const billsCountsRaw = await db.collection("Bill").aggregate([
+      { $match: { $or: [{ userId: { $in: allIds } }, { clerkId: { $in: allIds } }] } },
+      { $group: { 
+          _id: { $cond: [{ $in: ["$clerkId", allIds] }, "$clerkId", "$userId"] }, 
+          count: { $sum: 1 } 
+      } }
+    ]).toArray();
+
+    const itemsCountsRaw = await db.collection("Item").aggregate([
+      { $match: { $or: [{ userId: { $in: allIds } }, { clerkId: { $in: allIds } }] } },
+      { $group: { 
+          _id: { $cond: [{ $in: ["$clerkId", allIds] }, "$clerkId", "$userId"] }, 
+          count: { $sum: 1 } 
+      } }
+    ]).toArray();
+
+    const getCount = (countsArr: any[], id1: string, id2: string) => {
+      let count = 0;
+      countsArr.forEach(c => {
+        if (c._id === id1 || c._id === id2) count += c.count;
+      });
+      return count;
+    };
+
     // Map to a cleaner format and convert ObjectIds/Dates to string
     const recentUsers = recentUsersRaw.map(u => ({
       id: u._id.toString(),
@@ -143,6 +171,9 @@ export async function GET(req: Request) {
       phone: u.phone || phoneMap.get(u.clerkId) || null,
       role: u.role,
       isVerified: u.isVerified,
+      isDisabled: !!u.isDisabled,
+      billsCount: getCount(billsCountsRaw, u._id.toString(), u.clerkId),
+      itemsCount: getCount(itemsCountsRaw, u._id.toString(), u.clerkId),
       posNotes: u.posNotes || "",
       leadStatus: u.leadStatus || "New Lead",
       createdAt: u.createdAt ? u.createdAt.toISOString() : null
