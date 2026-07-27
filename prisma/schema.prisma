@@ -535,6 +535,9 @@ model BusinessSettings {
   // Hardware defaults
   defaultPrinterCost String?
 
+  // Public Expense Link Token
+  publicExpenseToken String?
+
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }

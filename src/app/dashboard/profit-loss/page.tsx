@@ -75,6 +75,8 @@ export default function ProfitLossDashboard() {
 
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [expenseForm, setExpenseForm] = useState({ title: "", amount: "", date: new Date().toISOString().split("T")[0], remarks: "" });
+  const [publicExpenseToken, setPublicExpenseToken] = useState<string | null>(null);
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
 
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -235,6 +237,41 @@ export default function ProfitLossDashboard() {
     }
   };
 
+  const fetchPublicExpenseToken = async () => {
+    try {
+      const res = await fetch("/api/settings/expense-link");
+      if (res.ok) {
+        const data = await res.json();
+        setPublicExpenseToken(data.token);
+      }
+    } catch (error) {
+      console.error("Error fetching expense token:", error);
+    }
+  };
+
+  const generateNewExpenseToken = async () => {
+    if (publicExpenseToken && !confirm("This will invalidate the current public link. Continue?")) return;
+    setIsGeneratingLink(true);
+    const toastId = toast.loading("Generating new link...");
+    try {
+      const res = await fetch("/api/settings/expense-link", { method: "POST" });
+      if (!res.ok) throw new Error("Failed to generate link");
+      const data = await res.json();
+      setPublicExpenseToken(data.token);
+      toast.success("New link generated!", { id: toastId });
+    } catch (err: any) {
+      toast.error(err.message, { id: toastId });
+    } finally {
+      setIsGeneratingLink(false);
+    }
+  };
+
+  const handleOpenExpenseModal = () => {
+    setShowExpenseModal(true);
+    fetchPublicExpenseToken();
+  };
+
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -291,7 +328,7 @@ export default function ProfitLossDashboard() {
           </select>
 
           <button  
-            onClick={() => setShowExpenseModal(true)}
+            onClick={handleOpenExpenseModal}
             className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-[14px] shadow-sm transition-colors text-sm flex items-center gap-2"
           >
             <Package size={16} />
@@ -601,6 +638,41 @@ export default function ProfitLossDashboard() {
                 <X size={20} />
               </button>
             </div>
+            
+            <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Public Share Link</label>
+                <button 
+                  onClick={generateNewExpenseToken} 
+                  disabled={isGeneratingLink}
+                  className="text-xs text-indigo-600 hover:text-indigo-800 font-bold disabled:opacity-50"
+                >
+                  {publicExpenseToken ? "Regenerate Link" : "Generate Link"}
+                </button>
+              </div>
+              {publicExpenseToken ? (
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="text" 
+                    readOnly 
+                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/expense/${publicExpenseToken}`}
+                    className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-600"
+                  />
+                  <button 
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}/expense/${publicExpenseToken}`);
+                      toast.success("Link copied to clipboard!");
+                    }}
+                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition-colors"
+                  >
+                    Copy
+                  </button>
+                </div>
+              ) : (
+                <div className="text-xs text-slate-400 italic">No link generated yet. Generate one to share this form publicly.</div>
+              )}
+            </div>
+
             <form onSubmit={handleExpenseSubmit} className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Expense Title</label>
