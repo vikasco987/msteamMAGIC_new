@@ -7927,6 +7927,7 @@ export default function TaskTableView({
             <option value={20}>20</option>
             <option value={50}>50</option>
             <option value={100}>100</option>
+            <option value={10000}>10000</option>
           </select>
         </div>
         <div className="flex items-center gap-2">
