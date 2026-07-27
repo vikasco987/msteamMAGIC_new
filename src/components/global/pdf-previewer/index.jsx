@@ -39,7 +39,7 @@ class PDFErrorBoundary extends React.Component {
   }
 }
 
-export default function PDFPreviewer({ type = "standard", company, client, agreement, payment }) {
+export default function PDFPreviewer({ type = "standard", company, client, agreement, payment, customHtml }) {
   const [isClient, setIsClient] = React.useState(false);
   const [Viewer, setViewer] = React.useState(null);
 
@@ -68,6 +68,7 @@ export default function PDFPreviewer({ type = "standard", company, client, agree
               company={company} 
               client={client} 
               agreement={agreement} 
+              customHtml={customHtml}
             />
           ) : (
             <MagicScaleAgreementPDF 
@@ -75,6 +76,7 @@ export default function PDFPreviewer({ type = "standard", company, client, agree
               client={client} 
               agreement={agreement} 
               payment={payment} 
+              customHtml={customHtml}
             />
           )}
         </Viewer>
