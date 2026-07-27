@@ -140,7 +140,7 @@ export function AgreementSheet({ initialClient, initialAgreement, initialPayment
         <Button className="bg-[#1b1cfe] hover:bg-[#1516d9] text-white">Edit Agreement Details</Button>
       </SheetTrigger>
 
-      <SheetContent className="flex flex-col h-full px-4 pb-4">
+      <SheetContent className="flex flex-col h-full px-4 pb-20">
         <SheetHeader className="pb-3">
           <SheetTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">Agreement Details</SheetTitle>
           <SheetDescription>Configure the client and agreement duration below.</SheetDescription>

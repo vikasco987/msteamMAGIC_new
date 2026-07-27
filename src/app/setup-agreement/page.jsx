@@ -29,9 +29,9 @@ const COMPANY = {
 
 const INITIAL_STATE = {
   client: {
-    name: "__________",
-    address: "_____________________",
-    representative: "_______________",
+    name: "",
+    address: "",
+    representative: "",
   },
   agreement: {
     date: new Date(),
