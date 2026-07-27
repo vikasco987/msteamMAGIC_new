@@ -96,7 +96,7 @@ export default function SetupAgreementPage() {
           company={COMPANY}
           client={formData.client}
           agreement={formattedAgreement}
-          customHtml={customHtml || defaultHtml}
+          customHtml={customHtml}
         />
       </div>
     </div>

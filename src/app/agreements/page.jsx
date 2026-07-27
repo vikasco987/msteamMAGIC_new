@@ -112,7 +112,7 @@ export default function AgreementPreviewPage() {
           client={formData.client}
           agreement={formattedAgreement}
           payment={formData.payment}
-          customHtml={customHtml || defaultHtml}
+          customHtml={customHtml}
         />
       </div>
     </div>
