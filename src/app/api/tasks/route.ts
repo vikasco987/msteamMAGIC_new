@@ -967,8 +967,8 @@ export async function POST(req: NextRequest) {
         timeline: toNullableString(timeline),
         
         // Ensure top-level amount and received are populated for the report dashboard
-        amount: amount ? parseFloat(amount) : (packageAmount ? parseFloat(packageAmount) : null),
-        received: amountReceived ? parseFloat(amountReceived) : null,
+        amount: (amount && !isNaN(parseFloat(amount))) ? parseFloat(amount) : ((packageAmount && !isNaN(parseFloat(packageAmount))) ? parseFloat(packageAmount) : null),
+        received: (amountReceived && !isNaN(parseFloat(amountReceived))) ? parseFloat(amountReceived) : null,
 
         // Similarly for these URLs if they are top-level in your schema
         aadhaarUrl: toNullableString(aadhaarUrl),

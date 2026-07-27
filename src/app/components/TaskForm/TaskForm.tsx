@@ -708,7 +708,7 @@ export default function TaskForm() {
 
       if (!res.ok) {
         console.error("❌ Failed to create task:", json);
-        alert("❌ Failed to create task");
+        alert(`❌ Failed to create task: ${json.error || json.details || JSON.stringify(json)}`);
         return;
       }
 
