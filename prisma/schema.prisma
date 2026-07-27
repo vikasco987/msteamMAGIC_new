@@ -579,12 +579,14 @@ model ShortLink {
 }
 
 model GeneralExpense {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  title     String
-  amount    Float
-  date      DateTime
-  remarks   String?
-  createdAt DateTime @default(now())
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  amount      Float
+  date        DateTime
+  remarks     String?
+  attachments String[] @default([])
+  isRecurring Boolean  @default(false)
+  createdAt   DateTime @default(now())
 }
 
 // 📦 New Model for Inventory Items

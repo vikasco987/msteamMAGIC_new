@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Loader2, TrendingUp, TrendingDown, DollarSign, Package, Edit2, Check, X, AlertTriangle } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, DollarSign, Package, Edit2, Check, X, AlertTriangle, Mic, UploadCloud, Paperclip, Repeat } from "lucide-react";
 import toast from "react-hot-toast";
 
 // Safe number helper — returns 0 for NaN/null/undefined
@@ -51,6 +51,8 @@ type GeneralExpense = {
   amount: number;
   date: string;
   remarks: string | null;
+  attachments: string[];
+  isRecurring: boolean;
   createdAt: string;
 };
 
@@ -74,7 +76,22 @@ export default function ProfitLossDashboard() {
   const [editValues, setEditValues] = useState({ revenue: 0, received: 0, deliveryCharge: 0, costPrice: 0 });
 
   const [showExpenseModal, setShowExpenseModal] = useState(false);
-  const [expenseForm, setExpenseForm] = useState({ title: "", amount: "", date: new Date().toISOString().split("T")[0], remarks: "" });
+  const [expenseForm, setExpenseForm] = useState<{
+    title: string;
+    amount: string;
+    date: string;
+    remarks: string;
+    isRecurring: boolean;
+    attachments: string[];
+  }>({ 
+    title: "", 
+    amount: "", 
+    date: new Date().toISOString().split("T")[0], 
+    remarks: "",
+    isRecurring: false,
+    attachments: []
+  });
+  const [isUploading, setIsUploading] = useState(false);
   const [publicExpenseToken, setPublicExpenseToken] = useState<string | null>(null);
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
 
@@ -202,6 +219,72 @@ export default function ProfitLossDashboard() {
     }
   };
 
+  const handleMicClick = (field: 'title' | 'remarks') => {
+    if (!('webkitSpeechRecognition' in window)) {
+      toast.error("Your browser doesn't support speech recognition.");
+      return;
+    }
+    const recognition = new (window as any).webkitSpeechRecognition();
+    recognition.lang = 'en-IN';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    
+    const toastId = toast.loading("Listening...");
+    
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setExpenseForm(prev => ({ 
+        ...prev, 
+        [field]: prev[field] ? prev[field] + " " + transcript : transcript 
+      }));
+      toast.success("Captured!", { id: toastId });
+    };
+    
+    recognition.onerror = () => {
+      toast.error("Failed to capture speech.", { id: toastId });
+    };
+    
+    recognition.onend = () => {
+      toast.dismiss(toastId);
+    };
+    
+    recognition.start();
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    let file: File | null = null;
+    
+    if ('dataTransfer' in e && e.type === 'drop') {
+      file = e.dataTransfer.files[0];
+    } else if ('target' in e && (e.target as HTMLInputElement).files) {
+      file = (e.target as HTMLInputElement).files![0];
+    }
+    
+    if (!file) return;
+    
+    setIsUploading(true);
+    const toastId = toast.loading("Uploading attachment...");
+    const formData = new FormData();
+    formData.append("file", file);
+    
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      
+      setExpenseForm(prev => ({ ...prev, attachments: [...prev.attachments, data.url] }));
+      toast.success("Attachment uploaded!", { id: toastId });
+    } catch (err: any) {
+      toast.error(err.message, { id: toastId });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleExpenseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const toastId = toast.loading("Adding expense...");
@@ -215,7 +298,14 @@ export default function ProfitLossDashboard() {
       
       toast.success("Expense added successfully!", { id: toastId });
       setShowExpenseModal(false);
-      setExpenseForm({ title: "", amount: "", date: new Date().toISOString().split("T")[0], remarks: "" });
+      setExpenseForm({ 
+        title: "", 
+        amount: "", 
+        date: new Date().toISOString().split("T")[0], 
+        remarks: "",
+        isRecurring: false,
+        attachments: []
+      });
       
       // Reload to recalculate reports and fetch new expenses
       window.location.reload();
@@ -557,10 +647,22 @@ export default function ProfitLossDashboard() {
                 ) : (
                   generalExpenses.map((exp) => (
                     <tr key={exp.id} className="hover:bg-slate-50/50 transition-colors group">
-                      <td className="px-6 py-4 font-bold text-slate-800">{exp.title}</td>
+                      <td className="px-6 py-4 font-bold text-slate-800 flex items-center gap-2">
+                        {exp.title}
+                        {exp.isRecurring && <Repeat size={14} className="text-emerald-500" title="Fixed Monthly Expense" />}
+                      </td>
                       <td className="px-6 py-4 text-slate-600">{new Date(exp.date).toLocaleDateString()}</td>
                       <td className="px-6 py-4 font-black text-rose-600">₹{safeNum(exp.amount).toLocaleString()}</td>
-                      <td className="px-6 py-4 text-slate-500 italic text-xs">{exp.remarks || "-"}</td>
+                      <td className="px-6 py-4 text-slate-500 italic text-xs">
+                        <div className="flex flex-col gap-1">
+                          <span>{exp.remarks || "-"}</span>
+                          {exp.attachments?.length > 0 && (
+                            <a href={exp.attachments[0]} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-indigo-500 hover:text-indigo-700 font-bold w-max">
+                              <Paperclip size={12} /> View Attachment
+                            </a>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-6 py-4 text-right">
                         <button onClick={() => handleExpenseDelete(exp.id)} className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-100 transition-colors ml-auto opacity-0 group-hover:opacity-100">
                           <X size={14} />
@@ -676,7 +778,12 @@ export default function ProfitLossDashboard() {
             <form onSubmit={handleExpenseSubmit} className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Expense Title</label>
-                <input required type="text" placeholder="e.g. Employee Salary" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/50 focus:border-rose-500 transition-all font-medium text-slate-800" value={expenseForm.title} onChange={e => setExpenseForm({...expenseForm, title: e.target.value})} />
+                <div className="relative">
+                  <input required type="text" placeholder="e.g. Employee Salary" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/50 focus:border-rose-500 transition-all font-medium text-slate-800" value={expenseForm.title} onChange={e => setExpenseForm({...expenseForm, title: e.target.value})} />
+                  <button type="button" onClick={() => handleMicClick('title')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500 transition-colors">
+                    <Mic size={18} />
+                  </button>
+                </div>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
@@ -692,7 +799,57 @@ export default function ProfitLossDashboard() {
 
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Remarks / Employee Name</label>
-                <input type="text" placeholder="e.g. Paid to Rahul" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/50 focus:border-rose-500 transition-all font-medium text-slate-800" value={expenseForm.remarks} onChange={e => setExpenseForm({...expenseForm, remarks: e.target.value})} />
+                <div className="relative">
+                  <input type="text" placeholder="e.g. Paid to Rahul" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/50 focus:border-rose-500 transition-all font-medium text-slate-800" value={expenseForm.remarks} onChange={e => setExpenseForm({...expenseForm, remarks: e.target.value})} />
+                  <button type="button" onClick={() => handleMicClick('remarks')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500 transition-colors">
+                    <Mic size={18} />
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Upload Attachments</label>
+                <div 
+                  className="border-2 border-dashed border-slate-200 rounded-xl p-4 bg-slate-50 hover:bg-slate-100 transition-colors flex flex-col items-center justify-center cursor-pointer relative group"
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={handleFileUpload}
+                >
+                  <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFileUpload} disabled={isUploading} />
+                  {isUploading ? (
+                    <Loader2 className="animate-spin text-slate-400 mb-2" size={24} />
+                  ) : (
+                    <UploadCloud className="text-slate-400 group-hover:text-rose-500 transition-colors mb-2" size={24} />
+                  )}
+                  <p className="text-xs text-slate-500 text-center font-medium">
+                    {isUploading ? "Uploading..." : "Click or drag files here to upload"}
+                  </p>
+                </div>
+                {expenseForm.attachments.length > 0 && (
+                  <div className="mt-2 flex flex-col gap-2">
+                    {expenseForm.attachments.map((url, i) => (
+                      <div key={i} className="flex items-center gap-2 text-xs font-medium text-slate-700 bg-slate-100 px-3 py-2 rounded-lg">
+                        <Paperclip size={14} className="text-rose-500" />
+                        <span className="truncate max-w-[200px]">{url.split('/').pop()}</span>
+                        <button type="button" onClick={() => setExpenseForm(prev => ({ ...prev, attachments: prev.attachments.filter((_, idx) => idx !== i)}))} className="ml-auto text-slate-400 hover:text-rose-500">
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 mt-2">
+                <input 
+                  type="checkbox" 
+                  id="isRecurring" 
+                  checked={expenseForm.isRecurring} 
+                  onChange={(e) => setExpenseForm({ ...expenseForm, isRecurring: e.target.checked })} 
+                  className="w-4 h-4 text-rose-600 border-slate-300 rounded focus:ring-rose-500"
+                />
+                <label htmlFor="isRecurring" className="text-xs font-bold text-slate-700 cursor-pointer">
+                  Mark as Fixed Monthly Expense (Recurring)
+                </label>
               </div>
 
               <div className="pt-4 flex gap-3">

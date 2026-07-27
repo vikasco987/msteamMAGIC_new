@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { title, amount, date, remarks } = body;
+    const { title, amount, date, remarks, attachments, isRecurring } = body;
 
     if (!title || amount === undefined || !date) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -50,7 +50,9 @@ export async function POST(req: NextRequest) {
         title,
         amount: parseFloat(amount),
         date: new Date(date),
-        remarks: remarks || null
+        remarks: remarks || null,
+        attachments: Array.isArray(attachments) ? attachments : [],
+        isRecurring: typeof isRecurring === 'boolean' ? isRecurring : false
       }
     });
 

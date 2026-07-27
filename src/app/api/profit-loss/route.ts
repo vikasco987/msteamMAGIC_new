@@ -93,6 +93,67 @@ export async function GET(req: NextRequest) {
       orderBy: { date: "desc" }
     });
 
+    // --- RECURRING EXPENSES LOGIC ---
+    if (monthParam && monthParam !== "all") {
+      const [yearStr, monthStr] = monthParam.split("-");
+      const startDate = new Date(Date.UTC(parseInt(yearStr), parseInt(monthStr) - 1, 1));
+      
+      // Fetch recurring expenses that started BEFORE this month
+      const recurringExpenses = await prisma.generalExpense.findMany({
+        where: {
+          isRecurring: true,
+          date: { lt: startDate }
+        }
+      });
+
+      const projectedRecurring = recurringExpenses.map(exp => {
+         const newDate = new Date(exp.date);
+         newDate.setUTCFullYear(startDate.getUTCFullYear());
+         newDate.setUTCMonth(startDate.getUTCMonth());
+         return { ...exp, id: `${exp.id}-projected-${monthParam}`, date: newDate };
+      });
+      
+      generalExpenses.push(...projectedRecurring);
+    } else {
+      // "All Time" - Project each recurring expense for every month up to now
+      const now = new Date();
+      const currentYear = now.getUTCFullYear();
+      const currentMonth = now.getUTCMonth();
+      
+      const recurringExpenses = generalExpenses.filter(e => e.isRecurring);
+      const allProjected: any[] = [];
+      
+      recurringExpenses.forEach(exp => {
+        const start = new Date(exp.date);
+        let iterYear = start.getUTCFullYear();
+        let iterMonth = start.getUTCMonth() + 1; // Start from next month
+        
+        while (iterYear < currentYear || (iterYear === currentYear && iterMonth <= currentMonth)) {
+          if (iterMonth > 11) {
+            iterMonth = 0;
+            iterYear++;
+          }
+          // Only add if it hasn't exceeded current month
+          if (iterYear < currentYear || (iterYear === currentYear && iterMonth <= currentMonth)) {
+            const newDate = new Date(start);
+            newDate.setUTCFullYear(iterYear);
+            newDate.setUTCMonth(iterMonth);
+            
+            allProjected.push({
+              ...exp,
+              id: `${exp.id}-projected-${iterYear}-${iterMonth}`,
+              date: newDate
+            });
+          }
+          iterMonth++;
+        }
+      });
+      generalExpenses.push(...allProjected);
+    }
+    // Sort all expenses by date desc again after injection
+    generalExpenses.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // --- END RECURRING EXPENSES LOGIC ---
+
     let cashfreeLinks: any[] = [];
     if (syncLinks) {
       cashfreeLinks = await prisma.cashfreeLink.findMany({
