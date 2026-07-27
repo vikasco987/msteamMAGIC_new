@@ -138,3 +138,4 @@ body {
     @apply bg-background text-foreground;
   }
 }
+.custom-quill .ql-container { flex: 1; overflow-y: auto; font-size: 14px; font-family: 'Poppins', sans-serif; }

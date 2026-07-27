@@ -4,6 +4,10 @@ import { useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { format } from "date-fns";
 import { SetupAgreementSheet } from "@/components/global/agreement-sheet/setup-agreement-sheet";
+import { AgreementEditor } from "@/components/global/agreement-editor";
+import { generateSetupAgreementHtml } from "@/lib/generateSetupAgreementHtml";
+import { Button } from "@/components/ui/button";
+import { Pencil } from "lucide-react";
 
 const PDFPreviewer = dynamic(
   () => import("@/components/global/pdf-previewer"),
@@ -51,6 +55,13 @@ export default function SetupAgreementPage() {
     date: format(formData.agreement.date, "dd MMM yyyy").toUpperCase(),
   }), [formData.agreement]);
 
+  const defaultHtml = useMemo(() => {
+    return generateSetupAgreementHtml(COMPANY, formData.client, formattedAgreement);
+  }, [formData.client, formattedAgreement]);
+
+  const [customHtml, setCustomHtml] = useState(null);
+  const [editorOpen, setEditorOpen] = useState(false);
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-50 dark:bg-zinc-900 p-6">
       <div className="flex w-full max-w-6xl justify-between items-center mb-4">
@@ -58,20 +69,34 @@ export default function SetupAgreementPage() {
           Setup Agreement Preview
         </h1>
 
-        <SetupAgreementSheet
-          initialClient={formData.client}
-          initialAgreement={formData.agreement}
-          onSubmit={handleAgreementSubmit}
-        />
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setEditorOpen(true)} className="gap-2">
+            <Pencil className="w-4 h-4" />
+            Edit Document
+          </Button>
+
+          <SetupAgreementSheet
+            initialClient={formData.client}
+            initialAgreement={formData.agreement}
+            onSubmit={handleAgreementSubmit}
+          />
+        </div>
       </div>
 
+      <AgreementEditor 
+        open={editorOpen} 
+        onOpenChange={setEditorOpen} 
+        initialHtml={customHtml || defaultHtml} 
+        onSave={(html) => setCustomHtml(html)} 
+      />
+
       <div className="w-full max-w-6xl h-[85vh] border border-zinc-300 dark:border-zinc-800 rounded-lg overflow-hidden shadow-lg">
-        {/* We need to tell PDFPreviewer to use SetupAgreementPDF */}
         <PDFPreviewer
           type="setup"
           company={COMPANY}
           client={formData.client}
           agreement={formattedAgreement}
+          customHtml={customHtml || defaultHtml}
         />
       </div>
     </div>

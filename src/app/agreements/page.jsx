@@ -4,7 +4,11 @@ import { useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { format } from "date-fns";
 import { AgreementSheet } from "@/components/global/agreement-sheet";
+import { AgreementEditor } from "@/components/global/agreement-editor";
 import { formatDate } from "@/lib/agreement-utils";
+import { generateAgreementHtml } from "@/lib/generateAgreementHtml";
+import { Button } from "@/components/ui/button";
+import { Pencil } from "lucide-react";
 
 const PDFPreviewer = dynamic(
   () => import("@/components/global/pdf-previewer"),
@@ -65,6 +69,13 @@ export default function AgreementPreviewPage() {
     end: formatDate(formData.agreement.end),
   }), [formData.agreement]);
 
+  const defaultHtml = useMemo(() => {
+    return generateAgreementHtml(COMPANY, formData.client, formattedAgreement, formData.payment);
+  }, [formData.client, formattedAgreement, formData.payment]);
+
+  const [customHtml, setCustomHtml] = useState(null);
+  const [editorOpen, setEditorOpen] = useState(false);
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-50 dark:bg-zinc-900 p-6">
       {/* Header Section */}
@@ -73,13 +84,27 @@ export default function AgreementPreviewPage() {
           Account Handling Agreement Preview
         </h1>
 
-        <AgreementSheet
-          initialClient={formData.client}
-          initialAgreement={formData.agreement}
-          initialPayment={formData.payment}
-          onSubmit={handleAgreementSubmit}
-        />
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setEditorOpen(true)} className="gap-2">
+            <Pencil className="w-4 h-4" />
+            Edit Document
+          </Button>
+
+          <AgreementSheet
+            initialClient={formData.client}
+            initialAgreement={formData.agreement}
+            initialPayment={formData.payment}
+            onSubmit={handleAgreementSubmit}
+          />
+        </div>
       </div>
+
+      <AgreementEditor 
+        open={editorOpen} 
+        onOpenChange={setEditorOpen} 
+        initialHtml={customHtml || defaultHtml} 
+        onSave={(html) => setCustomHtml(html)} 
+      />
 
       <div className="w-full max-w-6xl h-[85vh] border border-zinc-300 dark:border-zinc-800 rounded-lg overflow-hidden shadow-lg">
         <PDFPreviewer
@@ -87,6 +112,7 @@ export default function AgreementPreviewPage() {
           client={formData.client}
           agreement={formattedAgreement}
           payment={formData.payment}
+          customHtml={customHtml || defaultHtml}
         />
       </div>
     </div>

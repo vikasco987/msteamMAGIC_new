@@ -85,6 +85,8 @@
     "react-hot-toast": "^2.4.1",
     "react-icons": "^4.11.0",
     "react-is": "^18.2.0",
+    "react-pdf-html": "^2.1.5",
+    "react-quill": "^2.0.0",
     "react-rnd": "^10.5.2",
     "react-select": "^5.10.2",
     "react-table": "^7.8.0",
