@@ -31,8 +31,9 @@ export default function AgreementForm() {
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
+      const formattedName = formData.clientName.trim().replace(/\s+/g, '_');
       a.href = url;
-      a.download = `${formData.clientName}-agreement.pdf`;
+      a.download = `MAGIC_SCALE_AGREEMENT_${formattedName}.pdf`;
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (err) {
