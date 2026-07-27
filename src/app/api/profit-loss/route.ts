@@ -50,6 +50,7 @@ export async function GET(req: NextRequest) {
 
     const businessSettings = await prisma.businessSettings.findFirst();
     const syncLinks = businessSettings?.syncLinksToProfitLoss || false;
+    const syncTasks = typeof businessSettings?.syncTasksToProfitLoss === 'boolean' ? businessSettings.syncTasksToProfitLoss : true;
 
     const { searchParams } = new URL(req.url);
     const monthParam = searchParams.get('month');
@@ -69,20 +70,23 @@ export async function GET(req: NextRequest) {
       };
     }
 
-    const tasks = await prisma.task.findMany({
-      where: {
-        AND: [
-          {
-            OR: [
-              { title: { contains: "Printer", mode: "insensitive" } },
-              { title: { contains: "Software", mode: "insensitive" } },
-            ]
-          },
-          dateFilter
-        ]
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    let tasks: any[] = [];
+    if (syncTasks) {
+      tasks = await prisma.task.findMany({
+        where: {
+          AND: [
+            {
+              OR: [
+                { title: { contains: "Printer", mode: "insensitive" } },
+                { title: { contains: "Software", mode: "insensitive" } },
+              ]
+            },
+            dateFilter
+          ]
+        },
+        orderBy: { createdAt: "desc" },
+      });
+    }
 
     const generalExpenses = await prisma.generalExpense.findMany({
       where: expDateFilter,

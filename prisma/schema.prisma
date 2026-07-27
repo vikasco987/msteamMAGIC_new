@@ -538,8 +538,9 @@ model BusinessSettings {
   // Public Expense Link Token
   publicExpenseToken String?
 
-  // Sync Payment Links
+  // Sync Integrations
   syncLinksToProfitLoss Boolean @default(false)
+  syncTasksToProfitLoss Boolean @default(true)
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt

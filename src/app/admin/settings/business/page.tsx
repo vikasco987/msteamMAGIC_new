@@ -43,7 +43,8 @@ export default function BusinessSettingsPage() {
     terms: "",
     signatureUrl: "",
     defaultPrinterCost: "",
-    syncLinksToProfitLoss: false
+    syncLinksToProfitLoss: false,
+    syncTasksToProfitLoss: true
   });
 
   useEffect(() => {
@@ -71,7 +72,8 @@ export default function BusinessSettingsPage() {
           terms: data.terms || "",
           signatureUrl: data.signatureUrl || "",
           defaultPrinterCost: data.defaultPrinterCost || "",
-          syncLinksToProfitLoss: data.syncLinksToProfitLoss || false
+          syncLinksToProfitLoss: data.syncLinksToProfitLoss || false,
+          syncTasksToProfitLoss: typeof data.syncTasksToProfitLoss === 'boolean' ? data.syncTasksToProfitLoss : true
         });
       }
     } catch (error) {
@@ -319,22 +321,42 @@ export default function BusinessSettingsPage() {
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-emerald-50/20 p-8 rounded-[2.5rem] border border-emerald-100/50">
-                <div className="md:col-span-2 flex items-center justify-between bg-white p-6 rounded-2xl border border-emerald-100/50 shadow-sm">
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-800">Sync Payment Links to Profit & Loss</h3>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">
-                      Automatically add revenue from paid Cashfree links into the P&L dashboard.
-                    </p>
+                <div className="md:col-span-2 flex flex-col gap-4">
+                  <div className="flex items-center justify-between bg-white p-6 rounded-2xl border border-emerald-100/50 shadow-sm">
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-800">Sync Razorpay/Payment Links to Profit & Loss</h3>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">
+                        Automatically add revenue from paid links into the P&L dashboard.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, syncLinksToProfitLoss: !formData.syncLinksToProfitLoss })}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.syncLinksToProfitLoss ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.syncLinksToProfitLoss ? 'translate-x-6' : 'translate-x-1'}`}
+                      />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, syncLinksToProfitLoss: !formData.syncLinksToProfitLoss })}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.syncLinksToProfitLoss ? 'bg-emerald-500' : 'bg-slate-300'}`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.syncLinksToProfitLoss ? 'translate-x-6' : 'translate-x-1'}`}
-                    />
-                  </button>
+
+                  <div className="flex items-center justify-between bg-white p-6 rounded-2xl border border-emerald-100/50 shadow-sm">
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-800">Sync Tasks to Profit & Loss</h3>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">
+                        Automatically add revenue from Printer and Printer + Software tasks into the P&L dashboard.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, syncTasksToProfitLoss: !formData.syncTasksToProfitLoss })}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.syncTasksToProfitLoss ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.syncTasksToProfitLoss ? 'translate-x-6' : 'translate-x-1'}`}
+                      />
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className={labelClass}>🏦 Bank Name</label>
