@@ -432,6 +432,9 @@ export default function Sidebar() {
                 // Safety Lock: Master should always see Access Control & Business Setup to avoid locking out
                 if (userRole === 'master' && (i.label === 'Access Control' || i.label === 'Business Setup' || i.label === 'Payment Portal' || i.label === 'Profit & Loss')) return true;
                 
+                // Ensure new routes are not hidden by stale DB permissions
+                if (i.label === 'Agreements' || i.label === 'Setup Agreement') return hasHardcodedRole;
+
                 return dynamicPermissions.includes(i.label);
               }
 
