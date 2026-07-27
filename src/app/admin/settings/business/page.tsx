@@ -42,7 +42,8 @@ export default function BusinessSettingsPage() {
     ifscCode: "",
     terms: "",
     signatureUrl: "",
-    defaultPrinterCost: ""
+    defaultPrinterCost: "",
+    syncLinksToProfitLoss: false
   });
 
   useEffect(() => {
@@ -69,7 +70,8 @@ export default function BusinessSettingsPage() {
           ifscCode: data.ifscCode || "",
           terms: data.terms || "",
           signatureUrl: data.signatureUrl || "",
-          defaultPrinterCost: data.defaultPrinterCost || ""
+          defaultPrinterCost: data.defaultPrinterCost || "",
+          syncLinksToProfitLoss: data.syncLinksToProfitLoss || false
         });
       }
     } catch (error) {
@@ -313,10 +315,27 @@ export default function BusinessSettingsPage() {
             <div className="space-y-8">
               <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
                 <Banknote size={18} className="text-emerald-500" />
-                <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">Banking Details</h2>
+                <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">Banking & Finance Integrations</h2>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-emerald-50/20 p-8 rounded-[2.5rem] border border-emerald-100/50">
+                <div className="md:col-span-2 flex items-center justify-between bg-white p-6 rounded-2xl border border-emerald-100/50 shadow-sm">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800">Sync Payment Links to Profit & Loss</h3>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">
+                      Automatically add revenue from paid Cashfree links into the P&L dashboard.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, syncLinksToProfitLoss: !formData.syncLinksToProfitLoss })}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.syncLinksToProfitLoss ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.syncLinksToProfitLoss ? 'translate-x-6' : 'translate-x-1'}`}
+                    />
+                  </button>
+                </div>
                 <div>
                   <label className={labelClass}>🏦 Bank Name</label>
                   <input

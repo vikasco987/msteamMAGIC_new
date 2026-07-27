@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
         const { 
             name, address, gstin, phone, email, website, logo,
             bankName, bankBranch, accountName, accountNumber, ifscCode, terms, signatureUrl,
-            defaultPrinterCost 
+            defaultPrinterCost, syncLinksToProfitLoss
         } = body;
 
         const existing = await prisma.businessSettings.findFirst();
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
                 data: { 
                     name, address, gstin, phone, email, website, logo,
                     bankName, bankBranch, accountName, accountNumber, ifscCode, terms, signatureUrl,
-                    defaultPrinterCost
+                    defaultPrinterCost, syncLinksToProfitLoss
                 }
             });
         } else {
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
                 data: { 
                     name, address, gstin, phone, email, website, logo,
                     bankName, bankBranch, accountName, accountNumber, ifscCode, terms, signatureUrl,
-                    defaultPrinterCost
+                    defaultPrinterCost, syncLinksToProfitLoss
                 }
             });
         }

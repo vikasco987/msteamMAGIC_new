@@ -48,6 +48,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden: Master access required" }, { status: 403 });
     }
 
+    const businessSettings = await prisma.businessSettings.findFirst();
+    const syncLinks = businessSettings?.syncLinksToProfitLoss || false;
+
     const { searchParams } = new URL(req.url);
     const monthParam = searchParams.get('month');
 
@@ -86,6 +89,17 @@ export async function GET(req: NextRequest) {
       orderBy: { date: "desc" }
     });
 
+    let cashfreeLinks: any[] = [];
+    if (syncLinks) {
+      cashfreeLinks = await prisma.cashfreeLink.findMany({
+        where: {
+          status: "paid",
+          ...dateFilter
+        },
+        orderBy: { createdAt: "desc" }
+      });
+    }
+
     let totalRevenue = 0;
     let totalExpense = 0;
 
@@ -122,6 +136,35 @@ export async function GET(req: NextRequest) {
         softwareDuration: customFields.softwareDuration || "",
       };
     });
+
+    if (syncLinks && cashfreeLinks.length > 0) {
+      const linkTasks = cashfreeLinks.map((link) => {
+        const rev = safeFloat(link.amount);
+        const received = safeFloat(link.amount);
+        const exp = 0;
+        
+        totalRevenue += rev;
+        // Expense is 0, so profit and cashProfit equal received/revenue
+
+        return {
+          id: link.id,
+          title: `Payment Link: ${link.purpose || "Payment"}`,
+          status: link.status,
+          createdAt: link.createdAt,
+          revenue: rev,
+          received: received,
+          expense: exp,
+          profit: rev,
+          cashProfit: received,
+          deliveryCharge: 0,
+          costPrice: 0,
+          customerName: link.name || "Unknown",
+          awbNumber: "",
+          softwareDuration: "",
+        };
+      });
+      formattedTasks.push(...linkTasks);
+    }
 
     const totalReceived = formattedTasks.reduce((acc, t) => acc + t.received, 0);
 
