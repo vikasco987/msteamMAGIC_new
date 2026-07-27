@@ -437,6 +437,7 @@ const initialFormState = {
   costPrice: "",
   serialNumber: "",
   rtoReason: "",
+  initialNote: "",
 };
 
 export default function TaskForm() {
@@ -493,6 +494,7 @@ export default function TaskForm() {
           costPrice: parsed.costPrice || initialFormState.costPrice,
           serialNumber: parsed.serialNumber || initialFormState.serialNumber,
           rtoReason: parsed.rtoReason || initialFormState.rtoReason,
+          initialNote: parsed.initialNote || initialFormState.initialNote,
         });
         setStep(parsed.step || 0);
       } catch (e) {
@@ -550,6 +552,10 @@ export default function TaskForm() {
       }
       if (!formData.assigneeId) {
         alert("⚠️ Please select an Assignee.");
+        return;
+      }
+      if (!formData.initialNote || formData.initialNote.trim() === "") {
+        alert("⚠️ Initial Note is compulsory. Please provide details.");
         return;
       }
     }
@@ -663,6 +669,7 @@ export default function TaskForm() {
         activeTab: formData.activeTab,
         attachments,
         tags: [],
+        initialNote: formData.initialNote.trim(),
         customFields: {
           phone: formData.phone.trim(),
           email: formData.email.trim(),
@@ -769,8 +776,10 @@ export default function TaskForm() {
               title={formData.title}
               assigneeId={formData.assigneeId}
               activeTab={formData.activeTab}
+              initialNote={formData.initialNote}
               setTitle={(val) => updateFormData("title", val)}
               setAssigneeId={(val) => updateFormData("assigneeId", val)}
+              setInitialNote={(val) => updateFormData("initialNote", val)}
               setActiveTab={(val) => {
                 const matchedCategory = TASK_CATEGORIES.find((cat) => cat.value === val);
                 setFormData((prev) => ({

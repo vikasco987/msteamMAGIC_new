@@ -941,6 +941,13 @@ export async function POST(req: NextRequest) {
         tags: Array.isArray(body.tags) ? body.tags : [],
         priority: body.priority ?? null,
         dueDate: body.dueDate ? new Date(body.dueDate) : null,
+        notes: body.initialNote ? {
+          create: {
+            content: body.initialNote,
+            authorName: assignerName,
+            authorEmail: assignerEmail,
+          }
+        } : undefined,
 
         // These fields are redundant if they are also in customFields
         // and your frontend only relies on customFields for these values.

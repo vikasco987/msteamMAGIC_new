@@ -32,8 +32,10 @@ interface Props {
   title: string;
   assigneeId: string;
   activeTab: TabType | "";
+  initialNote: string;
   setTitle: (val: string) => void;
   setAssigneeId: (val: string) => void;
+  setInitialNote: (val: string) => void;
   setActiveTab: (val: TabType | "") => void;
 }
 
@@ -41,8 +43,10 @@ export default function BasicInfoStep({
   assigneeId,
   activeTab,
   title,
+  initialNote,
   setTitle,
   setAssigneeId,
+  setInitialNote,
   setActiveTab,
 }: Props) {
   const { getToken } = useAuth();
@@ -147,6 +151,30 @@ export default function BasicInfoStep({
             value={assigneeId}
             onChange={setAssigneeId}
             options={memberOptions}
+          />
+        </div>
+      </section>
+
+      {/* 📝 Section: Notes */}
+      <section>
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-600 shadow-sm">
+            <Edit3 size={20} />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-800 tracking-tight">Additional Notes</h3>
+            <p className="text-xs text-slate-400 font-medium">Add details or context for this task</p>
+          </div>
+        </div>
+
+        <div className="bg-amber-50/20 p-6 rounded-[2rem] border border-amber-100/50">
+          <label className={labelClass}>📝 Task Notes (Required)</label>
+          <textarea
+            value={initialNote}
+            onChange={(e) => setInitialNote(e.target.value)}
+            placeholder="Please enter task details and requirements here..."
+            className={`${inputClass} min-h-[100px] resize-y`}
+            required
           />
         </div>
       </section>

@@ -50,10 +50,11 @@ export default function SetupAgreementPDF({ company, client, agreement, customHt
           {customHtml ? (
             <Html
               stylesheet={{
-                p: { ...styles.paragraph, marginBottom: 8 },
-                h3: { ...styles.sectionHeading, marginTop: 12, marginBottom: 8 },
-                li: { ...styles.paragraph, marginBottom: 4 },
-                strong: { ...styles.blackBold },
+                body: { fontFamily: "Poppins", fontSize: 10, lineHeight: 1.6, color: "#222" },
+                p: { ...styles.paragraph, fontFamily: "Poppins", marginBottom: 8 },
+                h3: { ...styles.sectionHeading, fontFamily: "Poppins", marginTop: 12, marginBottom: 8 },
+                li: { ...styles.paragraph, fontFamily: "Poppins", marginBottom: 4 },
+                strong: { ...styles.blackBold, fontFamily: "Poppins" },
               }}
             >
               {customHtml}
