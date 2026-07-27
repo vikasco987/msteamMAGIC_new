@@ -81,7 +81,8 @@ const NAVIGATION_GROUPS = [
   {
     title: "Resources",
     items: [
-      { label: 'Agreements', icon: FileSpreadsheet, href: '/FullDashboard/agreement', roles: ['admin', 'master', 'seller', 'tl'] },
+      { label: 'Agreements', icon: FileSpreadsheet, href: '/agreements', roles: ['admin', 'master', 'seller', 'tl'] },
+      { label: 'Setup Agreement', icon: FileSpreadsheet, href: '/setup-agreement', roles: ['admin', 'master', 'seller', 'tl'] },
       { label: 'Timeline', icon: LineChart, href: '/timeline', roles: ['admin', 'master', 'seller', 'tl'] },
     ]
   },
