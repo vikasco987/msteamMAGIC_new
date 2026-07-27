@@ -1,0 +1,71 @@
+import { StyleSheet } from "@react-pdf/renderer";
+
+const PRIMARY = "#1b1cfe";
+export const styles = StyleSheet.create({
+  page: {
+    fontFamily: "Poppins",
+    fontSize: 10,
+    lineHeight: 1.6,
+    color: "#222",
+    backgroundColor: "#fff",
+    paddingTop: 150,
+    paddingHorizontal: 45,
+    paddingBottom: 40,
+    position: "relative",
+  },
+  stripTop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 12,
+    backgroundColor: PRIMARY,
+  },
+  headerContainer: {
+    position: "absolute",
+    top: 0,
+    left: 45,
+    right: 45,
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    marginTop: 28,
+    marginBottom: 28,
+  },
+  logo: { width: 120, height: 55, objectFit: "contain" },
+  companyInfo: {
+    width: 180,
+    textAlign: "right",
+    fontSize: 9.5,
+    color: "#111",
+    lineHeight: 1.3,
+  },
+  blackBold: { fontWeight: 700 },
+  blueBold: { color: PRIMARY, fontWeight: 700 },
+  headerBottomRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginTop: 5,
+  },
+  content: { marginTop: 15 },
+  paragraph: { marginBottom: 10, textAlign: "justify" },
+  bulletList: { marginLeft: 15, marginBottom: 10 },
+  bulletItem: { flexDirection: "row", marginBottom: 4 },
+  bulletDot: { marginRight: 4 },
+  sectionHeading: {
+    fontWeight: 700,
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  numberedHeading: {
+    fontWeight: 700,
+    marginTop: 15,
+    marginBottom: 6,
+    fontSize: 11,
+  },
+  footer: { position: "absolute", bottom: 0, left: 0, right: 0 },
+  footerWave: { width: "100%", height: 40 },
+});
