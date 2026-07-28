@@ -15,21 +15,30 @@ async function handleAutoReminders(req: NextRequest) {
         const today = new Date();
         today.setHours(23, 59, 59, 999);
 
-        // Fetch remarks with followUpDate <= today and pending payment
-        const targetRemarks = await prisma.paymentRemark.findMany({
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+
+        // Task-centric query to safely avoid orphan PaymentRemark relation errors
+        const tasksWithDueReminders = await prisma.task.findMany({
             where: {
-                nextFollowUpDate: {
-                    lte: today
-                },
-                autoReminderStatus: {
-                    not: "SENT"
-                }
+                amount: { gt: 0 },
+                OR: [
+                    {
+                        paymentRemarks: {
+                            some: {
+                                nextFollowUpDate: { lte: today }
+                            }
+                        }
+                    },
+                    {
+                        dueDate: { lte: today }
+                    }
+                ]
             },
             include: {
-                task: true
-            },
-            orderBy: {
-                createdAt: "desc"
+                paymentRemarks: {
+                    orderBy: { createdAt: "desc" }
+                }
             }
         });
 
@@ -44,15 +53,22 @@ async function handleAutoReminders(req: NextRequest) {
             whatsappUrl: string;
         }> = [];
 
-        for (const remark of targetRemarks) {
-            const task = remark.task;
-            if (!task) continue;
-
+        for (const task of tasksWithDueReminders) {
             const total = task.amount || 0;
             const received = task.received || 0;
             const pendingAmount = Math.max(0, total - received);
 
             if (pendingAmount <= 0) continue;
+
+            const latestRemark = task.paymentRemarks[0];
+
+            // Avoid duplicate sending on the same day if link was already sent today
+            if (latestRemark?.autoReminderSentAt) {
+                const sentDate = new Date(latestRemark.autoReminderSentAt);
+                if (sentDate >= startOfToday) {
+                    continue; // Skip already sent today
+                }
+            }
 
             const customerName = task.customerName || task.shopName || "Valued Customer";
             const phone = task.phone || (task.customFields as any)?.phone || "";
@@ -127,17 +143,32 @@ async function handleAutoReminders(req: NextRequest) {
                 paymentLink = `https://msteam.magicscale.in/payment-portal?taskId=${task.id}&amount=${pendingAmount}`;
             }
 
-            // Update PaymentRemark status & store auto payment link
-            await prisma.paymentRemark.update({
-                where: { id: remark.id },
-                data: {
-                    autoPaymentLink: paymentLink,
-                    autoLinkGeneratedAt: new Date(),
-                    autoReminderSentAt: new Date(),
-                    autoReminderStatus: "SENT",
-                    reminderSent: true
-                }
-            });
+            // Update or create PaymentRemark for status & store auto payment link
+            if (latestRemark) {
+                await prisma.paymentRemark.update({
+                    where: { id: latestRemark.id },
+                    data: {
+                        autoPaymentLink: paymentLink,
+                        autoLinkGeneratedAt: new Date(),
+                        autoReminderSentAt: new Date(),
+                        autoReminderStatus: "SENT",
+                        reminderSent: true
+                    }
+                });
+            } else {
+                await prisma.paymentRemark.create({
+                    data: {
+                        taskId: task.id,
+                        remark: "🤖 Automated payment reminder scheduled",
+                        contactOutcome: "promised",
+                        autoPaymentLink: paymentLink,
+                        autoLinkGeneratedAt: new Date(),
+                        autoReminderSentAt: new Date(),
+                        autoReminderStatus: "SENT",
+                        reminderSent: true
+                    }
+                });
+            }
 
             // Log activity on the Task
             await prisma.activity.create({
