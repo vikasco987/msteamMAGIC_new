@@ -19,6 +19,9 @@ import toast from "react-hot-toast";
 interface PaymentRemark {
     id: string; remark: string; createdAt: string; authorName: string;
     contactOutcome: string; nextFollowUpDate: string | null;
+    autoPaymentLink?: string | null;
+    autoReminderStatus?: string | null;
+    autoLinkGeneratedAt?: string | null;
 }
 interface ActivityLog {
     id: string; type: string; content: string; createdAt: string;
@@ -76,6 +79,25 @@ export default function PaymentRecoveryPage() {
 
     const [showHistoryTask, setShowHistoryTask] = useState<RecoveryTask | null>(null);
     const [showEditModal, setShowEditModal] = useState<string | null>(null);
+    const [isTriggeringAuto, setIsTriggeringAuto] = useState(false);
+
+    const handleRunAutoReminders = async () => {
+        setIsTriggeringAuto(true);
+        try {
+            const res = await fetch("/api/recovery/auto-reminders", { method: "POST" });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                toast.success(`🤖 Auto Reminders Processed! ${data.processedCount || 0} link(s) generated/sent.`);
+                fetchRecoveryData();
+            } else {
+                toast.error(data.error || "Failed to trigger auto reminders");
+            }
+        } catch (err) {
+            toast.error("Error triggering auto reminders");
+        } finally {
+            setIsTriggeringAuto(false);
+        }
+    };
 
     const isTL = useMemo(() => role.toLowerCase() === "tl", [role]);
     const isAdminOrMaster = role.toLowerCase() === "admin" || role.toLowerCase() === "master";
@@ -265,6 +287,14 @@ export default function PaymentRecoveryPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-4">
+                    <button
+                        onClick={handleRunAutoReminders}
+                        disabled={isTriggeringAuto}
+                        className="flex items-center gap-2 px-6 py-4 bg-indigo-600 text-white font-black text-xs uppercase tracking-widest rounded-[22px] hover:bg-indigo-700 shadow-2xl shadow-indigo-200 transition-all disabled:opacity-50"
+                    >
+                        <Zap size={16} className={isTriggeringAuto ? "animate-spin" : ""} />
+                        {isTriggeringAuto ? "Processing..." : "Run Auto Reminders"}
+                    </button>
                     <button onClick={exportXLSX} className="flex items-center gap-2 px-8 py-4 bg-emerald-600 text-white font-black text-xs uppercase tracking-widest rounded-[22px] hover:bg-emerald-700 shadow-2xl shadow-emerald-100 transition-all">
                         <Download size={16} /> Export Data
                     </button>
@@ -537,6 +567,23 @@ export default function PaymentRecoveryPage() {
                                                     <p className="text-sm font-bold text-slate-600 italic line-clamp-2 leading-relaxed">
                                                         "{task.latestRemark.remark}"
                                                     </p>
+                                                    {task.latestRemark.autoPaymentLink && (
+                                                        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-100">
+                                                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[9px] font-black uppercase">
+                                                                💳 Payment Link Active
+                                                            </span>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    navigator.clipboard.writeText(task.latestRemark!.autoPaymentLink!);
+                                                                    toast.success("Payment Link copied!");
+                                                                }}
+                                                                className="text-[10px] font-black text-indigo-600 underline hover:text-indigo-800"
+                                                            >
+                                                                Copy Link
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                     <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase">
                                                         <User size={10} /> {task.latestRemark.authorName} • {format(new Date(task.latestRemark.createdAt), "dd MMM")}
                                                     </div>
