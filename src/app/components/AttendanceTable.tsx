@@ -27,6 +27,7 @@ import {
   X,
   Save,
   Loader2,
+  Plus,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -321,7 +322,225 @@ function EditAttendanceModal({
     </div>
   );
 }
+// -------------------- Add Modal --------------------
+function AddAttendanceModal({
+  defaultDate,
+  onClose,
+  onAdded,
+}: {
+  defaultDate: string;
+  onClose: () => void;
+  onAdded: (newRecord: Attendance) => void;
+}) {
+  const [employees, setEmployees] = useState<{ id: string; name: string; email: string }[]>([]);
+  const [loadingEmployees, setLoadingEmployees] = useState(true);
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [date, setDate] = useState(defaultDate);
+  const [checkIn, setCheckIn] = useState("");
+  const [checkOut, setCheckOut] = useState("");
+  const [checkInReason, setCheckInReason] = useState("");
+  const [checkOutReason, setCheckOutReason] = useState("");
+  const [status, setStatus] = useState("Present");
+  const [verified, setVerified] = useState(true);
+  const [remarks, setRemarks] = useState("");
+  const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    fetch("/api/assignees")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data.assignees)) {
+          setEmployees(data.assignees);
+          if (data.assignees.length > 0) setSelectedUserId(data.assignees[0].id);
+        }
+      })
+      .catch((err) => console.error("Failed to load employees:", err))
+      .finally(() => setLoadingEmployees(false));
+  }, []);
+
+  const handleSave = async () => {
+    if (!selectedUserId) {
+      toast.error("Please select an employee.");
+      return;
+    }
+    if (!date) {
+      toast.error("Please select a date.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const selectedEmp = employees.find((e) => e.id === selectedUserId);
+      const res = await fetch("/api/attendance/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetUserId: selectedUserId,
+          employeeName: selectedEmp?.name || "Employee",
+          date,
+          checkIn: checkIn ? fromLocalInputValue(checkIn) : null,
+          checkOut: checkOut ? fromLocalInputValue(checkOut) : null,
+          checkInReason,
+          checkOutReason,
+          status,
+          verified,
+          remarks,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to create attendance");
+      }
+      const data = await res.json();
+      toast.success("Attendance added successfully!");
+      onAdded(data.attendance);
+      onClose();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to add attendance");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-indigo-800 to-indigo-700">
+          <div>
+            <h2 className="text-white font-bold text-base tracking-tight">+ Add Attendance Record</h2>
+            <p className="text-indigo-200 text-xs mt-0.5">Manual attendance entry for employee</p>
+          </div>
+          <button onClick={onClose} className="p-2 text-indigo-300 hover:text-white rounded-lg hover:bg-white/10 transition">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+          {/* Employee Select */}
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 block">Select Employee *</label>
+            {loadingEmployees ? (
+              <div className="text-xs text-slate-400 py-2">Loading employee list...</div>
+            ) : (
+              <select
+                value={selectedUserId}
+                onChange={(e) => setSelectedUserId(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-400 bg-slate-50"
+              >
+                {employees.map((emp) => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.name} ({emp.email || "No email"})
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {/* Date Picker */}
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 block">Attendance Date *</label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-400 bg-slate-50"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 block">Check In (IST)</label>
+              <input
+                type="datetime-local"
+                value={checkIn}
+                onChange={(e) => setCheckIn(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 bg-slate-50"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 block">Check Out (IST)</label>
+              <input
+                type="datetime-local"
+                value={checkOut}
+                onChange={(e) => setCheckOut(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 bg-slate-50"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 block">Status</label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-400 bg-slate-50"
+              >
+                <option value="Present">Present</option>
+                <option value="Absent">Absent</option>
+                <option value="Half-Day">Half-Day</option>
+                <option value="Leave">Leave</option>
+                <option value="Unverified">Unverified</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 block">Verified</label>
+              <div className="flex items-center gap-3 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setVerified(true)}
+                  className={`flex-1 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${verified ? 'bg-emerald-500 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-emerald-50'}`}
+                >
+                  ✓ Verified
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVerified(false)}
+                  className={`flex-1 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${!verified ? 'bg-red-500 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-red-50'}`}
+                >
+                  ✗ Pending
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 block">Remarks</label>
+            <textarea
+              value={remarks}
+              onChange={(e) => setRemarks(e.target.value)}
+              placeholder="Add admin remarks..."
+              rows={2}
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 bg-slate-50 resize-none"
+            />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 px-6 py-4 bg-slate-50 border-t border-slate-100">
+          <button onClick={onClose} className="px-5 py-2 text-slate-500 font-black text-xs uppercase tracking-widest hover:text-slate-800 transition">
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition shadow-lg disabled:opacity-60"
+          >
+            {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+            Create Record
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
 
 // -------------------- Component --------------------
 export default function AttendanceTable({ all = false }: AttendanceTableProps) {
@@ -336,10 +555,11 @@ export default function AttendanceTable({ all = false }: AttendanceTableProps) {
     new Date().toISOString().split("T")[0]
   );
   const [editingRecord, setEditingRecord] = useState<Attendance | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
 
-  // Check if master/admin
-  const role = (user?.publicMetadata?.role as string || "").toUpperCase();
-  const isMasterOrAdmin = role === "MASTER" || role === "ADMIN";
+  // Check if MASTER role strictly
+  const role = String(user?.publicMetadata?.role || user?.unsafeMetadata?.role || "").toUpperCase();
+  const isMaster = role === "MASTER";
 
   useEffect(() => {
     if (view !== "daily") return;
@@ -409,6 +629,15 @@ export default function AttendanceTable({ all = false }: AttendanceTableProps) {
               <SelectItem value="pivot">Salary Matrix (Pivot)</SelectItem>
             </SelectContent>
           </Select>
+          {isMaster && (
+            <Button
+              onClick={() => setShowAddModal(true)}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-2"
+            >
+              <Plus size={16} />
+              Add Attendance
+            </Button>
+          )}
           <Button onClick={() => window.print()}>Export</Button>
         </div>
       </div>
@@ -459,15 +688,15 @@ export default function AttendanceTable({ all = false }: AttendanceTableProps) {
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Working Hours</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Overtime</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Remarks</th>
-                      {isMasterOrAdmin && (
-                        <th className="px-6 py-3 text-center text-xs font-semibold text-indigo-600 uppercase tracking-wider">Edit</th>
+                      {isMaster && (
+                        <th className="px-6 py-3 text-center text-xs font-semibold text-indigo-600 uppercase tracking-wider">Actions</th>
                       )}
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {data.length === 0 ? (
                       <tr>
-                        <td colSpan={isMasterOrAdmin ? 11 : 10} className="px-6 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={isMaster ? 11 : 10} className="px-6 py-4 text-center text-sm text-gray-500">
                           No attendance records found for {selectedDate}.
                         </td>
                       </tr>
@@ -556,7 +785,7 @@ export default function AttendanceTable({ all = false }: AttendanceTableProps) {
                                   : row.remarks || "-"}
                               </span>
                             </td>
-                            {isMasterOrAdmin && (
+                            {isMaster && (
                               <td className="px-6 py-4 text-center">
                                 <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                   <button
@@ -589,6 +818,17 @@ export default function AttendanceTable({ all = false }: AttendanceTableProps) {
           )}
         </motion.div>
       )}
+
+      {/* Add Modal */}
+      <AnimatePresence>
+        {showAddModal && (
+          <AddAttendanceModal
+            defaultDate={selectedDate}
+            onClose={() => setShowAddModal(false)}
+            onAdded={(newRecord) => setData((prev) => [newRecord, ...prev])}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Edit Modal */}
       <AnimatePresence>

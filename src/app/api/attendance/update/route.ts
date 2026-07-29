@@ -1,26 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuth } from "@clerk/nextjs/server";
-import { users } from "@clerk/clerk-sdk-node";
+import { auth } from "@clerk/nextjs/server";
 
 export async function POST(req: NextRequest) {
   try {
-    // Use same auth pattern as the rest of the project
-    const { userId } = getAuth(req as any);
+    const { userId } = await auth();
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch role from Clerk using clerk-sdk-node (same as rest of project)
-    const adminUser = await users.getUser(userId);
-    const role = (adminUser.publicMetadata?.role as string || "").toUpperCase();
+    // Fetch user role from Clerk & DB
+    const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
+    const { clerkClient } = await import("@clerk/nextjs/server");
+    const client = await clerkClient();
+    const clerkUser = await client.users.getUser(userId);
+    const metadataRole = (clerkUser.publicMetadata as any)?.role || (clerkUser.privateMetadata as any)?.role;
+    const role = String(metadataRole || dbUser?.role || "").toUpperCase();
 
     console.log(`[AttendanceUpdate] userId: ${userId}, role: ${role}`);
 
-    // Only ADMIN or MASTER can update attendance
-    if (role !== "ADMIN" && role !== "MASTER") {
-      return NextResponse.json({ error: "Admin/Master access only" }, { status: 403 });
+    // ONLY MASTER can update attendance
+    if (role !== "MASTER") {
+      return NextResponse.json({ error: "Master access required to edit attendance" }, { status: 403 });
     }
 
     const body = await req.json();
@@ -53,15 +55,19 @@ export async function POST(req: NextRequest) {
     if (verified !== undefined) updateData.verified = Boolean(verified);
     if (remarks !== undefined) updateData.remarks = remarks || null;
 
-    // Recalculate working hours if both times are present
-    if (updateData.checkIn && updateData.checkOut) {
-      const diffMs = new Date(updateData.checkOut).getTime() - new Date(updateData.checkIn).getTime();
+    // Recalculate working hours if checkIn / checkOut present
+    const existing = await prisma.attendance.findUnique({ where: { id: attendanceId } });
+    const finalCheckIn = updateData.checkIn !== undefined ? updateData.checkIn : existing?.checkIn;
+    const finalCheckOut = updateData.checkOut !== undefined ? updateData.checkOut : existing?.checkOut;
+
+    if (finalCheckIn && finalCheckOut) {
+      const diffMs = new Date(finalCheckOut).getTime() - new Date(finalCheckIn).getTime();
       const workingHours = Math.max(0, diffMs / (1000 * 60 * 60) - 1); // minus 1hr lunch
       updateData.workingHours = workingHours;
       updateData.overtimeHours = Math.max(0, workingHours - 8);
     }
 
-    const attendance = await (prisma as any).attendance.update({
+    const attendance = await prisma.attendance.update({
       where: { id: attendanceId },
       data: updateData,
     });

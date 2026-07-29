@@ -1,21 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuth } from "@clerk/nextjs/server";
-import { users } from "@clerk/clerk-sdk-node";
+import { auth } from "@clerk/nextjs/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = getAuth(req as any);
+    const { userId } = await auth();
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminUser = await users.getUser(userId);
-    const role = (adminUser.publicMetadata?.role as string || "").toUpperCase();
+    // Fetch user role from Clerk & DB
+    const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
+    const { clerkClient } = await import("@clerk/nextjs/server");
+    const client = await clerkClient();
+    const clerkUser = await client.users.getUser(userId);
+    const metadataRole = (clerkUser.publicMetadata as any)?.role || (clerkUser.privateMetadata as any)?.role;
+    const role = String(metadataRole || dbUser?.role || "").toUpperCase();
 
-    if (role !== "ADMIN" && role !== "MASTER") {
-      return NextResponse.json({ error: "Admin/Master access only" }, { status: 403 });
+    // ONLY MASTER can delete attendance
+    if (role !== "MASTER") {
+      return NextResponse.json({ error: "Master access required to delete attendance" }, { status: 403 });
     }
 
     const body = await req.json();
