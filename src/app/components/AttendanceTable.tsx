@@ -55,11 +55,10 @@ interface AttendanceTableProps {
 }
 
 // -------------------- Helpers --------------------
-function formatDateMinusOne(dateString?: string): string {
+function formatDate(dateString?: string): string {
   if (!dateString) return "-";
   try {
     const date = new Date(dateString);
-    date.setDate(date.getDate() - 1);
     return date.toLocaleDateString("en-US", {
       weekday: "short",
       day: "numeric",
@@ -206,7 +205,7 @@ function EditAttendanceModal({
         <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-slate-800 to-slate-700">
           <div>
             <h2 className="text-white font-bold text-base tracking-tight">Edit Attendance</h2>
-            <p className="text-slate-300 text-xs mt-0.5">{record.employeeName || record.userId} · {formatDateMinusOne(record.date)}</p>
+            <p className="text-slate-300 text-xs mt-0.5">{record.employeeName || record.userId} · {formatDate(record.date)}</p>
           </div>
           <button onClick={onClose} className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition">
             <X size={18} />
@@ -711,7 +710,7 @@ export default function AttendanceTable({ all = false }: AttendanceTableProps) {
                               {row.employeeName || row.userId}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {formatDateMinusOne(row.date)}
+                              {formatDate(row.date)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
                               {formatTime(row.checkIn)}

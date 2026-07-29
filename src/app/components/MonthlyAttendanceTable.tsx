@@ -13,13 +13,12 @@ interface MonthlyAttendanceTableProps {
 }
 
 // -------------------- Helpers --------------------
-// Display date in IST and decrease by 1 day
-function formatDateMinusOne(dateInput?: any): string {
+// Display date in IST
+function formatDate(dateInput?: any): string {
   if (!dateInput) return "-";
   try {
     const raw = typeof dateInput === "string" ? dateInput : dateInput.$date || dateInput;
     const date = new Date(raw);
-    date.setDate(date.getDate() - 1); 
     return date.toLocaleDateString("en-IN", {
       weekday: "short",
       day: "numeric",
@@ -153,7 +152,7 @@ export default function MonthlyAttendanceTable({ month }: MonthlyAttendanceTable
                     if (h.toLowerCase().includes("date")) {
                       return (
                         <td key={h} className="px-4 py-3 whitespace-nowrap">
-                          {formatDateMinusOne(val)}
+                          {formatDate(val)}
                         </td>
                       );
                     }
