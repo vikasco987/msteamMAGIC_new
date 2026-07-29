@@ -1099,82 +1099,142 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@clerk/nextjs/server";
+import { logActivity } from "@/lib/activity";
 
 /**
  * DELETE /api/payments/delete
  * Body:
  * {
  *   taskId: string,
- *   paymentId: string
+ *   paymentId?: string,
+ *   updatedAt?: string
  * }
  */
 export async function DELETE(req: Request) {
   try {
-    const body = await req.json();
-    const { taskId, paymentId } = body;
-
-    if (!taskId || !paymentId) {
-      return NextResponse.json({ error: "taskId and paymentId required" }, { status: 400 });
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 1️⃣ Find the payment in the Payment table
-    const payment = await prisma.payment.findUnique({
-      where: { id: paymentId }
-    });
+    // Role check: MASTER only
+    const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
+    const { clerkClient } = await import("@clerk/nextjs/server");
+    const client = await clerkClient();
+    const clerkUser = await client.users.getUser(userId);
+    const metadataRole = (clerkUser.publicMetadata as any)?.role || (clerkUser.privateMetadata as any)?.role;
+    const role = String(metadataRole || dbUser?.role || "").toUpperCase();
 
-    if (!payment) {
-      return NextResponse.json({ error: "Payment record not found" }, { status: 404 });
+    if (role !== "MASTER") {
+      return NextResponse.json({ error: "Only MASTER role can delete payment records" }, { status: 403 });
+    }
+
+    const body = await req.json();
+    const { taskId, paymentId, updatedAt } = body;
+
+    if (!taskId) {
+      return NextResponse.json({ error: "taskId is required" }, { status: 400 });
+    }
+
+    // 1️⃣ Find the payment in the Payment table if paymentId provided
+    let payment = null;
+    if (paymentId) {
+      payment = await prisma.payment.findUnique({
+        where: { id: paymentId }
+      });
     }
 
     // 2️⃣ Fetch the related task
     const task = await prisma.task.findUnique({
       where: { id: taskId },
-      select: { id: true, paymentHistory: true, received: true }
+      select: { id: true, paymentHistory: true, received: true, title: true }
     });
 
     if (!task) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    // 3️⃣ Remove from Task's paymentHistory using the exact timestamp match
-    let updatedPayments = task.paymentHistory;
-    if (Array.isArray(task.paymentHistory)) {
-      updatedPayments = task.paymentHistory.filter(
-        (p: any) => new Date(p.updatedAt).getTime() !== new Date(payment.updatedAt).getTime()
-      );
-    }
+    // 3️⃣ Remove from Task's paymentHistory using paymentId or updatedAt
+    let updatedPayments = Array.isArray(task.paymentHistory) ? [...task.paymentHistory] : [];
+    let removedEntry: any = null;
 
-    // 4️⃣ Deduct the deleted amount from the task's received total
-    const newReceivedAmount = Math.max(0, (task.received || 0) - (payment.received || 0));
+    updatedPayments = updatedPayments.filter((p: any) => {
+      const matchPaymentId = paymentId && (p.id === paymentId || p.paymentId === paymentId);
+      const matchTimestamp = payment?.updatedAt && p.updatedAt && new Date(p.updatedAt).getTime() === new Date(payment.updatedAt).getTime();
+      const matchDateStr = updatedAt && p.updatedAt && new Date(p.updatedAt).getTime() === new Date(updatedAt).getTime();
 
-    // 5️⃣ Execute updates in a transaction to ensure data integrity (nothing else gets deleted)
-    await prisma.$transaction([
-      // Delete the payment from Payment table
-      prisma.payment.delete({
-        where: { id: paymentId }
-      }),
-      // Update Task's history and received amount
+      if (matchPaymentId || matchTimestamp || matchDateStr) {
+        removedEntry = p;
+        return false; // remove
+      }
+      return true;
+    });
+
+    // 4️⃣ Calculate new total received
+    const newReceivedAmount = updatedPayments.reduce((sum: number, p: any) => {
+      const r = typeof p.received === "number" ? p.received : parseFloat(String(p.received || 0));
+      return sum + (isNaN(r) ? 0 : r);
+    }, 0);
+
+    const userName = clerkUser.firstName || dbUser?.name || "Master";
+
+    // 5️⃣ Execute updates
+    const transactions: any[] = [
       prisma.task.update({
         where: { id: taskId },
         data: {
-          paymentHistory: updatedPayments || [],
-          received: newReceivedAmount
-        }
-      }),
-      // Log to DeletedPayment collection
-      prisma.deletedPayment.create({
-        data: {
-          originalTask: taskId,
-          paymentData: payment,
-          deletedBy: "System/Admin"
+          paymentHistory: updatedPayments,
+          received: newReceivedAmount,
+          updatedAt: new Date()
         }
       })
-    ]);
+    ];
 
-    return NextResponse.json({ success: true, deletedPayment: payment });
+    if (paymentId) {
+      transactions.push(
+        prisma.payment.deleteMany({
+          where: { id: paymentId }
+        })
+      );
+    } else if (removedEntry?.updatedAt) {
+      transactions.push(
+        prisma.payment.deleteMany({
+          where: {
+            taskId,
+            createdAt: new Date(removedEntry.updatedAt)
+          }
+        })
+      );
+    }
+
+    if (payment || removedEntry) {
+      transactions.push(
+        prisma.deletedPayment.create({
+          data: {
+            originalTask: taskId,
+            paymentData: payment || removedEntry,
+            deletedBy: `${userName} (${userId})`
+          }
+        })
+      );
+    }
+
+    await prisma.$transaction(transactions);
+
+    await logActivity({
+      taskId,
+      type: "PAYMENT_DELETED",
+      content: `Payment entry deleted by Master user ${userName}. New total received: ₹${newReceivedAmount}`,
+      author: userName,
+      authorId: userId
+    });
+
+    return NextResponse.json({ success: true, deletedPayment: payment || removedEntry });
 
   } catch (err: any) {
     console.error("❌ Delete payment error:", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to delete payment", details: err.message }, { status: 500 });
   }
 }
+

@@ -1291,6 +1291,7 @@ export default function TaskTimeline() {
                   setShowPaymentHistory={setShowPaymentHistory}
                   handleTogglePaymentHistory={handleTogglePaymentHistory}
                   fileInputRef={paymentFileRef}
+                  onPaymentUpdated={updateSelectedTaskFromFetched}
                 />
 
                 <TaskActivityFeed taskId={selectedTask.id} />

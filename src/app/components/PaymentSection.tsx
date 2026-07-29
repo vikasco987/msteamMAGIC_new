@@ -50,6 +50,7 @@ interface PaymentSectionProps {
   setShowPaymentHistory: (show: boolean) => void;
   handleTogglePaymentHistory?: () => void;
   fileInputRef?: React.RefObject<HTMLInputElement>;
+  onPaymentUpdated?: () => void;
 }
 
 export default function PaymentSection({
@@ -71,7 +72,8 @@ export default function PaymentSection({
   handleTogglePaymentHistory,
   fileInputRef,
   mode,
-  setMode
+  setMode,
+  onPaymentUpdated
 }: any) {
   if (!selectedTask) {
     return (
@@ -276,7 +278,8 @@ export default function PaymentSection({
             paymentHistory={paymentHistoryArray}
             taskTitle={selectedTask.name}
             taskDetails={{
-              shopName: (selectedTask as any).customFields?.shopName || selectedTask.shopName || selectedTask.shop,
+              taskId: selectedTask.id,
+              shopName: (selectedTask as any).customFields?.shopName || (selectedTask as any).shopName || selectedTask.shop,
               customerName: selectedTask.customerName || selectedTask.customer,
               address: [
                 (selectedTask as any).customFields?.fullAddress,
@@ -287,10 +290,11 @@ export default function PaymentSection({
               phone: (selectedTask as any).customFields?.phone || (selectedTask as any).phone,
               gstin: (selectedTask as any).customFields?.gstin || (selectedTask as any).gstin
             }}
+            onPaymentUpdated={onPaymentUpdated}
           />
         </div>
       )}
     </div>
-      </div>
+  </div>
   );
 }

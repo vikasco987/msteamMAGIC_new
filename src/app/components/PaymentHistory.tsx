@@ -1,9 +1,10 @@
 "use client";
 import React from "react";
-import { FaDownload, FaCopy, FaFileInvoice, FaEye, FaFilter, FaXmark, FaUser, FaMapPin, FaPhone, FaBuilding, FaStore, FaIndianRupeeSign, FaCalendarDay } from "react-icons/fa6";
+import { FaDownload, FaCopy, FaFileInvoice, FaEye, FaFilter, FaXmark, FaUser, FaMapPin, FaPhone, FaBuilding, FaStore, FaIndianRupeeSign, FaCalendarDay, FaPencil, FaTrashCan } from "react-icons/fa6";
 import { generateInvoicePDF } from "@/lib/invoice-utils";
 import toast from "react-hot-toast";
 import { format, parseISO } from "date-fns";
+import { useUser } from "@clerk/nextjs";
 
 interface PaymentEntry {
   id?: string;
@@ -15,6 +16,7 @@ interface PaymentEntry {
   updatedBy: string;
   fileUrl?: string | null;
   utr?: string | null;
+  mode?: string | null;
   invoiceUrl?: string | null;
 }
 
@@ -29,13 +31,18 @@ interface PaymentHistoryProps {
     phone?: string;
     gstin?: string;
   };
+  onPaymentUpdated?: () => void;
 }
 
-export default function PaymentHistory({ paymentHistory, taskTitle, taskDetails }: PaymentHistoryProps) {
+export default function PaymentHistory({ paymentHistory, taskTitle, taskDetails, onPaymentUpdated }: PaymentHistoryProps) {
+  const { user } = useUser();
+  const role = String(user?.publicMetadata?.role || user?.unsafeMetadata?.role || "").toUpperCase();
+  const isMaster = role === "MASTER";
+
   const [businessSettings, setBusinessSettings] = React.useState<any>(null);
   const [copyingId, setCopyingId] = React.useState<string | null>(null);
   
-  // Edit Modal States
+  // Invoice Edit Modal States
   const [editingPayment, setEditingPayment] = React.useState<PaymentEntry | null>(null);
   const [editForm, setEditForm] = React.useState<any>({
     shopName: "",
@@ -51,6 +58,17 @@ export default function PaymentHistory({ paymentHistory, taskTitle, taskDetails 
     ifscCode: "",
     terms: ""
   });
+
+  // Record Edit Modal States (MASTER role)
+  const [editingRecordEntry, setEditingRecordEntry] = React.useState<PaymentEntry | null>(null);
+  const [recordForm, setRecordForm] = React.useState<{ received: number; utr: string; mode: string; date: string }>({
+    received: 0,
+    utr: "",
+    mode: "",
+    date: ""
+  });
+  const [savingRecord, setSavingRecord] = React.useState(false);
+  const [deletingId, setDeletingId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     fetch("/api/admin/settings/business")
@@ -81,6 +99,84 @@ export default function PaymentHistory({ paymentHistory, taskTitle, taskDetails 
       ifscCode: businessSettings?.ifscCode || "",
       terms: businessSettings?.terms || ""
     });
+  };
+
+  const openRecordEditModal = (entry: PaymentEntry) => {
+    setEditingRecordEntry(entry);
+    setRecordForm({
+      received: entry.received || 0,
+      utr: entry.utr || "",
+      mode: entry.mode || "",
+      date: entry.updatedAt ? entry.updatedAt.split('T')[0] : new Date().toISOString().split('T')[0]
+    });
+  };
+
+  const handleSaveRecordEdit = async () => {
+    if (!editingRecordEntry || !taskDetails?.taskId) return;
+    setSavingRecord(true);
+    try {
+      const res = await fetch("/api/payments/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          taskId: taskDetails.taskId,
+          paymentId: editingRecordEntry.paymentId || editingRecordEntry.id,
+          received: Number(recordForm.received),
+          utr: recordForm.utr,
+          mode: recordForm.mode,
+          updatedAt: recordForm.date ? new Date(recordForm.date).toISOString() : undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to update payment entry");
+      }
+
+      toast.success("Payment record updated successfully!");
+      setEditingRecordEntry(null);
+      if (onPaymentUpdated) onPaymentUpdated();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update payment record");
+    } finally {
+      setSavingRecord(false);
+    }
+  };
+
+  const handleDeleteRecordEntry = async (entry: PaymentEntry) => {
+    const tid = taskDetails?.taskId || entry.taskId;
+    if (!tid) {
+      toast.error("Task ID missing");
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete this payment of ₹${entry.received}? This will update financial reports.`)) return;
+
+    const pid = entry.paymentId || entry.id || `idx-${entry.updatedAt}`;
+    setDeletingId(pid);
+    try {
+      const res = await fetch("/api/payments/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          taskId: tid,
+          paymentId: entry.paymentId || entry.id,
+          updatedAt: entry.updatedAt,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to delete payment record");
+      }
+
+      toast.success("Payment record deleted!");
+      if (onPaymentUpdated) onPaymentUpdated();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to delete payment");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const handleDownload = (entry: PaymentEntry, overrides?: any) => {
@@ -212,13 +308,32 @@ export default function PaymentHistory({ paymentHistory, taskTitle, taskDetails 
             </div>
 
             <div className="flex items-center justify-between mt-4">
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <button onClick={() => handleDownload(entry)} className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-xl hover:bg-green-100 transition-all font-black text-[10px] uppercase tracking-tight">
                   <FaDownload size={12} /> Invoice
                 </button>
-                <button onClick={() => openEditModal(entry)} className="p-2 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-600 hover:text-white transition-all border border-amber-100">
+                <button onClick={() => openEditModal(entry)} className="p-2 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-600 hover:text-white transition-all border border-amber-100" title="Customize Invoice PDF">
                   <FaFilter size={12} />
                 </button>
+                {isMaster && (
+                  <>
+                    <button
+                      onClick={() => openRecordEditModal(entry)}
+                      className="p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all border border-indigo-100"
+                      title="Edit Payment Record (Master Only)"
+                    >
+                      <FaPencil size={12} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteRecordEntry(entry)}
+                      disabled={deletingId === entryId}
+                      className="p-2 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all border border-rose-100 disabled:opacity-50"
+                      title="Delete Payment Record (Master Only)"
+                    >
+                      <FaTrashCan size={12} />
+                    </button>
+                  </>
+                )}
               </div>
               
               <button onClick={() => handleCopyLink(entry)} disabled={copyingId === entryId} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-xl hover:bg-black transition-all font-black text-[10px] uppercase tracking-tight disabled:opacity-50">
@@ -229,6 +344,85 @@ export default function PaymentHistory({ paymentHistory, taskTitle, taskDetails 
           </div>
         );
       })}
+
+      {/* Record Edit Modal (Master Role) */}
+      {editingRecordEntry && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1000] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="bg-gradient-to-r from-indigo-700 to-indigo-600 p-6 text-white flex justify-between items-center">
+              <div>
+                <h2 className="text-lg font-black tracking-tight">Edit Payment Entry</h2>
+                <p className="text-indigo-200 text-xs">Master Access Payment Adjustment</p>
+              </div>
+              <button onClick={() => setEditingRecordEntry(null)} className="p-2 hover:bg-white/20 rounded-full transition-all">
+                <FaXmark size={18} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1 block">Received Amount (₹) *</label>
+                <input
+                  type="number"
+                  value={recordForm.received}
+                  onChange={(e) => setRecordForm({ ...recordForm, received: Number(e.target.value) })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-800 outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1 block">UTR / TXN ID</label>
+                <input
+                  type="text"
+                  value={recordForm.utr}
+                  onChange={(e) => setRecordForm({ ...recordForm, utr: e.target.value })}
+                  placeholder="e.g. UTR123456789"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-800 outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1 block">Payment Mode</label>
+                <select
+                  value={recordForm.mode}
+                  onChange={(e) => setRecordForm({ ...recordForm, mode: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-800 outline-none focus:border-indigo-500"
+                >
+                  <option value="">Select Mode...</option>
+                  <option value="UPI">UPI</option>
+                  <option value="Bank Transfer">Bank Transfer / NEFT</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Cheque">Cheque</option>
+                  <option value="Card">Card</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1 block">Transaction Date</label>
+                <input
+                  type="date"
+                  value={recordForm.date}
+                  onChange={(e) => setRecordForm({ ...recordForm, date: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-800 outline-none focus:border-indigo-500"
+                />
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3 justify-end">
+              <button onClick={() => setEditingRecordEntry(null)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-800">
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveRecordEdit}
+                disabled={savingRecord}
+                className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 shadow-md disabled:opacity-60"
+              >
+                {savingRecord ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Invoice Edit Modal */}
       {editingPayment && (
@@ -271,13 +465,11 @@ export default function PaymentHistory({ paymentHistory, taskTitle, taskDetails 
                                 }
                                 const loadingToast = toast.loading("Fetching GST Details...");
                                 try {
-                                    // Simulating an API call with state detection
                                     await new Promise(r => setTimeout(r, 1000));
                                     const stateCode = editForm.gstin.substring(0, 2);
                                     const states: any = { "07": "Delhi", "06": "Haryana", "09": "UP", "27": "Maharashtra", "08": "Rajasthan", "33": "Tamil Nadu" };
                                     const detectedState = states[stateCode] || "Other";
                                     
-                                    // Auto-fill logic
                                     setEditForm({
                                         ...editForm,
                                         shopName: editForm.shopName || "Business Name (GST Verified)",
@@ -328,3 +520,4 @@ export default function PaymentHistory({ paymentHistory, taskTitle, taskDetails 
     </div>
   );
 }
+
