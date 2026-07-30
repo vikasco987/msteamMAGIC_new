@@ -3,6 +3,7 @@ import axios from "axios";
 import { prisma } from "@/lib/prisma";
 import { currentUser as getClerkUser } from "@clerk/nextjs/server";
 import crypto from "crypto";
+import { syncPendingPaymentLinks } from "@/lib/sync-payment-links";
 
 export async function POST(
   req: NextRequest,
@@ -98,6 +99,9 @@ export async function GET(
     try {
       const user = await getClerkUser();
       if (!user) return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+
+      // Run real-time auto sync for pending links
+      await syncPendingPaymentLinks();
 
       const role = String(user.publicMetadata?.role || "user").toLowerCase();
       

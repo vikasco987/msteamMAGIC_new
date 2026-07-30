@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { syncPendingPaymentLinks } from "@/lib/sync-payment-links";
 
 export const dynamic = "force-dynamic";
 
@@ -42,14 +43,15 @@ export async function GET(req: NextRequest) {
 
     const role = await getUserRole(userId);
     
-    // Allow access for specific roles, or keep it open if desired
-    // User requested specifically for master role only
     if (role !== "master") {
       return NextResponse.json({ error: "Forbidden: Master access required" }, { status: 403 });
     }
 
+    // Auto-verify and sync any pending payment links in background/realtime
+    await syncPendingPaymentLinks();
+
     const businessSettings = await prisma.businessSettings.findFirst();
-    const syncLinks = businessSettings?.syncLinksToProfitLoss || false;
+    const syncLinks = businessSettings?.syncLinksToProfitLoss !== false; // Default to TRUE so payment links auto-sync!
     const syncTasks = typeof businessSettings?.syncTasksToProfitLoss === 'boolean' ? businessSettings.syncTasksToProfitLoss : true;
 
     const { searchParams } = new URL(req.url);
@@ -73,17 +75,7 @@ export async function GET(req: NextRequest) {
     let tasks: any[] = [];
     if (syncTasks) {
       tasks = await prisma.task.findMany({
-        where: {
-          AND: [
-            {
-              OR: [
-                { title: { contains: "Printer", mode: "insensitive" } },
-                { title: { contains: "Software", mode: "insensitive" } },
-              ]
-            },
-            dateFilter
-          ]
-        },
+        where: dateFilter,
         orderBy: { createdAt: "desc" },
       });
     }
@@ -98,7 +90,6 @@ export async function GET(req: NextRequest) {
       const [yearStr, monthStr] = monthParam.split("-");
       const startDate = new Date(Date.UTC(parseInt(yearStr), parseInt(monthStr) - 1, 1));
       
-      // Fetch recurring expenses that started BEFORE this month
       const recurringExpenses = await prisma.generalExpense.findMany({
         where: {
           isRecurring: true,
@@ -115,7 +106,6 @@ export async function GET(req: NextRequest) {
       
       generalExpenses.push(...projectedRecurring);
     } else {
-      // "All Time" - Project each recurring expense for every month up to now
       const now = new Date();
       const currentYear = now.getUTCFullYear();
       const currentMonth = now.getUTCMonth();
@@ -126,14 +116,13 @@ export async function GET(req: NextRequest) {
       recurringExpenses.forEach(exp => {
         const start = new Date(exp.date);
         let iterYear = start.getUTCFullYear();
-        let iterMonth = start.getUTCMonth() + 1; // Start from next month
+        let iterMonth = start.getUTCMonth() + 1;
         
         while (iterYear < currentYear || (iterYear === currentYear && iterMonth <= currentMonth)) {
           if (iterMonth > 11) {
             iterMonth = 0;
             iterYear++;
           }
-          // Only add if it hasn't exceeded current month
           if (iterYear < currentYear || (iterYear === currentYear && iterMonth <= currentMonth)) {
             const newDate = new Date(start);
             newDate.setUTCFullYear(iterYear);
@@ -150,15 +139,13 @@ export async function GET(req: NextRequest) {
       });
       generalExpenses.push(...allProjected);
     }
-    // Sort all expenses by date desc again after injection
     generalExpenses.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    // --- END RECURRING EXPENSES LOGIC ---
 
     let cashfreeLinks: any[] = [];
     if (syncLinks) {
       cashfreeLinks = await prisma.cashfreeLink.findMany({
         where: {
-          status: "paid",
+          status: { in: ["paid", "PAID", "SUCCESS", "completed"] },
           ...dateFilter
         },
         orderBy: { createdAt: "desc" }
