@@ -77,7 +77,7 @@ export async function syncPendingPaymentLinks() {
                     where: { id: task.id },
                     data: {
                       received: newReceived,
-                      paymentHistory: newHistory,
+                      paymentHistory: newHistory as any,
                       updatedAt: new Date()
                     }
                   });

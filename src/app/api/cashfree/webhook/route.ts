@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
                 where: { id: task.id },
                 data: {
                   received: newReceived,
-                  paymentHistory: newHistory,
+                  paymentHistory: newHistory as any,
                   updatedAt: new Date()
                 }
               });
