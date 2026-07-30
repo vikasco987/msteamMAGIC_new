@@ -3,6 +3,31 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+function getISTDateRange(fromDateStr?: string | null, toDateStr?: string | null, dateStr?: string | null) {
+  let startStr = fromDateStr || dateStr;
+  let endStr = toDateStr || dateStr || fromDateStr;
+
+  if (!startStr) {
+    // Current date in IST YYYY-MM-DD
+    const nowInIST = new Date(new Date().getTime() + 330 * 60 * 1000);
+    startStr = nowInIST.toISOString().split("T")[0];
+    endStr = startStr;
+  }
+  if (!endStr) {
+    endStr = startStr;
+  }
+
+  const [sy, sm, sd] = startStr.split("T")[0].split("-").map(Number);
+  const [ey, em, ed] = endStr.split("T")[0].split("-").map(Number);
+
+  // 00:00:00 IST = UTC minus 330 minutes
+  const startOfDay = new Date(Date.UTC(sy, sm - 1, sd, 0, 0, 0, 0) - 330 * 60 * 1000);
+  // 23:59:59.999 IST = UTC minus 330 minutes
+  const endOfDay = new Date(Date.UTC(ey, em - 1, ed, 23, 59, 59, 999) - 330 * 60 * 1000);
+
+  return { startOfDay, endOfDay };
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -10,21 +35,7 @@ export async function GET(req: NextRequest) {
     const fromParam = searchParams.get("fromDate");
     const toParam = searchParams.get("toDate");
 
-    let startOfDay: Date;
-    let endOfDay: Date;
-
-    if (fromParam && toParam) {
-      startOfDay = new Date(fromParam);
-      startOfDay.setUTCHours(0, 0, 0, 0);
-      endOfDay = new Date(toParam);
-      endOfDay.setUTCHours(23, 59, 59, 999);
-    } else {
-      const baseDate = dateParam ? new Date(dateParam) : new Date();
-      startOfDay = new Date(baseDate);
-      startOfDay.setUTCHours(0, 0, 0, 0);
-      endOfDay = new Date(baseDate);
-      endOfDay.setUTCHours(23, 59, 59, 999);
-    }
+    const { startOfDay, endOfDay } = getISTDateRange(fromParam, toParam, dateParam);
 
     // 🚀 NEW STEP 1: Fetch all payments with received > 0 for this date from the Payment collection
     const payments = await prisma.payment.findMany({

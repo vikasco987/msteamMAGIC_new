@@ -22,12 +22,29 @@ export async function GET(req: NextRequest) {
   const endDate = searchParams.get("endDate");
   const search = searchParams.get("search");
 
+  let startOfDay: Date | undefined;
+  let endOfDay: Date | undefined;
+
+  if (startDate) {
+    const [sy, sm, sd] = startDate.split("T")[0].split("-").map(Number);
+    if (!isNaN(sy) && !isNaN(sm) && !isNaN(sd)) {
+      startOfDay = new Date(Date.UTC(sy, sm - 1, sd, 0, 0, 0, 0) - 330 * 60 * 1000);
+    }
+  }
+
+  if (endDate) {
+    const [ey, em, ed] = endDate.split("T")[0].split("-").map(Number);
+    if (!isNaN(ey) && !isNaN(em) && !isNaN(ed)) {
+      endOfDay = new Date(Date.UTC(ey, em - 1, ed, 23, 59, 59, 999) - 330 * 60 * 1000);
+    }
+  }
+
   try {
     const where: any = {
       received: { gt: 0 },
       AND: [
-        startDate ? { updatedAt: { gte: new Date(startDate) } } : {},
-        endDate ? { updatedAt: { lte: new Date(endDate) } } : {},
+        startOfDay ? { updatedAt: { gte: startOfDay } } : {},
+        endOfDay ? { updatedAt: { lte: endOfDay } } : {},
         search ? {
           task: {
             OR: [
