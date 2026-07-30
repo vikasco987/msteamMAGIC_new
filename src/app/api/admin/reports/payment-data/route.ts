@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
   try {
     // 🛡️ Build Filter
     const where: any = {
+      received: { gt: 0 },
       AND: [
         startDate ? { updatedAt: { gte: new Date(startDate) } } : {},
         endDate ? { updatedAt: { lte: new Date(endDate) } } : {},
@@ -58,7 +59,7 @@ export async function GET(req: NextRequest) {
     });
 
     const reportData = payments
-      .filter(p => p.task)
+      .filter(p => p.task && (p.received || 0) > 0)
       .map(p => ({
         id: p.id,
         taskId: p.taskId,

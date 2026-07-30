@@ -26,9 +26,10 @@ export async function GET(req: NextRequest) {
       endOfDay.setUTCHours(23, 59, 59, 999);
     }
 
-    // 🚀 NEW STEP 1: Fetch all payments for this date from the Payment collection
+    // 🚀 NEW STEP 1: Fetch all payments with received > 0 for this date from the Payment collection
     const payments = await prisma.payment.findMany({
       where: {
+        received: { gt: 0 },
         updatedAt: {
           gte: startOfDay,
           lte: endOfDay,

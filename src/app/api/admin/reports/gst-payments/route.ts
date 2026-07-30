@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const where: any = {
+      received: { gt: 0 },
       AND: [
         startDate ? { updatedAt: { gte: new Date(startDate) } } : {},
         endDate ? { updatedAt: { lte: new Date(endDate) } } : {},
@@ -46,7 +47,7 @@ export async function GET(req: NextRequest) {
     });
 
     const reportData = payments
-      .filter(p => p.task)
+      .filter(p => p.task && (p.received || 0) > 0)
       .map((p, idx) => {
         const cf = (p.task!.customFields as any) || {};
         const fullAddr = [cf.fullAddress, cf.city, cf.state, cf.country, cf.pincode].filter(Boolean).join(", ") || p.task!.location || "N/A";
