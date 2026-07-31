@@ -33,6 +33,11 @@ interface Task {
   tags?: string[];
   createdAt: string;
   attachments?: string[];
+  aadhaarUrl?: string;
+  panUrl?: string;
+  selfieUrl?: string;
+  chequeUrl?: string;
+  menuCardUrls?: string[];
   customFields?: Record<string, any>;
   assignerName?: string;
   assignerEmail?: string;
@@ -50,6 +55,7 @@ const getLabelFromUrl = (url: string): string => {
   if (fileName.endsWith(".pdf")) return "📄 PDF Document";
   if (fileName.includes("license")) return "🍔 Food License";
   if (fileName.includes("menu")) return "📄 Menu Card";
+  if (fileName.includes("cheque") || fileName.includes("bank")) return "🏦 Cheque/Bank Document";
   return "📎 Attachment";
 };
 
@@ -143,6 +149,17 @@ export default function SharedTaskPage() {
   const cf = task.customFields || {};
   const showTitle = task.title !== cf.shopName && task.title !== cf.outletName;
 
+  const accountNumber = cf.accountNumber || cf.bankAccount || cf.accountNo;
+  const ifscCode = cf.ifscCode || cf.ifsc || cf.ifsc_code;
+  const bankName = cf.bankName;
+  const accountHolder = cf.accountHolder || cf.accountName || cf.holderName;
+  const bankBranch = cf.bankBranch || cf.branch;
+  const upiId = cf.upiId || cf.upi;
+  const gstin = cf.gstin || cf.gst || cf.gstNumber;
+
+  const hasBankDetails = Boolean(accountNumber || ifscCode || bankName || accountHolder || bankBranch || upiId);
+  const hasSystemDetails = Boolean(cf.softwareDuration || cf.softwareVersion || cf.serialNumber || cf.posId || cf.merchantId || cf.mid || cf.tid || cf.restId);
+
   const getStatusColor = (status: string) => {
     if (status === "done") return "bg-emerald-100 text-emerald-800 border-emerald-200";
     if (status === "inprogress") return "bg-indigo-100 text-indigo-800 border-indigo-200";
@@ -154,6 +171,16 @@ export default function SharedTaskPage() {
     if (status === "inprogress") return "⚡ In Progress";
     return "📋 To Do";
   };
+
+  // Combine all task attachments
+  const allDocs = [
+    ...(task.attachments || []).map(url => ({ url, label: getLabelFromUrl(url) })),
+    ...(task.aadhaarUrl ? [{ url: task.aadhaarUrl, label: "🆔 Aadhaar Card" }] : []),
+    ...(task.panUrl ? [{ url: task.panUrl, label: "💳 PAN Card" }] : []),
+    ...(task.selfieUrl ? [{ url: task.selfieUrl, label: "🤳 Selfie Photo" }] : []),
+    ...(task.chequeUrl ? [{ url: task.chequeUrl, label: "🏦 Cheque/Bank Document" }] : []),
+    ...(task.menuCardUrls || []).map((url, i) => ({ url, label: `📄 Menu Card ${task.menuCardUrls && task.menuCardUrls.length > 1 ? i + 1 : ''}`.trim() })),
+  ];
 
   return (
     <div className="min-h-screen bg-[#f8fafc] py-12 px-4 md:px-8">
@@ -213,7 +240,7 @@ export default function SharedTaskPage() {
           </div>
         </div>
 
-        {/* 📌 HIGHLIGHTED NOTES (Amber alert card for important onboarding notes) */}
+        {/* 📌 HIGHLIGHTED NOTES */}
         {task.notes && task.notes.length > 0 && (
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
@@ -313,6 +340,20 @@ export default function SharedTaskPage() {
               </div>
             )}
 
+            {gstin && (
+              <div className="flex items-center justify-between p-3 bg-slate-50/60 rounded-xl hover:bg-slate-50 transition-all">
+                <span className="text-xs font-bold text-slate-500 flex items-center gap-2">
+                  📜 GSTIN / Tax No.
+                </span>
+                <span className="text-xs font-black font-mono text-slate-800 flex items-center gap-1.5">
+                  {gstin}
+                  <button onClick={() => handleCopyText(String(gstin), "GSTIN")} className="text-slate-400 hover:text-indigo-600">
+                    <Copy size={12} />
+                  </button>
+                </span>
+              </div>
+            )}
+
             {cf.packageAmount && (
               <div className="flex items-center justify-between p-3 bg-slate-50/60 rounded-xl hover:bg-slate-50 transition-all">
                 <span className="text-xs font-bold text-slate-500 flex items-center gap-2">
@@ -324,6 +365,118 @@ export default function SharedTaskPage() {
               </div>
             )}
           </div>
+
+          {/* 🏦 CUSTOMER BANK DETAILS BLOCK */}
+          {hasBankDetails && (
+            <div className="p-4 bg-gradient-to-r from-blue-50/80 to-indigo-50/80 rounded-2xl border border-indigo-100/80 shadow-sm mt-4">
+              <p className="text-[10px] font-black text-indigo-700 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                🏦 Customer Bank & Payment Details
+              </p>
+              <div className="space-y-2">
+                {accountHolder && (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-500 font-bold">Account Holder:</span>
+                    <span className="font-black text-slate-800 flex items-center gap-1">
+                      {accountHolder}
+                      <button onClick={() => handleCopyText(String(accountHolder), "Account Holder")} className="text-slate-400 hover:text-indigo-600">
+                        <Copy size={12} />
+                      </button>
+                    </span>
+                  </div>
+                )}
+                {bankName && (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-500 font-bold">Bank Name:</span>
+                    <span className="font-black text-slate-800">{bankName}</span>
+                  </div>
+                )}
+                {accountNumber && (
+                  <div className="flex items-center justify-between text-xs bg-white/70 p-2 rounded-xl border border-indigo-100">
+                    <span className="text-slate-500 font-bold">Account Number:</span>
+                    <span className="font-black font-mono text-indigo-700 flex items-center gap-1 text-sm">
+                      {accountNumber}
+                      <button onClick={() => handleCopyText(String(accountNumber), "Account Number")} className="text-slate-400 hover:text-indigo-600">
+                        <Copy size={12} />
+                      </button>
+                    </span>
+                  </div>
+                )}
+                {ifscCode && (
+                  <div className="flex items-center justify-between text-xs bg-white/70 p-2 rounded-xl border border-indigo-100">
+                    <span className="text-slate-500 font-bold">IFSC Code:</span>
+                    <span className="font-black font-mono text-indigo-700 flex items-center gap-1 text-sm">
+                      {ifscCode}
+                      <button onClick={() => handleCopyText(String(ifscCode), "IFSC Code")} className="text-slate-400 hover:text-indigo-600">
+                        <Copy size={12} />
+                      </button>
+                    </span>
+                  </div>
+                )}
+                {bankBranch && (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-500 font-bold">Branch:</span>
+                    <span className="font-black text-slate-800">{bankBranch}</span>
+                  </div>
+                )}
+                {upiId && (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-500 font-bold">UPI ID:</span>
+                    <span className="font-black text-slate-800 font-mono flex items-center gap-1">
+                      {upiId}
+                      <button onClick={() => handleCopyText(String(upiId), "UPI ID")} className="text-slate-400 hover:text-indigo-600">
+                        <Copy size={12} />
+                      </button>
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ⚙️ SOFTWARE & POS SYSTEM DETAILS BLOCK */}
+          {hasSystemDetails && (
+            <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-100 mt-3">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">⚙️ System & POS Details</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                {cf.softwareDuration && (
+                  <div className="flex items-center justify-between p-2 bg-white rounded-xl border border-slate-100">
+                    <span className="text-slate-500 font-bold">Duration:</span>
+                    <span className="font-black text-slate-800">{cf.softwareDuration}</span>
+                  </div>
+                )}
+                {cf.softwareVersion && (
+                  <div className="flex items-center justify-between p-2 bg-white rounded-xl border border-slate-100">
+                    <span className="text-slate-500 font-bold">Version:</span>
+                    <span className="font-black text-slate-800">{cf.softwareVersion}</span>
+                  </div>
+                )}
+                {cf.serialNumber && (
+                  <div className="flex items-center justify-between p-2 bg-white rounded-xl border border-slate-100">
+                    <span className="text-slate-500 font-bold">Serial No:</span>
+                    <span className="font-black text-slate-800 font-mono">{cf.serialNumber}</span>
+                  </div>
+                )}
+                {cf.posId && (
+                  <div className="flex items-center justify-between p-2 bg-white rounded-xl border border-slate-100">
+                    <span className="text-slate-500 font-bold">POS ID:</span>
+                    <span className="font-black text-slate-800 font-mono">{cf.posId}</span>
+                  </div>
+                )}
+                {cf.merchantId && (
+                  <div className="flex items-center justify-between p-2 bg-white rounded-xl border border-slate-100">
+                    <span className="text-slate-500 font-bold">Merchant ID:</span>
+                    <span className="font-black text-slate-800 font-mono">{cf.merchantId}</span>
+                  </div>
+                )}
+                {cf.restId && (
+                  <div className="flex items-center justify-between p-2 bg-white rounded-xl border border-slate-100">
+                    <span className="text-slate-500 font-bold">Rest ID:</span>
+                    <span className="font-black text-slate-800 font-mono">{cf.restId}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Full Address Block */}
           {(cf.fullAddress || cf.city || cf.pincode) && (
@@ -367,40 +520,37 @@ export default function SharedTaskPage() {
         </div>
 
         {/* Attachments Section */}
-        {task.attachments && task.attachments.length > 0 && (
+        {allDocs.length > 0 && (
           <div className="mt-8 pt-6 border-t border-slate-100">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">📎 Documents & Attachments</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">📎 Documents & Attachments ({allDocs.length})</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {task.attachments.map((url, i) => {
-                const label = getLabelFromUrl(url);
-                return (
-                  <div 
-                    key={i} 
-                    className="flex items-center justify-between p-3.5 bg-slate-50 hover:bg-slate-100 rounded-2xl border border-slate-100 transition-all group"
-                  >
-                    <span className="text-xs font-black text-slate-700 truncate mr-2 flex items-center gap-1.5">
-                      <FileText size={14} className="text-indigo-500 shrink-0" />
-                      {label}
-                    </span>
-                    <div className="flex gap-2.5">
-                      <button 
-                        onClick={() => setPreviewUrl(url)} 
-                        className="p-2 bg-white border border-slate-200 hover:bg-slate-50 hover:border-indigo-300 text-indigo-600 rounded-xl shadow-sm transition-all"
-                        title="View Document"
-                      >
-                        <Eye size={12} />
-                      </button>
-                      <button 
-                        onClick={() => handleDownload(url)} 
-                        className="p-2 bg-white border border-slate-200 hover:bg-slate-50 hover:border-emerald-300 text-emerald-600 rounded-xl shadow-sm transition-all"
-                        title="Download Document"
-                      >
-                        <Download size={12} />
-                      </button>
-                    </div>
+              {allDocs.map((doc, i) => (
+                <div 
+                  key={i} 
+                  className="flex items-center justify-between p-3.5 bg-slate-50 hover:bg-slate-100 rounded-2xl border border-slate-100 transition-all group"
+                >
+                  <span className="text-xs font-black text-slate-700 truncate mr-2 flex items-center gap-1.5">
+                    <FileText size={14} className="text-indigo-500 shrink-0" />
+                    {doc.label}
+                  </span>
+                  <div className="flex gap-2.5">
+                    <button 
+                      onClick={() => setPreviewUrl(doc.url)} 
+                      className="p-2 bg-white border border-slate-200 hover:bg-slate-50 hover:border-indigo-300 text-indigo-600 rounded-xl shadow-sm transition-all"
+                      title="View Document"
+                    >
+                      <Eye size={12} />
+                    </button>
+                    <button 
+                      onClick={() => handleDownload(doc.url)} 
+                      className="p-2 bg-white border border-slate-200 hover:bg-slate-50 hover:border-emerald-300 text-emerald-600 rounded-xl shadow-sm transition-all"
+                      title="Download Document"
+                    >
+                      <Download size={12} />
+                    </button>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           </div>
         )}
