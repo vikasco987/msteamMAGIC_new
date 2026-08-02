@@ -85,7 +85,6 @@ export async function GET(req: NextRequest) {
       orderBy: { date: "desc" }
     });
 
-    // --- RECURRING EXPENSES LOGIC ---
     if (monthParam && monthParam !== "all") {
       const [yearStr, monthStr] = monthParam.split("-");
       const startDate = new Date(Date.UTC(parseInt(yearStr), parseInt(monthStr) - 1, 1));
@@ -134,6 +133,9 @@ export async function GET(req: NextRequest) {
               date: newDate
             });
           }
+          iterMonth++;
+        }
+      });
       generalExpenses.push(...allProjected);
     }
 
