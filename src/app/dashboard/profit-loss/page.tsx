@@ -656,7 +656,7 @@ export default function ProfitLossDashboard() {
                     <tr key={exp.id} className="hover:bg-slate-50/50 transition-colors group">
                       <td className="px-6 py-4 font-bold text-slate-800 flex items-center gap-2">
                         {exp.title}
-                        {exp.isRecurring && <Repeat size={14} className="text-emerald-500" title="Fixed Monthly Expense" />}
+                        {exp.isRecurring && <span title="Fixed Monthly Expense"><Repeat size={14} className="text-emerald-500" /></span>}
                       </td>
                       <td className="px-6 py-4 text-slate-600">{new Date(exp.date).toLocaleDateString()}</td>
                       <td className="px-6 py-4 font-black text-rose-600">₹{safeNum(exp.amount).toLocaleString()}</td>
