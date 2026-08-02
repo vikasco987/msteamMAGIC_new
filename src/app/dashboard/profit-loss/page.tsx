@@ -417,6 +417,13 @@ export default function ProfitLossDashboard() {
             })}
           </select>
 
+          <a 
+            href="/dashboard/assigner-profitability"
+            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-[14px] shadow-sm transition-all text-sm flex items-center gap-2"
+          >
+            👥 Assigner Profitability
+          </a>
+
           <button  
             onClick={handleOpenExpenseModal}
             className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-[14px] shadow-sm transition-colors text-sm flex items-center gap-2"

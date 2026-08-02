@@ -645,3 +645,21 @@ model SerialNumber {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }
+
+// 👤 Model for Employee Manual Expenses (Salaries, Incentives, Allowances, etc.)
+model EmployeeExpense {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  assignerEmail String
+  assignerName  String?
+  title         String   // e.g. "Monthly Salary", "Travel Allowance", "Incentive"
+  category      String   @default("Salary") // Salary, Incentive, Travel, Phone, Bonus, Other
+  amount        Float
+  date          DateTime
+  remarks       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([assignerEmail])
+  @@index([date])
+}
+
