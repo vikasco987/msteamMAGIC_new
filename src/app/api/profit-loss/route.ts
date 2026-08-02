@@ -134,11 +134,29 @@ export async function GET(req: NextRequest) {
               date: newDate
             });
           }
-          iterMonth++;
-        }
-      });
       generalExpenses.push(...allProjected);
     }
+
+    const employeeExpenses = await prisma.employeeExpense.findMany({
+      where: expDateFilter,
+      orderBy: { date: "desc" }
+    });
+
+    const formattedEmployeeExpenses = employeeExpenses.map(exp => ({
+      id: exp.id,
+      title: `👤 ${exp.title} (${exp.assignerName || exp.assignerEmail})`,
+      amount: exp.amount,
+      date: exp.date,
+      remarks: exp.remarks || `Category: ${exp.category} | Status: ${exp.status}`,
+      attachments: [],
+      isRecurring: false,
+      isEmployeeExpense: true,
+      category: exp.category,
+      assignerEmail: exp.assignerEmail,
+      createdAt: exp.createdAt
+    }));
+
+    generalExpenses.push(...formattedEmployeeExpenses);
     generalExpenses.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     let cashfreeLinks: any[] = [];

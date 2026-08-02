@@ -657,6 +657,11 @@ export default function ProfitLossDashboard() {
                       <td className="px-6 py-4 font-bold text-slate-800 flex items-center gap-2">
                         {exp.title}
                         {exp.isRecurring && <span title="Fixed Monthly Expense"><Repeat size={14} className="text-emerald-500" /></span>}
+                        {exp.isEmployeeExpense && (
+                          <span className="px-2 py-0.5 bg-indigo-100 text-indigo-800 text-[10px] font-black rounded-md uppercase">
+                            👤 Employee Overhead
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-slate-600">{new Date(exp.date).toLocaleDateString()}</td>
                       <td className="px-6 py-4 font-black text-rose-600">₹{safeNum(exp.amount).toLocaleString()}</td>

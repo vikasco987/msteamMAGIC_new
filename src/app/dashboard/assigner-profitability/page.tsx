@@ -6,7 +6,8 @@ import { format } from "date-fns";
 import { 
   FaDollarSign, FaWallet, FaClock, FaSearch, FaSyncAlt, FaFileExcel, 
   FaUser, FaChevronRight, FaPlus, FaTrash, FaCheck, FaTimes, FaExternalLinkAlt,
-  FaChartLine, FaExclamationTriangle, FaArrowUp, FaArrowDown, FaBuilding, FaFilter
+  FaChartLine, FaExclamationTriangle, FaArrowUp, FaArrowDown, FaBuilding, FaFilter,
+  FaEdit, FaUserTie, FaCheckCircle
 } from "react-icons/fa";
 import toast, { Toaster } from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -31,6 +32,9 @@ interface ExpenseItem {
   category: string;
   amount: number;
   date: string;
+  status?: string;
+  paymentMode?: string;
+  referenceNo?: string;
   remarks?: string;
 }
 
@@ -76,6 +80,20 @@ export default function AssignerProfitabilityPage() {
     date: format(new Date(), "yyyy-MM-dd")
   });
   const [submittingExpense, setSubmittingExpense] = useState(false);
+
+  // Edit Expense State & Form
+  const [editingExpense, setEditingExpense] = useState<ExpenseItem | null>(null);
+  const [editExpenseForm, setEditExpenseForm] = useState({
+    title: "",
+    category: "Salary",
+    amount: "",
+    date: "",
+    status: "Paid",
+    paymentMode: "Bank Transfer",
+    referenceNo: "",
+    remarks: ""
+  });
+  const [savingEditExpense, setSavingEditExpense] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -142,6 +160,56 @@ export default function AssignerProfitabilityPage() {
     }
   };
 
+  const handleOpenEditExpense = (exp: ExpenseItem) => {
+    setEditingExpense(exp);
+    setEditExpenseForm({
+      title: exp.title || "",
+      category: exp.category || "Salary",
+      amount: String(exp.amount || 0),
+      date: exp.date ? format(new Date(exp.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
+      status: exp.status || "Paid",
+      paymentMode: exp.paymentMode || "Bank Transfer",
+      referenceNo: exp.referenceNo || "",
+      remarks: exp.remarks || ""
+    });
+  };
+
+  const handleSaveEditExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingExpense) return;
+
+    setSavingEditExpense(true);
+    try {
+      await axios.put("/api/employee-expenses", {
+        id: editingExpense.id,
+        title: editExpenseForm.title,
+        category: editExpenseForm.category,
+        amount: parseFloat(editExpenseForm.amount),
+        date: editExpenseForm.date,
+        status: editExpenseForm.status,
+        paymentMode: editExpenseForm.paymentMode,
+        referenceNo: editExpenseForm.referenceNo,
+        remarks: editExpenseForm.remarks
+      });
+
+      toast.success("Expense updated!");
+      setEditingExpense(null);
+      await fetchData();
+
+      if (selectedAssigner) {
+        const updatedRes = await axios.get("/api/stats/user-performance/profitability", {
+          params: { month: selectedMonth }
+        });
+        const updatedItem = updatedRes.data.assigners.find((a: any) => a.email === selectedAssigner.email);
+        if (updatedItem) setSelectedAssigner(updatedItem);
+      }
+    } catch (err: any) {
+      toast.error("Failed to update expense");
+    } finally {
+      setSavingEditExpense(false);
+    }
+  };
+
   const handleDeleteExpense = async (expenseId: string) => {
     if (!confirm("Are you sure you want to delete this expense?")) return;
     try {
@@ -196,6 +264,14 @@ export default function AssignerProfitabilityPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <a
+              href="/dashboard/payroll"
+              className="px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-2xl shadow-md shadow-indigo-100 transition-all flex items-center gap-2"
+            >
+              <FaUserTie size={14} />
+              Payroll & Salary Dashboard
+            </a>
+
             {/* Month Filter */}
             <div className="flex items-center gap-2 bg-white px-4 py-3 rounded-2xl border border-slate-200 shadow-sm">
               <span className="text-xs font-black text-slate-400 uppercase tracking-wider">MONTH:</span>
@@ -565,15 +641,31 @@ export default function AssignerProfitabilityPage() {
                                 {exp.category}
                               </span>
                               <h5 className="text-xs font-black text-slate-800">{exp.title}</h5>
+                              {exp.status && (
+                                <span className={`px-2 py-0.5 text-[8px] font-black rounded uppercase ${
+                                  exp.status === "Paid" ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
+                                }`}>
+                                  {exp.status}
+                                </span>
+                              )}
                             </div>
                             {exp.remarks && <p className="text-[10px] font-bold text-slate-400 mt-1">{exp.remarks}</p>}
-                            <p className="text-[9px] font-bold text-slate-400 mt-0.5">{format(new Date(exp.date), "dd MMM yyyy")}</p>
+                            <p className="text-[9px] font-bold text-slate-400 mt-0.5">
+                              {format(new Date(exp.date), "dd MMM yyyy")} {exp.paymentMode ? `via ${exp.paymentMode}` : ""}
+                            </p>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-sm font-black text-rose-600">₹{exp.amount.toLocaleString()}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-black text-rose-600 mr-2">₹{exp.amount.toLocaleString()}</span>
+                            <button
+                              onClick={() => handleOpenEditExpense(exp)}
+                              className="text-slate-400 hover:text-indigo-600 transition-colors p-1.5 bg-white rounded-lg border border-slate-200"
+                              title="Edit expense"
+                            >
+                              <FaEdit size={12} />
+                            </button>
                             <button
                               onClick={() => handleDeleteExpense(exp.id)}
-                              className="text-slate-300 hover:text-rose-600 transition-colors p-1"
+                              className="text-slate-400 hover:text-rose-600 transition-colors p-1.5 bg-white rounded-lg border border-slate-200"
                               title="Delete expense"
                             >
                               <FaTrash size={12} />
@@ -662,6 +754,157 @@ export default function AssignerProfitabilityPage() {
                   </form>
                 )}
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Expense Modal */}
+      <AnimatePresence>
+        {editingExpense && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setEditingExpense(null)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            />
+
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl p-8 overflow-hidden z-10"
+            >
+              <div className="flex items-center justify-between pb-4 mb-6 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl font-black">
+                    <FaEdit size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-slate-800">Edit Employee Expense</h3>
+                    <p className="text-xs font-bold text-slate-400">{editingExpense.title}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setEditingExpense(null)}
+                  className="p-2 text-slate-400 hover:text-slate-600 rounded-xl"
+                >
+                  <FaTimes size={16} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveEditExpense} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Expense Title</label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700"
+                    value={editExpenseForm.title}
+                    onChange={(e) => setEditExpenseForm({ ...editExpenseForm, title: e.target.value })}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Category</label>
+                    <select
+                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700"
+                      value={editExpenseForm.category}
+                      onChange={(e) => setEditExpenseForm({ ...editExpenseForm, category: e.target.value })}
+                    >
+                      <option value="Salary">Salary</option>
+                      <option value="Incentive">Incentive / Commission</option>
+                      <option value="Travel">Travel & Field Allowance</option>
+                      <option value="Phone">Phone & Internet</option>
+                      <option value="Bonus">Bonus</option>
+                      <option value="Other">Other Overhead</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Amount (₹)</label>
+                    <input
+                      type="number"
+                      required
+                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700"
+                      value={editExpenseForm.amount}
+                      onChange={(e) => setEditExpenseForm({ ...editExpenseForm, amount: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Date</label>
+                    <input
+                      type="date"
+                      required
+                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700"
+                      value={editExpenseForm.date}
+                      onChange={(e) => setEditExpenseForm({ ...editExpenseForm, date: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Status</label>
+                    <select
+                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700"
+                      value={editExpenseForm.status}
+                      onChange={(e) => setEditExpenseForm({ ...editExpenseForm, status: e.target.value })}
+                    >
+                      <option value="Paid">Paid</option>
+                      <option value="Unpaid">Unpaid</option>
+                      <option value="Pending">Pending</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Payment Mode</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Bank Transfer, UPI"
+                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700"
+                      value={editExpenseForm.paymentMode}
+                      onChange={(e) => setEditExpenseForm({ ...editExpenseForm, paymentMode: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Ref / UTR No.</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. UTR12345"
+                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 font-mono"
+                      value={editExpenseForm.referenceNo}
+                      onChange={(e) => setEditExpenseForm({ ...editExpenseForm, referenceNo: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Remarks</label>
+                  <textarea
+                    placeholder="Expense details..."
+                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700"
+                    rows={2}
+                    value={editExpenseForm.remarks}
+                    onChange={(e) => setEditExpenseForm({ ...editExpenseForm, remarks: e.target.value })}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={savingEditExpense}
+                  className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black transition-all shadow-lg shadow-indigo-100 disabled:opacity-50 mt-2"
+                >
+                  {savingEditExpense ? "Updating Expense..." : "Update Expense"}
+                </button>
+              </form>
             </motion.div>
           </div>
         )}

@@ -100,6 +100,9 @@ export async function POST(req: NextRequest) {
         category: category ? String(category).trim() : "Salary",
         amount: parseFloat(String(amount)),
         date: date ? new Date(date) : new Date(),
+        status: body.status ? String(body.status) : "Paid",
+        paymentMode: body.paymentMode ? String(body.paymentMode) : null,
+        referenceNo: body.referenceNo ? String(body.referenceNo) : null,
         remarks: remarks ? String(remarks).trim() : null,
       },
     });
@@ -108,6 +111,50 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("❌ Error creating employee expense:", error);
     return NextResponse.json({ error: "Failed to create expense" }, { status: 500 });
+  }
+}
+
+// PUT /api/employee-expenses (Edit existing expense)
+export async function PUT(req: NextRequest) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const isPrivileged = await getIsPrivileged(userId);
+    if (!isPrivileged) {
+      return NextResponse.json({ error: "Forbidden: Admin or Master access required" }, { status: 403 });
+    }
+
+    const body = await req.json();
+    const { id, assignerEmail, assignerName, title, category, amount, date, status, paymentMode, referenceNo, remarks } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: "Missing expense ID" }, { status: 400 });
+    }
+
+    const updateData: any = {};
+    if (assignerEmail) updateData.assignerEmail = String(assignerEmail).trim();
+    if (assignerName !== undefined) updateData.assignerName = assignerName ? String(assignerName).trim() : null;
+    if (title) updateData.title = String(title).trim();
+    if (category) updateData.category = String(category).trim();
+    if (amount !== undefined && !isNaN(Number(amount))) updateData.amount = parseFloat(String(amount));
+    if (date) updateData.date = new Date(date);
+    if (status) updateData.status = String(status);
+    if (paymentMode !== undefined) updateData.paymentMode = paymentMode ? String(paymentMode).trim() : null;
+    if (referenceNo !== undefined) updateData.referenceNo = referenceNo ? String(referenceNo).trim() : null;
+    if (remarks !== undefined) updateData.remarks = remarks ? String(remarks).trim() : null;
+
+    const updatedExpense = await prisma.employeeExpense.update({
+      where: { id },
+      data: updateData,
+    });
+
+    return NextResponse.json({ expense: updatedExpense });
+  } catch (error: any) {
+    console.error("❌ Error updating employee expense:", error);
+    return NextResponse.json({ error: "Failed to update expense" }, { status: 500 });
   }
 }
 

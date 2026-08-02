@@ -655,6 +655,9 @@ model EmployeeExpense {
   category      String   @default("Salary") // Salary, Incentive, Travel, Phone, Bonus, Other
   amount        Float
   date          DateTime
+  status        String   @default("Paid") // Paid, Pending, Unpaid
+  paymentMode   String?  // UPI, Bank Transfer, Cash, Cheque
+  referenceNo   String?  // UTR / Transaction Ref
   remarks       String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -662,4 +665,22 @@ model EmployeeExpense {
   @@index([assignerEmail])
   @@index([date])
 }
+
+// 💼 Model for Employee Profiles & Base Salary Payroll Setup
+model EmployeeProfile {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  email         String   @unique
+  name          String?
+  phone         String?
+  department    String?  @default("Sales")
+  baseSalary    Float    @default(0)
+  joiningDate   DateTime?
+  bankAccount   String?
+  ifscCode      String?
+  bankName      String?
+  panNumber     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
 
