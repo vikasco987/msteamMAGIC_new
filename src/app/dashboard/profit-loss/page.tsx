@@ -53,6 +53,7 @@ type GeneralExpense = {
   remarks: string | null;
   attachments: string[];
   isRecurring: boolean;
+  isEmployeeExpense?: boolean;
   createdAt: string;
 };
 
