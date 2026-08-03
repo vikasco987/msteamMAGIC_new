@@ -26,6 +26,7 @@ const PaymentHistoryPage = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [creatorFilter, setCreatorFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("");
   const [syncingAll, setSyncingAll] = useState(false);
 
   useEffect(() => {
@@ -44,7 +45,7 @@ const PaymentHistoryPage = () => {
 
   useEffect(() => {
     fetchHistory(1);
-  }, [search, statusFilter, creatorFilter]);
+  }, [search, statusFilter, creatorFilter, dateFilter]);
 
   // Auto-sync first 10 pending links on load
   useEffect(() => {
@@ -63,7 +64,8 @@ const PaymentHistoryPage = () => {
           limit: 20,
           search,
           status: statusFilter,
-          creator: creatorFilter
+          creator: creatorFilter,
+          date: dateFilter || undefined
         }
       });
       if (res.data.success) {
@@ -162,6 +164,24 @@ const PaymentHistoryPage = () => {
                   <option key={creator} value={creator}>{creator}</option>
                 ))}
               </select>
+            </div>
+
+            <div className="relative flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] px-5 py-4 shadow-xl">
+              <Calendar className="text-slate-400 mr-2" size={18} />
+              <input 
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="bg-transparent text-sm font-bold outline-none text-slate-700 dark:text-slate-200 cursor-pointer"
+              />
+              {dateFilter && (
+                <button 
+                  onClick={() => setDateFilter("")}
+                  className="text-xs font-bold text-rose-500 hover:text-rose-700 ml-2"
+                >
+                  Clear
+                </button>
+              )}
             </div>
 
             <div className="relative">

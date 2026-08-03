@@ -7,7 +7,7 @@ import {
   User, Mail, Phone, FileText, Search, CreditCard, ArrowRight,
   ChevronDown, AlertCircle, Calculator, Wallet, Zap, Clock, UserCheck,
   ShieldCheck, Sparkles, Settings, ChevronRight, LayoutGrid, Filter,
-  ExternalLink, Trash2, Smartphone, BarChart3
+  ExternalLink, Trash2, Smartphone, BarChart3, Calendar
 } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -34,6 +34,10 @@ const PaymentPortal = () => {
   const [originalLink, setOriginalLink] = useState<string | null>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [fetchingHistory, setFetchingHistory] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [dateFilter, setDateFilter] = useState("");
   const [copied, setCopied] = useState(false);
   const [userFound, setUserFound] = useState(false);
   const [hasAnalyticsAccess, setHasAnalyticsAccess] = useState(false);
@@ -75,11 +79,24 @@ const PaymentPortal = () => {
     }
   }, [formData.purpose, paymentType]);
 
-  const fetchHistory = async () => {
+  const fetchHistory = async (page = 1) => {
     setFetchingHistory(true);
     try {
-      const res = await axios.get(`${API_BASE_URL}/get-all-links`);
-      if (res.data.success) setHistory(res.data.links);
+      const res = await axios.get(`${API_BASE_URL}/get-all-links`, {
+        params: {
+          page,
+          limit: 10,
+          date: dateFilter || undefined
+        }
+      });
+      if (res.data.success) {
+        setHistory(res.data.links);
+        if (res.data.pagination) {
+          setTotalPages(res.data.pagination.totalPages || 1);
+          setTotalCount(res.data.pagination.totalCount || 0);
+          setCurrentPage(res.data.pagination.currentPage || 1);
+        }
+      }
     } catch (err: any) { 
       console.error(err); 
       toast.error(err.response?.data?.message || "Failed to fetch history");
@@ -88,9 +105,9 @@ const PaymentPortal = () => {
 
   useEffect(() => {
     if (mode === "history") {
-      fetchHistory();
+      fetchHistory(1);
     }
-  }, [mode]);
+  }, [mode, dateFilter]);
 
   // Auto-sync pending links when history loads
   useEffect(() => {
@@ -180,7 +197,7 @@ const PaymentPortal = () => {
     try {
       const res = await axios.get(`${API_BASE_URL}/check-status?order_id=${orderId}`);
       if (res.data.success) {
-        fetchHistory();
+        fetchHistory(currentPage);
       }
     } catch (err: any) {
       console.error("Sync failed:", err);
@@ -573,18 +590,44 @@ const PaymentPortal = () => {
             animate={{ opacity: 1, y: 0 }}
             className="mt-16 bg-white dark:bg-slate-900 rounded-[3.5rem] border border-slate-200 dark:border-slate-800 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.1)] overflow-hidden"
           >
-            <div className="p-10 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-indigo-600 shadow-sm">
-                  <Clock size={24} />
+            <div className="p-10 border-b border-slate-100 dark:border-slate-800 flex flex-col xl:flex-row justify-between items-center gap-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 w-full xl:w-auto">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-indigo-600 shadow-sm">
+                    <Clock size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase">Audit Logs</h3>
+                    <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase mt-1">Transaction Ledger</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase">Audit Logs</h3>
-                  <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase mt-1">Transaction Ledger</p>
+
+                <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-inner">
+                  <Calendar size={14} className="text-slate-400 ml-2" />
+                  <input 
+                    type="date"
+                    value={dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value)}
+                    className="bg-transparent text-[10px] font-black uppercase outline-none text-slate-600 dark:text-slate-300 px-2 py-1 cursor-pointer"
+                  />
+                  {dateFilter && (
+                    <button 
+                      onClick={() => setDateFilter("")}
+                      className="text-[9px] font-black text-rose-500 hover:text-rose-700 px-2"
+                    >
+                      Clear
+                    </button>
+                  )}
                 </div>
               </div>
               
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                <Link 
+                  href="/payment-portal/reports"
+                  className="px-8 py-4 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 font-black text-[10px] uppercase tracking-[0.25em] rounded-2xl border border-emerald-100 dark:border-emerald-800 hover:bg-emerald-600 hover:text-white hover:shadow-xl hover:shadow-emerald-500/20 transition-all flex items-center gap-3"
+                >
+                  Reports <BarChart3 size={14} />
+                </Link>
                 <Link 
                   href="/payment-portal/history"
                   className="px-8 py-4 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 font-black text-[10px] uppercase tracking-[0.25em] rounded-2xl border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-600 hover:text-white hover:shadow-xl hover:shadow-indigo-500/20 transition-all flex items-center gap-3"
@@ -592,7 +635,7 @@ const PaymentPortal = () => {
                   Pro Analytics <ExternalLink size={14} />
                 </Link>
                 <button 
-                  onClick={fetchHistory} 
+                  onClick={() => fetchHistory(currentPage)} 
                   className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl hover:bg-slate-900 hover:text-white dark:hover:bg-white dark:hover:text-slate-900 transition-all group"
                 >
                   <Zap size={18} className={fetchingHistory ? "animate-spin" : "group-hover:rotate-12"} />
@@ -713,6 +756,54 @@ const PaymentPortal = () => {
                     )}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {!fetchingHistory && totalPages > 1 && (
+              <div className="px-10 py-5 bg-slate-50 dark:bg-slate-800/20 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                  Showing Page {currentPage} of {totalPages} ({totalCount} total links)
+                </span>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => fetchHistory(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-bold text-xs hover:text-indigo-600 disabled:opacity-50 transition-all cursor-pointer"
+                  >
+                    Previous
+                  </button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
+                      if (p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1) {
+                        return (
+                          <button
+                            key={p}
+                            onClick={() => fetchHistory(p)}
+                            className={`w-8 h-8 rounded-xl font-bold text-xs transition-all ${
+                              currentPage === p
+                                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
+                                : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:text-indigo-600"
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        );
+                      }
+                      if (p === 2 || p === totalPages - 1) {
+                        return <span key={p} className="text-xs font-bold text-slate-400">...</span>;
+                      }
+                      return null;
+                    })}
+                  </div>
+                  <button
+                    onClick={() => fetchHistory(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-bold text-xs hover:text-indigo-600 disabled:opacity-50 transition-all cursor-pointer"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             )}
           </motion.div>

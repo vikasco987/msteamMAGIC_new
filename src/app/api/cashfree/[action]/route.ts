@@ -109,6 +109,7 @@ export async function GET(
       const search = searchParams.get("search") || "";
       const status = searchParams.get("status") || "all";
       const creator = searchParams.get("creator") || "all";
+      const dateParam = searchParams.get("date"); // YYYY-MM-DD
 
       const role = String(user.publicMetadata?.role || "user").toLowerCase();
       
@@ -123,6 +124,17 @@ export async function GET(
 
       if (creator !== "all") {
         where.createdBy = creator;
+      }
+
+      if (dateParam) {
+        const start = new Date(dateParam);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(dateParam);
+        end.setHours(23, 59, 59, 999);
+        where.createdAt = {
+          gte: start,
+          lte: end
+        };
       }
 
       if (search) {
@@ -152,6 +164,93 @@ export async function GET(
           totalPages,
           currentPage: page,
           limit
+        }
+      });
+    } catch (error: any) {
+      return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    }
+  }
+
+  if (action === "get-reports") {
+    try {
+      const user = await getClerkUser();
+      if (!user) return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+
+      const role = String(user.publicMetadata?.role || "user").toLowerCase();
+      let where: any = {};
+      if (role !== "master") {
+        where.creatorId = user.id;
+      }
+
+      // Fetch all links to build reports
+      const allLinks = await prisma.cashfreeLink.findMany({
+        where,
+        orderBy: { createdAt: "desc" }
+      });
+
+      // Group by Day
+      const dayMap: Record<string, any> = {};
+      // Group by Week
+      const weekMap: Record<string, any> = {};
+      // Group by Month
+      const monthMap: Record<string, any> = {};
+
+      allLinks.forEach((link) => {
+        const dateObj = new Date(link.createdAt);
+        
+        // Day key: YYYY-MM-DD
+        const dayKey = dateObj.toISOString().split("T")[0];
+        
+        // Month key: YYYY-MM
+        const monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+        
+        // Week key: YYYY-W(number)
+        const tempDate = new Date(dateObj.getTime());
+        tempDate.setHours(0, 0, 0, 0);
+        tempDate.setDate(tempDate.getDate() + 4 - (tempDate.getDay() || 7));
+        const yearStart = new Date(tempDate.getFullYear(), 0, 1);
+        const weekNo = Math.ceil((((tempDate.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+        const weekKey = `${tempDate.getFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+
+        const processGroup = (map: Record<string, any>, key: string, label: string) => {
+          if (!map[key]) {
+            map[key] = {
+              key,
+              label,
+              totalLinks: 0,
+              paidCount: 0,
+              pendingCount: 0,
+              totalBilled: 0,
+              totalCollected: 0,
+              links: []
+            };
+          }
+          map[key].totalLinks += 1;
+          map[key].totalBilled += link.totalAmount;
+          map[key].links.push(link);
+          if (link.status?.toLowerCase() === "paid") {
+            map[key].paidCount += 1;
+            map[key].totalCollected += link.amount;
+          } else {
+            map[key].pendingCount += 1;
+          }
+        };
+
+        const dayLabel = dateObj.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
+        const monthLabel = dateObj.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+        const weekLabel = `Week ${weekNo} (${dateObj.toLocaleDateString("en-US", { month: "short", year: "numeric" })})`;
+
+        processGroup(dayMap, dayKey, dayLabel);
+        processGroup(weekMap, weekKey, weekLabel);
+        processGroup(monthMap, monthKey, monthLabel);
+      });
+
+      return NextResponse.json({
+        success: true,
+        reports: {
+          dayOnDay: Object.values(dayMap).sort((a: any, b: any) => b.key.localeCompare(a.key)),
+          weekOnWeek: Object.values(weekMap).sort((a: any, b: any) => b.key.localeCompare(a.key)),
+          monthOnMonth: Object.values(monthMap).sort((a: any, b: any) => b.key.localeCompare(a.key))
         }
       });
     } catch (error: any) {
