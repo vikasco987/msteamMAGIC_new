@@ -86,7 +86,39 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { assignerEmail, assignerName, title, category, amount, date, remarks } = body;
+    const { assignerEmail, assignerName, employees, splitEqually, title, category, amount, date, remarks } = body;
+
+    if (splitEqually && Array.isArray(employees) && employees.length > 0) {
+      if (!title || amount == null || isNaN(Number(amount))) {
+        return NextResponse.json({ error: "Missing required fields: title, amount" }, { status: 400 });
+      }
+
+      const totalAmount = parseFloat(String(amount));
+      const perPersonAmount = parseFloat((totalAmount / employees.length).toFixed(2));
+      const expDate = date ? new Date(date) : new Date();
+      const splitRemarks = remarks ? `${remarks.trim()} (Equal Split among ${employees.length} employees)` : `Equal Split among ${employees.length} employees (Total ₹${totalAmount})`;
+
+      const createdExpenses = await prisma.$transaction(
+        employees.map((emp: { email: string; name?: string }) =>
+          prisma.employeeExpense.create({
+            data: {
+              assignerEmail: String(emp.email).trim(),
+              assignerName: emp.name ? String(emp.name).trim() : null,
+              title: String(title).trim(),
+              category: category ? String(category).trim() : "Other",
+              amount: perPersonAmount,
+              date: expDate,
+              status: body.status ? String(body.status) : "Paid",
+              paymentMode: body.paymentMode ? String(body.paymentMode) : null,
+              referenceNo: body.referenceNo ? String(body.referenceNo) : null,
+              remarks: splitRemarks,
+            },
+          })
+        )
+      );
+
+      return NextResponse.json({ message: "Split expenses created successfully", count: createdExpenses.length, expenses: createdExpenses }, { status: 201 });
+    }
 
     if (!assignerEmail || !title || amount == null || isNaN(Number(amount))) {
       return NextResponse.json({ error: "Missing required fields: assignerEmail, title, amount" }, { status: 400 });

@@ -18,6 +18,10 @@ const API_BASE_URL = "/api/cashfree";
 const PaymentHistoryPage = () => {
   const { isLoaded, user: currentUser } = useUser();
   const [history, setHistory] = useState<any[]>([]);
+  const [allLinks, setAllLinks] = useState<any[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -25,8 +29,22 @@ const PaymentHistoryPage = () => {
   const [syncingAll, setSyncingAll] = useState(false);
 
   useEffect(() => {
-    fetchHistory();
+    const fetchAnalytics = async () => {
+      try {
+        const res = await axios.get(`${API_BASE_URL}/analytics`);
+        if (res.data.success) {
+          setAllLinks(res.data.links);
+        }
+      } catch (err) {
+        console.error("Analytics fetch error:", err);
+      }
+    };
+    fetchAnalytics();
   }, []);
+
+  useEffect(() => {
+    fetchHistory(1);
+  }, [search, statusFilter, creatorFilter]);
 
   // Auto-sync first 10 pending links on load
   useEffect(() => {
@@ -36,12 +54,25 @@ const PaymentHistoryPage = () => {
     }
   }, [history.length]);
 
-  const fetchHistory = async () => {
+  const fetchHistory = async (page = 1) => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API_BASE_URL}/get-all-links`);
+      const res = await axios.get(`${API_BASE_URL}/get-all-links`, {
+        params: {
+          page,
+          limit: 20,
+          search,
+          status: statusFilter,
+          creator: creatorFilter
+        }
+      });
       if (res.data.success) {
         setHistory(res.data.links);
+        if (res.data.pagination) {
+          setTotalPages(res.data.pagination.totalPages || 1);
+          setTotalCount(res.data.pagination.totalCount || 0);
+          setCurrentPage(res.data.pagination.currentPage || 1);
+        }
       }
     } catch (err: any) {
       toast.error("Failed to load records");
@@ -63,26 +94,13 @@ const PaymentHistoryPage = () => {
     }
   };
 
-  const filteredHistory = history.filter(item => {
-    const matchesSearch = 
-      item.name?.toLowerCase().includes(search.toLowerCase()) ||
-      item.email?.toLowerCase().includes(search.toLowerCase()) ||
-      item.phone?.includes(search) ||
-      item.orderId?.toLowerCase().includes(search.toLowerCase());
-    
-    const matchesStatus = statusFilter === "all" || item.status?.toLowerCase() === statusFilter.toLowerCase();
-    const matchesCreator = creatorFilter === "all" || item.createdBy === creatorFilter;
-
-    return matchesSearch && matchesStatus && matchesCreator;
-  });
-
-  const uniqueCreators = Array.from(new Set(history.map(h => h.createdBy).filter(Boolean)));
+  const uniqueCreators = Array.from(new Set(allLinks.map(h => h.createdBy).filter(Boolean)));
 
   const stats = {
-    total: history.length,
-    paid: history.filter(h => h.status?.toLowerCase() === "paid").length,
-    pending: history.filter(h => h.status?.toLowerCase() === "pending").length,
-    totalAmount: history.reduce((acc, curr) => acc + (curr.status?.toLowerCase() === 'paid' ? curr.amount : 0), 0)
+    total: totalCount,
+    paid: allLinks.filter(h => h.status?.toLowerCase() === "paid").length,
+    pending: allLinks.filter(h => h.status?.toLowerCase() === "pending").length,
+    totalAmount: allLinks.reduce((acc, curr) => acc + (curr.status?.toLowerCase() === 'paid' ? curr.amount : 0), 0)
   };
 
   return (
@@ -157,7 +175,7 @@ const PaymentHistoryPage = () => {
               />
             </div>
             <button 
-              onClick={fetchHistory}
+              onClick={() => fetchHistory(currentPage)}
               className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[1.5rem] text-slate-600 dark:text-slate-400 hover:text-indigo-600 transition-all shadow-xl active:scale-90"
             >
               <RefreshCcw size={20} className={loading ? "animate-spin" : ""} />
@@ -224,7 +242,7 @@ const PaymentHistoryPage = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   <AnimatePresence>
-                    {filteredHistory.map((link, idx) => (
+                    {history.map((link, idx) => (
                       <motion.tr 
                         key={link.id}
                         initial={{ opacity: 0, x: -10 }}
@@ -315,7 +333,7 @@ const PaymentHistoryPage = () => {
                       </motion.tr>
                     ))}
                   </AnimatePresence>
-                  {filteredHistory.length === 0 && (
+                  {history.length === 0 && (
                     <tr>
                       <td colSpan={6} className="py-60 text-center">
                         <div className="flex flex-col items-center gap-6 opacity-10">
@@ -327,6 +345,54 @@ const PaymentHistoryPage = () => {
                   )}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="px-12 py-6 bg-slate-50 dark:bg-slate-800/20 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                Showing Page {currentPage} of {totalPages} ({totalCount} total links)
+              </span>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => fetchHistory(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-5 py-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-bold text-xs hover:text-indigo-600 disabled:opacity-50 transition-all cursor-pointer"
+                >
+                  Previous
+                </button>
+                <div className="flex items-center gap-1.5">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
+                    if (p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1) {
+                      return (
+                        <button
+                          key={p}
+                          onClick={() => fetchHistory(p)}
+                          className={`w-9 h-9 rounded-xl font-bold text-xs transition-all ${
+                            currentPage === p
+                              ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
+                              : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:text-indigo-600"
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      );
+                    }
+                    if (p === 2 || p === totalPages - 1) {
+                      return <span key={p} className="text-xs font-bold text-slate-400">...</span>;
+                    }
+                    return null;
+                  })}
+                </div>
+                <button
+                  onClick={() => fetchHistory(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-5 py-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-bold text-xs hover:text-indigo-600 disabled:opacity-50 transition-all cursor-pointer"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
         </div>

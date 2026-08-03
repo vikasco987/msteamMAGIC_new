@@ -103,19 +103,57 @@ export async function GET(
       // Run real-time auto sync for pending links
       await syncPendingPaymentLinks();
 
+      const { searchParams } = new URL(req.url);
+      const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
+      const limit = Math.max(1, parseInt(searchParams.get("limit") || "20"));
+      const search = searchParams.get("search") || "";
+      const status = searchParams.get("status") || "all";
+      const creator = searchParams.get("creator") || "all";
+
       const role = String(user.publicMetadata?.role || "user").toLowerCase();
       
-      let where = {};
+      let where: any = {};
       if (role !== "master") {
-        where = { creatorId: user.id };
+        where.creatorId = user.id;
       }
+
+      if (status !== "all") {
+        where.status = { equals: status, mode: "insensitive" };
+      }
+
+      if (creator !== "all") {
+        where.createdBy = creator;
+      }
+
+      if (search) {
+        where.OR = [
+          { name: { contains: search, mode: "insensitive" } },
+          { email: { contains: search, mode: "insensitive" } },
+          { phone: { contains: search } },
+          { orderId: { contains: search, mode: "insensitive" } }
+        ];
+      }
+
+      const totalCount = await prisma.cashfreeLink.count({ where });
+      const totalPages = Math.ceil(totalCount / limit);
 
       const links = await prisma.cashfreeLink.findMany({
         where,
         orderBy: { createdAt: "desc" },
-        take: 50
+        skip: (page - 1) * limit,
+        take: limit
       });
-      return NextResponse.json({ success: true, links });
+
+      return NextResponse.json({ 
+        success: true, 
+        links,
+        pagination: {
+          totalCount,
+          totalPages,
+          currentPage: page,
+          limit
+        }
+      });
     } catch (error: any) {
       return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }

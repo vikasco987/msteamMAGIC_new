@@ -44,6 +44,7 @@ const NAVIGATION_GROUPS = [
     title: "Core Fleet",
     items: [
       { label: 'Dashboard', icon: LayoutDashboard, href: '/', roles: ['admin', 'master', 'seller', 'tl'] },
+      { label: 'My Details', icon: UserSquare2, href: '/my-details', roles: ['admin', 'master', 'seller', 'tl', 'user', 'guest', 'intern', 'manager'] },
       { label: 'Team Board', icon: Users, href: '/team-board', roles: ['admin', 'master', 'seller', 'tl', 'user'] },
       { label: 'Create Task', icon: ClipboardList, href: '/create-task', roles: ['admin', 'master', 'seller', 'tl', 'user'] },
       { label: 'Assigned Task', icon: ClipboardCheck, href: '/report', roles: ['admin', 'master', 'seller', 'tl'] },
@@ -433,7 +434,7 @@ export default function Sidebar() {
                 if (userRole === 'master' && (i.label === 'Access Control' || i.label === 'Business Setup' || i.label === 'Payment Portal' || i.label === 'Profit & Loss')) return true;
                 
                 // Ensure new routes are not hidden by stale DB permissions
-                if (i.label === 'Agreements' || i.label === 'Setup Agreement') return hasHardcodedRole;
+                if (i.label === 'Agreements' || i.label === 'Setup Agreement' || i.label === 'My Details') return hasHardcodedRole;
 
                 return dynamicPermissions.includes(i.label);
               }

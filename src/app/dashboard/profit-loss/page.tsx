@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Loader2, TrendingUp, TrendingDown, DollarSign, Package, Edit2, Check, X, AlertTriangle, Mic, UploadCloud, Paperclip, Repeat } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, DollarSign, Package, Edit2, Check, X, AlertTriangle, Mic, UploadCloud, Paperclip, Repeat, Download, Users } from "lucide-react";
 import toast from "react-hot-toast";
 
 // Safe number helper — returns 0 for NaN/null/undefined
@@ -95,6 +95,33 @@ export default function ProfitLossDashboard() {
   const [isUploading, setIsUploading] = useState(false);
   const [publicExpenseToken, setPublicExpenseToken] = useState<string | null>(null);
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+
+  // Edit Expense & Equal Split States
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const [splitEqually, setSplitEqually] = useState(false);
+  const [employeesList, setEmployeesList] = useState<{ name: string; email: string }[]>([]);
+  const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
+  const [loadingEmployees, setLoadingEmployees] = useState(false);
+
+  const fetchEmployees = async () => {
+    if (employeesList.length > 0) return;
+    setLoadingEmployees(true);
+    try {
+      const res = await fetch("/api/stats/user-performance/profitability");
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.assigners)) {
+          const emps = data.assigners.map((a: any) => ({ name: a.name, email: a.email }));
+          setEmployeesList(emps);
+          setSelectedEmployees(emps.map((e: any) => e.email));
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch employees for expense split", err);
+    } finally {
+      setLoadingEmployees(false);
+    }
+  };
 
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -288,17 +315,56 @@ export default function ProfitLossDashboard() {
 
   const handleExpenseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const toastId = toast.loading("Adding expense...");
+    const actionText = editingExpenseId ? "Updating expense..." : splitEqually ? "Splitting expense..." : "Adding expense...";
+    const toastId = toast.loading(actionText);
     try {
-      const res = await fetch("/api/expenses", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(expenseForm)
-      });
-      if (!res.ok) throw new Error("Failed to add expense");
+      if (splitEqually) {
+        if (selectedEmployees.length === 0) {
+          throw new Error("Please select at least 1 employee to split the expense.");
+        }
+        const empsToSplit = employeesList.filter(emp => selectedEmployees.includes(emp.email));
+        const res = await fetch("/api/employee-expenses", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            splitEqually: true,
+            employees: empsToSplit,
+            title: expenseForm.title,
+            amount: expenseForm.amount,
+            date: expenseForm.date,
+            category: "Other",
+            remarks: expenseForm.remarks
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to split expense");
+        toast.success(`Expense split equally among ${selectedEmployees.length} employees!`, { id: toastId });
+      } else if (editingExpenseId) {
+        const res = await fetch("/api/expenses", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: editingExpenseId,
+            ...expenseForm
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to update expense");
+        toast.success("Expense updated successfully!", { id: toastId });
+      } else {
+        const res = await fetch("/api/expenses", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(expenseForm)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to add expense");
+        toast.success("Expense added successfully!", { id: toastId });
+      }
       
-      toast.success("Expense added successfully!", { id: toastId });
       setShowExpenseModal(false);
+      setEditingExpenseId(null);
+      setSplitEqually(false);
       setExpenseForm({ 
         title: "", 
         amount: "", 
@@ -308,7 +374,6 @@ export default function ProfitLossDashboard() {
         attachments: []
       });
       
-      // Reload to recalculate reports and fetch new expenses
       window.location.reload();
     } catch (err: any) {
       toast.error(err.message, { id: toastId });
@@ -325,6 +390,48 @@ export default function ProfitLossDashboard() {
       window.location.reload();
     } catch (err: any) {
       toast.error(err.message, { id: toastId });
+    }
+  };
+
+  const handleOpenEditExpense = (exp: GeneralExpense) => {
+    setEditingExpenseId(exp.id);
+    setExpenseForm({
+      title: exp.title,
+      amount: String(exp.amount),
+      date: exp.date ? new Date(exp.date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+      remarks: exp.remarks || "",
+      isRecurring: exp.isRecurring || false,
+      attachments: exp.attachments || []
+    });
+    setSplitEqually(false);
+    setShowExpenseModal(true);
+  };
+
+  const handleExportCSV = () => {
+    try {
+      let csvContent = "data:text/csv;charset=utf-8,";
+      csvContent += `PROFIT & LOSS REPORT - Month: ${selectedMonth}\n\n`;
+      if (summary) {
+        csvContent += `SUMMARY\n`;
+        csvContent += `Total Revenue,Total Received,Total Expenses,Net Profit (Accrued),Cash Profit\n`;
+        csvContent += `${summary.totalRevenue},${summary.totalReceived},${summary.totalExpense},${summary.netProfit},${summary.cashProfit}\n\n`;
+      }
+      csvContent += `MANUAL EXPENSES\n`;
+      csvContent += `Title,Date,Amount,Remarks / Employee\n`;
+      generalExpenses.forEach(exp => {
+        csvContent += `"${exp.title.replace(/"/g, '""')}","${new Date(exp.date).toLocaleDateString()}",${exp.amount},"${(exp.remarks || '').replace(/"/g, '""')}"\n`;
+      });
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `Profit_Loss_Report_${selectedMonth}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success("P&L Report exported as CSV!");
+    } catch (err) {
+      toast.error("Failed to export report");
     }
   };
 
@@ -358,6 +465,17 @@ export default function ProfitLossDashboard() {
   };
 
   const handleOpenExpenseModal = () => {
+    setEditingExpenseId(null);
+    setSplitEqually(false);
+    setExpenseForm({ 
+      title: "", 
+      amount: "", 
+      date: new Date().toISOString().split("T")[0], 
+      remarks: "",
+      isRecurring: false,
+      attachments: []
+    });
+    fetchEmployees();
     setShowExpenseModal(true);
     fetchPublicExpenseToken();
   };
@@ -431,6 +549,14 @@ export default function ProfitLossDashboard() {
           >
             <Package size={16} />
             Add Manual Expense
+          </button>
+
+          <button  
+            onClick={handleExportCSV}
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-[14px] shadow-sm transition-colors text-sm flex items-center gap-2"
+          >
+            <Download size={16} />
+            Export CSV
           </button>
 
           <div className="bg-slate-100 p-1.5 rounded-2xl inline-flex relative shadow-inner">
@@ -676,8 +802,19 @@ export default function ProfitLossDashboard() {
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <button onClick={() => handleExpenseDelete(exp.id)} className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-100 transition-colors ml-auto opacity-0 group-hover:opacity-100">
+                      <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                        <button 
+                          onClick={() => handleOpenEditExpense(exp)} 
+                          className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-100 transition-colors opacity-0 group-hover:opacity-100"
+                          title="Edit Expense"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                        <button 
+                          onClick={() => handleExpenseDelete(exp.id)} 
+                          className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-100 transition-colors opacity-0 group-hover:opacity-100"
+                          title="Delete Expense"
+                        >
                           <X size={14} />
                         </button>
                       </td>
@@ -747,7 +884,7 @@ export default function ProfitLossDashboard() {
             <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
               <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
                 <Package className="text-rose-500" size={20} />
-                Add Manual Expense
+                {editingExpenseId ? "Edit Manual Expense" : "Add Manual Expense"}
               </h3>
               <button onClick={() => setShowExpenseModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
                 <X size={20} />
@@ -789,6 +926,85 @@ export default function ProfitLossDashboard() {
             </div>
 
             <form onSubmit={handleExpenseSubmit} className="p-6 space-y-4">
+              {!editingExpenseId && (
+                <div className="p-4 bg-indigo-50/60 border border-indigo-100 rounded-2xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Users className="text-indigo-600" size={16} />
+                      <label htmlFor="splitEqually" className="text-xs font-bold text-slate-800 cursor-pointer">
+                        Split Equally Among Employees
+                      </label>
+                    </div>
+                    <input 
+                      type="checkbox" 
+                      id="splitEqually" 
+                      checked={splitEqually} 
+                      onChange={(e) => {
+                        setSplitEqually(e.target.checked);
+                        if (e.target.checked) fetchEmployees();
+                      }} 
+                      className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer"
+                    />
+                  </div>
+
+                  {splitEqually && (
+                    <div className="space-y-3 pt-2 border-t border-indigo-100 animate-in fade-in duration-200">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-slate-600">Select Employees ({selectedEmployees.length}/{employeesList.length}):</span>
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            if (selectedEmployees.length === employeesList.length) {
+                              setSelectedEmployees([]);
+                            } else {
+                              setSelectedEmployees(employeesList.map(e => e.email));
+                            }
+                          }}
+                          className="text-indigo-600 font-bold hover:underline"
+                        >
+                          {selectedEmployees.length === employeesList.length ? "Deselect All" : "Select All"}
+                        </button>
+                      </div>
+
+                      {loadingEmployees ? (
+                        <div className="flex items-center justify-center p-3 text-xs text-slate-400 font-bold">
+                          <Loader2 className="animate-spin mr-2" size={14} /> Loading employees...
+                        </div>
+                      ) : (
+                        <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+                          {employeesList.map((emp) => (
+                            <label key={emp.email} className="flex items-center justify-between p-2 bg-white rounded-xl border border-slate-100 hover:border-indigo-200 cursor-pointer text-xs">
+                              <span className="font-bold text-slate-700">{emp.name} <span className="text-[10px] font-normal text-slate-400">({emp.email})</span></span>
+                              <input 
+                                type="checkbox"
+                                checked={selectedEmployees.includes(emp.email)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedEmployees([...selectedEmployees, emp.email]);
+                                  } else {
+                                    setSelectedEmployees(selectedEmployees.filter(email => email !== emp.email));
+                                  }
+                                }}
+                                className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                              />
+                            </label>
+                          ))}
+                        </div>
+                      )}
+
+                      {expenseForm.amount && selectedEmployees.length > 0 && (
+                        <div className="p-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold text-center flex items-center justify-between">
+                          <span>Split Calculation:</span>
+                          <span className="text-sm font-black">
+                            ₹{expenseForm.amount} ÷ {selectedEmployees.length} = ₹{(Number(expenseForm.amount) / selectedEmployees.length).toFixed(2)} / employee
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Expense Title</label>
                 <div className="relative">

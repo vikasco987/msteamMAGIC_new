@@ -668,19 +668,26 @@ model EmployeeExpense {
 
 // 💼 Model for Employee Profiles & Base Salary Payroll Setup
 model EmployeeProfile {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  email         String   @unique
-  name          String?
-  phone         String?
-  department    String?  @default("Sales")
-  baseSalary    Float    @default(0)
-  joiningDate   DateTime?
-  bankAccount   String?
-  ifscCode      String?
-  bankName      String?
-  panNumber     String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  email                 String   @unique
+  name                  String?
+  phone                 String?
+  department            String?  @default("Sales")
+  designation           String?
+  baseSalary            Float    @default(0)
+  joiningDate           DateTime?
+  accountHolderName     String?
+  bankAccount           String?
+  ifscCode              String?
+  bankName              String?
+  upiId                 String?
+  panNumber             String?
+  aadhaarNumber         String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  address               String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }
 
 

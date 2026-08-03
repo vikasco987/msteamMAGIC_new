@@ -94,3 +94,44 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
+
+export async function PUT(req: NextRequest) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const role = await getUserRole(userId);
+    if (role !== "master") {
+      return NextResponse.json({ error: "Forbidden: Master access required" }, { status: 403 });
+    }
+
+    const body = await req.json();
+    const { id, title, amount, date, remarks, attachments, isRecurring } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: "Expense ID is required" }, { status: 400 });
+    }
+
+    const updateData: any = {};
+    if (title) updateData.title = String(title).trim();
+    if (amount !== undefined && !isNaN(Number(amount))) updateData.amount = parseFloat(String(amount));
+    if (date) updateData.date = new Date(date);
+    if (remarks !== undefined) updateData.remarks = remarks ? String(remarks).trim() : null;
+    if (Array.isArray(attachments)) updateData.attachments = attachments;
+    if (typeof isRecurring === 'boolean') updateData.isRecurring = isRecurring;
+
+    const updatedExpense = await prisma.generalExpense.update({
+      where: { id },
+      data: updateData,
+    });
+
+    return NextResponse.json({ message: "Expense updated successfully", expense: updatedExpense });
+
+  } catch (error) {
+    console.error("❌ Edit Expense Error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
+
