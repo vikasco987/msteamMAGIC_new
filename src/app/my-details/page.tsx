@@ -32,6 +32,7 @@ export default function EmployeeMyDetailsPage() {
     aadhaarUrl: "",
     joiningDate: "",
     bankProofUrl: "",
+    upiQrUrl: "",
     dob: "",
     bloodGroup: "",
     alternatePhone: "",
@@ -72,6 +73,7 @@ export default function EmployeeMyDetailsPage() {
             aadhaarUrl: p.aadhaarUrl || "",
             joiningDate: p.joiningDate ? new Date(p.joiningDate).toISOString().split('T')[0] : "",
             bankProofUrl: p.bankProofUrl || "",
+            upiQrUrl: p.upiQrUrl || "",
             dob: p.dob ? new Date(p.dob).toISOString().split('T')[0] : "",
             bloodGroup: p.bloodGroup || "",
             alternatePhone: p.alternatePhone || "",
@@ -92,11 +94,11 @@ export default function EmployeeMyDetailsPage() {
     fetchProfile();
   }, []);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: "panUrl" | "aadhaarUrl" | "bankProofUrl") => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: "panUrl" | "aadhaarUrl" | "bankProofUrl" | "upiQrUrl") => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const label = field === 'panUrl' ? 'PAN' : field === 'aadhaarUrl' ? 'Aadhaar' : 'Bank Proof';
+    const label = field === 'panUrl' ? 'PAN' : field === 'aadhaarUrl' ? 'Aadhaar' : field === 'upiQrUrl' ? 'UPI QR' : 'Bank Proof';
     const toastId = toast.loading(`Uploading ${label}...`);
     try {
       const formDataUpload = new FormData();
@@ -489,8 +491,22 @@ export default function EmployeeMyDetailsPage() {
                 onChange={(e) => handleFileUpload(e, "bankProofUrl")}
               />
               {formData.bankProofUrl && (
-                <a href={formData.bankProofUrl} target="_blank" rel="noreferrer" className="text-xs text-emerald-400 mt-2 inline-block hover:underline">
+                <a href={formData.bankProofUrl} target="_blank" rel="noreferrer" className="text-xs text-emerald-400 mt-2 mb-6 inline-block hover:underline">
                   View Uploaded Bank Proof
+                </a>
+              )}
+              {!formData.bankProofUrl && <div className="mb-6"></div>}
+
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Upload UPI QR Code (Optional)</label>
+              <input
+                type="file"
+                accept="image/*"
+                className="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-emerald-500/20 file:text-emerald-400 hover:file:bg-emerald-500/30 transition-all"
+                onChange={(e) => handleFileUpload(e, "upiQrUrl")}
+              />
+              {formData.upiQrUrl && (
+                <a href={formData.upiQrUrl} target="_blank" rel="noreferrer" className="text-xs text-emerald-400 mt-2 inline-block hover:underline">
+                  View Uploaded UPI QR
                 </a>
               )}
             </div>

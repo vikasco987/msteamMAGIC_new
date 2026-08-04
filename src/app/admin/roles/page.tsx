@@ -399,6 +399,15 @@ export default function RoleManagementPage() {
                                                 <span className="text-xs text-rose-500 font-bold">No Document</span>
                                             )}
                                         </div>
+                                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 col-span-2">
+                                            <p className="text-xs font-black text-slate-400 uppercase mb-1">UPI QR Code</p>
+                                            <p className="font-bold text-slate-900 mb-2">UPI ID: {viewingProfile.upiId || 'Not provided'}</p>
+                                            {viewingProfile.upiQrUrl ? (
+                                                <a href={viewingProfile.upiQrUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-indigo-600 hover:underline">View Uploaded UPI QR</a>
+                                            ) : (
+                                                <span className="text-xs text-rose-500 font-bold">No Document</span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

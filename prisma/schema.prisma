@@ -681,6 +681,7 @@ model EmployeeProfile {
   ifscCode              String?
   bankName              String?
   upiId                 String?
+  upiQrUrl              String?
   bankProofUrl          String?
   panNumber             String?
   panUrl                String?
