@@ -832,12 +832,15 @@ export async function POST(req: NextRequest) {
     } = body.customFields as CustomFieldsInput ?? {}; // ✅ Added type assertion for better type safety
 
 
+    const activeTabVal = body.activeTab || (body.customFields as any)?.activeTab;
+    const isRTO = activeTabVal === "rto_printer";
+
     if (serialNumber) {
       const cleanSerial = serialNumber.trim();
       const existing = await prisma.serialNumber.findUnique({
         where: { number: cleanSerial }
       });
-      if (existing && existing.status !== "Available") {
+      if (existing && existing.status !== "Available" && !isRTO) {
         return NextResponse.json(
           { error: `⚠️ Serial number ${cleanSerial} is already shipped or registered in inventory!` },
           { status: 400 }
@@ -967,8 +970,8 @@ export async function POST(req: NextRequest) {
         timeline: toNullableString(timeline),
         
         // Ensure top-level amount and received are populated for the report dashboard
-        amount: (amount && !isNaN(parseFloat(amount))) ? parseFloat(amount) : ((packageAmount && !isNaN(parseFloat(packageAmount))) ? parseFloat(packageAmount) : null),
-        received: (amountReceived && !isNaN(parseFloat(amountReceived))) ? parseFloat(amountReceived) : null,
+        amount: isRTO ? 0 : ((amount && !isNaN(parseFloat(amount))) ? parseFloat(amount) : ((packageAmount && !isNaN(parseFloat(packageAmount))) ? parseFloat(packageAmount) : null)),
+        received: isRTO ? 0 : ((amountReceived && !isNaN(parseFloat(amountReceived))) ? parseFloat(amountReceived) : null),
 
         // Similarly for these URLs if they are top-level in your schema
         aadhaarUrl: toNullableString(aadhaarUrl),
