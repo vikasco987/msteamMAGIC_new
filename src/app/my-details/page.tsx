@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { 
   User, Phone, Building2, CreditCard, ShieldCheck, FileText, 
-  MapPin, AlertCircle, Save, CheckCircle2, Loader2, Sparkles, HeartPulse, QrCode
+  MapPin, AlertCircle, Save, CheckCircle2, Loader2, Sparkles, HeartPulse, QrCode, Upload
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
@@ -38,7 +38,8 @@ export default function EmployeeMyDetailsPage() {
     alternatePhone: "",
     permanentAddress: "",
     maritalStatus: "",
-    gender: ""
+    gender: "",
+    profilePhotoUrl: ""
   });
 
   useEffect(() => {
@@ -79,7 +80,8 @@ export default function EmployeeMyDetailsPage() {
             alternatePhone: p.alternatePhone || "",
             permanentAddress: p.permanentAddress || "",
             maritalStatus: p.maritalStatus || "",
-            gender: p.gender || ""
+            gender: p.gender || "",
+            profilePhotoUrl: p.profilePhotoUrl || ""
           });
         } else if (data.user?.fullName) {
           setFormData(prev => ({ ...prev, name: data.user.fullName }));
@@ -94,7 +96,7 @@ export default function EmployeeMyDetailsPage() {
     fetchProfile();
   }, []);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: "panUrl" | "aadhaarUrl" | "bankProofUrl" | "upiQrUrl") => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: "panUrl" | "aadhaarUrl" | "bankProofUrl" | "upiQrUrl" | "profilePhotoUrl") => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -221,6 +223,32 @@ export default function EmployeeMyDetailsPage() {
             <div>
               <h3 className="text-lg font-black text-white">1. Personal & Work Information</h3>
               <p className="text-xs text-slate-400 font-medium">Your primary contact and work details</p>
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Profile Photo</label>
+            <div className="relative group">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleFileUpload(e, "profilePhotoUrl")}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              />
+              <div className="w-full bg-slate-950 border border-slate-800 border-dashed rounded-xl px-4 py-4 flex items-center justify-center gap-3 transition-all group-hover:border-indigo-500/50 group-hover:bg-indigo-500/5">
+                {formData.profilePhotoUrl ? (
+                  <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+                    <CheckCircle2 size={18} /> Photo Uploaded
+                  </div>
+                ) : (
+                  <>
+                    <Upload size={18} className="text-indigo-400 group-hover:scale-110 transition-transform" />
+                    <span className="text-sm font-bold text-slate-300 group-hover:text-indigo-300 transition-colors">
+                      Upload Profile Picture
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
