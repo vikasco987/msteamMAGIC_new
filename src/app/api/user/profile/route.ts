@@ -84,6 +84,16 @@ export async function PUT(req: NextRequest) {
 
     const emailKey = userEmail.toLowerCase().trim();
 
+    // Check if profile exists and is locked
+    const existingProfile = await prisma.employeeProfile.findUnique({
+      where: { email: emailKey },
+      select: { isLocked: true }
+    });
+
+    if (existingProfile?.isLocked) {
+      return NextResponse.json({ error: "Your profile is locked and cannot be edited. Please contact your manager." }, { status: 403 });
+    }
+
     const updatedProfile = await prisma.employeeProfile.upsert({
       where: { email: emailKey },
       update: {

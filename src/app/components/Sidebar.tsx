@@ -92,6 +92,7 @@ const NAVIGATION_GROUPS = [
     items: [
       { label: 'Business Setup', icon: Building2, href: '/admin/settings/business', roles: ['admin', 'master'] },
       { label: 'Access Control', icon: ShieldCheck, href: '/admin/roles', roles: ['master'] },
+      { label: 'Employee Directory', icon: UserSquare2, href: '/admin/employees', roles: ['master'] },
       { label: 'Team Management', icon: Users, href: '/admin/teams', roles: ['master'] },
       { label: 'POS Sign-ups', icon: Users, href: '/admin/pos-signups', roles: ['admin', 'master'] },
       { label: 'DB Backups', icon: Database, href: '/admin/backups', roles: ['master'] },
