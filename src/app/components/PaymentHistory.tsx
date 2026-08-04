@@ -204,11 +204,13 @@ export default function PaymentHistory({ paymentHistory, taskTitle, taskDetails,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    id: tid,
-                    gstin: editForm.gstin,
-                    shopName: editForm.shopName,
-                    phone: editForm.phone,
-                    location: editForm.address // Using location as address
+                    taskId: tid,
+                    updates: {
+                        gstin: editForm.gstin,
+                        shopName: editForm.shopName,
+                        phone: editForm.phone,
+                        location: editForm.address // Using location as address
+                    }
                 })
             });
             toast.success("Details updated in database");

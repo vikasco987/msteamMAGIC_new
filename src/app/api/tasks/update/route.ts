@@ -240,7 +240,7 @@ export async function POST(req: NextRequest) {
     let customFieldsUpdate: any = null;
 
     for (const [f, v] of Object.entries(finalUpdates)) {
-      if (!["amount", "received", "assigneeIds", "assignerName", "assignerEmail", "assigneeId", "assigneeName", "assigneeEmail", "shopName", "phone", "email", "afe", "awbNumber", "editActiveOnly", "editPrevOnly", "previousDispatches"].includes(f)) {
+      if (!["amount", "received", "assigneeIds", "assignerName", "assignerEmail", "assigneeId", "assigneeName", "assigneeEmail", "shopName", "phone", "email", "afe", "awbNumber", "editActiveOnly", "editPrevOnly", "previousDispatches", "gstin"].includes(f)) {
         return NextResponse.json({ error: `Unsupported field: ${f}` }, { status: 400 });
       }
 
@@ -270,6 +270,9 @@ export async function POST(req: NextRequest) {
         if (!customFieldsUpdate) customFieldsUpdate = {};
         customFieldsUpdate.afe = v;
         customFieldsUpdate.costPrice = v !== null ? String(v) : null;
+      } else if (f === "gstin") {
+        if (!customFieldsUpdate) customFieldsUpdate = {};
+        customFieldsUpdate.gstin = v;
       } else if (f === "awbNumber" || f === "editActiveOnly" || f === "editPrevOnly" || f === "previousDispatches") {
         // Handled dynamically below
       } else {

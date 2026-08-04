@@ -681,11 +681,20 @@ model EmployeeProfile {
   ifscCode              String?
   bankName              String?
   upiId                 String?
+  bankProofUrl          String?
   panNumber             String?
+  panUrl                String?
   aadhaarNumber         String?
+  aadhaarUrl            String?
   emergencyContactName  String?
   emergencyContactPhone String?
   address               String?
+  dob                   DateTime?
+  bloodGroup            String?
+  alternatePhone        String?
+  permanentAddress      String?
+  maritalStatus         String?
+  gender                String?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 }

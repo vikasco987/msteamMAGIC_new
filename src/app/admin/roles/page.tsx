@@ -19,7 +19,8 @@ import {
     FileText,
     Cloud,
     HardDrive,
-    Ban
+    Ban,
+    User
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -51,6 +52,8 @@ export default function RoleManagementPage() {
     const [activeTab, setActiveTab] = useState<'users' | 'sidebar'>('users');
     const [changingRoleId, setChangingRoleId] = useState<string | null>(null);
     const [showDocs, setShowDocs] = useState(false);
+    const [viewingProfile, setViewingProfile] = useState<any>(null);
+    const [profileLoading, setProfileLoading] = useState(false);
 
     useEffect(() => {
         if (isLoaded && currentUser) {
@@ -63,6 +66,23 @@ export default function RoleManagementPage() {
             }
         }
     }, [isLoaded, currentUser]);
+
+    const handleViewProfile = async (email: string) => {
+        setProfileLoading(true);
+        try {
+            const res = await fetch(`/api/admin/users/${encodeURIComponent(email)}/profile`);
+            const data = await res.json();
+            if (res.ok && data.profile) {
+                setViewingProfile(data.profile);
+            } else {
+                toast.error(data.message || "Profile details not found for this user");
+            }
+        } catch (error) {
+            toast.error("Failed to load profile details");
+        } finally {
+            setProfileLoading(false);
+        }
+    };
 
     const fetchData = async () => {
         setLoading(true);
@@ -268,6 +288,125 @@ export default function RoleManagementPage() {
                 )}
             </AnimatePresence>
 
+            <AnimatePresence>
+                {viewingProfile && (
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md"
+                    >
+                        <motion.div 
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto bg-white border border-slate-200 rounded-[32px] p-8 shadow-2xl"
+                        >
+                            <div className="flex items-center justify-between mb-8 border-b border-slate-100 pb-6">
+                                <div className="flex items-center gap-3 text-indigo-600">
+                                    <User size={24} />
+                                    <h2 className="text-2xl font-black">Employee Profile</h2>
+                                </div>
+                                <button 
+                                    onClick={() => setViewingProfile(null)}
+                                    className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
+                                >
+                                    <XCircle className="text-slate-400" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p className="text-xs font-black text-slate-400 uppercase">Full Name</p>
+                                        <p className="font-bold text-slate-900">{viewingProfile.name || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-black text-slate-400 uppercase">Phone</p>
+                                        <p className="font-bold text-slate-900">{viewingProfile.phone || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-black text-slate-400 uppercase">Department</p>
+                                        <p className="font-bold text-slate-900">{viewingProfile.department || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-black text-slate-400 uppercase">Designation</p>
+                                        <p className="font-bold text-slate-900">{viewingProfile.designation || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-black text-slate-400 uppercase">Joining Date</p>
+                                        <p className="font-bold text-slate-900">{viewingProfile.joiningDate ? new Date(viewingProfile.joiningDate).toLocaleDateString() : 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-black text-slate-400 uppercase">Date of Birth</p>
+                                        <p className="font-bold text-slate-900">{viewingProfile.dob ? new Date(viewingProfile.dob).toLocaleDateString() : 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-black text-slate-400 uppercase">Alternate Phone</p>
+                                        <p className="font-bold text-slate-900">{viewingProfile.alternatePhone || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-black text-slate-400 uppercase">Blood Group</p>
+                                        <p className="font-bold text-slate-900">{viewingProfile.bloodGroup || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-black text-slate-400 uppercase">Marital Status</p>
+                                        <p className="font-bold text-slate-900">{viewingProfile.maritalStatus || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-black text-slate-400 uppercase">Gender</p>
+                                        <p className="font-bold text-slate-900">{viewingProfile.gender || 'N/A'}</p>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <p className="text-xs font-black text-slate-400 uppercase">Current Address</p>
+                                        <p className="font-bold text-slate-900">{viewingProfile.address || 'N/A'}</p>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <p className="text-xs font-black text-slate-400 uppercase">Permanent Address</p>
+                                        <p className="font-bold text-slate-900">{viewingProfile.permanentAddress || 'N/A'}</p>
+                                    </div>
+                                </div>
+
+                                <div className="border-t border-slate-100 pt-6">
+                                    <h3 className="font-black text-slate-900 mb-4 flex items-center gap-2">
+                                        <ShieldCheck size={18} className="text-indigo-600" /> KYC & Bank Documents
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                            <p className="text-xs font-black text-slate-400 uppercase mb-1">PAN Number</p>
+                                            <p className="font-bold text-slate-900 mb-2">{viewingProfile.panNumber || 'Not provided'}</p>
+                                            {viewingProfile.panUrl ? (
+                                                <a href={viewingProfile.panUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-indigo-600 hover:underline">View Uploaded PAN</a>
+                                            ) : (
+                                                <span className="text-xs text-rose-500 font-bold">No Document</span>
+                                            )}
+                                        </div>
+                                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                            <p className="text-xs font-black text-slate-400 uppercase mb-1">Aadhaar Number</p>
+                                            <p className="font-bold text-slate-900 mb-2">{viewingProfile.aadhaarNumber || 'Not provided'}</p>
+                                            {viewingProfile.aadhaarUrl ? (
+                                                <a href={viewingProfile.aadhaarUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-indigo-600 hover:underline">View Uploaded Aadhaar</a>
+                                            ) : (
+                                                <span className="text-xs text-rose-500 font-bold">No Document</span>
+                                            )}
+                                        </div>
+                                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 col-span-2">
+                                            <p className="text-xs font-black text-slate-400 uppercase mb-1">Bank Proof</p>
+                                            <p className="font-bold text-slate-900 mb-2">Account: {viewingProfile.bankAccount || 'Not provided'}</p>
+                                            {viewingProfile.bankProofUrl ? (
+                                                <a href={viewingProfile.bankProofUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-indigo-600 hover:underline">View Passbook/Cancelled Cheque</a>
+                                            ) : (
+                                                <span className="text-xs text-rose-500 font-bold">No Document</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 mb-12">
                 <div>
                     <div className="flex items-center gap-3 text-indigo-600 mb-2">
@@ -375,6 +514,16 @@ export default function RoleManagementPage() {
                                                 >
                                                     <Ban size={16} className={u.banned ? 'animate-pulse' : ''} />
                                                     {u.banned ? 'UNBLOCK' : 'BLOCK'}
+                                                </button>
+
+                                                <button
+                                                    onClick={() => handleViewProfile(u.email)}
+                                                    disabled={profileLoading}
+                                                    className="px-4 py-2.5 rounded-xl text-sm font-black uppercase tracking-widest bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 transition-all flex items-center gap-2"
+                                                    title="View Profile Details"
+                                                >
+                                                    <FileText size={16} />
+                                                    DETAILS
                                                 </button>
 
                                                 {changingRoleId === u.id && <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />}

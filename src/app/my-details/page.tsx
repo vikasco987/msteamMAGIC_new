@@ -27,7 +27,17 @@ export default function EmployeeMyDetailsPage() {
     ifscCode: "",
     upiId: "",
     panNumber: "",
-    aadhaarNumber: ""
+    panUrl: "",
+    aadhaarNumber: "",
+    aadhaarUrl: "",
+    joiningDate: "",
+    bankProofUrl: "",
+    dob: "",
+    bloodGroup: "",
+    alternatePhone: "",
+    permanentAddress: "",
+    maritalStatus: "",
+    gender: ""
   });
 
   useEffect(() => {
@@ -57,7 +67,17 @@ export default function EmployeeMyDetailsPage() {
             ifscCode: p.ifscCode || "",
             upiId: p.upiId || "",
             panNumber: p.panNumber || "",
-            aadhaarNumber: p.aadhaarNumber || ""
+            panUrl: p.panUrl || "",
+            aadhaarNumber: p.aadhaarNumber || "",
+            aadhaarUrl: p.aadhaarUrl || "",
+            joiningDate: p.joiningDate ? new Date(p.joiningDate).toISOString().split('T')[0] : "",
+            bankProofUrl: p.bankProofUrl || "",
+            dob: p.dob ? new Date(p.dob).toISOString().split('T')[0] : "",
+            bloodGroup: p.bloodGroup || "",
+            alternatePhone: p.alternatePhone || "",
+            permanentAddress: p.permanentAddress || "",
+            maritalStatus: p.maritalStatus || "",
+            gender: p.gender || ""
           });
         } else if (data.user?.fullName) {
           setFormData(prev => ({ ...prev, name: data.user.fullName }));
@@ -71,6 +91,30 @@ export default function EmployeeMyDetailsPage() {
     }
     fetchProfile();
   }, []);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: "panUrl" | "aadhaarUrl" | "bankProofUrl") => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const label = field === 'panUrl' ? 'PAN' : field === 'aadhaarUrl' ? 'Aadhaar' : 'Bank Proof';
+    const toastId = toast.loading(`Uploading ${label}...`);
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append("file", file);
+      
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formDataUpload,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      
+      setFormData(prev => ({ ...prev, [field]: data.url }));
+      toast.success("Uploaded successfully!", { id: toastId });
+    } catch (err: any) {
+      toast.error(err.message || "Upload failed", { id: toastId });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -228,14 +272,104 @@ export default function EmployeeMyDetailsPage() {
               />
             </div>
 
-            <div className="md:col-span-2">
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Joining Date</label>
+              <input
+                type="date"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-bold"
+                value={formData.joiningDate}
+                onChange={(e) => setFormData({ ...formData, joiningDate: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Date of Birth</label>
+              <input
+                type="date"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-bold"
+                value={formData.dob}
+                onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Alternate Phone</label>
+              <input
+                type="tel"
+                placeholder="e.g. +91 9988776655"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-bold"
+                value={formData.alternatePhone}
+                onChange={(e) => setFormData({ ...formData, alternatePhone: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Blood Group</label>
+              <select
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-bold"
+                value={formData.bloodGroup}
+                onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
+              >
+                <option value="">Select Blood Group</option>
+                <option value="A+">A+</option>
+                <option value="A-">A-</option>
+                <option value="B+">B+</option>
+                <option value="B-">B-</option>
+                <option value="O+">O+</option>
+                <option value="O-">O-</option>
+                <option value="AB+">AB+</option>
+                <option value="AB-">AB-</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Marital Status</label>
+              <select
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-bold"
+                value={formData.maritalStatus}
+                onChange={(e) => setFormData({ ...formData, maritalStatus: e.target.value })}
+              >
+                <option value="">Select Status</option>
+                <option value="Single">Single</option>
+                <option value="Married">Married</option>
+                <option value="Divorced">Divorced</option>
+                <option value="Widowed">Widowed</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Gender</label>
+              <select
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-bold"
+                value={formData.gender}
+                onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+              >
+                <option value="">Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div>
               <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Current Address</label>
               <textarea
                 rows={2}
-                placeholder="Enter complete residential address..."
+                placeholder="Enter current residential address..."
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-bold"
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Permanent Address</label>
+              <textarea
+                rows={2}
+                placeholder="Enter permanent residential address..."
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-bold"
+                value={formData.permanentAddress}
+                onChange={(e) => setFormData({ ...formData, permanentAddress: e.target.value })}
               />
             </div>
           </div>
@@ -341,11 +475,24 @@ export default function EmployeeMyDetailsPage() {
                 <input
                   type="text"
                   placeholder="e.g. rahul@okaxis / 9876543210@paytm"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-bold"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-bold mb-4"
                   value={formData.upiId}
                   onChange={(e) => setFormData({ ...formData, upiId: e.target.value })}
                 />
               </div>
+
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Upload Passbook / Cancelled Cheque</label>
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                className="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-emerald-500/20 file:text-emerald-400 hover:file:bg-emerald-500/30 transition-all"
+                onChange={(e) => handleFileUpload(e, "bankProofUrl")}
+              />
+              {formData.bankProofUrl && (
+                <a href={formData.bankProofUrl} target="_blank" rel="noreferrer" className="text-xs text-emerald-400 mt-2 inline-block hover:underline">
+                  View Uploaded Bank Proof
+                </a>
+              )}
             </div>
           </div>
         </div>
@@ -368,10 +515,22 @@ export default function EmployeeMyDetailsPage() {
               <input
                 type="text"
                 placeholder="e.g. ABCDE1234F"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all font-bold uppercase"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all font-bold uppercase mb-3"
                 value={formData.panNumber}
                 onChange={(e) => setFormData({ ...formData, panNumber: e.target.value })}
               />
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Upload PAN Card Image</label>
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                className="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-purple-500/20 file:text-purple-400 hover:file:bg-purple-500/30 transition-all"
+                onChange={(e) => handleFileUpload(e, "panUrl")}
+              />
+              {formData.panUrl && (
+                <a href={formData.panUrl} target="_blank" rel="noreferrer" className="text-xs text-purple-400 mt-2 inline-block hover:underline">
+                  View Uploaded PAN
+                </a>
+              )}
             </div>
 
             <div>
@@ -379,10 +538,22 @@ export default function EmployeeMyDetailsPage() {
               <input
                 type="text"
                 placeholder="e.g. 1234 5678 9012"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all font-bold"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all font-bold mb-3"
                 value={formData.aadhaarNumber}
                 onChange={(e) => setFormData({ ...formData, aadhaarNumber: e.target.value })}
               />
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Upload Aadhaar Card Image</label>
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                className="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-purple-500/20 file:text-purple-400 hover:file:bg-purple-500/30 transition-all"
+                onChange={(e) => handleFileUpload(e, "aadhaarUrl")}
+              />
+              {formData.aadhaarUrl && (
+                <a href={formData.aadhaarUrl} target="_blank" rel="noreferrer" className="text-xs text-purple-400 mt-2 inline-block hover:underline">
+                  View Uploaded Aadhaar
+                </a>
+              )}
             </div>
           </div>
         </div>
