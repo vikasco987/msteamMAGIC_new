@@ -59,6 +59,9 @@ const columns = [
 ];
 
 const getTaskBgColor = (task: TaskType) => {
+  if (task.customFields?.activeTab === "escalation") {
+    return "bg-red-50 border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)] border-2";
+  }
   if (task.status === "done") return "bg-emerald-50/50 border-emerald-100";
   if (!task.createdAt) return "bg-white border-slate-100";
 

@@ -5,7 +5,7 @@ import { useAuth } from "@clerk/nextjs";
 import dynamic from "next/dynamic";
 import { Briefcase, Users, Edit3 } from "lucide-react";
 
-type TabType = "license" | "swiggy" | "zomato" | "combo" | "photo" | "account" | "other" | "printer" | "printer_software" | "rto_printer";
+type TabType = "license" | "swiggy" | "zomato" | "combo" | "photo" | "account" | "other" | "printer" | "printer_software" | "rto_printer" | "escalation";
 
 const ClientSelect = dynamic(() => import("./ClientSelect"), { ssr: false });
 
@@ -25,6 +25,7 @@ const TASK_CATEGORIES = [
   { label: "🖨️ Printer Setup", value: "printer" },
   { label: "🖨️💻 Printer + Software", value: "printer_software" },
   { label: "🔄 RTO Printer", value: "rto_printer" },
+  { label: "⚠️ Escalation", value: "escalation" },
   { label: "🛠️ Other", value: "other" },
 ];
 
@@ -77,7 +78,7 @@ export default function BasicInfoStep({
     label: `${member.name || member.email} (${member.email})`,
   }));
 
-  const isCustom = activeTab === "other";
+  const isCustom = activeTab === "other" || activeTab === "escalation";
   const inputClass = "w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white text-sm font-medium text-slate-700 placeholder:text-slate-400";
   const labelClass = "block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1";
 
@@ -115,12 +116,14 @@ export default function BasicInfoStep({
 
           {isCustom && (
             <div className="animate-in zoom-in-95 duration-300">
-              <label className={labelClass}>✍️ Custom Title</label>
+              <label className={labelClass}>
+                {activeTab === "escalation" ? "⚠️ Issue Title" : "✍️ Custom Title"}
+              </label>
               <div className="relative group">
                 <input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Enter your custom task title..."
+                  placeholder={activeTab === "escalation" ? "Briefly describe the issue..." : "Enter your custom task title..."}
                   className={inputClass}
                   required
                 />

@@ -380,7 +380,7 @@ import CustomFieldsStep from "./CustomFieldsStep"; // Assuming this component ex
 import { uploadToCloudinary } from "./utils"; // Assuming this utility function exists
 
 // Define TabType more broadly to include all categories
-type TabType = "license" | "swiggy" | "zomato" | "combo" | "photo" | "account" | "other" | "printer" | "printer_software" | "rto_printer";
+type TabType = "license" | "swiggy" | "zomato" | "combo" | "photo" | "account" | "other" | "printer" | "printer_software" | "rto_printer" | "escalation";
 
 type CustomField = {
   label: string;
@@ -400,6 +400,7 @@ const TASK_CATEGORIES = [
   { label: "🖨️ Printer Setup", value: "printer" },
   { label: "🖨️💻 Printer + Software", value: "printer_software" },
   { label: "🔄 RTO Printer", value: "rto_printer" },
+  { label: "⚠️ Escalation", value: "escalation" },
   { label: "🛠️ Other", value: "other" },
 ];
 
@@ -561,7 +562,7 @@ export default function TaskForm() {
     }
 
     if (step === 1) {
-      if (formData.activeTab !== "rto_printer") {
+      if (formData.activeTab !== "rto_printer" && formData.activeTab !== "escalation") {
         // Compulsory fields validation for Merchant Details
         const requiredFields = {
           "Customer Name": formData.customerName,
@@ -785,7 +786,7 @@ export default function TaskForm() {
                 setFormData((prev) => ({
                   ...prev,
                   activeTab: val,
-                  title: val === "other" ? "" : (matchedCategory?.label || ""),
+                  title: (val === "other" || val === "escalation") ? "" : (matchedCategory?.label || ""),
                 }));
               }}
             />
