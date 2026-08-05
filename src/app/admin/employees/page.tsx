@@ -105,6 +105,26 @@ export default function EmployeeDirectoryPage() {
         (emp.name && emp.name.toLowerCase().includes(searchQuery.toLowerCase()))
     );
 
+    const calculateCompletionPercentage = (emp: any) => {
+        const fieldsToCheck = [
+            "name", "phone", "department", "designation", "address", 
+            "emergencyContactName", "emergencyContactPhone", "accountHolderName", 
+            "bankName", "bankAccount", "ifscCode", "upiId", "panNumber", "panUrl", 
+            "aadhaarNumber", "aadhaarUrl", "joiningDate", "bankProofUrl", 
+            "upiQrUrl", "dob", "bloodGroup", "alternatePhone", "permanentAddress", 
+            "maritalStatus", "gender", "profilePhotoUrl"
+        ];
+        
+        let filledCount = 0;
+        fieldsToCheck.forEach(field => {
+            if (emp[field] && String(emp[field]).trim().length > 0) {
+                filledCount++;
+            }
+        });
+        
+        return Math.round((filledCount / fieldsToCheck.length) * 100);
+    };
+
     return (
         <div className="container mx-auto px-6 py-10 max-w-7xl">
             {/* Edit Modal */}
@@ -364,7 +384,23 @@ export default function EmployeeDirectoryPage() {
                                         <div className="flex flex-col">
                                             <span className="font-bold text-slate-900">{emp.name || 'No Name'}</span>
                                             <span className="text-xs font-medium text-slate-500">{emp.email}</span>
-                                            <span className="text-xs font-medium text-slate-400 mt-1">{emp.phone || 'No Phone'}</span>
+                                            <span className="text-xs font-medium text-slate-400 mt-1 mb-2">{emp.phone || 'No Phone'}</span>
+                                            
+                                            <div className="flex items-center gap-2 w-full max-w-[150px]">
+                                                <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                                    <div 
+                                                        className={`h-full rounded-full transition-all ${
+                                                            calculateCompletionPercentage(emp) === 100 
+                                                            ? 'bg-emerald-500' 
+                                                            : calculateCompletionPercentage(emp) > 50 
+                                                                ? 'bg-amber-500' 
+                                                                : 'bg-rose-500'
+                                                        }`}
+                                                        style={{ width: `${calculateCompletionPercentage(emp)}%` }}
+                                                    />
+                                                </div>
+                                                <span className="text-[10px] font-black text-slate-400" title="Profile Completion">{calculateCompletionPercentage(emp)}%</span>
+                                            </div>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
