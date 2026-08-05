@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
-import { Users, Search, Lock, Unlock, ShieldCheck, XCircle, CheckCircle2, FileEdit, Banknote } from "lucide-react";
+import { Users, Search, Lock, Unlock, ShieldCheck, XCircle, CheckCircle2, FileEdit, Banknote, Eye } from "lucide-react";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -14,6 +14,7 @@ export default function EmployeeDirectoryPage() {
     
     // Modal states
     const [editingEmployee, setEditingEmployee] = useState<any>(null);
+    const [viewingEmployee, setViewingEmployee] = useState<any>(null);
     const [editForm, setEditForm] = useState<any>({});
     const [saving, setSaving] = useState(false);
 
@@ -108,6 +109,138 @@ export default function EmployeeDirectoryPage() {
         <div className="container mx-auto px-6 py-10 max-w-7xl">
             {/* Edit Modal */}
             <AnimatePresence>
+                {viewingEmployee && (
+                    <motion.div 
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md"
+                    >
+                        <motion.div 
+                            initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+                            className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white border border-slate-200 rounded-[32px] p-8 shadow-2xl"
+                        >
+                            <div className="flex items-center justify-between mb-8 border-b border-slate-100 pb-6">
+                                <div className="flex items-center gap-3 text-indigo-600">
+                                    <Eye size={24} />
+                                    <h2 className="text-2xl font-black">Employee Full Profile</h2>
+                                </div>
+                                <button onClick={() => setViewingEmployee(null)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+                                    <XCircle className="text-slate-400" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-6">
+                                {/* Basic Info */}
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase">Name</label>
+                                        <p className="font-bold text-slate-800">{viewingEmployee.name || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase">Email</label>
+                                        <p className="font-bold text-slate-800">{viewingEmployee.email || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase">Phone</label>
+                                        <p className="font-bold text-slate-800">{viewingEmployee.phone || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase">Alt Phone</label>
+                                        <p className="font-bold text-slate-800">{viewingEmployee.alternatePhone || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase">DOB</label>
+                                        <p className="font-bold text-slate-800">{viewingEmployee.dob ? new Date(viewingEmployee.dob).toLocaleDateString() : '-'}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase">Blood Group</label>
+                                        <p className="font-bold text-slate-800">{viewingEmployee.bloodGroup || '-'}</p>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase">Current Address</label>
+                                        <p className="font-bold text-slate-800">{viewingEmployee.address || '-'}</p>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase">Permanent Address</label>
+                                        <p className="font-bold text-slate-800">{viewingEmployee.permanentAddress || '-'}</p>
+                                    </div>
+                                </div>
+
+                                {/* Work Info */}
+                                <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-[10px] font-black text-indigo-400 uppercase">Department</label>
+                                        <p className="font-bold text-indigo-900">{viewingEmployee.department || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-indigo-400 uppercase">Designation</label>
+                                        <p className="font-bold text-indigo-900">{viewingEmployee.designation || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-indigo-400 uppercase">Date of Joining</label>
+                                        <p className="font-bold text-indigo-900">{viewingEmployee.joiningDate ? new Date(viewingEmployee.joiningDate).toLocaleDateString() : '-'}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-indigo-400 uppercase">Salary</label>
+                                        <p className="font-bold text-indigo-900">₹ {viewingEmployee.baseSalary?.toLocaleString() || '0'}</p>
+                                    </div>
+                                </div>
+
+                                {/* Bank Details */}
+                                <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-[10px] font-black text-emerald-500 uppercase">Bank Name</label>
+                                        <p className="font-bold text-emerald-900">{viewingEmployee.bankName || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-emerald-500 uppercase">Account Holder</label>
+                                        <p className="font-bold text-emerald-900">{viewingEmployee.accountHolderName || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-emerald-500 uppercase">Account Number</label>
+                                        <p className="font-bold text-emerald-900">{viewingEmployee.bankAccount || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-emerald-500 uppercase">IFSC Code</label>
+                                        <p className="font-bold text-emerald-900">{viewingEmployee.ifscCode || '-'}</p>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="text-[10px] font-black text-emerald-500 uppercase">UPI ID</label>
+                                        <p className="font-bold text-emerald-900">{viewingEmployee.upiId || '-'}</p>
+                                    </div>
+                                </div>
+
+                                {/* KYC & Emergency */}
+                                <div className="bg-rose-50/50 p-4 rounded-xl border border-rose-100 grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-[10px] font-black text-rose-500 uppercase">PAN Number</label>
+                                        <p className="font-bold text-rose-900">{viewingEmployee.panNumber || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-rose-500 uppercase">Aadhaar Number</label>
+                                        <p className="font-bold text-rose-900">{viewingEmployee.aadhaarNumber || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-rose-500 uppercase">Emergency Contact Name</label>
+                                        <p className="font-bold text-rose-900">{viewingEmployee.emergencyContactName || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-rose-500 uppercase">Emergency Contact Phone</label>
+                                        <p className="font-bold text-rose-900">{viewingEmployee.emergencyContactPhone || '-'}</p>
+                                    </div>
+                                </div>
+
+                                {/* Documents Links */}
+                                <div className="flex flex-wrap gap-3">
+                                    {viewingEmployee.profilePhotoUrl && <a href={viewingEmployee.profilePhotoUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 hover:bg-indigo-100">View Photo</a>}
+                                    {viewingEmployee.panUrl && <a href={viewingEmployee.panUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 hover:bg-indigo-100">View PAN</a>}
+                                    {viewingEmployee.aadhaarUrl && <a href={viewingEmployee.aadhaarUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 hover:bg-indigo-100">View Aadhaar</a>}
+                                    {viewingEmployee.bankProofUrl && <a href={viewingEmployee.bankProofUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 hover:bg-indigo-100">View Bank Proof</a>}
+                                    {viewingEmployee.upiQrUrl && <a href={viewingEmployee.upiQrUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 hover:bg-indigo-100">View UPI QR</a>}
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
                 {editingEmployee && (
                     <motion.div 
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -273,13 +406,22 @@ export default function EmployeeDirectoryPage() {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        <button 
-                                            onClick={() => handleEditClick(emp)}
-                                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
-                                            title="Edit Employee Details"
-                                        >
-                                            <FileEdit size={20} />
-                                        </button>
+                                        <div className="flex items-center justify-end gap-2">
+                                            <button 
+                                                onClick={() => setViewingEmployee(emp)}
+                                                className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+                                                title="View Full Details"
+                                            >
+                                                <Eye size={20} />
+                                            </button>
+                                            <button 
+                                                onClick={() => handleEditClick(emp)}
+                                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                                                title="Edit Employee Details"
+                                            >
+                                                <FileEdit size={20} />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
