@@ -41,8 +41,10 @@ function CommonFooter() {
 export default function SetupAgreementPDF({ company, client, agreement, customHtml }) {
   if (!company || !client || !agreement) return null;
 
+  const title = `${client.name?.trim().replace(/\s+/g, '_') || 'Client'}_Setup_Agreement_${(agreement.date || '').toString().replace(/\s+/g, '_')}`;
+
   return (
-    <Document title="Setup Agreement" author={company.name} creator="Magic Scale">
+    <Document title={title} author={company.name} creator="Magic Scale">
       <Page size="A4" style={styles.page}>
         <CommonHeader date={agreement.date} company={company} client={client} />
         
