@@ -32,7 +32,6 @@ export async function GET(
 
     const expenses = await prisma.employeeExpense.findMany({
       where: {
-        category: "Salary",
         assignerEmail: profile.email
       },
       orderBy: {

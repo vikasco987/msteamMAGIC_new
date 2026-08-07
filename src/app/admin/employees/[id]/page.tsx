@@ -200,37 +200,46 @@ export default function EmployeeFinancialProfile({ params }: { params: { id: str
         <table className="w-full text-left">
           <thead>
             <tr className="bg-slate-50">
-              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Month</th>
-              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Gross</th>
-              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Deduction</th>
-              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Net Salary</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Category</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Title & Remarks</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Amount</th>
               <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
-              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Slip</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {payroll.length === 0 ? (
               <tr>
-                <td colSpan={6} className="p-12 text-center text-slate-400 font-bold">No payroll records found</td>
+                <td colSpan={6} className="p-12 text-center text-slate-400 font-bold">No expense/payroll records found</td>
               </tr>
             ) : (
               payroll.map((pay, i) => {
-                const monthName = new Date(pay.date).toLocaleDateString('default', { month: 'long', year: 'numeric' });
+                const dateStr = new Date(pay.date).toLocaleDateString('default', { day: '2-digit', month: 'short', year: 'numeric' });
                 return (
                   <tr key={i} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4 font-bold text-slate-800">{monthName}</td>
-                    <td className="px-6 py-4 font-bold text-slate-600 text-right">₹{pay.amount?.toLocaleString() || 0}</td>
-                    <td className="px-6 py-4 font-bold text-rose-500 text-right">- ₹0</td>
-                    <td className="px-6 py-4 font-black text-emerald-600 text-right">₹{pay.amount?.toLocaleString() || 0}</td>
+                    <td className="px-6 py-4 font-bold text-slate-800 text-xs">{dateStr}</td>
+                    <td className="px-6 py-4">
+                      <span className="px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest bg-indigo-100 text-indigo-700">
+                        {pay.category || 'Salary'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="font-bold text-slate-800 text-sm">{pay.title || 'Salary Payment'}</p>
+                      {pay.remarks && <p className="text-[10px] font-bold text-slate-400 mt-0.5">{pay.remarks}</p>}
+                    </td>
+                    <td className="px-6 py-4 font-black text-slate-800 text-right">₹{pay.amount?.toLocaleString() || 0}</td>
                     <td className="px-6 py-4 text-center">
-                      <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-100 px-2.5 py-1 rounded-md">
-                        {pay.status}
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md ${pay.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {pay.status || 'Paid'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button onClick={() => toast.error("PDF generation coming in V2")} className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:underline">
-                        PDF
-                      </button>
+                      {pay.category === 'Salary' && (
+                        <button onClick={() => toast.error("PDF generation coming in V2")} className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:underline">
+                          Payslip
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );

@@ -127,7 +127,7 @@ export default function AssignerProfitabilityPage() {
         assignerEmail: selectedAssigner.email,
         assignerName: selectedAssigner.name,
         title: newExpense.title,
-        category: newExpense.category,
+        category: newExpense.category === "Other" && newExpense.customCategory ? newExpense.customCategory : newExpense.category,
         amount: parseFloat(newExpense.amount),
         date: newExpense.date,
         remarks: newExpense.remarks
@@ -137,6 +137,7 @@ export default function AssignerProfitabilityPage() {
       setNewExpense({
         title: "",
         category: "Salary",
+        customCategory: "",
         amount: "",
         remarks: "",
         date: format(new Date(), "yyyy-MM-dd")
@@ -709,6 +710,20 @@ export default function AssignerProfitabilityPage() {
                           <option value="Other">Other Overhead</option>
                         </select>
                       </div>
+
+                      {newExpense.category === 'Other' && (
+                        <div className="col-span-2">
+                          <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Custom Category Name</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Office Supplies"
+                            required
+                            className="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 focus:outline-none focus:border-indigo-500"
+                            value={newExpense.customCategory || ''}
+                            onChange={(e) => setNewExpense({ ...newExpense, customCategory: e.target.value })}
+                          />
+                        </div>
+                      )}
 
                       <div>
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Amount (₹)</label>
