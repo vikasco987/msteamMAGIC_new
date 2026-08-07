@@ -12,6 +12,8 @@ export default function EmployeeFinancialProfile({ params }: { params: { id: str
   const [attendance, setAttendance] = useState<any[]>([]);
   const [payroll, setPayroll] = useState<any[]>([]);
   const [timeline, setTimeline] = useState<any[]>([]);
+  const [ledgerData, setLedgerData] = useState<any[]>([]);
+  const [ledgerFilter, setLedgerFilter] = useState("All");
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
 
@@ -21,29 +23,32 @@ export default function EmployeeFinancialProfile({ params }: { params: { id: str
     if (isLoaded && currentUserRole === 'master') {
       fetchData();
     }
-  }, [isLoaded, currentUserRole, params.id]);
+  }, [isLoaded, currentUserRole, params.id, ledgerFilter]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [profileRes, attRes, payRes, timeRes] = await Promise.all([
+      const [profileRes, attRes, payRes, timeRes, ledRes] = await Promise.all([
         fetch(`/api/admin/employees/detail/${params.id}`),
         fetch(`/api/admin/employees/detail/${params.id}/attendance`),
         fetch(`/api/admin/employees/detail/${params.id}/payroll`),
-        fetch(`/api/admin/employees/detail/${params.id}/timeline`)
+        fetch(`/api/admin/employees/detail/${params.id}/timeline`),
+        fetch(`/api/admin/employees/detail/${params.id}/ledger?filter=${ledgerFilter}`)
       ]);
 
-      const [profileData, attData, payData, timeData] = await Promise.all([
+      const [profileData, attData, payData, timeData, ledData] = await Promise.all([
         profileRes.json(),
         attRes.json(),
         payRes.json(),
-        timeRes.json()
+        timeRes.json(),
+        ledRes.json()
       ]);
 
       if (profileRes.ok) setProfile(profileData.profile);
       if (attRes.ok) setAttendance(attData.history || []);
       if (payRes.ok) setPayroll(payData.payrollHistory || []);
       if (timeRes.ok) setTimeline(timeData.timeline || []);
+      if (ledRes.ok) setLedgerData(ledData.ledger || []);
 
     } catch (error) {
       toast.error("Failed to fetch employee details");
@@ -84,7 +89,7 @@ export default function EmployeeFinancialProfile({ params }: { params: { id: str
     { id: "attendance", label: "Attendance", icon: <Calendar size={16} /> },
     { id: "payroll", label: "Payroll", icon: <Banknote size={16} /> },
     { id: "timeline", label: "Timeline", icon: <History size={16} /> },
-    { id: "ledger", label: "Ledger", icon: <FileText size={16} />, v2: true },
+    { id: "ledger", label: "Ledger", icon: <FileText size={16} /> },
     { id: "advances", label: "Advances", icon: <CreditCard size={16} />, v2: true },
     { id: "incentives", label: "Incentives", icon: <Activity size={16} />, v2: true },
     { id: "expenses", label: "Expenses", icon: <Wallet size={16} />, v2: true },
@@ -258,6 +263,65 @@ export default function EmployeeFinancialProfile({ params }: { params: { id: str
         {timeline.length === 0 && (
           <div className="text-slate-400 font-bold ml-12">No activity recorded yet.</div>
         )}
+      </div>
+    </div>
+  );
+
+  const renderLedger = () => (
+    <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+      <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+        <h3 className="text-lg font-black text-slate-800">Financial Ledger</h3>
+        <select 
+          value={ledgerFilter} 
+          onChange={(e) => setLedgerFilter(e.target.value)} 
+          className="text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none"
+        >
+          <option value="This Month">This Month</option>
+          <option value="Last 3 Months">Last 3 Months</option>
+          <option value="All">All Time</option>
+        </select>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-slate-50">
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Type</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Description</th>
+              <th className="px-6 py-4 text-[10px] font-black text-emerald-500 uppercase tracking-widest text-right">Credit</th>
+              <th className="px-6 py-4 text-[10px] font-black text-rose-400 uppercase tracking-widest text-right">Debit</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Balance</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {ledgerData.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="p-12 text-center text-slate-400 font-bold">No ledger records found</td>
+              </tr>
+            ) : (
+              ledgerData.map((item, i) => {
+                const isCredit = item.credit > 0;
+                const isDebit = item.debit > 0;
+                return (
+                  <tr key={i} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-6 py-4 font-bold text-slate-600 text-xs">
+                      {new Date(item.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest ${isCredit ? 'bg-emerald-100 text-emerald-700' : isDebit ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}`}>
+                        {item.type}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-medium text-slate-800">{item.description || "-"}</td>
+                    <td className="px-6 py-4 font-black text-emerald-600 text-right">{isCredit ? `₹${item.credit.toLocaleString()}` : "-"}</td>
+                    <td className="px-6 py-4 font-black text-rose-500 text-right">{isDebit ? `₹${item.debit.toLocaleString()}` : "-"}</td>
+                    <td className="px-6 py-4 font-black text-slate-800 text-right">₹{item.balance?.toLocaleString() || 0}</td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -440,6 +504,7 @@ export default function EmployeeFinancialProfile({ params }: { params: { id: str
         {activeTab === "attendance" && renderAttendance()}
         {activeTab === "payroll" && renderPayroll()}
         {activeTab === "timeline" && renderTimeline()}
+        {activeTab === "ledger" && renderLedger()}
         {tabs.find(t => t.id === activeTab)?.v2 && renderV2Tab(tabs.find(t => t.id === activeTab)?.label || "")}
       </div>
     </div>

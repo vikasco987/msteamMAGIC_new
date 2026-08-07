@@ -25,6 +25,7 @@ export default function PayrollDashboard() {
   const [adjustment, setAdjustment] = useState(0);
   const [paymentMode, setPaymentMode] = useState("Bank Transfer");
   const [remarks, setRemarks] = useState("");
+  const [referenceNo, setReferenceNo] = useState("");
   const [paymentDate, setPaymentDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [paymentStatus, setPaymentStatus] = useState("Paid");
 
@@ -107,20 +108,31 @@ export default function PayrollDashboard() {
       return;
     }
 
+    // Call the new Transaction Engine API
+    const processPayload = {
+      employeeEmail: selectedEmp.email,
+      employeeName: selectedEmp.name,
+      month: format(currentMonth, 'yyyy-MM'),
+      amount: finalAmount,
+      paymentMode,
+      referenceNo,
+      remarks
+    };
+
     try {
-      const res = await fetch("/api/admin/payroll", {
+      const res = await fetch("/api/admin/payroll/process", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(processPayload)
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success(data.message || "Salary processed successfully");
+        toast.success("Payroll transaction successful and locked!");
         setSelectedEmp(null);
         setConfirmPaymentPayload(null);
         fetchPayroll();
       } else {
-        toast.error(data.error || "Failed to process salary");
+        toast.error(data.error || "Failed to process salary transaction");
       }
     } catch (error) {
       toast.error("Network error");
@@ -163,12 +175,14 @@ export default function PayrollDashboard() {
       const exp = emp.expenseRecord;
       setAdjustment(exp.metadata?.adjustment || 0);
       setPaymentMode(exp.paymentMode || "Bank Transfer");
+      setReferenceNo(exp.referenceNo || "");
       setRemarks(exp.remarks || "");
       setPaymentDate(exp.date ? format(new Date(exp.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"));
       setPaymentStatus(exp.status || "Paid");
     } else {
       setAdjustment(0);
       setPaymentMode("Bank Transfer");
+      setReferenceNo("");
       setRemarks("");
       setPaymentDate(format(new Date(), "yyyy-MM-dd"));
       setPaymentStatus("Paid");
@@ -346,6 +360,7 @@ export default function PayrollDashboard() {
                       <div className="flex justify-between"><span className="text-xs font-black text-slate-400 uppercase">Month</span> <span className="font-bold text-slate-800">{format(currentMonth, 'MMMM yyyy')}</span></div>
                       <div className="flex justify-between"><span className="text-xs font-black text-slate-400 uppercase">Net Salary</span> <span className="font-black text-emerald-600">₹{confirmPaymentPayload.finalAmount}</span></div>
                       <div className="flex justify-between"><span className="text-xs font-black text-slate-400 uppercase">Mode</span> <span className="font-bold text-slate-800">{confirmPaymentPayload.paymentMode}</span></div>
+                      {referenceNo && <div className="flex justify-between"><span className="text-xs font-black text-slate-400 uppercase">Ref No</span> <span className="font-bold text-slate-800">{referenceNo}</span></div>}
                     </div>
                   </div>
                   <div className="flex gap-4 pt-4 border-t border-slate-100">
@@ -437,12 +452,24 @@ export default function PayrollDashboard() {
                       className="w-full px-4 py-3 bg-white border-2 border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:border-indigo-500"
                     />
                   </div>
+                  </div>
                 </div>
 
-                <div>
-                  <div className="flex justify-between items-end mb-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Remarks (Optional)</label>
-                    <div className="flex gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Reference / UTR Number (Optional)</label>
+                    <input 
+                      type="text" 
+                      value={referenceNo}
+                      onChange={(e) => setReferenceNo(e.target.value)}
+                      placeholder="e.g. UPI Ref / Cheque No"
+                      className="w-full px-4 py-3 bg-white border-2 border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between items-end mb-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Remarks (Optional)</label>
+                      <div className="flex gap-2">
                       {["+ Performance Bonus", "+ Travel Allowance", "- Deduction", "- Advance Recovery"].map(chip => (
                         <button 
                           key={chip} 

@@ -715,3 +715,50 @@ model EmployeeProfile {
 }
 
 
+// 📖 Model for Employee Financial Ledger (Running history of credits/debits)
+model EmployeeLedger {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  employeeEmail String
+  date          DateTime @default(now())
+  
+  // Generic Transaction Types: Salary Credit, Salary Payment, Advance, Incentive, Deduction, etc.
+  type          String   
+  description   String?
+  
+  credit        Float    @default(0) // Money added to employee (e.g. Salary, Incentive)
+  debit         Float    @default(0) // Money paid/deducted from employee (e.g. Paid Salary, Advance)
+  
+  referenceId   String?  // Link to EmployeeExpense or Advance ID
+  
+  createdBy     String?  // Who created this entry
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([employeeEmail])
+  @@index([date])
+}
+
+// 🏦 Model for Master Cashbook / Company Ledger
+model CashbookEntry {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  voucherNo       String?  @unique
+  transactionDate DateTime @default(now())
+  description     String
+  
+  type            String   // "IN" (Credit) or "OUT" (Debit)
+  category        String   // "Payroll", "Advance", "Reimbursement", "Office Expense", "Purchase", "Sales", "Bank Deposit", "Bank Withdrawal"
+  amount          Float
+  status          String   @default("Approved") // "Pending", "Approved", "Paid", "Failed", "Cancelled"
+  
+  paymentMode     String?  // UPI, Bank Transfer, Cash, Cheque
+  referenceNo     String?  // UTR / Transaction Ref / Cheque No
+  notes           String?
+  branchId        String?
+  
+  createdBy       String?  // Clerk User ID or email
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([transactionDate])
+  @@index([category])
+}
