@@ -8,6 +8,7 @@ import {
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, addMonths, subMonths } from "date-fns";
+import Link from "next/link";
 
 export default function PayrollDashboard() {
   const { user: currentUser, isLoaded } = useUser();
@@ -365,6 +366,12 @@ export default function PayrollDashboard() {
           <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-none">
             Payroll <span className="text-indigo-600">Dashboard</span>
           </h1>
+          <div className="mt-4">
+            <Link href="/admin/employees" className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-50 text-indigo-700 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-sm border border-indigo-100">
+                <Users size={16} />
+                Go to Employee Directory
+            </Link>
+          </div>
         </div>
         
         <div className="flex items-center bg-white p-2 rounded-2xl border border-slate-200 shadow-sm">

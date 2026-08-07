@@ -2,9 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
-import { Users, Search, Lock, Unlock, ShieldCheck, XCircle, CheckCircle2, FileEdit, Banknote, Eye } from "lucide-react";
+import { Users, Search, Lock, Unlock, ShieldCheck, XCircle, CheckCircle2, FileEdit, Banknote, Eye, DollarSign } from "lucide-react";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 
 export default function EmployeeDirectoryPage() {
     const { user: currentUser, isLoaded } = useUser();
@@ -351,6 +352,12 @@ export default function EmployeeDirectoryPage() {
                         <span className="text-sm font-black uppercase tracking-[0.3em] opacity-80">Master Control</span>
                     </div>
                     <h1 className="text-5xl font-black text-slate-900 tracking-tight leading-none">Employee <span className="text-indigo-600">Directory</span></h1>
+                    <div className="mt-4">
+                        <Link href="/admin/payroll" className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-50 text-indigo-700 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-sm border border-indigo-100">
+                            <DollarSign size={16} />
+                            Go to Payroll Dashboard
+                        </Link>
+                    </div>
                 </div>
                 
                 <div className="w-full md:w-96 relative">
