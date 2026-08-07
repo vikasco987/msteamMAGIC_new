@@ -94,6 +94,7 @@ const NAVIGATION_GROUPS = [
     title: "System",
     items: [
       { label: 'Client Locator', icon: MapPin, href: '/dashboard/territory', roles: ['admin', 'master', 'seller'] },
+      { label: 'CRM Settings', icon: Settings, href: '/admin/settings', roles: ['master'] },
       { label: 'Business Setup', icon: Building2, href: '/admin/settings/business', roles: ['admin', 'master'] },
       { label: 'Access Control', icon: ShieldCheck, href: '/admin/roles', roles: ['master'] },
       { label: 'Employee Directory', icon: UserSquare2, href: '/admin/employees', roles: ['master'] },
