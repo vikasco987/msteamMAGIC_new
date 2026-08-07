@@ -27,6 +27,7 @@ import {
   Zap,
   Briefcase,
   Calendar,
+  PhoneCall,
   Activity,
   Database,
   Clock,
