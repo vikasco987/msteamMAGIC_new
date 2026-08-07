@@ -511,11 +511,54 @@ export async function GET(req: Request) {
         deviceInfo: r.deviceInfo || null,
         createdAt: r.createdAt,
         updatedAt: r.updatedAt,
-        // 👇 new fields (safe additions)
         isLate,
         isEarlyLeave,
       };
     });
+
+    // ---------------- Inject Absents (Daily View Only) ----------------
+    const isDailyView = !month || (date && !month);
+    if (isDailyView) {
+      const targetDateStr = date || new Date().toISOString().split("T")[0];
+      
+      const userQuery: any = {};
+      // Apply the same permission filters as the main query
+      if (!isPrivileged) {
+        userQuery.clerkId = where.userId;
+      }
+      // Assuming only active users should be shown as absent
+      // userQuery.isActive = true; (if such a field exists, otherwise we get all)
+
+      const allUsers = await prisma.user.findMany({
+        where: userQuery,
+        select: { clerkId: true, name: true, email: true }
+      });
+
+      const presentUserIds = new Set(enriched.map(r => r.userId));
+      const absentUsers = allUsers.filter(u => !presentUserIds.has(u.clerkId));
+
+      const absentRecords = absentUsers.map(u => ({
+        id: `absent-${u.clerkId}`,
+        userId: u.clerkId,
+        employeeName: u.name || userMap.get(u.clerkId) || u.email || "Unknown",
+        date: new Date(`${targetDateStr}T10:00:00.000Z`).toISOString(),
+        checkIn: null,
+        checkOut: null,
+        workingHours: 0,
+        overtimeHours: 0,
+        remarks: null,
+        status: "Absent",
+        verified: false,
+        location: null,
+        deviceInfo: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isLate: false,
+        isEarlyLeave: false
+      }));
+
+      enriched.push(...absentRecords);
+    }
 
     return NextResponse.json(enriched);
   } catch (error: any) {
