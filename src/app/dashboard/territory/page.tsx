@@ -200,7 +200,9 @@ export default function TerritoryDashboard() {
                 <div className="space-y-4 mb-8">
                   <div>
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Phone</label>
-                    <p className="font-bold text-slate-800">{selectedCustomer.phone}</p>
+                    <p className="font-bold text-slate-800">
+                      {showFullPhone ? selectedCustomer.phone : (selectedCustomer.phone && selectedCustomer.phone.length > 4 ? '******' + selectedCustomer.phone.slice(-4) : selectedCustomer.phone)}
+                    </p>
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Location</label>
