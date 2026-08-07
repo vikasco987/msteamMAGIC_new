@@ -51,6 +51,11 @@ export async function GET(req: Request) {
       }
     });
 
+    // Fetch all Users to map email to clerkId
+    const users = await prisma.user.findMany({
+      select: { clerkId: true, email: true, name: true }
+    });
+
     // Process data
     let totalPayroll = 0;
     let totalPaid = 0;
@@ -58,7 +63,14 @@ export async function GET(req: Request) {
     let totalLocked = 0;
 
     const payrollData = employees.map(emp => {
-      const empAttendances = attendances.filter(a => a.employeeName === emp.name || a.userId === emp.email); // Fallback matching
+      // Find the corresponding User record for this EmployeeProfile
+      const matchingUser = users.find(u => u.email === emp.email || u.name === emp.name);
+      
+      const empAttendances = attendances.filter(a => 
+        a.employeeName === emp.name || 
+        a.userId === emp.email || 
+        (matchingUser && a.userId === matchingUser.clerkId)
+      );
       
       let present = 0, paidLeave = 0, holiday = 0, weeklyOff = 0;
       empAttendances.forEach(a => {
