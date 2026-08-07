@@ -52,12 +52,12 @@ export async function GET(req: Request) {
     });
 
     // Process data
+    let totalPayroll = 0;
+    let totalPaid = 0;
+    let totalPending = 0;
+    let totalLocked = 0;
+
     const payrollData = employees.map(emp => {
-      // Find employee's Clerk User ID (if mapped) or use email to match attendance
-      // Attendance is saved with userId (Clerk ID) and employeeName. EmployeeProfile has email.
-      // Let's assume EmployeeProfile email matches the Clerk user's email, so we need to map it.
-      // Since Attendance might not have email, we map by name for now, or preferably we should have Clerk ID in EmployeeProfile.
-      
       const empAttendances = attendances.filter(a => a.employeeName === emp.name || a.userId === emp.email); // Fallback matching
       
       let present = 0, paidLeave = 0, holiday = 0, weeklyOff = 0;
@@ -77,6 +77,14 @@ export async function GET(req: Request) {
 
       // Check if salary already processed
       const existingExpense = expenses.find(e => e.assignerEmail === emp.email);
+      const isLocked = existingExpense?.metadata && (existingExpense.metadata as any).isLocked === true;
+      const expenseAmount = existingExpense ? existingExpense.amount : calculatedSalary;
+
+      totalPayroll += expenseAmount;
+      if (existingExpense?.status === "Paid") totalPaid += expenseAmount;
+      else totalPending += expenseAmount;
+
+      if (isLocked) totalLocked++;
 
       return {
         employeeId: emp.id,
@@ -88,11 +96,20 @@ export async function GET(req: Request) {
         attendancePercent: attendancePercent.toFixed(1),
         calculatedSalary: calculatedSalary.toFixed(2),
         status: existingExpense ? existingExpense.status : "Pending",
-        expenseRecord: existingExpense || null
+        expenseRecord: existingExpense || null,
+        isLocked
       };
     });
 
-    return NextResponse.json({ payroll: payrollData });
+    const summary = {
+      employees: employees.length,
+      payroll: totalPayroll.toFixed(2),
+      paid: totalPaid.toFixed(2),
+      pending: totalPending.toFixed(2),
+      locked: totalLocked
+    };
+
+    return NextResponse.json({ payroll: payrollData, summary });
   } catch (error) {
     console.error("GET Payroll Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
@@ -137,17 +154,36 @@ export async function POST(req: Request) {
       }
     });
 
-    const metadata = {
-      salaryMonth: monthString,
-      salaryYear: yearString,
-      attendanceDays: payableDays,
-      workingDays: totalWorkingDays,
-      calculatedAmount,
-      adjustment,
-      finalAmount
+    const isLocked = status === "Paid";
+    const auditEvent = {
+      action: existing ? "Reprocessed" : "Processed",
+      amount: finalAmount,
+      by: user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.username || email.split('@')[0],
+      date: new Date().toISOString()
     };
 
     if (existing) {
+      const existingMetadata = (existing.metadata as any) || {};
+      
+      if (existingMetadata.isLocked) {
+        return NextResponse.json({ error: "Record is locked. Please unlock it first." }, { status: 403 });
+      }
+
+      const auditLog = existingMetadata.auditLog || [];
+      auditLog.push(auditEvent);
+
+      const metadata = {
+        salaryMonth: monthString,
+        salaryYear: yearString,
+        attendanceDays: payableDays,
+        workingDays: totalWorkingDays,
+        calculatedAmount,
+        adjustment,
+        finalAmount,
+        isLocked,
+        auditLog
+      };
+
       // Update existing
       const updated = await prisma.employeeExpense.update({
         where: { id: existing.id },
@@ -162,6 +198,18 @@ export async function POST(req: Request) {
       });
       return NextResponse.json({ success: true, message: "Salary record updated", record: updated });
     } else {
+      const metadata = {
+        salaryMonth: monthString,
+        salaryYear: yearString,
+        attendanceDays: payableDays,
+        workingDays: totalWorkingDays,
+        calculatedAmount,
+        adjustment,
+        finalAmount,
+        isLocked,
+        auditLog: [auditEvent]
+      };
+
       // Create new
       const created = await prisma.employeeExpense.create({
         data: {

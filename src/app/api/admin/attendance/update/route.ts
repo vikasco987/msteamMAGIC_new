@@ -373,6 +373,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // 🔒 Check if Salary is Locked for this month
+    const startOfAttendanceMonth = new Date(attendanceDate.getFullYear(), attendanceDate.getMonth(), 1);
+    const endOfAttendanceMonth = new Date(attendanceDate.getFullYear(), attendanceDate.getMonth() + 1, 0, 23, 59, 59);
+
+    // Try to find the user's email from profile
+    const profile = await prisma.employeeProfile.findFirst({
+      where: { clerkId: employeeId }
+    });
+
+    if (profile) {
+      const existingExpense = await prisma.employeeExpense.findFirst({
+        where: {
+          assignerEmail: profile.email,
+          category: "Salary",
+          date: { gte: startOfAttendanceMonth, lte: endOfAttendanceMonth }
+        }
+      });
+
+      if (existingExpense && (existingExpense.metadata as any)?.isLocked === true) {
+        return NextResponse.json(
+          { error: "Attendance cannot be updated because the salary for this month is already Paid and Locked." },
+          { status: 403 }
+        );
+      }
+    }
+
     // 🔄 Create attendance (duplicates allowed)
     const attendance = await prisma.attendance.create({
       data: {

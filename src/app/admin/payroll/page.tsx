@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { 
-  Building2, Calendar, Users, DollarSign, Activity, FileText, CheckCircle2, Lock, ChevronLeft, ChevronRight, Calculator, AlertCircle
+  Building2, Calendar, Users, DollarSign, Activity, FileText, CheckCircle2, Lock, ChevronLeft, ChevronRight, Calculator, AlertCircle, Unlock
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -12,6 +12,7 @@ import { format, addMonths, subMonths } from "date-fns";
 export default function PayrollDashboard() {
   const { user: currentUser, isLoaded } = useUser();
   const [payrollData, setPayrollData] = useState<any[]>([]);
+  const [summary, setSummary] = useState({ employees: 0, payroll: 0, paid: 0, pending: 0, locked: 0 });
   const [loading, setLoading] = useState(true);
   
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -25,6 +26,9 @@ export default function PayrollDashboard() {
   const [remarks, setRemarks] = useState("");
   const [paymentDate, setPaymentDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [paymentStatus, setPaymentStatus] = useState("Paid");
+
+  const [unlockEmp, setUnlockEmp] = useState<any>(null);
+  const [unlockReason, setUnlockReason] = useState("");
 
   const currentUserRole = String(currentUser?.publicMetadata?.role || 'user').toLowerCase();
   const hasAccess = ["admin", "master"].includes(currentUserRole);
@@ -44,6 +48,7 @@ export default function PayrollDashboard() {
       const data = await res.json();
       if (res.ok) {
         setPayrollData(data.payroll || []);
+        if (data.summary) setSummary(data.summary);
       } else {
         toast.error(data.error || "Failed to load payroll data");
       }
@@ -95,6 +100,34 @@ export default function PayrollDashboard() {
     }
   };
 
+  const handleUnlock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!unlockEmp) return;
+    if (unlockReason.trim().length < 10) {
+      toast.error("Reason must be at least 10 characters long.");
+      return;
+    }
+    
+    try {
+      const res = await fetch("/api/admin/payroll/unlock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ expenseId: unlockEmp.expenseRecord.id, reason: unlockReason })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || "Salary unlocked successfully");
+        setUnlockEmp(null);
+        setUnlockReason("");
+        fetchPayroll();
+      } else {
+        toast.error(data.error || "Failed to unlock");
+      }
+    } catch (error) {
+      toast.error("Network error");
+    }
+  };
+
   const openProcessModal = (emp: any) => {
     setSelectedEmp(emp);
     
@@ -140,6 +173,54 @@ export default function PayrollDashboard() {
 
   return (
     <div className="container mx-auto px-6 py-10 max-w-[1400px]">
+
+      {/* Unlock Modal */}
+      <AnimatePresence>
+        {unlockEmp && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="relative w-full max-w-md bg-white border border-slate-200 rounded-[32px] shadow-2xl p-8"
+            >
+              <div className="flex flex-col items-center text-center mb-6">
+                <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mb-4">
+                  <Unlock size={32} />
+                </div>
+                <h2 className="text-2xl font-black text-slate-900">Are you sure?</h2>
+                <p className="text-sm font-medium text-slate-500 mt-2">
+                  You are unlocking the finalized salary for <strong>{unlockEmp.name}</strong>.
+                  Please provide a reason.
+                </p>
+              </div>
+
+              <form onSubmit={handleUnlock} className="space-y-4">
+                <div>
+                  <textarea
+                    value={unlockReason}
+                    onChange={(e) => setUnlockReason(e.target.value)}
+                    rows={3}
+                    placeholder="Enter reason (min 10 chars)..."
+                    className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:border-amber-500"
+                    required
+                    minLength={10}
+                  />
+                </div>
+                <div className="flex gap-4 pt-2">
+                  <button type="button" onClick={() => setUnlockEmp(null)} className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-700 text-sm font-black hover:bg-slate-200 transition-all">
+                    Cancel
+                  </button>
+                  <button type="submit" className="flex-1 py-3 rounded-xl bg-amber-500 text-white text-sm font-black hover:bg-amber-600 transition-all shadow-md shadow-amber-200">
+                    Confirm Unlock
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {/* Process Modal */}
       <AnimatePresence>
@@ -301,6 +382,30 @@ export default function PayrollDashboard() {
         </div>
       </div>
 
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Employees</p>
+          <p className="text-2xl font-black text-slate-800">{summary.employees}</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+          <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Total Payroll</p>
+          <p className="text-2xl font-black text-indigo-700">₹{summary.payroll}</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+          <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Paid</p>
+          <p className="text-2xl font-black text-emerald-600">₹{summary.paid}</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+          <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1">Pending</p>
+          <p className="text-2xl font-black text-amber-600">₹{summary.pending}</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+          <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-1">Locked</p>
+          <p className="text-2xl font-black text-rose-600">{summary.locked}</p>
+        </div>
+      </div>
+
       {/* Data Table */}
       <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
@@ -350,7 +455,19 @@ export default function PayrollDashboard() {
                     )}
                   </td>
                   <td className="px-6 py-4 text-center">
-                    {emp.status === 'Paid' ? (
+                    {emp.isLocked ? (
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
+                          <Lock size={12} /> Locked
+                        </span>
+                        {emp.expenseRecord?.metadata?.auditLog?.[0] && (
+                          <div className="text-[9px] font-medium text-slate-400 mt-1">
+                            By {emp.expenseRecord.metadata.auditLog[0].by}<br/>
+                            On {format(new Date(emp.expenseRecord.metadata.auditLog[0].date), 'dd MMM yyyy')}
+                          </div>
+                        )}
+                      </div>
+                    ) : emp.status === 'Paid' ? (
                       <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-100 px-2.5 py-1 rounded-md border border-emerald-200">
                         <CheckCircle2 size={12} /> Paid
                       </span>
@@ -369,7 +486,14 @@ export default function PayrollDashboard() {
                     )}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    {emp.expenseRecord ? (
+                    {emp.isLocked ? (
+                      <button 
+                        onClick={() => setUnlockEmp(emp)}
+                        className="px-4 py-2 bg-slate-50 border border-slate-200 text-slate-500 text-xs font-black uppercase rounded-lg hover:border-amber-500 hover:text-amber-600 hover:bg-amber-50 transition-all shadow-sm flex items-center justify-center gap-1.5 ml-auto"
+                      >
+                        <Unlock size={14} /> Unlock
+                      </button>
+                    ) : emp.expenseRecord ? (
                       <button 
                         onClick={() => openProcessModal(emp)}
                         className="px-4 py-2 bg-white border border-slate-200 text-slate-600 text-xs font-black uppercase rounded-lg hover:border-indigo-500 hover:text-indigo-600 transition-all shadow-sm"
