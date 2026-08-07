@@ -71,17 +71,18 @@ export async function GET(req: Request) {
         a.userId === emp.email || 
         (matchingUser && a.userId === matchingUser.clerkId)
       );
-      
-      let present = 0, paidLeave = 0, holiday = 0, weeklyOff = 0;
+      let present = 0, halfDay = 0, paidLeave = 0, holiday = 0, weeklyOff = 0;
       empAttendances.forEach(a => {
         const status = (a.status || "").toLowerCase();
-        if (status.includes("present") || status.includes("half day")) present++;
+        if (status.includes("half day")) halfDay++;
+        else if (status.includes("present")) present++;
         else if (status.includes("paid leave")) paidLeave++;
         else if (status.includes("holiday")) holiday++;
         else if (status.includes("weekly off") || status.includes("weekend")) weeklyOff++;
       });
 
-      const payableDays = present + paidLeave + holiday + weeklyOff;
+      const payableDays = present + (halfDay * 0.5) + paidLeave + holiday + weeklyOff;
+      const absent = totalDaysInMonth - payableDays;
       const attendancePercent = totalDaysInMonth > 0 ? (payableDays / totalDaysInMonth) * 100 : 0;
       
       const baseSalary = emp.baseSalary || 0;
@@ -102,9 +103,19 @@ export async function GET(req: Request) {
         employeeId: emp.id,
         name: emp.name || "Unknown",
         email: emp.email,
+        department: emp.department || "N/A",
+        designation: emp.designation || "N/A",
+        bank: {
+          accountHolderName: emp.accountHolderName,
+          bankAccount: emp.bankAccount,
+          ifscCode: emp.ifscCode,
+          bankName: emp.bankName,
+          upiId: emp.upiId
+        },
         baseSalary,
         totalWorkingDays: totalDaysInMonth,
         payableDays,
+        attendanceBreakdown: { present, halfDay, paidLeave, holiday, weeklyOff, absent },
         attendancePercent: attendancePercent.toFixed(1),
         calculatedSalary: calculatedSalary.toFixed(2),
         status: existingExpense ? existingExpense.status : "Pending",
