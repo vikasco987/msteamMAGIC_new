@@ -23,8 +23,9 @@ export default function TerritoryDashboard() {
 
   const currentUserRole = String(currentUser?.publicMetadata?.role || 'user').toLowerCase();
   
-  // Allow ADMIN, MASTER, SELLER
-  const hasAccess = ["admin", "master", "seller"].includes(currentUserRole);
+  // Allow ADMIN, MASTER, SELLER, TL
+  const hasAccess = ["admin", "master", "seller", "tl"].includes(currentUserRole);
+  const showFullPhone = ["admin", "master", "tl"].includes(currentUserRole);
 
   useEffect(() => {
     if (isLoaded && hasAccess) {
@@ -351,19 +352,26 @@ export default function TerritoryDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredCustomers.map((c) => (
+              {filteredCustomers.map((c) => {
+                const displayPhone = showFullPhone 
+                  ? c.phone 
+                  : (c.phone && c.phone.length > 4 ? '******' + c.phone.slice(-4) : c.phone);
+
+                return (
                 <tr key={c.id} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="px-6 py-4">
-                    <div className="flex flex-col">
-                      <span className="font-bold text-slate-900">{c.restaurantName}</span>
-                      <span className="text-xs font-medium text-slate-500">{c.ownerName}</span>
-                      <span className="text-xs font-bold text-slate-400 mt-1">{c.phone}</span>
+                    <div className="flex flex-col max-w-[200px]">
+                      <span className="font-bold text-slate-900 truncate" title={c.restaurantName}>{c.restaurantName}</span>
+                      <span className="text-xs font-medium text-slate-500 truncate" title={c.ownerName}>{c.ownerName}</span>
+                      <span className="text-xs font-bold text-slate-400 mt-1">{displayPhone}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex flex-col">
-                      <span className="text-sm font-bold text-slate-700">{c.city || c.area || '-'}</span>
-                      <span className="text-xs font-medium text-slate-500">{c.state || '-'} {c.pincode ? `(${c.pincode})` : ''}</span>
+                    <div className="flex flex-col max-w-[200px]">
+                      <span className="text-sm font-bold text-slate-700 truncate" title={c.city || c.area || '-'}>{c.city || c.area || '-'}</span>
+                      <span className="text-xs font-medium text-slate-500 truncate" title={`${c.state || '-'} ${c.pincode ? `(${c.pincode})` : ''}`}>
+                        {c.state || '-'} {c.pincode ? `(${c.pincode})` : ''}
+                      </span>
                     </div>
                   </td>
                   <td className="px-6 py-4">
