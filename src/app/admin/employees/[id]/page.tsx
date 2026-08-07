@@ -80,6 +80,7 @@ export default function EmployeeFinancialProfile({ params }: { params: { id: str
 
   const tabs = [
     { id: "dashboard", label: "Dashboard", icon: <UserCircle2 size={16} /> },
+    { id: "details", label: "My Details", icon: <FileText size={16} /> },
     { id: "attendance", label: "Attendance", icon: <Calendar size={16} /> },
     { id: "payroll", label: "Payroll", icon: <Banknote size={16} /> },
     { id: "timeline", label: "Timeline", icon: <History size={16} /> },
@@ -261,6 +262,126 @@ export default function EmployeeFinancialProfile({ params }: { params: { id: str
     </div>
   );
 
+  const renderMyDetails = () => (
+    <div className="space-y-6">
+      <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-black text-slate-800">Personal Information</h3>
+          {profile.verificationStatus && (
+            <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${
+              profile.verificationStatus === 'APPROVED' ? 'bg-emerald-100 text-emerald-600' :
+              profile.verificationStatus === 'REJECTED' ? 'bg-rose-100 text-rose-600' :
+              'bg-amber-100 text-amber-600'
+            }`}>
+              KYC: {profile.verificationStatus}
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4">
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Date of Birth</label>
+            <span className="font-bold text-slate-800">{profile.dob ? new Date(profile.dob).toLocaleDateString() : "N/A"}</span>
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Gender</label>
+            <span className="font-bold text-slate-800">{profile.gender || "N/A"}</span>
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Blood Group</label>
+            <span className="font-bold text-slate-800">{profile.bloodGroup || "N/A"}</span>
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Marital Status</label>
+            <span className="font-bold text-slate-800">{profile.maritalStatus || "N/A"}</span>
+          </div>
+          <div className="col-span-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Current Address</label>
+            <span className="font-bold text-slate-800">{profile.address || "N/A"}</span>
+          </div>
+          <div className="col-span-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Permanent Address</label>
+            <span className="font-bold text-slate-800">{profile.permanentAddress || "N/A"}</span>
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Alternate Phone</label>
+            <span className="font-bold text-slate-800">{profile.alternatePhone || "N/A"}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+        <h3 className="text-lg font-black text-slate-800 mb-6">Emergency Contact</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4">
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Contact Name</label>
+            <span className="font-bold text-slate-800">{profile.emergencyContactName || "N/A"}</span>
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Contact Phone</label>
+            <span className="font-bold text-slate-800">{profile.emergencyContactPhone || "N/A"}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+        <h3 className="text-lg font-black text-slate-800 mb-6">Bank Details</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4">
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Account Holder</label>
+            <span className="font-bold text-slate-800">{profile.accountHolderName || "N/A"}</span>
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Bank Name</label>
+            <span className="font-bold text-slate-800">{profile.bankName || "N/A"}</span>
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Account Number</label>
+            <span className="font-bold text-slate-800">{profile.bankAccount || "N/A"}</span>
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">IFSC Code</label>
+            <span className="font-bold text-slate-800">{profile.ifscCode || "N/A"}</span>
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">UPI ID</label>
+            <span className="font-bold text-slate-800">{profile.upiId || "N/A"}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+        <h3 className="text-lg font-black text-slate-800 mb-6">Documents & KYC</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4">
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">PAN Number</label>
+            <span className="font-bold text-slate-800 block mb-2">{profile.panNumber || "N/A"}</span>
+            {profile.panUrl && <a href={profile.panUrl} target="_blank" rel="noreferrer" className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:underline">View PAN</a>}
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Aadhaar Number</label>
+            <span className="font-bold text-slate-800 block mb-2">{profile.aadhaarNumber || "N/A"}</span>
+            {profile.aadhaarUrl && <a href={profile.aadhaarUrl} target="_blank" rel="noreferrer" className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:underline">View Aadhaar</a>}
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Bank Proof</label>
+            <span className="font-bold text-slate-800 block mb-2">{profile.bankProofUrl ? "Uploaded" : "N/A"}</span>
+            {profile.bankProofUrl && <a href={profile.bankProofUrl} target="_blank" rel="noreferrer" className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:underline">View Proof</a>}
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">UPI QR</label>
+            <span className="font-bold text-slate-800 block mb-2">{profile.upiQrUrl ? "Uploaded" : "N/A"}</span>
+            {profile.upiQrUrl && <a href={profile.upiQrUrl} target="_blank" rel="noreferrer" className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:underline">View QR</a>}
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Profile Photo</label>
+            <span className="font-bold text-slate-800 block mb-2">{profile.profilePhotoUrl ? "Uploaded" : "N/A"}</span>
+            {profile.profilePhotoUrl && <a href={profile.profilePhotoUrl} target="_blank" rel="noreferrer" className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:underline">View Photo</a>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   const renderV2Tab = (name: string) => (
     <div className="flex flex-col items-center justify-center min-h-[40vh] bg-white rounded-3xl border border-slate-200 shadow-sm p-12 text-center">
       <div className="w-20 h-20 bg-indigo-50 text-indigo-300 rounded-full flex items-center justify-center mb-6">
@@ -315,6 +436,7 @@ export default function EmployeeFinancialProfile({ params }: { params: { id: str
       {/* Content */}
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
         {activeTab === "dashboard" && renderDashboard()}
+        {activeTab === "details" && renderMyDetails()}
         {activeTab === "attendance" && renderAttendance()}
         {activeTab === "payroll" && renderPayroll()}
         {activeTab === "timeline" && renderTimeline()}
