@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { 
-  Building2, Calendar, Users, DollarSign, Activity, FileText, CheckCircle2, Lock, ChevronLeft, ChevronRight, Calculator, AlertCircle, Unlock, Download, Search, Filter, Briefcase, Eye, ChevronRightSquare, CheckCircle, Info
+  Building2, Calendar, Users, DollarSign, Activity, FileText, CheckCircle2, Lock, ChevronLeft, ChevronRight, Calculator, AlertCircle, Unlock, Download, Search, Filter, Briefcase, Eye, ChevronRightSquare, CheckCircle, Info, XCircle
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
