@@ -698,6 +698,13 @@ model EmployeeProfile {
   permanentAddress      String?
   maritalStatus         String?
   gender                String?
+  
+  // 🔄 Employee Lifecycle (Version 1.5)
+  employmentStatus      String   @default("Active") // Active, Notice Period, Inactive, Suspended
+  lastWorkingDate       DateTime?
+  exitReason            String?
+  finalSettlementStatus String?  // Pending, Completed
+
   isLocked              Boolean  @default(false)
   verificationStatus    String   @default("PENDING") // PENDING, APPROVED, REJECTED
   createdAt             DateTime @default(now())

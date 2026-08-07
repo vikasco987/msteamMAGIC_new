@@ -36,6 +36,7 @@ export default function PayrollDashboard() {
   const [departmentFilter, setDepartmentFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
   const [lockFilter, setLockFilter] = useState("All");
+  const [employmentStatusFilter, setEmploymentStatusFilter] = useState("Active");
   const [viewingProfile, setViewingProfile] = useState<any>(null);
   const [confirmPaymentPayload, setConfirmPaymentPayload] = useState<any>(null);
   const [showAttendancePopup, setShowAttendancePopup] = useState<any>(null);
@@ -195,7 +196,13 @@ export default function PayrollDashboard() {
     const matchesDept = departmentFilter === "All" || emp.department === departmentFilter;
     const matchesStatus = statusFilter === "All" || emp.status === statusFilter;
     const matchesLock = lockFilter === "All" || (lockFilter === "Locked" ? emp.isLocked : !emp.isLocked);
-    return matchesSearch && matchesDept && matchesStatus && matchesLock;
+    
+    const empStatus = emp.employmentStatus || "Active";
+    const matchesEmployment = employmentStatusFilter === "All" || (
+      employmentStatusFilter === "Active" ? (empStatus === "Active" || empStatus === "Notice Period") : empStatus === employmentStatusFilter
+    );
+
+    return matchesSearch && matchesDept && matchesStatus && matchesLock && matchesEmployment;
   });
 
   const uniqueDepartments = Array.from(new Set(payrollData.map(e => e.department).filter(Boolean)));

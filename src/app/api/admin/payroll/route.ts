@@ -112,6 +112,7 @@ export async function GET(req: Request) {
           bankName: emp.bankName,
           upiId: emp.upiId
         },
+        employmentStatus: emp.employmentStatus || "Active",
         baseSalary,
         totalWorkingDays: totalDaysInMonth,
         payableDays,

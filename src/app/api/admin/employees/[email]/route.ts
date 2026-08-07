@@ -43,7 +43,11 @@ export async function PUT(
       ifscCode,
       upiId,
       panNumber,
-      aadhaarNumber
+      aadhaarNumber,
+      employmentStatus,
+      lastWorkingDate,
+      exitReason,
+      finalSettlementStatus
     } = body;
 
     const updatedProfile = await prisma.employeeProfile.upsert({
@@ -64,6 +68,10 @@ export async function PUT(
         upiId: upiId !== undefined ? String(upiId).trim() : undefined,
         panNumber: panNumber !== undefined ? String(panNumber).trim() : undefined,
         aadhaarNumber: aadhaarNumber !== undefined ? String(aadhaarNumber).trim() : undefined,
+        employmentStatus: employmentStatus !== undefined ? String(employmentStatus).trim() : undefined,
+        lastWorkingDate: lastWorkingDate ? new Date(lastWorkingDate) : (lastWorkingDate === "" ? null : undefined),
+        exitReason: exitReason !== undefined ? String(exitReason).trim() : undefined,
+        finalSettlementStatus: finalSettlementStatus !== undefined ? String(finalSettlementStatus).trim() : undefined,
       },
       create: {
         email: emailKey,
