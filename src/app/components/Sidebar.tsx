@@ -31,7 +31,8 @@ import {
   Activity,
   Database,
   Clock,
-  CreditCard
+  CreditCard,
+  MapPin
 } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -90,6 +91,7 @@ const NAVIGATION_GROUPS = [
   {
     title: "System",
     items: [
+      { label: 'Client Locator', icon: MapPin, href: '/dashboard/territory', roles: ['admin', 'master', 'seller'] },
       { label: 'Business Setup', icon: Building2, href: '/admin/settings/business', roles: ['admin', 'master'] },
       { label: 'Access Control', icon: ShieldCheck, href: '/admin/roles', roles: ['master'] },
       { label: 'Employee Directory', icon: UserSquare2, href: '/admin/employees', roles: ['master'] },
