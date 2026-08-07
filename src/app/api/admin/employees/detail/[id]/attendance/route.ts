@@ -3,6 +3,33 @@ import { auth, clerkClient } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { startOfMonth, endOfMonth, format } from "date-fns";
 
+const calcWorkingHours = (checkIn: Date, checkOut: Date) => {
+  let ms = checkOut.getTime() - checkIn.getTime();
+  let hours = ms / (1000 * 60 * 60);
+
+  const lunchStart = new Date(checkIn);
+  lunchStart.setUTCHours(14, 0, 0, 0);
+  const lunchEnd = new Date(checkIn);
+  lunchEnd.setUTCHours(15, 0, 0, 0);
+
+  if (checkIn < lunchStart && checkOut > lunchEnd) {
+    hours -= 1;
+  } else if (checkIn < lunchStart && checkOut > lunchStart && checkOut <= lunchEnd) {
+    hours -= (checkOut.getTime() - lunchStart.getTime()) / (1000 * 60 * 60);
+  } else if (checkIn >= lunchStart && checkIn < lunchEnd && checkOut > lunchEnd) {
+    hours -= (lunchEnd.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
+  }
+
+  return Math.max(0, hours);
+};
+
+const calcDayType = (checkIn?: Date, checkOut?: Date, hours?: number) => {
+  if (!checkIn) return "Absent";
+  if (!checkOut) return "Half-Day";
+  if (!hours || hours < 6) return "Half-Day";
+  return "Full Day";
+};
+
 export const dynamic = "force-dynamic";
 
 export async function GET(
@@ -61,10 +88,18 @@ export async function GET(
           logs: []
         };
       }
-      
       const status = (att.status || "").toLowerCase();
-      if (status.includes("half day")) historyByMonth[monthKey].halfDay++;
-      else if (status.includes("present")) historyByMonth[monthKey].present++;
+      let dayType = "Absent";
+      
+      if (att.checkIn) {
+        const checkInDate = new Date(att.checkIn);
+        const checkOutDate = att.checkOut ? new Date(att.checkOut) : undefined;
+        const workingHrs = checkOutDate ? calcWorkingHours(checkInDate, checkOutDate) : 0;
+        dayType = calcDayType(checkInDate, checkOutDate, workingHrs);
+      }
+
+      if (dayType === "Full Day") historyByMonth[monthKey].present++;
+      else if (dayType === "Half-Day") historyByMonth[monthKey].halfDay++;
       else if (status.includes("paid leave")) historyByMonth[monthKey].paidLeave++;
       else if (status.includes("holiday")) historyByMonth[monthKey].holiday++;
       else if (status.includes("weekly off") || status.includes("weekend")) historyByMonth[monthKey].weeklyOff++;

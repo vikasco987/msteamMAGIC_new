@@ -3,6 +3,33 @@ import { auth, clerkClient } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { startOfMonth, endOfMonth, parseISO, getDaysInMonth, isValid } from "date-fns";
 
+const calcWorkingHours = (checkIn: Date, checkOut: Date) => {
+  let ms = checkOut.getTime() - checkIn.getTime();
+  let hours = ms / (1000 * 60 * 60);
+
+  const lunchStart = new Date(checkIn);
+  lunchStart.setUTCHours(14, 0, 0, 0);
+  const lunchEnd = new Date(checkIn);
+  lunchEnd.setUTCHours(15, 0, 0, 0);
+
+  if (checkIn < lunchStart && checkOut > lunchEnd) {
+    hours -= 1;
+  } else if (checkIn < lunchStart && checkOut > lunchStart && checkOut <= lunchEnd) {
+    hours -= (checkOut.getTime() - lunchStart.getTime()) / (1000 * 60 * 60);
+  } else if (checkIn >= lunchStart && checkIn < lunchEnd && checkOut > lunchEnd) {
+    hours -= (lunchEnd.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
+  }
+
+  return Math.max(0, hours);
+};
+
+const calcDayType = (checkIn?: Date, checkOut?: Date, hours?: number) => {
+  if (!checkIn) return "Absent";
+  if (!checkOut) return "Half-Day";
+  if (!hours || hours < 6) return "Half-Day";
+  return "Full Day";
+};
+
 export async function GET(req: Request) {
   try {
     const { userId } = await auth();
@@ -74,8 +101,17 @@ export async function GET(req: Request) {
       let present = 0, halfDay = 0, paidLeave = 0, holiday = 0, weeklyOff = 0;
       empAttendances.forEach(a => {
         const status = (a.status || "").toLowerCase();
-        if (status.includes("half day")) halfDay++;
-        else if (status.includes("present")) present++;
+        
+        let dayType = "Absent";
+        if (a.checkIn) {
+          const checkInDate = new Date(a.checkIn);
+          const checkOutDate = a.checkOut ? new Date(a.checkOut) : undefined;
+          const workingHrs = checkOutDate ? calcWorkingHours(checkInDate, checkOutDate) : 0;
+          dayType = calcDayType(checkInDate, checkOutDate, workingHrs);
+        }
+
+        if (dayType === "Full Day") present++;
+        else if (dayType === "Half-Day") halfDay++;
         else if (status.includes("paid leave")) paidLeave++;
         else if (status.includes("holiday")) holiday++;
         else if (status.includes("weekly off") || status.includes("weekend")) weeklyOff++;
