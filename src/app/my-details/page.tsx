@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { 
   User, Phone, Building2, CreditCard, ShieldCheck, FileText, 
-  MapPin, AlertCircle, Save, CheckCircle2, Loader2, Sparkles, HeartPulse, QrCode, Upload
+  MapPin, AlertCircle, Save, CheckCircle2, Loader2, Sparkles, HeartPulse, QrCode, Upload, DollarSign, Calendar, Lock, Activity, Download
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
@@ -12,6 +12,7 @@ export default function EmployeeMyDetailsPage() {
   const [saving, setSaving] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [userImageUrl, setUserImageUrl] = useState<string | null>(null);
+  const [salaryHistory, setSalaryHistory] = useState<any[]>([]);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -52,6 +53,7 @@ export default function EmployeeMyDetailsPage() {
 
         setUserEmail(data.user?.email || "");
         setUserImageUrl(data.user?.imageUrl || null);
+        setSalaryHistory(data.user?.salaryHistory || []);
 
         if (data.user?.profile) {
           const p = data.user.profile;
@@ -599,6 +601,80 @@ export default function EmployeeMyDetailsPage() {
                 </a>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Section 5: Salary & Payroll History */}
+        <div className="bg-slate-900/70 border border-slate-800 rounded-[2rem] p-6 md:p-8 shadow-xl backdrop-blur-md">
+          <div className="flex items-center gap-3 pb-4 mb-6 border-b border-slate-800">
+            <div className="p-3 bg-indigo-500/20 text-indigo-400 rounded-2xl">
+              <DollarSign size={22} />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-white">5. Salary & Payroll History</h3>
+              <p className="text-xs text-slate-400 font-medium">Your monthly salary records and payslips</p>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto rounded-xl border border-slate-800">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-800/50">
+                  <th className="px-4 py-3 text-xs font-black text-slate-400 uppercase tracking-wider border-b border-slate-800">Month</th>
+                  <th className="px-4 py-3 text-xs font-black text-slate-400 uppercase tracking-wider border-b border-slate-800">Amount</th>
+                  <th className="px-4 py-3 text-xs font-black text-slate-400 uppercase tracking-wider border-b border-slate-800">Status</th>
+                  <th className="px-4 py-3 text-xs font-black text-slate-400 uppercase tracking-wider border-b border-slate-800">Payment Date</th>
+                  <th className="px-4 py-3 text-xs font-black text-slate-400 uppercase tracking-wider border-b border-slate-800 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/50 bg-slate-900/30">
+                {salaryHistory.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-slate-500 text-sm font-medium italic">
+                      No salary history found.
+                    </td>
+                  </tr>
+                ) : (
+                  salaryHistory.map((s, idx) => (
+                    <tr key={s.id || idx} className="hover:bg-slate-800/30 transition-colors">
+                      <td className="px-4 py-4 text-sm font-bold text-white">
+                        {s.metadata?.salaryMonth} {s.metadata?.salaryYear}
+                      </td>
+                      <td className="px-4 py-4 text-sm font-bold text-indigo-400">
+                        ₹{s.amount}
+                      </td>
+                      <td className="px-4 py-4 text-sm">
+                        {s.status === 'Paid' ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/20">
+                            <CheckCircle2 size={12} /> Paid
+                          </span>
+                        ) : s.status === 'Processing' ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-blue-400 bg-blue-500/10 px-2 py-1 rounded-md border border-blue-500/20">
+                            <Activity size={12} /> Processing
+                          </span>
+                        ) : s.status === 'On Hold' ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-rose-400 bg-rose-500/10 px-2 py-1 rounded-md border border-rose-500/20">
+                            <Lock size={12} /> On Hold
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-amber-400 bg-amber-500/10 px-2 py-1 rounded-md border border-amber-500/20">
+                            <Calendar size={12} /> Pending
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 text-sm font-medium text-slate-300">
+                        {new Date(s.date).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-right">
+                        <button disabled className="px-3 py-1.5 bg-slate-800/50 text-slate-500 text-xs font-black uppercase tracking-widest rounded-lg border border-slate-700/50 cursor-not-allowed flex items-center gap-1.5 ml-auto">
+                          <Download size={12} /> Slip
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 

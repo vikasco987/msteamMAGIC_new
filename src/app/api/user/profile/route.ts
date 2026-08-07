@@ -23,12 +23,21 @@ export async function GET(req: NextRequest) {
       where: { email: userEmail.toLowerCase().trim() },
     });
 
+    const salaryHistory = await prisma.employeeExpense.findMany({
+      where: {
+        assignerEmail: userEmail.toLowerCase().trim(),
+        category: "Salary"
+      },
+      orderBy: { date: 'desc' }
+    });
+
     const userInfo = {
       clerkId: userId,
       email: userEmail,
       fullName: user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.username || userEmail.split('@')[0],
       imageUrl: user.imageUrl,
       profile: profile || null,
+      salaryHistory
     };
 
     return NextResponse.json({ user: userInfo });

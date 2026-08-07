@@ -27,12 +27,12 @@ import {
   Zap,
   Briefcase,
   Calendar,
-  PhoneCall,
   Activity,
   Database,
   Clock,
   CreditCard,
-  MapPin
+  MapPin,
+  DollarSign
 } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -78,6 +78,7 @@ const NAVIGATION_GROUPS = [
       { label: 'Daily Payments', icon: HandCoins, href: '/payments-today', roles: ['admin', 'master', 'tl'] },
       { label: 'Lifecycle Report', icon: LineChart, href: '/activities/report', roles: ['admin', 'master', 'tl'] },
       { label: 'Customers', icon: UserSquare2, href: '/customers', roles: ['admin', 'master', 'seller', 'tl'] },
+      { label: 'Payroll Management', icon: DollarSign, href: '/admin/payroll', roles: ['admin', 'master'] },
     ]
   },
   {

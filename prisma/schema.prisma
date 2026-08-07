@@ -655,10 +655,11 @@ model EmployeeExpense {
   category      String   @default("Salary") // Salary, Incentive, Travel, Phone, Bonus, Other
   amount        Float
   date          DateTime
-  status        String   @default("Paid") // Paid, Pending, Unpaid
+  status        String   @default("Pending") // Paid, Processing, Pending, On Hold
   paymentMode   String?  // UPI, Bank Transfer, Cash, Cheque
   referenceNo   String?  // UTR / Transaction Ref
   remarks       String?
+  metadata      Json?    // Optional structured data (e.g. salaryMonth, workingDays)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
