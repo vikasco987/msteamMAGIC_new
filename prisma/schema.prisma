@@ -548,6 +548,9 @@ model BusinessSettings {
   syncLinksToProfitLoss Boolean @default(false)
   syncTasksToProfitLoss Boolean @default(true)
 
+  // Employee Portal Permissions
+  showEmployeeSalaryHistory Boolean @default(false)
+
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }

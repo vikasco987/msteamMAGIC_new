@@ -13,6 +13,7 @@ export default function EmployeeMyDetailsPage() {
   const [userEmail, setUserEmail] = useState("");
   const [userImageUrl, setUserImageUrl] = useState<string | null>(null);
   const [salaryHistory, setSalaryHistory] = useState<any[]>([]);
+  const [showSalaryHistory, setShowSalaryHistory] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -95,7 +96,21 @@ export default function EmployeeMyDetailsPage() {
         setLoading(false);
       }
     }
+
+    async function fetchEmployeeSettings() {
+      try {
+        const res = await fetch("/api/employee/settings");
+        if (res.ok) {
+          const data = await res.json();
+          setShowSalaryHistory(data.showEmployeeSalaryHistory || false);
+        }
+      } catch (error) {
+        console.error("Error fetching employee settings:", error);
+      }
+    }
+
     fetchProfile();
+    fetchEmployeeSettings();
   }, []);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: "panUrl" | "aadhaarUrl" | "bankProofUrl" | "upiQrUrl" | "profilePhotoUrl") => {
@@ -604,8 +619,8 @@ export default function EmployeeMyDetailsPage() {
           </div>
         </div>
 
-        {/* Section 5: Salary & Payroll History (Temporarily Hidden) */}
-        {false && (
+        {/* Section 5: Salary & Payroll History (Controlled via Settings) */}
+        {showSalaryHistory && (
           <div className="bg-slate-900/70 border border-slate-800 rounded-[2rem] p-6 md:p-8 shadow-xl backdrop-blur-md">
             <div className="flex items-center gap-3 pb-4 mb-6 border-b border-slate-800">
               <div className="p-3 bg-indigo-500/20 text-indigo-400 rounded-2xl">
