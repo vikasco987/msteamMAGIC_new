@@ -409,7 +409,8 @@ export default function TerritoryDashboard() {
                     </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
               {filteredCustomers.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-6 py-16 text-center text-slate-500">
