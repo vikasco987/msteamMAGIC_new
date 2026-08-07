@@ -489,6 +489,7 @@ export default function PayrollDashboard() {
                     placeholder="e.g. Performance Incentive included"
                   />
                 </div>
+              </div>
 
                 {selectedEmp.baseSalary <= 0 && (
                   <div className="p-3 bg-rose-50 text-rose-600 text-xs font-bold rounded-xl border border-rose-200 flex items-center gap-2">
