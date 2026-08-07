@@ -534,8 +534,15 @@ export async function GET(req: Request) {
         select: { clerkId: true, name: true, email: true }
       });
 
+      // Only inject "Absent" for actual employees
+      const employeeProfiles = await prisma.employeeProfile.findMany({ select: { email: true } });
+      const employeeEmails = new Set(employeeProfiles.map(e => e.email.toLowerCase()));
+
       const presentUserIds = new Set(enriched.map(r => r.userId));
-      const absentUsers = allUsers.filter(u => !presentUserIds.has(u.clerkId));
+      const absentUsers = allUsers.filter(u => 
+        !presentUserIds.has(u.clerkId) && 
+        employeeEmails.has(u.email.toLowerCase())
+      );
 
       const absentRecords = absentUsers.map(u => ({
         id: `absent-${u.clerkId}`,
