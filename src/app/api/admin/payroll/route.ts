@@ -78,6 +78,14 @@ export async function GET(req: Request) {
       }
     });
 
+    // Fetch active advances
+    const activeAdvances = await prisma.employeeAdvance.findMany({
+      where: {
+        remainingAmount: { gt: 0 },
+        status: { in: ["Disbursed", "PartiallyRecovered"] }
+      }
+    });
+
     // Fetch all Users to map email to clerkId
     const users = await prisma.user.findMany({
       select: { clerkId: true, email: true, name: true }
@@ -124,10 +132,18 @@ export async function GET(req: Request) {
       const baseSalary = emp.baseSalary || 0;
       const calculatedSalary = totalDaysInMonth > 0 ? (baseSalary / totalDaysInMonth) * payableDays : 0;
 
+      // Calculate Advance Deduction
+      const empAdvances = activeAdvances.filter(adv => adv.employeeEmail === emp.email);
+      let advanceDeduction = 0;
+      empAdvances.forEach(adv => {
+        const deduction = Math.min(adv.monthlyDeduction, adv.remainingAmount);
+        advanceDeduction += deduction;
+      });
+
       // Check if salary already processed
       const existingExpense = expenses.find(e => e.assignerEmail === emp.email);
       const isLocked = existingExpense?.metadata && (existingExpense.metadata as any).isLocked === true;
-      const expenseAmount = existingExpense ? existingExpense.amount : calculatedSalary;
+      const expenseAmount = existingExpense ? existingExpense.amount : Math.max(0, calculatedSalary - advanceDeduction);
 
       totalPayroll += expenseAmount;
       if (existingExpense?.status === "Paid") totalPaid += expenseAmount;
@@ -141,6 +157,7 @@ export async function GET(req: Request) {
         email: emp.email,
         department: emp.department || "N/A",
         designation: emp.designation || "N/A",
+        employmentStatus: emp.employmentStatus || "Active",
         bank: {
           accountHolderName: emp.accountHolderName,
           bankAccount: emp.bankAccount,
@@ -148,13 +165,15 @@ export async function GET(req: Request) {
           bankName: emp.bankName,
           upiId: emp.upiId
         },
-        employmentStatus: emp.employmentStatus || "Active",
         baseSalary,
+        calculatedSalary: Number(calculatedSalary.toFixed(2)),
+        advanceDeduction,
+        activeAdvances: empAdvances,
+        finalSalary: expenseAmount,
         totalWorkingDays: totalDaysInMonth,
         payableDays,
         attendanceBreakdown: { present, halfDay, paidLeave, holiday, weeklyOff, absent },
-        attendancePercent: attendancePercent.toFixed(1),
-        calculatedSalary: calculatedSalary.toFixed(2),
+        attendancePercent: Number(attendancePercent.toFixed(1)),
         status: existingExpense ? existingExpense.status : "Pending",
         expenseRecord: existingExpense || null,
         isLocked

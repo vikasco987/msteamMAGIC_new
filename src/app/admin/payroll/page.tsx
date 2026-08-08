@@ -80,7 +80,9 @@ export default function PayrollDashboard() {
       return;
     }
     
-    const finalAmount = parseFloat(selectedEmp.calculatedSalary) + adjustment;
+    const calculatedAmount = parseFloat(selectedEmp.calculatedSalary);
+    const advanceDeduction = selectedEmp.advanceDeduction || 0;
+    const finalAmount = calculatedAmount - advanceDeduction + adjustment;
     
     const payload = {
       email: selectedEmp.email,
@@ -89,7 +91,8 @@ export default function PayrollDashboard() {
       baseSalary: selectedEmp.baseSalary,
       totalWorkingDays: selectedEmp.totalWorkingDays,
       payableDays: selectedEmp.payableDays,
-      calculatedAmount: parseFloat(selectedEmp.calculatedSalary),
+      calculatedAmount,
+      advanceDeduction,
       adjustment,
       finalAmount,
       paymentMode,
@@ -114,6 +117,8 @@ export default function PayrollDashboard() {
       employeeName: selectedEmp.name,
       month: format(currentMonth, 'yyyy-MM'),
       amount: finalAmount,
+      calculatedSalary: selectedEmp.calculatedSalary,
+      advanceRecoveryAmount: selectedEmp.advanceDeduction,
       paymentMode,
       referenceNo,
       remarks
@@ -376,22 +381,26 @@ export default function PayrollDashboard() {
                 <form onSubmit={handleProcessSalary} className="p-8 space-y-6">
                 
                 {/* Auto Calculation Summary */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100">
                   <div>
                     <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Base Salary</label>
                     <p className="font-black text-slate-800">₹{selectedEmp.baseSalary}</p>
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Total Days</label>
-                    <p className="font-black text-slate-800">{selectedEmp.totalWorkingDays}</p>
+                    <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Payable Days</label>
+                    <p className="font-black text-indigo-700">{selectedEmp.payableDays} / {selectedEmp.totalWorkingDays}</p>
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Payable Days</label>
-                    <p className="font-black text-indigo-700">{selectedEmp.payableDays}</p>
+                    <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Gross</label>
+                    <p className="font-black text-emerald-600">₹{selectedEmp.calculatedSalary}</p>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-rose-400 uppercase tracking-widest">Advance Deduct</label>
+                    <p className="font-black text-rose-600">-₹{selectedEmp.advanceDeduction || 0}</p>
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Calculated</label>
-                    <p className="font-black text-emerald-600">₹{selectedEmp.calculatedSalary}</p>
+                    <p className="font-black text-indigo-700">₹{(parseFloat(selectedEmp.calculatedSalary) - (selectedEmp.advanceDeduction || 0)).toFixed(2)}</p>
                   </div>
                 </div>
 
@@ -411,7 +420,7 @@ export default function PayrollDashboard() {
                     <label className="text-[10px] font-black text-emerald-500 uppercase tracking-widest block mb-2">Final Payable Amount</label>
                     <div className="w-full px-4 py-3 bg-emerald-50 border-2 border-emerald-200 rounded-xl text-xl font-black text-emerald-700 flex items-center justify-between">
                       <span>₹</span>
-                      <span>{(parseFloat(selectedEmp.calculatedSalary) + adjustment).toFixed(2)}</span>
+                      <span>{(parseFloat(selectedEmp.calculatedSalary) - (selectedEmp.advanceDeduction || 0) + adjustment).toFixed(2)}</span>
                     </div>
                   </div>
                 </div>

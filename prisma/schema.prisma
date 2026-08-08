@@ -649,6 +649,35 @@ model SerialNumber {
   updatedAt       DateTime      @updatedAt
 }
 
+// 💰 Model for Employee Advances (Loans/Salary Advance)
+model EmployeeAdvance {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  employeeEmail   String
+  advanceNo       String   @unique
+  amount          Float
+  approvedAmount  Float?
+  remainingAmount Float
+  monthlyDeduction Float
+  purpose         String
+  
+  requestedDate   DateTime @default(now())
+  approvedDate    DateTime?
+  disbursedDate   DateTime?
+  
+  // Status: Requested, Approved, Disbursed, PartiallyRecovered, Recovered, Cancelled
+  status          String   @default("Requested") 
+  
+  approvedBy      String?
+  paymentMode     String?
+  referenceNo     String?
+  remarks         String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([employeeEmail])
+}
+
 // 👤 Model for Employee Manual Expenses (Salaries, Incentives, Allowances, etc.)
 model EmployeeExpense {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId

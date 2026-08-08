@@ -13,6 +13,7 @@ export default function EmployeeFinancialProfile({ params }: { params: { id: str
   const [payroll, setPayroll] = useState<any[]>([]);
   const [timeline, setTimeline] = useState<any[]>([]);
   const [ledgerData, setLedgerData] = useState<any[]>([]);
+  const [advances, setAdvances] = useState<any[]>([]);
   const [ledgerFilter, setLedgerFilter] = useState("All");
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -28,20 +29,22 @@ export default function EmployeeFinancialProfile({ params }: { params: { id: str
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [profileRes, attRes, payRes, timeRes, ledRes] = await Promise.all([
+      const [profileRes, attRes, payRes, timeRes, ledRes, advRes] = await Promise.all([
         fetch(`/api/admin/employees/detail/${params.id}`),
         fetch(`/api/admin/employees/detail/${params.id}/attendance`),
         fetch(`/api/admin/employees/detail/${params.id}/payroll`),
         fetch(`/api/admin/employees/detail/${params.id}/timeline`),
-        fetch(`/api/admin/employees/detail/${params.id}/ledger?filter=${ledgerFilter}`)
+        fetch(`/api/admin/employees/detail/${params.id}/ledger?filter=${ledgerFilter}`),
+        fetch(`/api/admin/employees/detail/${params.id}/advances`)
       ]);
 
-      const [profileData, attData, payData, timeData, ledData] = await Promise.all([
+      const [profileData, attData, payData, timeData, ledData, advData] = await Promise.all([
         profileRes.json(),
         attRes.json(),
         payRes.json(),
         timeRes.json(),
-        ledRes.json()
+        ledRes.json(),
+        advRes.json()
       ]);
 
       if (profileRes.ok) setProfile(profileData.profile);
@@ -49,6 +52,7 @@ export default function EmployeeFinancialProfile({ params }: { params: { id: str
       if (payRes.ok) setPayroll(payData.payrollHistory || []);
       if (timeRes.ok) setTimeline(timeData.timeline || []);
       if (ledRes.ok) setLedgerData(ledData.ledger || []);
+      if (advRes.ok) setAdvances(advData.advances || []);
 
     } catch (error) {
       toast.error("Failed to fetch employee details");
@@ -90,9 +94,9 @@ export default function EmployeeFinancialProfile({ params }: { params: { id: str
     { id: "payroll", label: "Payroll", icon: <Banknote size={16} /> },
     { id: "timeline", label: "Timeline", icon: <History size={16} /> },
     { id: "ledger", label: "Ledger", icon: <FileText size={16} /> },
-    { id: "advances", label: "Advances", icon: <CreditCard size={16} />, v2: true },
-    { id: "incentives", label: "Incentives", icon: <Activity size={16} />, v2: true },
-    { id: "expenses", label: "Expenses", icon: <Wallet size={16} />, v2: true },
+    { id: "advances", label: "Advances", icon: <CreditCard size={16} /> },
+    { id: "incentives", label: "Incentives", icon: <Activity size={16} /> },
+    { id: "expenses", label: "Expenses", icon: <Wallet size={16} /> },
   ];
 
   const renderDashboard = () => (
@@ -455,6 +459,154 @@ export default function EmployeeFinancialProfile({ params }: { params: { id: str
     </div>
   );
 
+  const renderAdvances = () => (
+    <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+      <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-indigo-50/30">
+        <div>
+          <h3 className="text-lg font-black text-slate-800">Advances</h3>
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Salary advances and loans</p>
+        </div>
+        <button onClick={() => toast.error("Grant advance modal coming shortly")} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-100 flex items-center gap-2">
+          <CreditCard size={14} /> Grant Advance
+        </button>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-slate-50">
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Ref No</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Purpose</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Amount</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Remaining</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {advances.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="p-12 text-center text-slate-400 font-bold">No advances found</td>
+              </tr>
+            ) : (
+              advances.map((adv, i) => (
+                <tr key={i} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-6 py-4 font-bold text-slate-800 text-xs">{new Date(adv.requestedDate).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 font-bold text-slate-600 text-xs">{adv.advanceNo}</td>
+                  <td className="px-6 py-4 font-bold text-slate-800 text-sm">{adv.purpose}</td>
+                  <td className="px-6 py-4 font-black text-slate-800 text-right">₹{adv.amount.toLocaleString()}</td>
+                  <td className="px-6 py-4 font-black text-rose-500 text-right">₹{adv.remainingAmount.toLocaleString()}</td>
+                  <td className="px-6 py-4 text-center">
+                    <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest ${adv.status === 'Recovered' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {adv.status}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  const renderIncentives = () => {
+    const incentives = payroll.filter(p => p.category === 'Incentive' || p.category === 'Bonus');
+    return (
+      <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+          <h3 className="text-lg font-black text-slate-800">Incentives & Bonuses</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-slate-50">
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Title</th>
+                <th className="px-6 py-4 text-[10px] font-black text-emerald-500 uppercase tracking-widest text-right">Amount</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {incentives.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="p-12 text-center text-slate-400 font-bold">No incentives found</td>
+                </tr>
+              ) : (
+                incentives.map((inc, i) => (
+                  <tr key={i} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-6 py-4 font-bold text-slate-800 text-xs">{new Date(inc.date).toLocaleDateString()}</td>
+                    <td className="px-6 py-4">
+                      <p className="font-bold text-slate-800 text-sm">{inc.title}</p>
+                      {inc.remarks && <p className="text-[10px] font-bold text-slate-400">{inc.remarks}</p>}
+                    </td>
+                    <td className="px-6 py-4 font-black text-emerald-600 text-right">₹{inc.amount.toLocaleString()}</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest bg-emerald-100 text-emerald-700">
+                        {inc.status || 'Paid'}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  const renderExpenses = () => {
+    const expenses = payroll.filter(p => !['Salary', 'Incentive', 'Bonus'].includes(p.category));
+    return (
+      <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+          <h3 className="text-lg font-black text-slate-800">Reimbursements & Expenses</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-slate-50">
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Category</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Details</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-800 uppercase tracking-widest text-right">Amount</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {expenses.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="p-12 text-center text-slate-400 font-bold">No expenses found</td>
+                </tr>
+              ) : (
+                expenses.map((exp, i) => (
+                  <tr key={i} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-6 py-4 font-bold text-slate-800 text-xs">{new Date(exp.date).toLocaleDateString()}</td>
+                    <td className="px-6 py-4">
+                      <span className="px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest bg-indigo-100 text-indigo-700">
+                        {exp.category}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="font-bold text-slate-800 text-sm">{exp.title}</p>
+                      {exp.remarks && <p className="text-[10px] font-bold text-slate-400">{exp.remarks}</p>}
+                    </td>
+                    <td className="px-6 py-4 font-black text-slate-800 text-right">₹{exp.amount.toLocaleString()}</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest bg-slate-100 text-slate-700">
+                        {exp.status || 'Paid'}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   const renderV2Tab = (name: string) => (
     <div className="flex flex-col items-center justify-center min-h-[40vh] bg-white rounded-3xl border border-slate-200 shadow-sm p-12 text-center">
       <div className="w-20 h-20 bg-indigo-50 text-indigo-300 rounded-full flex items-center justify-center mb-6">
@@ -514,6 +666,9 @@ export default function EmployeeFinancialProfile({ params }: { params: { id: str
         {activeTab === "payroll" && renderPayroll()}
         {activeTab === "timeline" && renderTimeline()}
         {activeTab === "ledger" && renderLedger()}
+        {activeTab === "advances" && renderAdvances()}
+        {activeTab === "incentives" && renderIncentives()}
+        {activeTab === "expenses" && renderExpenses()}
         {tabs.find(t => t.id === activeTab)?.v2 && renderV2Tab(tabs.find(t => t.id === activeTab)?.label || "")}
       </div>
     </div>

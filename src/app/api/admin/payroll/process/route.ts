@@ -22,6 +22,8 @@ export async function POST(req: Request) {
       employeeName,
       month, // "YYYY-MM"
       amount, 
+      calculatedSalary,
+      advanceRecoveryAmount,
       paymentMode, 
       referenceNo, 
       remarks 
@@ -125,14 +127,15 @@ export async function POST(req: Request) {
       });
 
       // C. Create Employee Ledger Entries
-      // C1. Credit for Salary Earned
+      // C1. Credit for Salary Earned (Gross Salary)
+      const grossSalary = calculatedSalary !== undefined ? Number(calculatedSalary) : Number(amount);
       await tx.employeeLedger.create({
         data: {
           employeeEmail,
           date: transactionDate,
           type: "Salary Credit",
           description: `Salary Earned for ${month}`,
-          credit: Number(amount),
+          credit: grossSalary,
           debit: 0,
           referenceId: expenseRecord.id,
           createdBy: adminEmail
@@ -152,6 +155,51 @@ export async function POST(req: Request) {
           createdBy: adminEmail
         }
       });
+
+      // D. Advance Recovery Logic
+      if (advanceRecoveryAmount && Number(advanceRecoveryAmount) > 0) {
+        let toRecover = Number(advanceRecoveryAmount);
+        const activeAdvances = await tx.employeeAdvance.findMany({
+          where: { 
+            employeeEmail, 
+            remainingAmount: { gt: 0 }, 
+            status: { in: ["Disbursed", "PartiallyRecovered"] } 
+          },
+          orderBy: { disbursedDate: 'asc' }
+        });
+
+        for (const adv of activeAdvances) {
+          if (toRecover <= 0) break;
+          // Limit deduction to what's left in this advance
+          const deduction = Math.min(adv.remainingAmount, toRecover);
+          
+          if (deduction > 0) {
+            toRecover -= deduction;
+            const newRemaining = adv.remainingAmount - deduction;
+            
+            await tx.employeeAdvance.update({
+              where: { id: adv.id },
+              data: {
+                remainingAmount: newRemaining,
+                status: newRemaining === 0 ? "Recovered" : "PartiallyRecovered"
+              }
+            });
+
+            await tx.employeeLedger.create({
+              data: {
+                employeeEmail,
+                date: transactionDate,
+                type: "Advance Recovery",
+                description: `Advance Recovery for ${adv.advanceNo}`,
+                credit: 0,
+                debit: deduction,
+                referenceId: adv.id,
+                createdBy: adminEmail
+              }
+            });
+          }
+        }
+      }
 
       return expenseRecord;
     });
