@@ -112,14 +112,15 @@ export default function PaymentHistory({ paymentHistory, taskTitle, taskDetails,
   };
 
   const handleSaveRecordEdit = async () => {
-    if (!editingRecordEntry || !taskDetails?.taskId) return;
+    const tid = taskDetails?.taskId || editingRecordEntry?.taskId;
+    if (!editingRecordEntry || !tid) return;
     setSavingRecord(true);
     try {
       const res = await fetch("/api/payments/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          taskId: taskDetails.taskId,
+          taskId: tid,
           paymentId: editingRecordEntry.paymentId || editingRecordEntry.id,
           received: Number(recordForm.received),
           utr: recordForm.utr,

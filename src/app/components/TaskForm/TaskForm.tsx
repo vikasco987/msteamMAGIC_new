@@ -439,6 +439,7 @@ const initialFormState = {
   serialNumber: "",
   rtoReason: "",
   initialNote: "",
+  supportGroupUrl: "",
 };
 
 export default function TaskForm() {
@@ -546,13 +547,17 @@ export default function TaskForm() {
     e.preventDefault();
 
 
-    if (step === 0) {
+      if (step === 0) {
       if (!formData.activeTab) {
         alert("⚠️ Please select a Service Type to continue.");
         return;
       }
       if (!formData.assigneeId) {
         alert("⚠️ Please select an Assignee.");
+        return;
+      }
+      if (!formData.supportGroupUrl || formData.supportGroupUrl.trim() === "") {
+        alert("You did not submit WhatsApp support group URL");
         return;
       }
       if (!formData.initialNote || formData.initialNote.trim() === "") {
@@ -695,6 +700,7 @@ export default function TaskForm() {
           costPrice: formData.costPrice.trim(),
           serialNumber: formData.serialNumber.trim(),
           rtoReason: formData.rtoReason.trim(),
+          supportGroupUrl: formData.supportGroupUrl.trim(),
           fields: uploadedCustomFields,
         },
       };
@@ -778,9 +784,11 @@ export default function TaskForm() {
               assigneeId={formData.assigneeId}
               activeTab={formData.activeTab}
               initialNote={formData.initialNote}
+              supportGroupUrl={formData.supportGroupUrl}
               setTitle={(val) => updateFormData("title", val)}
               setAssigneeId={(val) => updateFormData("assigneeId", val)}
               setInitialNote={(val) => updateFormData("initialNote", val)}
+              setSupportGroupUrl={(val) => updateFormData("supportGroupUrl", val)}
               setActiveTab={(val) => {
                 const matchedCategory = TASK_CATEGORIES.find((cat) => cat.value === val);
                 setFormData((prev) => ({

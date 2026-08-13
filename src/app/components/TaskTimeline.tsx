@@ -437,9 +437,9 @@ export default function TaskTimeline() {
     if (searchTerm) {
       const lowerSearchTerm = searchTerm.toLowerCase();
       currentTasks = currentTasks.filter(task =>
-        task.name.toLowerCase().includes(lowerSearchTerm) ||
-        task.shop.toLowerCase().includes(lowerSearchTerm) ||
-        task.customer.toLowerCase().includes(lowerSearchTerm)
+        (task.name || "").toLowerCase().includes(lowerSearchTerm) ||
+        (task.shop || "").toLowerCase().includes(lowerSearchTerm) ||
+        (task.customer || "").toLowerCase().includes(lowerSearchTerm)
       );
     }
     if (selectedAvatar) {
@@ -1026,6 +1026,17 @@ export default function TaskTimeline() {
                             {assigneeMap[id]?.name || "..."}
                           </div>
                         ))}
+                        {(task as any).customFields?.supportGroupUrl && (
+                          <a 
+                            href={(task as any).customFields.supportGroupUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            onClick={(e) => e.stopPropagation()} 
+                            className="flex items-center gap-1 bg-green-50 text-green-700 px-1.5 py-0.5 rounded-md text-[9px] font-bold border border-green-100 hover:bg-green-100 transition-colors"
+                          >
+                            🔗 Support Group
+                          </a>
+                        )}
                       </div>
                     </td>
                     {Array.from({ length: totalDays }).map((_, i) => {
@@ -1117,6 +1128,14 @@ export default function TaskTimeline() {
                         <div className="bg-blue-600 h-2 rounded-full transition-all duration-500" style={{ width: `${selectedTask.progress}%` }} />
                       </div>
                     </div>
+                    {(selectedTask as any).customFields?.supportGroupUrl && (
+                      <div className="col-span-2">
+                        <p className="text-xs text-gray-500 uppercase">Support Group</p>
+                        <a href={(selectedTask as any).customFields.supportGroupUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline inline-flex items-center gap-1">
+                          🔗 View Group
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </div>
 

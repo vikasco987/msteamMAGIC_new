@@ -765,6 +765,7 @@ interface CustomFieldsInput {
   chequeUrl?: string;
   menuCardUrls?: string[];
   serialNumber?: string;
+  supportGroupUrl?: string; // ✅ Added
 }
 
 // ✅ Add this helper function below imports
@@ -823,6 +824,8 @@ export async function POST(req: NextRequest) {
       deliveryCharge,
       costPrice,
       serialNumber,
+      rtoReason,
+      supportGroupUrl, // ✅ Added
       fields = [],
       aadhaarUrl,
       panUrl,
@@ -924,6 +927,8 @@ export async function POST(req: NextRequest) {
           deliveryCharge: toNullableString(deliveryCharge),
           costPrice: toNullableString(costPrice),
           serialNumber: toNullableString(serialNumber),
+          rtoReason: toNullableString(rtoReason),
+          supportGroupUrl: toNullableString(supportGroupUrl), // ✅ Added
           assignerId: userId,
           assignerName: assignerName,
           assignerEmail: assignerEmail,

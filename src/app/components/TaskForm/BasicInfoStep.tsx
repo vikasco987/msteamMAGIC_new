@@ -32,11 +32,12 @@ const TASK_CATEGORIES = [
 interface Props {
   title: string;
   assigneeId: string;
-  activeTab: TabType | "";
   initialNote: string;
+  supportGroupUrl: string;
   setTitle: (val: string) => void;
   setAssigneeId: (val: string) => void;
   setInitialNote: (val: string) => void;
+  setSupportGroupUrl: (val: string) => void;
   setActiveTab: (val: TabType | "") => void;
 }
 
@@ -45,9 +46,11 @@ export default function BasicInfoStep({
   activeTab,
   title,
   initialNote,
+  supportGroupUrl,
   setTitle,
   setAssigneeId,
   setInitialNote,
+  setSupportGroupUrl,
   setActiveTab,
 }: Props) {
   const { getToken } = useAuth();
@@ -177,6 +180,21 @@ export default function BasicInfoStep({
             onChange={(e) => setInitialNote(e.target.value)}
             placeholder="Please enter task details and requirements here..."
             className={`${inputClass} min-h-[100px] resize-y`}
+            required
+          />
+        </div>
+      </section>
+
+      {/* 🔗 Section: Support Group */}
+      <section>
+        <div className="bg-blue-50/20 p-6 rounded-[2rem] border border-blue-100/50">
+          <label className={labelClass}>🔗 WhatsApp Support Group URL (Required)</label>
+          <input
+            type="url"
+            value={supportGroupUrl}
+            onChange={(e) => setSupportGroupUrl(e.target.value)}
+            placeholder="https://chat.whatsapp.com/..."
+            className={inputClass}
             required
           />
         </div>
