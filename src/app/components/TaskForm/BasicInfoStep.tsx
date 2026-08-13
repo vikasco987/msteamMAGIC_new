@@ -188,14 +188,16 @@ export default function BasicInfoStep({
       {/* 🔗 Section: Support Group */}
       <section>
         <div className="bg-blue-50/20 p-6 rounded-[2rem] border border-blue-100/50">
-          <label className={labelClass}>🔗 WhatsApp Support Group URL (Required)</label>
+          <label className={labelClass}>
+            🔗 WhatsApp Support Group URL {["printer", "printer_software"].includes(activeTab) ? "(Required)" : "(Optional)"}
+          </label>
           <input
             type="url"
             value={supportGroupUrl}
             onChange={(e) => setSupportGroupUrl(e.target.value)}
             placeholder="https://chat.whatsapp.com/..."
             className={inputClass}
-            required
+            required={["printer", "printer_software"].includes(activeTab)}
           />
         </div>
       </section>

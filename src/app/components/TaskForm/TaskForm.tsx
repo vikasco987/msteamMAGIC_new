@@ -556,7 +556,8 @@ export default function TaskForm() {
         alert("⚠️ Please select an Assignee.");
         return;
       }
-      if (!formData.supportGroupUrl || formData.supportGroupUrl.trim() === "") {
+      const isSupportGroupRequired = ["printer", "printer_software"].includes(formData.activeTab);
+      if (isSupportGroupRequired && (!formData.supportGroupUrl || formData.supportGroupUrl.trim() === "")) {
         alert("You did not submit WhatsApp support group URL");
         return;
       }
