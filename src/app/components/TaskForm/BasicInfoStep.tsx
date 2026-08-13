@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import dynamic from "next/dynamic";
-import { Briefcase, Users, Edit3 } from "lucide-react";
+import { Briefcase, Users, Edit3, Mic } from "lucide-react";
 
 type TabType = "license" | "swiggy" | "zomato" | "combo" | "photo" | "account" | "other" | "printer" | "printer_software" | "rto_printer" | "escalation";
 
@@ -55,6 +55,64 @@ export default function BasicInfoStep({
 }: Props) {
   const { getToken } = useAuth();
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = React.useRef<any>(null);
+
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+    };
+  }, []);
+
+  const toggleListening = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Microphone is not supported in this browser.");
+      return;
+    }
+
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = "en-IN";
+      recognition.interimResults = true;
+      recognition.continuous = true;
+
+      const initialText = initialNote.trim();
+
+      recognition.onstart = () => setIsListening(true);
+      recognition.onend = () => setIsListening(false);
+      recognition.onerror = (event: any) => {
+        setIsListening(false);
+      };
+
+      recognition.onresult = (event: any) => {
+        let fullFinal = "";
+        let fullInterim = "";
+
+        for (let i = 0; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) fullFinal += event.results[i][0].transcript;
+          else fullInterim += event.results[i][0].transcript;
+        }
+
+        const currentTranscript = (fullFinal + fullInterim).trim();
+        const separator = initialText && currentTranscript ? " " : "";
+        setInitialNote(initialText + separator + currentTranscript);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (error) {
+      console.error("Speech recognition error:", error);
+      setIsListening(false);
+    }
+  };
 
   useEffect(() => {
     const fetchTeamMembers = async () => {
@@ -174,7 +232,22 @@ export default function BasicInfoStep({
         </div>
 
         <div className="bg-amber-50/20 p-6 rounded-[2rem] border border-amber-100/50">
-          <label className={labelClass}>📝 Task Notes (Required)</label>
+          <div className="flex items-center justify-between mb-1.5 ml-1">
+            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">📝 Task Notes (Required)</label>
+            <button
+              type="button"
+              onClick={toggleListening}
+              className={`p-1.5 rounded-full transition-colors flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide ${
+                isListening
+                  ? "bg-red-100 text-red-600 animate-pulse"
+                  : "bg-slate-100 text-slate-500 hover:bg-indigo-100 hover:text-indigo-600"
+              }`}
+              title={isListening ? "Stop Listening" : "Start Voice Typing"}
+            >
+              <Mic size={14} />
+              {isListening ? "Listening..." : "Mic"}
+            </button>
+          </div>
           <textarea
             value={initialNote}
             onChange={(e) => setInitialNote(e.target.value)}
