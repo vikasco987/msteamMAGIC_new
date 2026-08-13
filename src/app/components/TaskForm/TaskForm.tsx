@@ -758,11 +758,14 @@ export default function TaskForm() {
               <div key={idx} className="relative z-10 flex flex-col items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setStep(idx)}
+                  onClick={() => {
+                    if (idx <= step) setStep(idx);
+                  }}
+                  disabled={idx > step}
                   className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
                     step >= idx 
-                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200 scale-110" 
-                      : "bg-white text-slate-400 border-2 border-slate-200"
+                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200 scale-110 cursor-pointer" 
+                      : "bg-white text-slate-400 border-2 border-slate-200 cursor-not-allowed opacity-75"
                   }`}
                 >
                   {step > idx ? "✓" : idx + 1}
