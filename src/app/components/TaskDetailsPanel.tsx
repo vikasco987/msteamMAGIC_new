@@ -10,6 +10,7 @@ import {
 } from "react-icons/fa";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
+import PaymentHistory from "./PaymentHistory";
 
 interface TaskDetailsPanelProps {
   taskId: string | null;
@@ -64,7 +65,7 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'customer' | 'financials' | 'documents' | 'custom' | 'discussion'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'customer' | 'financials' | 'invoices' | 'documents' | 'custom' | 'discussion'>('overview');
   const [lightbox, setLightbox] = useState<LightboxState>(null);
   
   // Discussion State
@@ -236,6 +237,7 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
               <button onClick={() => setActiveTab('overview')} className={`pb-3 text-sm font-bold uppercase tracking-wide border-b-2 transition-colors whitespace-nowrap ${activeTab === 'overview' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>Overview</button>
               <button onClick={() => setActiveTab('customer')} className={`pb-3 text-sm font-bold uppercase tracking-wide border-b-2 transition-colors whitespace-nowrap ${activeTab === 'customer' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>Customer</button>
               <button onClick={() => setActiveTab('financials')} className={`pb-3 text-sm font-bold uppercase tracking-wide border-b-2 transition-colors whitespace-nowrap ${activeTab === 'financials' ? 'border-rose-500 text-rose-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>Financials</button>
+              <button onClick={() => setActiveTab('invoices')} className={`pb-3 text-sm font-bold uppercase tracking-wide border-b-2 transition-colors whitespace-nowrap ${activeTab === 'invoices' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>Invoices</button>
               <button onClick={() => setActiveTab('documents')} className={`pb-3 text-sm font-bold uppercase tracking-wide border-b-2 transition-colors whitespace-nowrap ${activeTab === 'documents' ? 'border-amber-500 text-amber-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>Documents</button>
               {hasCustomFields && (
                 <button onClick={() => setActiveTab('custom')} className={`pb-3 text-sm font-bold uppercase tracking-wide border-b-2 transition-colors whitespace-nowrap ${activeTab === 'custom' ? 'border-purple-500 text-purple-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>Custom Data</button>
@@ -377,6 +379,27 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
                     <InfoField label="UTR Number" value={task.customFields?.utrNumber} icon={<FaFileInvoice />} copyable />
                     <InfoField label="Transaction ID" value={task.customFields?.transactionId} icon={<FaFileInvoice />} copyable />
                     <InfoField label="AWB Number" value={task.customFields?.awbNumber || task.customFields?.awb} icon={<FaFileInvoice />} copyable />
+                  </div>
+                </div>
+              )}
+
+              {/* TAB: INVOICES */}
+              {activeTab === 'invoices' && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
+                    <h3 className="font-bold text-gray-800 flex items-center gap-2 mb-4"><FaFileInvoice className="text-blue-500" /> Invoices & Payment History</h3>
+                    <PaymentHistory 
+                      paymentHistory={(task.paymentHistory as any) || []} 
+                      taskTitle={task.title}
+                      taskDetails={{
+                        taskId: task.id,
+                        shopName: task.customFields?.shopName || task.shopName,
+                        customerName: task.customerName,
+                        address: task.customFields?.location,
+                        phone: task.customFields?.phone || task.phone,
+                        gstin: task.customFields?.gstin || task.customFields?.gstNo,
+                      }}
+                    />
                   </div>
                 </div>
               )}
