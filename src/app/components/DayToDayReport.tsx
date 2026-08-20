@@ -2804,8 +2804,9 @@
 
 import { useEffect, useState } from "react";
 import { format, subMonths } from "date-fns";
-import { Search, Loader2, ArrowUp, ArrowDown, Eye, EyeOff } from "lucide-react";
+import { Search, Loader2, ArrowUp, ArrowDown, Eye, EyeOff, Download } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useUser } from "@clerk/nextjs";
 
 interface ReportEntry {
   taskNumber: number;
@@ -2834,6 +2835,12 @@ export default function ShopReport({ assignerId }: { assignerId?: string } = {})
   const [pendingFilter, setPendingFilter] = useState<"all" | "pending" | "paid">("all");
   const [sortPendingDesc, setSortPendingDesc] = useState<boolean>(true);
   const [showTaskId, setShowTaskId] = useState(false); // ✅ toggle for TaskId column
+  const [isExporting, setIsExporting] = useState(false);
+
+  const { user, isLoaded } = useUser();
+  const roleFromMetadata = user?.publicMetadata?.role as string;
+  const userRole = String(isLoaded ? (roleFromMetadata || 'user') : 'user').toLowerCase().trim();
+  const isMaster = userRole === 'master';
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -2960,6 +2967,42 @@ export default function ShopReport({ assignerId }: { assignerId?: string } = {})
               >
                 {showTaskId ? <EyeOff size={16} /> : <Eye size={16} />} Task ID
               </button>
+
+              {/* Export Excel (Master Only) */}
+              {isMaster && (
+                <button
+                  disabled={isExporting}
+                  onClick={async () => {
+                    setIsExporting(true);
+                    try {
+                      const xlsx = await import("xlsx");
+                      const formattedReport = filteredData.map((row) => ({
+                        "Shop Name": row.shopName,
+                        "Task ID": row.taskId || "-",
+                        "Mobile": row.mobileNumber || "-",
+                        "First Task Date": formatDate(row.firstCreatedAt),
+                        "Total Revenue": row.totalRevenue,
+                        "Total Received": row.totalReceived,
+                        "Pending": row.pending
+                      }));
+
+                      const wb = xlsx.utils.book_new();
+                      const ws = xlsx.utils.json_to_sheet(formattedReport);
+                      xlsx.utils.book_append_sheet(wb, ws, "Shop Report");
+                      xlsx.writeFile(wb, `Filtered_Shop_Report_${selectedMonth}.xlsx`);
+                    } catch (err) {
+                      console.error("Export failed", err);
+                      alert("Failed to export Excel.");
+                    } finally {
+                      setIsExporting(false);
+                    }
+                  }}
+                  className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl shadow hover:from-green-600 hover:to-green-700 transition-all flex items-center gap-2"
+                >
+                  {isExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                  Export Excel
+                </button>
+              )}
 
               {/* Search Input */}
               <div className="relative w-full max-w-sm">

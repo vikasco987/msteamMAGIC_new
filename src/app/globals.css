@@ -139,3 +139,23 @@ body {
   }
 }
 .custom-quill .ql-container { flex: 1; overflow-y: auto; font-size: 14px; font-family: 'Poppins', sans-serif; }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #pdf-content, #pdf-content * {
+    visibility: visible;
+  }
+  #pdf-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 20px;
+  }
+  button {
+    display: none !important;
+  }
+}

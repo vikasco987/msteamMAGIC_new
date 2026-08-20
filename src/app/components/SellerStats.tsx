@@ -199,71 +199,15 @@ export default function SellerStats({
             </div>
 
             {isMaster && (
-              <>
-                <button
-                  disabled={isDownloadingPdf}
-                  onClick={async () => {
-                    setIsDownloadingPdf(true);
-                    try {
-                      const xlsx = await import("xlsx");
-                      
-                      // Fetch stats
-                      const statsData = [
-                        { Metric: "Total Revenue", Value: stats?.totalRevenue || 0 },
-                        { Metric: "Total Received", Value: stats?.totalReceived || 0 },
-                        { Metric: "Pending Revenue", Value: stats?.pendingRevenue || 0 },
-                        { Metric: "Total Sales", Value: stats?.totalSales || 0 },
-                      ];
-
-                      // Fetch day-to-day report data
-                      let reportUrl = `/api/seller/day-report?month=${month}`;
-                      if (selectedAssignerId) reportUrl += `&assignerId=${selectedAssignerId}`;
-                      
-                      const reportRes = await fetch(reportUrl);
-                      const reportData = reportRes.ok ? await reportRes.json() : [];
-                      
-                      const formattedReport = reportData.map((row: any) => ({
-                        Shop: row.shopName || "N/A",
-                        Mobile: row.mobileNumber || "N/A",
-                        "First Task Date": format(new Date(row.firstCreatedAt), "dd MMM yyyy"),
-                        "Total Revenue": row.totalRevenue,
-                        "Total Received": row.totalReceived,
-                        "Pending": row.pending
-                      }));
-
-                      const wb = xlsx.utils.book_new();
-                      const wsStats = xlsx.utils.json_to_sheet(statsData);
-                      xlsx.utils.book_append_sheet(wb, wsStats, "Summary");
-                      
-                      if (formattedReport.length > 0) {
-                        const wsReport = xlsx.utils.json_to_sheet(formattedReport);
-                        xlsx.utils.book_append_sheet(wb, wsReport, "Shop Report");
-                      }
-                      
-                      xlsx.writeFile(wb, `My_Growth_Report_${month}.xlsx`);
-                    } catch (error) {
-                      console.error("Excel generation failed:", error);
-                      alert("Failed to export Excel.");
-                    } finally {
-                      setIsDownloadingPdf(false);
-                    }
-                  }}
-                  className={`flex items-center gap-2 ${isDownloadingPdf ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 hover:shadow-md cursor-pointer'} text-white rounded-xl shadow-sm p-2 px-4 transition-colors border ${isDownloadingPdf ? 'border-gray-400' : 'border-green-600'} font-bold`}
-                >
-                  {isDownloadingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                  <span className="text-sm">{isDownloadingPdf ? "Exporting..." : "Export Excel"}</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    window.print();
-                  }}
-                  className="flex items-center gap-2 bg-blue-600 text-white rounded-xl shadow-sm p-2 px-4 hover:shadow-md hover:bg-blue-700 transition-colors border border-blue-600 font-bold cursor-pointer"
-                >
-                  <Download className="w-4 h-4" />
-                  <span className="text-sm">Print / PDF</span>
-                </button>
-              </>
+              <button
+                onClick={() => {
+                  window.print();
+                }}
+                className="flex items-center gap-2 bg-blue-600 text-white rounded-xl shadow-sm p-2 px-4 hover:shadow-md hover:bg-blue-700 transition-colors border border-blue-600 font-bold cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span className="text-sm">Print / PDF</span>
+              </button>
             )}
           </div>
         </div>
