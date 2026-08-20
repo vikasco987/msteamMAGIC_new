@@ -57,6 +57,7 @@ export default function SellerStats({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [isDownloadingIncentive, setIsDownloadingIncentive] = useState(false);
 
   useEffect(() => {
     if (isMaster) {
@@ -256,6 +257,39 @@ export default function SellerStats({
               >
                 {isDownloadingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                 <span className="text-sm">{isDownloadingPdf ? "Generating..." : "Download PDF"}</span>
+              </button>
+            )}
+
+            {isMaster && (
+              <button
+                disabled={isDownloadingIncentive}
+                onClick={async () => {
+                  setIsDownloadingIncentive(true);
+                  try {
+                    let url = `/api/seller/incentive-report?month=${month}`;
+                    if (selectedAssignerId) url += `&assignerId=${selectedAssignerId}`;
+                    
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error("Failed to download incentive report");
+                    
+                    const blob = await res.blob();
+                    const link = document.createElement("a");
+                    link.href = window.URL.createObjectURL(blob);
+                    link.download = `Incentive_Report_${month}${selectedAssignerId ? '_' + selectedAssignerId : ''}.xlsx`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  } catch (error: any) {
+                    console.error("Incentive report failed:", error);
+                    alert("Failed to download incentive report.");
+                  } finally {
+                    setIsDownloadingIncentive(false);
+                  }
+                }}
+                className={`flex items-center gap-2 ${isDownloadingIncentive ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 hover:shadow-md cursor-pointer'} text-white rounded-xl shadow-sm p-2 px-4 transition-colors border ${isDownloadingIncentive ? 'border-gray-400' : 'border-emerald-600'} font-bold`}
+              >
+                {isDownloadingIncentive ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                <span className="text-sm">{isDownloadingIncentive ? "Generating..." : "Incentive Report"}</span>
               </button>
             )}
           </div>
