@@ -8,6 +8,7 @@ import { Button } from "../../../components/ui/button";
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("stats");
+  const [selectedAssignerId, setSelectedAssignerId] = useState("");
 
   const tabs = [
     { id: "stats", label: "📊 Stats Overview" },
@@ -39,8 +40,11 @@ export default function DashboardPage() {
       <div className="mt-4 space-y-6">
         {activeTab === "stats" && (
           <>
-            <SellerStats />
-            <DayToDayReport />
+            <SellerStats 
+              selectedAssignerId={selectedAssignerId} 
+              onAssignerChange={setSelectedAssignerId} 
+            />
+            <DayToDayReport assignerId={selectedAssignerId} />
           </>
         )}
 

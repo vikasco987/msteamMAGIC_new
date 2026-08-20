@@ -31,7 +31,13 @@ interface Stats {
   totalSales: number;
 }
 
-export default function SellerStats() {
+export default function SellerStats({ 
+  selectedAssignerId, 
+  onAssignerChange 
+}: { 
+  selectedAssignerId?: string; 
+  onAssignerChange?: (id: string) => void; 
+} = {}) {
   const [stats, setStats] = useState<Stats | null>(null);
   const [month, setMonth] = useState<string>(format(new Date(), "yyyy-MM"));
   const [loading, setLoading] = useState<boolean>(false);
@@ -47,7 +53,6 @@ export default function SellerStats() {
   const isMaster = userRole === 'master';
 
   const [assignees, setAssignees] = useState<any[]>([]);
-  const [selectedAssignerId, setSelectedAssignerId] = useState<string>("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -155,7 +160,7 @@ export default function SellerStats() {
                     </div>
                     <div className="max-h-60 overflow-y-auto p-1">
                       <div 
-                        onClick={() => { setSelectedAssignerId(""); setIsDropdownOpen(false); setSearchQuery(""); }}
+                        onClick={() => { if(onAssignerChange) onAssignerChange(""); setIsDropdownOpen(false); setSearchQuery(""); }}
                         className={`px-3 py-2 text-sm rounded-lg cursor-pointer transition-colors ${!selectedAssignerId ? 'bg-blue-50 text-blue-700 font-bold' : 'hover:bg-gray-50 text-gray-700'}`}
                       >
                         All / Self
@@ -165,7 +170,7 @@ export default function SellerStats() {
                         .map(assigner => (
                           <div 
                             key={assigner.id}
-                            onClick={() => { setSelectedAssignerId(assigner.id); setIsDropdownOpen(false); setSearchQuery(""); }}
+                            onClick={() => { if(onAssignerChange) onAssignerChange(assigner.id); setIsDropdownOpen(false); setSearchQuery(""); }}
                             className={`px-3 py-2 text-sm rounded-lg cursor-pointer transition-colors flex items-center gap-2 ${selectedAssignerId === assigner.id ? 'bg-blue-50 text-blue-700 font-bold' : 'hover:bg-gray-50 text-gray-700'}`}
                           >
                             {assigner.imageUrl && <img src={assigner.imageUrl} alt="" className="w-5 h-5 rounded-full" />}

@@ -2824,7 +2824,7 @@ const getMonthOptions = () => {
   );
 };
 
-export default function ShopReport() {
+export default function ShopReport({ assignerId }: { assignerId?: string } = {}) {
   const [data, setData] = useState<ReportEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -2841,7 +2841,11 @@ export default function ShopReport() {
       setError(null);
       setData([]);
       try {
-        const res = await fetch(`/api/seller/day-report?month=${selectedMonth}`);
+        let url = `/api/seller/day-report?month=${selectedMonth}`;
+        if (assignerId) {
+          url += `&assignerId=${assignerId}`;
+        }
+        const res = await fetch(url);
         if (!res.ok) {
           const errText = await res.text();
           throw new Error(`Failed to fetch report. ${res.status} ${res.statusText}. ${errText}`);
@@ -2863,7 +2867,7 @@ export default function ShopReport() {
     };
 
     fetchReport();
-  }, [selectedMonth]);
+  }, [selectedMonth, assignerId]);
 
   let filteredData = data.filter((item) =>
     Object.values(item).join(" ").toLowerCase().includes(search.toLowerCase())

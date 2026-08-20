@@ -792,6 +792,8 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const month = searchParams.get("month"); // YYYY-MM
+    const assignerId = searchParams.get("assignerId");
+
     if (!month || !/^\d{4}-\d{2}$/.test(month)) {
       return NextResponse.json({ error: "Invalid month format. Use YYYY-MM" }, { status: 400 });
     }
@@ -808,7 +810,9 @@ export async function GET(req: Request) {
     const normalizedRole = String(metadataRole || dbUser?.role || "user").toLowerCase();
 
     let userIds = [userId];
-    // TL should only see their own sales in "My Growth" as per request
+    if (normalizedRole === "master" && assignerId) {
+      userIds = [assignerId];
+    }
 
     // Fetch tasks for the logged-in seller or team
     const tasks = await prisma.task.findMany({
