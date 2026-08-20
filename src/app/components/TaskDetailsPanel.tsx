@@ -200,6 +200,10 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
   const excludeCustomFields = ['shopName', 'phone', 'email', 'location', 'costPrice', 'afe', 'utrNumber', 'transactionId', 'awbNumber', 'awb', 'previousDispatches'];
   const hasCustomFields = task?.customFields && Object.keys(task.customFields).filter(key => !excludeCustomFields.includes(key)).length > 0;
 
+  const totalAmt = Number(task?.amount || 0);
+  const rcvdAmt = Number(task?.received || 0);
+  const percentPaid = totalAmt > 0 ? Math.min(100, Math.round((rcvdAmt / totalAmt) * 100)) : 0;
+
   return (
     <div className={`fixed inset-0 z-[100] flex justify-end ${taskId ? "opacity-100 visible" : "opacity-0 invisible"} transition-all duration-300`}>
       {/* Backdrop */}
@@ -326,12 +330,7 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
               )}
 
               {/* TAB: FINANCIALS */}
-              {activeTab === 'financials' && (() => {
-                const totalAmt = Number(task.amount || 0);
-                const rcvdAmt = Number(task.received || 0);
-                const percentPaid = totalAmt > 0 ? Math.min(100, Math.round((rcvdAmt / totalAmt) * 100)) : 0;
-                
-                return (
+              {activeTab === 'financials' && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                   {/* Payment Progress Bar */}
                   <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col gap-3">
@@ -381,7 +380,7 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
                     <InfoField label="AWB Number" value={task.customFields?.awbNumber || task.customFields?.awb} icon={<FaFileInvoice />} copyable />
                   </div>
                 </div>
-              })()}
+              )}
 
               {/* TAB: INVOICES */}
               {activeTab === 'invoices' && (
