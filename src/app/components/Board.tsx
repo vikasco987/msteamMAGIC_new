@@ -318,26 +318,6 @@ export default function Board() {
     }
   };
 
-  const exportToExcel = () => {
-    const headers = ["Title", "Status", "Shop Name", "Outlet Name", "Phone", "Customer Name", "Package", "Created At"];
-    const rows = tasks.map(t => [
-      stripEmojis(t.title),
-      t.status,
-      stripEmojis(t.customFields?.shopName as string),
-      stripEmojis(t.customFields?.outletName as string),
-      t.phone || t.customFields?.phone,
-      stripEmojis(t.customFields?.customerName as string),
-      t.customFields?.packageAmount,
-      t.createdAt ? new Date(t.createdAt).toLocaleString() : ""
-    ]);
-    const csvContent = [headers, ...rows].map(r => r.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `tasks_${format(new Date(), "yyyy-MM-dd")}.csv`;
-    link.click();
-  };
-
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
       const lowerFilter = filterText.toLowerCase();
@@ -378,6 +358,37 @@ export default function Board() {
       return matchesSearch && matchesCategory && matchesDate && matchesStatus && matchesAssignee && matchesAssigner && !isHidden;
     });
   }, [tasks, filterText, selectedCategories, selectedDates, selectedStatuses, selectedAssignees, selectedAssigners, sortBy, sortDirection, showAllTasksMode, pendingChanges]);
+
+  const exportToExcel = async () => {
+    try {
+      const xlsx = await import("xlsx");
+      
+      const exportData = filteredTasks.map(t => ({
+        "Task ID": t.id || "-",
+        "Title": t.title ? String(t.title).trim() : "-",
+        "Status": t.status || "-",
+        "Priority": t.priority || "-",
+        "Shop Name": t.shopName || t.customFields?.shopName || "-",
+        "Outlet Name": t.customFields?.outletName || "-",
+        "Customer Name": t.customerName || t.customFields?.customerName || "-",
+        "Phone": t.phone || t.customFields?.phone || "-",
+        "Email": t.email || t.customFields?.email || "-",
+        "Package": t.customFields?.packageAmount || "-",
+        "Assignees": t.assignees?.map(a => a.name).join(", ") || t.assigneeName || "-",
+        "Created At": t.createdAt ? new Date(t.createdAt).toLocaleString() : "-"
+      }));
+
+      const wb = xlsx.utils.book_new();
+      const ws = xlsx.utils.json_to_sheet(exportData);
+      xlsx.utils.book_append_sheet(wb, ws, "Tasks");
+      
+      xlsx.writeFile(wb, `Tasks_Export_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+      toast.success("Excel exported successfully!");
+    } catch (err) {
+      console.error("Excel generation failed:", err);
+      toast.error("Failed to export Excel.");
+    }
+  };
 
   const allStatuses = useMemo(() => Array.from(new Set(tasks.map(t => t.status))), [tasks]);
   const allAssignees = useMemo(() => {
