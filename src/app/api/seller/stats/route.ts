@@ -105,6 +105,7 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const month = searchParams.get("month"); // YYYY-MM
+    const assignerId = searchParams.get("assignerId");
 
     if (!month) {
       return NextResponse.json(
@@ -126,6 +127,10 @@ export async function GET(req: Request) {
 
     
     let userIds = [userId];
+    // Master can filter by assignerId
+    if (normalizedRole === "master" && assignerId) {
+      userIds = [assignerId];
+    }
     // TL should only see their own sales in "My Growth" as per request
 
     // Fetch tasks created by this seller (or team) for the month

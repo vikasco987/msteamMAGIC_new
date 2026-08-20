@@ -9,10 +9,13 @@ import {
   Loader2, 
   History, 
   Calendar, 
-  TrendingUp 
+  TrendingUp,
+  Search,
+  ChevronDown
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { format } from "date-fns";
+import { useUser } from "@clerk/nextjs";
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("en-IN", {
@@ -38,6 +41,27 @@ export default function SellerStats() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyData, setHistoryData] = useState<any[]>([]);
 
+  const { user, isLoaded } = useUser();
+  const roleFromMetadata = user?.publicMetadata?.role as string;
+  const userRole = String(isLoaded ? (roleFromMetadata || 'user') : 'user').toLowerCase().trim();
+  const isMaster = userRole === 'master';
+
+  const [assignees, setAssignees] = useState<any[]>([]);
+  const [selectedAssignerId, setSelectedAssignerId] = useState<string>("");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    if (isMaster) {
+      fetch("/api/assignees")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.assignees) setAssignees(data.assignees);
+        })
+        .catch((err) => console.error("Failed to fetch assignees", err));
+    }
+  }, [isMaster]);
+
   useEffect(() => {
     const fetchStats = async () => {
       setLoading(true);
@@ -45,7 +69,11 @@ export default function SellerStats() {
       setStats(null);
 
       try {
-        const statsRes = await fetch(`/api/seller/stats?month=${month}`);
+        let url = `/api/seller/stats?month=${month}`;
+        if (selectedAssignerId) {
+          url += `&assignerId=${selectedAssignerId}`;
+        }
+        const statsRes = await fetch(url);
         if (!statsRes.ok) throw new Error("Failed to fetch summary stats");
         const statsData = await statsRes.json();
         setStats(statsData);
@@ -56,12 +84,16 @@ export default function SellerStats() {
       }
     };
     fetchStats();
-  }, [month]);
+  }, [month, selectedAssignerId]);
 
   const fetchHistory = async () => {
     setHistoryLoading(true);
     try {
-      const res = await fetch(`/api/seller/sales-history?month=${month}`);
+      let url = `/api/seller/sales-history?month=${month}`;
+      if (selectedAssignerId) {
+        url += `&assignerId=${selectedAssignerId}`;
+      }
+      const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to fetch history");
       const data = await res.json();
       setHistoryData(data.history || []);
@@ -94,17 +126,70 @@ export default function SellerStats() {
           <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900">
             Dashboard Overview
           </h1>
-          <div className="flex items-center gap-2 bg-white rounded-xl shadow-sm p-2 hover:shadow-md">
-            <label htmlFor="month-selector" className="text-gray-600 font-medium">
-              Select Month:
-            </label>
-            <input
-              id="month-selector"
-              type="month"
-              value={month}
-              onChange={(e) => setMonth(e.target.value)}
-              className="bg-transparent border-none outline-none text-gray-800 font-bold"
-            />
+          <div className="flex flex-wrap items-center gap-4">
+            {isMaster && (
+              <div className="relative">
+                <div 
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="flex items-center gap-2 bg-white rounded-xl shadow-sm p-2 px-3 cursor-pointer hover:shadow-md border border-gray-100 min-w-[200px]"
+                >
+                  <span className="text-gray-600 font-medium whitespace-nowrap">Assigner:</span>
+                  <span className="font-bold text-gray-800 truncate flex-1">
+                    {selectedAssignerId ? assignees.find(a => a.id === selectedAssignerId)?.name || 'Unknown' : 'All/Self'}
+                  </span>
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                </div>
+                
+                {isDropdownOpen && (
+                  <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
+                    <div className="p-2 border-b border-gray-50 flex items-center gap-2 bg-gray-50/50">
+                      <Search className="w-4 h-4 text-gray-400" />
+                      <input 
+                        type="text" 
+                        placeholder="Search assigner..." 
+                        className="bg-transparent border-none outline-none text-sm w-full font-medium"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    <div className="max-h-60 overflow-y-auto p-1">
+                      <div 
+                        onClick={() => { setSelectedAssignerId(""); setIsDropdownOpen(false); setSearchQuery(""); }}
+                        className={`px-3 py-2 text-sm rounded-lg cursor-pointer transition-colors ${!selectedAssignerId ? 'bg-blue-50 text-blue-700 font-bold' : 'hover:bg-gray-50 text-gray-700'}`}
+                      >
+                        All / Self
+                      </div>
+                      {assignees
+                        .filter(a => a.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                        .map(assigner => (
+                          <div 
+                            key={assigner.id}
+                            onClick={() => { setSelectedAssignerId(assigner.id); setIsDropdownOpen(false); setSearchQuery(""); }}
+                            className={`px-3 py-2 text-sm rounded-lg cursor-pointer transition-colors flex items-center gap-2 ${selectedAssignerId === assigner.id ? 'bg-blue-50 text-blue-700 font-bold' : 'hover:bg-gray-50 text-gray-700'}`}
+                          >
+                            {assigner.imageUrl && <img src={assigner.imageUrl} alt="" className="w-5 h-5 rounded-full" />}
+                            <span className="truncate">{assigner.name}</span>
+                          </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 bg-white rounded-xl shadow-sm p-2 hover:shadow-md border border-gray-100">
+              <label htmlFor="month-selector" className="text-gray-600 font-medium">
+                Month:
+              </label>
+              <input
+                id="month-selector"
+                type="month"
+                value={month}
+                onChange={(e) => setMonth(e.target.value)}
+                className="bg-transparent border-none outline-none text-gray-800 font-bold"
+              />
+            </div>
           </div>
         </div>
 

@@ -13,6 +13,7 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const month = searchParams.get("month"); // YYYY-MM
+    const assignerId = searchParams.get("assignerId");
 
     if (!month) {
       return NextResponse.json(
@@ -25,10 +26,22 @@ export async function GET(req: Request) {
     const endDate = new Date(startDate);
     endDate.setMonth(endDate.getMonth() + 1);
 
+    const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
+    const { clerkClient } = await import("@clerk/nextjs/server");
+    const client = await clerkClient();
+    const clerkUser = await client.users.getUser(userId);
+    const metadataRole = (clerkUser.publicMetadata as any)?.role || (clerkUser.privateMetadata as any)?.role;
+    const normalizedRole = String(metadataRole || dbUser?.role || "user").toLowerCase();
+
+    let targetClerkId = userId;
+    if (normalizedRole === "master" && assignerId) {
+      targetClerkId = assignerId;
+    }
+
     // Fetch tasks created by this seller for the month
     const tasks = await prisma.task.findMany({
       where: {
-        createdByClerkId: userId,
+        createdByClerkId: targetClerkId,
         isHidden: false,
         createdAt: {
           gte: startDate,
