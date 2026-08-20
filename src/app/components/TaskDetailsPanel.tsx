@@ -381,7 +381,7 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
                     <InfoField label="AWB Number" value={task.customFields?.awbNumber || task.customFields?.awb} icon={<FaFileInvoice />} copyable />
                   </div>
                 </div>
-              )}
+              })()}
 
               {/* TAB: INVOICES */}
               {activeTab === 'invoices' && (
