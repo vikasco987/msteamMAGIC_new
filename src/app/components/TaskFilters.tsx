@@ -1262,6 +1262,7 @@ interface TaskFiltersProps {
   onPendingSalesFilterChange: (filter: "all" | "withPendingSales" | "fullyPaidSales" | "zeroAmountAndPaid") => void;
   availableUsers?: {id: string, name: string, email: string}[];
   availableStatuses?: string[];
+  onExport?: () => void;
 }
 
 const ALL_COLUMNS = [
@@ -1284,6 +1285,7 @@ const ALL_COLUMNS = [
   "paymentProofs",
   "tracking",
   "trackingStatus",
+  "actions"
 ];
 
 // FIX: Updated `value` fields to be plain text (no emojis)
@@ -1332,7 +1334,8 @@ export const TaskFilters = ({
   pendingSalesFilter,
   onPendingSalesFilterChange,
   availableUsers,
-  availableStatuses
+  availableStatuses,
+  onExport
 }: TaskFiltersProps) => {
   // Local states for other filters
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
@@ -1578,7 +1581,7 @@ export const TaskFilters = ({
 
           <button
             className="flex-1 md:flex-none inline-flex items-center justify-center bg-green-600 text-white font-medium px-4 py-2 rounded-lg shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200 ease-in-out text-sm"
-            onClick={exportCSV}
+            onClick={onExport}
           >
             <FaDownload className="inline mr-2" /> Export
           </button>

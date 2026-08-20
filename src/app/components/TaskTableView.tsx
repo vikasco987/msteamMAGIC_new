@@ -6523,6 +6523,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Task } from "../../types/task";
 import { Note } from "../../../types/note";
 import HighlightColorDropdown from "../components/HighlightColorDropdown";
+import TaskDetailsPanel from "./TaskDetailsPanel";
 
 import { TaskFilters } from "./TaskFilters";
 import { useUser } from "@clerk/nextjs";
@@ -6537,6 +6538,7 @@ import {
   FaReceipt,
   FaTimes,
   FaWhatsapp,
+  FaEllipsisV,
 } from "react-icons/fa";
 import toast from "react-hot-toast";
 import NotesModal from "../components/NotesModal";
@@ -6771,6 +6773,7 @@ export default function TaskTableView({
     "paymentProofs",
     "tracking",
     "trackingStatus",
+    "actions",
   ]);
 
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
@@ -6789,6 +6792,9 @@ export default function TaskTableView({
     []
   );
   const [selectedTaskIdForProofs, setSelectedTaskIdForProofs] = useState<string | null>(null);
+
+  const [viewedTaskId, setViewedTaskId] = useState<string | null>(null);
+  const [activeDropdownRow, setActiveDropdownRow] = useState<string | null>(null);
 
   // Pagination states are now from props
 
@@ -6851,6 +6857,43 @@ export default function TaskTableView({
 
   const handlePageChange = (pageNumber: number) => {
     onPageChange(pageNumber);
+  };
+
+  const exportCSV = () => {
+    const exportData = filteredTasks.map((task, index) => ({
+      "S. No.": index + 1,
+      "Task ID": task.id,
+      "Title": task.title,
+      "Status": task.status,
+      "Shop Name": task.customFields?.shopName,
+      "Phone": task.customFields?.phone,
+      "Email": task.customFields?.email,
+      "Assignee": task.assignees?.map((a: any) => a?.name || a?.email).filter(Boolean).join(", ") || task.assignee?.name,
+      "Assigner": task.assignerName,
+      "Created At": task.createdAt ? format(new Date(task.createdAt), "dd MMM yyyy, HH:mm") : "",
+      "Location": task.customFields?.location,
+      "Amount": Number(task.amount) || 0,
+      "Amount Received": Number(task.received) || 0,
+      "Pending Amount": (Number(task.amount) || 0) - (Number(task.received) || 0),
+      "Notes": (notesMap[task.id] || []).map((note) => note.content).join(" | "),
+      "Attachments": task.attachments?.map((a: any) => typeof a === 'string' ? a : a.url).join(" | ") || "", 
+      "Payment Proofs": task.paymentProofs?.map((p: any) => typeof p === 'string' ? p : p.url).filter(Boolean).join(" | ") || "",
+    }));
+
+    import("xlsx").then((XLSX) => {
+      import("file-saver").then(({ saveAs }) => {
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Tasks");
+        const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+        const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
+        saveAs(blob, `Tasks_Report_${format(new Date(), "yyyy-MM-dd_HH-mm")}.xlsx`);
+        toast.success("Excel exported successfully!");
+      });
+    }).catch(err => {
+      console.error("Failed to load export libraries", err);
+      toast.error("Failed to export Excel. Libraries missing.");
+    });
   };
 
   const handleFilteredTasksChange = useCallback((newFilteredTasks: Task[]) => {
@@ -7259,6 +7302,7 @@ export default function TaskTableView({
         onPendingSalesFilterChange={onPendingSalesFilterChange}
         availableUsers={availableUsers}
         availableStatuses={availableStatuses}
+        onExport={exportCSV}
       />
 
       <div className="overflow-x-auto">
@@ -7370,6 +7414,11 @@ export default function TaskTableView({
               {visibleColumns.includes("attemptsLeft") && (
                 <th className="px-3 py-2 text-xs font-bold tracking-wide text-gray-700 border border-gray-200 text-center w-24">
                   Attempts
+                </th>
+              )}
+              {visibleColumns.includes("actions") && (
+                <th className="px-3 py-2 text-xs font-bold tracking-wide text-gray-700 border border-gray-200 text-center w-16">
+                  Actions
                 </th>
               )}
             </tr>
@@ -7906,6 +7955,34 @@ export default function TaskTableView({
                         </td>
                       );
                     })()}
+                    {visibleColumns.includes("actions") && (
+                      <td className="border border-gray-200 px-3 py-2 whitespace-nowrap text-center">
+                        <div className="relative inline-block text-left">
+                          <button
+                            onClick={() => setActiveDropdownRow(activeDropdownRow === task.id ? null : task.id)}
+                            className="p-1 rounded-full hover:bg-gray-200 transition-colors focus:outline-none"
+                            aria-label="Options"
+                          >
+                            <FaEllipsisV className="text-gray-600" />
+                          </button>
+                          {activeDropdownRow === task.id && (
+                            <div className="origin-top-right absolute right-0 mt-2 w-32 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                              <div className="py-1">
+                                <button
+                                  onClick={() => {
+                                    setViewedTaskId(task.id);
+                                    setActiveDropdownRow(null);
+                                  }}
+                                  className="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                                >
+                                  View Details
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 );
               })
@@ -8048,6 +8125,13 @@ export default function TaskTableView({
             setShowPaymentProofsModal(false);
             setSelectedTaskIdForProofs(null);
           }}
+        />
+      )}
+
+      {viewedTaskId && (
+        <TaskDetailsPanel
+          taskId={viewedTaskId}
+          onClose={() => setViewedTaskId(null)}
         />
       )}
     </div>

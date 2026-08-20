@@ -39,13 +39,13 @@ export default function DashboardPage() {
       {/* --- Tab Content --- */}
       <div className="mt-4 space-y-6">
         {activeTab === "stats" && (
-          <>
+          <div id="pdf-content" className="flex flex-col gap-6">
             <SellerStats 
               selectedAssignerId={selectedAssignerId} 
               onAssignerChange={setSelectedAssignerId} 
             />
             <DayToDayReport assignerId={selectedAssignerId} />
-          </>
+          </div>
         )}
 
         {activeTab === "remarks" && (

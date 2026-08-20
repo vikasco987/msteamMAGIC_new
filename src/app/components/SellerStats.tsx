@@ -11,7 +11,8 @@ import {
   Calendar, 
   TrendingUp,
   Search,
-  ChevronDown
+  ChevronDown,
+  Download
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { format } from "date-fns";
@@ -195,6 +196,32 @@ export default function SellerStats({
                 className="bg-transparent border-none outline-none text-gray-800 font-bold"
               />
             </div>
+
+            {isMaster && (
+              <button
+                onClick={() => {
+                  const script = document.createElement("script");
+                  script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
+                  script.onload = () => {
+                    const element = document.getElementById("pdf-content");
+                    const opt = {
+                      margin: 0.5,
+                      filename: `My_Growth_Report_${month}${selectedAssignerId ? '_' + selectedAssignerId : ''}.pdf`,
+                      image: { type: 'jpeg', quality: 0.98 },
+                      html2canvas: { scale: 2, useCORS: true },
+                      jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
+                    };
+                    // @ts-ignore
+                    window.html2pdf().set(opt).from(element).save();
+                  };
+                  document.body.appendChild(script);
+                }}
+                className="flex items-center gap-2 bg-blue-600 text-white rounded-xl shadow-sm p-2 px-4 hover:shadow-md hover:bg-blue-700 transition-colors border border-blue-600 font-bold cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span className="text-sm">Download PDF</span>
+              </button>
+            )}
           </div>
         </div>
 
