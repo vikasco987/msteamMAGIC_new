@@ -148,13 +148,37 @@ body {
     visibility: visible;
   }
   #pdf-content {
-    position: absolute;
+    position: relative;
     left: 0;
     top: 0;
     width: 100%;
     margin: 0;
-    padding: 20px;
+    padding: 0;
+    overflow: visible !important;
+    height: auto !important;
   }
+  
+  /* Reset layout constraints that prevent pagination */
+  html, body {
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Force all scrollable containers to expand */
+  .overflow-x-auto, .overflow-y-auto, .overflow-auto, .h-screen, .max-h-screen, .flex-1 {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  /* Break pages inside table rows cleanly */
+  table { page-break-inside:auto }
+  tr    { page-break-inside:avoid; page-break-after:auto }
+  thead { display:table-header-group }
+  tfoot { display:table-footer-group }
+
   button {
     display: none !important;
   }
