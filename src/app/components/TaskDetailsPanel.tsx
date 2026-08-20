@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Task } from "../../types/task";
+import { Note } from "../../../types/note";
+import { useUser } from "@clerk/nextjs";
 import { 
   FaTimes, FaSpinner, FaUser, FaPhone, FaEnvelope, FaMapMarkerAlt, 
   FaFileAlt, FaMoneyBillWave, FaClock, FaCheckCircle, FaExclamationTriangle, 
-  FaCopy, FaLink, FaCalendarAlt, FaIdCard, FaImage, FaFileInvoice, FaFilePdf, FaDownload, FaClipboardList
+  FaCopy, FaLink, FaCalendarAlt, FaIdCard, FaImage, FaFileInvoice, FaFilePdf, FaDownload, FaClipboardList,
+  FaPaperclip, FaPaperPlane, FaUserCircle
 } from "react-icons/fa";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
@@ -57,11 +60,20 @@ const InfoField = ({ label, value, icon, copyable = false, isLink = false }: { l
 };
 
 export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelProps) {
+  const { user } = useUser();
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'customer' | 'financials' | 'documents' | 'custom'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'customer' | 'financials' | 'documents' | 'custom' | 'discussion'>('overview');
   const [lightbox, setLightbox] = useState<LightboxState>(null);
+  
+  // Discussion State
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [noteInput, setNoteInput] = useState("");
+  const [uploadingNote, setUploadingNote] = useState(false);
+  const [noteFile, setNoteFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!taskId) {
@@ -101,6 +113,60 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [lightbox]);
+
+  // Fetch Notes for Discussion
+  useEffect(() => {
+    if (activeTab === 'discussion' && taskId) {
+      setNotesLoading(true);
+      fetch(`/api/notes?taskId=${taskId}`)
+        .then(res => res.json())
+        .then(data => { setNotes(data); setNotesLoading(false); })
+        .catch(err => { console.error("Error fetching notes:", err); setNotesLoading(false); });
+    }
+  }, [activeTab, taskId]);
+
+  const handleAddNote = async () => {
+    if (!noteInput.trim() && !noteFile) return;
+    setUploadingNote(true);
+    try {
+      let uploadedFileUrl = "";
+      if (noteFile) {
+        const formData = new FormData();
+        formData.append("file", noteFile);
+        const res = await fetch("/api/upload", { method: "POST", body: formData });
+        if (!res.ok) throw new Error("Upload failed");
+        const data = await res.json();
+        uploadedFileUrl = data.url;
+      }
+      
+      const authorName = `${user?.firstName || ""} ${user?.lastName || ""}`.trim();
+      const authorEmail = user?.primaryEmailAddress?.emailAddress || "unknown@example.com";
+      
+      const noteRes = await fetch("/api/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          taskId,
+          content: noteInput,
+          authorName,
+          authorEmail,
+          fileUrl: uploadedFileUrl || undefined,
+        })
+      });
+      if (!noteRes.ok) throw new Error("Note creation failed");
+      const newNote = await noteRes.json();
+      setNotes(prev => [newNote, ...prev]);
+      setNoteInput("");
+      setNoteFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      toast.success("Note added!");
+    } catch(e) {
+      console.error(e);
+      toast.error("Failed to add note.");
+    } finally {
+      setUploadingNote(false);
+    }
+  };
 
   // Helper to determine document type
   const getDocType = (url: string): 'pdf' | 'image' => {
@@ -174,6 +240,7 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
               {hasCustomFields && (
                 <button onClick={() => setActiveTab('custom')} className={`pb-3 text-sm font-bold uppercase tracking-wide border-b-2 transition-colors whitespace-nowrap ${activeTab === 'custom' ? 'border-purple-500 text-purple-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>Custom Data</button>
               )}
+              <button onClick={() => setActiveTab('discussion')} className={`pb-3 text-sm font-bold uppercase tracking-wide border-b-2 transition-colors whitespace-nowrap ${activeTab === 'discussion' ? 'border-cyan-500 text-cyan-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>Discussion & Docs</button>
             </div>
           )}
         </div>
@@ -257,8 +324,27 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
               )}
 
               {/* TAB: FINANCIALS */}
-              {activeTab === 'financials' && (
+              {activeTab === 'financials' && (() => {
+                const totalAmt = Number(task.amount || 0);
+                const rcvdAmt = Number(task.received || 0);
+                const percentPaid = totalAmt > 0 ? Math.min(100, Math.round((rcvdAmt / totalAmt) * 100)) : 0;
+                
+                return (
                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  {/* Payment Progress Bar */}
+                  <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col gap-3">
+                    <div className="flex justify-between items-center">
+                      <h3 className="font-bold text-gray-800 flex items-center gap-2"><FaMoneyBillWave className="text-green-500" /> Payment Progress</h3>
+                      <span className={`font-black text-lg ${percentPaid === 100 ? 'text-green-500' : percentPaid > 0 ? 'text-yellow-600' : 'text-red-500'}`}>{percentPaid}% Collected</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-3.5 overflow-hidden border border-gray-200">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-1000 ease-out ${percentPaid === 100 ? 'bg-green-500' : percentPaid > 0 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                        style={{ width: `${percentPaid}%` }}
+                      ></div>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex flex-col justify-center items-center shadow-sm">
                       <div className="text-[10px] font-black uppercase text-blue-500 mb-1 tracking-widest">Amount</div>
@@ -385,6 +471,95 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
                         );
                       })
                     }
+                  </div>
+                </div>
+              )}
+
+              {/* TAB: DISCUSSION & DOCS */}
+              {activeTab === 'discussion' && (
+                <div className="flex flex-col h-full animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  {/* Chat History */}
+                  <div className="flex-1 space-y-4 mb-6">
+                    {notesLoading ? (
+                      <div className="flex justify-center p-8"><FaSpinner className="animate-spin text-cyan-500 text-2xl" /></div>
+                    ) : notes.length === 0 ? (
+                      <div className="text-center py-10 text-gray-400 italic">No discussion yet. Start the conversation!</div>
+                    ) : (
+                      notes.map((note) => {
+                        const isMe = note.authorEmail === user?.primaryEmailAddress?.emailAddress;
+                        return (
+                          <div key={note.id || note.createdAt.toString()} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                            <div className={`max-w-[80%] rounded-2xl p-4 shadow-sm ${isMe ? 'bg-cyan-600 text-white rounded-br-none' : 'bg-white border border-gray-100 text-gray-800 rounded-bl-none'}`}>
+                              <div className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${isMe ? 'text-cyan-200' : 'text-gray-400'}`}>
+                                {note.authorName || "Unknown"} • {format(new Date(note.createdAt), "dd MMM, HH:mm")}
+                              </div>
+                              <div className="whitespace-pre-wrap text-sm">{note.content}</div>
+                              {note.fileUrl && (
+                                <div className="mt-3">
+                                  {note.fileUrl.toLowerCase().endsWith('.pdf') ? (
+                                    <a href={note.fileUrl} target="_blank" rel="noreferrer" className={`flex items-center gap-2 p-2 rounded-lg text-xs font-bold ${isMe ? 'bg-cyan-700 text-white hover:bg-cyan-800' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+                                      <FaFilePdf size={16} /> View Attached PDF
+                                    </a>
+                                  ) : (
+                                    <div 
+                                      className="cursor-pointer overflow-hidden rounded-lg border-2 border-transparent hover:border-white/50 transition-all"
+                                      onClick={() => setLightbox({ url: note.fileUrl!, type: 'image', title: 'Attachment' })}
+                                    >
+                                      <img src={note.fileUrl} alt="attachment" className="max-h-32 rounded-lg object-cover" />
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                  
+                  {/* Chat Input */}
+                  <div className="bg-white p-3 rounded-2xl border border-gray-200 shadow-sm flex items-end gap-2 sticky bottom-0 z-10">
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      ref={fileInputRef} 
+                      onChange={(e) => setNoteFile(e.target.files?.[0] || null)}
+                    />
+                    <button 
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`p-3 rounded-xl transition-colors ${noteFile ? 'bg-cyan-100 text-cyan-600' : 'bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`}
+                      title="Attach File"
+                    >
+                      <FaPaperclip size={18} />
+                    </button>
+                    <div className="flex-1 bg-gray-50 rounded-xl border border-gray-100 px-3 py-2 focus-within:bg-white focus-within:border-cyan-300 transition-colors">
+                      {noteFile && (
+                        <div className="flex items-center gap-2 mb-2 text-xs font-bold text-cyan-700 bg-cyan-50 p-1.5 rounded-lg border border-cyan-100">
+                          <FaCheckCircle /> {noteFile.name}
+                          <button onClick={() => setNoteFile(null)} className="ml-auto text-red-500 hover:text-red-700"><FaTimes /></button>
+                        </div>
+                      )}
+                      <textarea 
+                        value={noteInput}
+                        onChange={(e) => setNoteInput(e.target.value)}
+                        placeholder="Type a note..."
+                        className="w-full bg-transparent border-none outline-none resize-none text-sm text-gray-800 placeholder-gray-400"
+                        rows={1}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleAddNote();
+                          }
+                        }}
+                      />
+                    </div>
+                    <button 
+                      onClick={handleAddNote}
+                      disabled={uploadingNote || (!noteInput.trim() && !noteFile)}
+                      className="p-3 bg-cyan-600 text-white rounded-xl hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {uploadingNote ? <FaSpinner className="animate-spin" size={18} /> : <FaPaperPlane size={18} />}
+                    </button>
                   </div>
                 </div>
               )}
