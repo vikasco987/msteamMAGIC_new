@@ -6859,41 +6859,41 @@ export default function TaskTableView({
     onPageChange(pageNumber);
   };
 
-  const exportCSV = () => {
-    const exportData = filteredTasks.map((task, index) => ({
-      "S. No.": index + 1,
-      "Task ID": task.id,
-      "Title": task.title,
-      "Status": task.status,
-      "Shop Name": task.customFields?.shopName,
-      "Phone": task.customFields?.phone,
-      "Email": task.customFields?.email,
-      "Assignee": task.assignees?.map((a: any) => a?.name || a?.email).filter(Boolean).join(", ") || task.assignee?.name,
-      "Assigner": task.assignerName,
-      "Created At": task.createdAt ? format(new Date(task.createdAt), "dd MMM yyyy, HH:mm") : "",
-      "Location": task.customFields?.location,
-      "Amount": Number(task.amount) || 0,
-      "Amount Received": Number(task.received) || 0,
-      "Pending Amount": (Number(task.amount) || 0) - (Number(task.received) || 0),
-      "Notes": (notesMap[task.id] || []).map((note) => note.content).join(" | "),
-      "Attachments": task.attachments?.map((a: any) => typeof a === 'string' ? a : a.url).join(" | ") || "", 
-      "Payment Proofs": task.paymentProofs?.map((p: any) => typeof p === 'string' ? p : p.url).filter(Boolean).join(" | ") || "",
-    }));
-
-    import("xlsx").then((XLSX) => {
-      import("file-saver").then(({ saveAs }) => {
-        const ws = XLSX.utils.json_to_sheet(exportData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Tasks");
-        const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-        const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
-        saveAs(blob, `Tasks_Report_${format(new Date(), "yyyy-MM-dd_HH-mm")}.xlsx`);
-        toast.success("Excel exported successfully!");
+  const exportCSV = async () => {
+    try {
+      const exportData = filteredTasks.map((task, index) => {
+        const row: Record<string, any> = {};
+        
+        if (visibleColumns.includes("rowNumber")) row["S. No."] = index + 1;
+        if (visibleColumns.includes("title")) row["Title"] = task.title;
+        if (visibleColumns.includes("status")) row["Status"] = task.status;
+        if (visibleColumns.includes("shopName")) row["Shop Name"] = task.customFields?.shopName || "";
+        if (visibleColumns.includes("email")) row["Email"] = task.customFields?.email || "";
+        if (visibleColumns.includes("phone")) row["Phone"] = task.customFields?.phone || "";
+        if (visibleColumns.includes("assignerName")) row["Assigner Name"] = task.assignerName || "";
+        if (visibleColumns.includes("assignee")) row["Assignee"] = task.assignees?.map((a: any) => a?.name || a?.email).filter(Boolean).join(", ") || task.assignee?.name || "";
+        if (visibleColumns.includes("createdAt")) row["Created At"] = task.createdAt ? format(new Date(task.createdAt), "dd MMM yyyy, HH:mm") : "";
+        if (visibleColumns.includes("location")) row["Location"] = task.customFields?.location || "";
+        if (visibleColumns.includes("notes")) row["Notes"] = (notesMap[task.id] || []).map((note) => note.content).join(" | ");
+        if (visibleColumns.includes("amount")) row["Amount"] = Number(task.amount) || 0;
+        if (visibleColumns.includes("amountReceived")) row["Amount Received"] = Number(task.received) || 0;
+        if (visibleColumns.includes("pendingAmount")) row["Pending Amount"] = (Number(task.amount) || 0) - (Number(task.received) || 0);
+        if (visibleColumns.includes("attachments")) row["Attachments"] = task.attachments?.map((a: any) => typeof a === 'string' ? a : a.url).join(" | ") || "";
+        if (visibleColumns.includes("paymentProofs")) row["Payment Proofs"] = task.paymentProofs?.map((p: any) => typeof p === 'string' ? p : p.url).filter(Boolean).join(" | ") || "";
+        
+        return row;
       });
-    }).catch(err => {
-      console.error("Failed to load export libraries", err);
-      toast.error("Failed to export Excel. Libraries missing.");
-    });
+
+      const xlsx = await import("xlsx");
+      const ws = xlsx.utils.json_to_sheet(exportData);
+      const wb = xlsx.utils.book_new();
+      xlsx.utils.book_append_sheet(wb, ws, "Tasks");
+      xlsx.writeFile(wb, `Tasks_Report_${format(new Date(), "yyyy-MM-dd_HH-mm")}.xlsx`);
+      toast.success("Excel exported successfully!");
+    } catch (err) {
+      console.error("Failed to export Excel", err);
+      toast.error("Failed to export Excel. Please try again.");
+    }
   };
 
   const handleFilteredTasksChange = useCallback((newFilteredTasks: Task[]) => {

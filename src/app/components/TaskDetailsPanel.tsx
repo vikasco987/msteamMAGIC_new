@@ -3,7 +3,7 @@ import { Task } from "../../types/task";
 import { 
   FaTimes, FaSpinner, FaUser, FaPhone, FaEnvelope, FaMapMarkerAlt, 
   FaFileAlt, FaMoneyBillWave, FaClock, FaCheckCircle, FaExclamationTriangle, 
-  FaCopy, FaLink, FaCalendarAlt, FaIdCard, FaImage, FaFileInvoice, FaFilePdf, FaDownload
+  FaCopy, FaLink, FaCalendarAlt, FaIdCard, FaImage, FaFileInvoice, FaFilePdf, FaDownload, FaClipboardList
 } from "react-icons/fa";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
@@ -179,7 +179,12 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
         </div>
 
         {/* Tab Content (Scrollable) */}
-        <div className="p-6 flex-1 bg-white overflow-y-auto relative">
+        <div className="p-6 flex-1 bg-slate-50/40 overflow-y-auto relative z-0 shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)]">
+          {/* Subtle Watermark Pattern */}
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.03] z-[-1]">
+            <FaClipboardList style={{ width: '300px', height: '300px' }} className="text-indigo-900" />
+          </div>
+          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:24px_24px] opacity-40 z-[-2]"></div>
           {loading && (
             <div className="flex flex-col items-center justify-center h-48 space-y-4">
               <FaSpinner className="animate-spin text-indigo-500" size={32} />
