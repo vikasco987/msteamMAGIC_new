@@ -14,6 +14,10 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const month = searchParams.get("month"); // YYYY-MM
     const assignerId = searchParams.get("assignerId");
+    const t1r = parseInt(searchParams.get("t1r") || "5000", 10);
+    const t1i = parseInt(searchParams.get("t1i") || "500", 10);
+    const t2r = parseInt(searchParams.get("t2r") || "4000", 10);
+    const t2i = parseInt(searchParams.get("t2i") || "300", 10);
 
     if (!month || !/^\d{4}-\d{2}$/.test(month)) {
       return NextResponse.json({ error: "Invalid month format. Use YYYY-MM" }, { status: 400 });
@@ -98,8 +102,8 @@ export async function GET(req: Request) {
       { header: 'Total Revenue', key: 'revenue', width: 15 },
       { header: 'Total Received', key: 'received', width: 15 },
       { header: 'Pending', key: 'pending', width: 15 },
-      { header: 'Incentive (≥5000)', key: 'inc500', width: 18 },
-      { header: 'Incentive (4000-4999)', key: 'inc300', width: 20 },
+      { header: `Incentive (≥${t1r})`, key: 'inc500', width: 18 },
+      { header: `Incentive (${t2r}-${t1r - 1})`, key: 'inc300', width: 20 },
       { header: 'Total Incentive', key: 'totalRow', width: 18 },
       { header: 'Status', key: 'status', width: 22 }
     ];
@@ -128,10 +132,10 @@ export async function GET(req: Request) {
       if (pending > 0) {
         status = 'Not Received Fully';
       } else {
-        if (revenue >= 5000) {
-          inc500 = 500;
-        } else if (revenue >= 4000 && revenue < 5000) {
-          inc300 = 300;
+        if (revenue >= t1r) {
+          inc500 = t1i;
+        } else if (revenue >= t2r && revenue < t1r) {
+          inc300 = t2i;
         } else {
           status = 'Not Given (Low Revenue)';
         }

@@ -12,7 +12,9 @@ import {
   TrendingUp,
   Search,
   ChevronDown,
-  Download
+  Download,
+  Settings,
+  X
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { format } from "date-fns";
@@ -58,6 +60,15 @@ export default function SellerStats({
   const [searchQuery, setSearchQuery] = useState("");
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [isDownloadingIncentive, setIsDownloadingIncentive] = useState(false);
+  
+  // Incentive settings
+  const [showIncentiveSettings, setShowIncentiveSettings] = useState(false);
+  const [incentiveConfig, setIncentiveConfig] = useState({
+    t1r: 5000,
+    t1i: 500,
+    t2r: 4000,
+    t2i: 300,
+  });
 
   useEffect(() => {
     if (isMaster) {
@@ -261,36 +272,45 @@ export default function SellerStats({
             )}
 
             {isMaster && (
-              <button
-                disabled={isDownloadingIncentive}
-                onClick={async () => {
-                  setIsDownloadingIncentive(true);
-                  try {
-                    let url = `/api/seller/incentive-report?month=${month}`;
-                    if (selectedAssignerId) url += `&assignerId=${selectedAssignerId}`;
-                    
-                    const res = await fetch(url);
-                    if (!res.ok) throw new Error("Failed to download incentive report");
-                    
-                    const blob = await res.blob();
-                    const link = document.createElement("a");
-                    link.href = window.URL.createObjectURL(blob);
-                    link.download = `Incentive_Report_${month}${selectedAssignerId ? '_' + selectedAssignerId : ''}.xlsx`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                  } catch (error: any) {
-                    console.error("Incentive report failed:", error);
-                    alert("Failed to download incentive report.");
-                  } finally {
-                    setIsDownloadingIncentive(false);
-                  }
-                }}
-                className={`flex items-center gap-2 ${isDownloadingIncentive ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 hover:shadow-md cursor-pointer'} text-white rounded-xl shadow-sm p-2 px-4 transition-colors border ${isDownloadingIncentive ? 'border-gray-400' : 'border-emerald-600'} font-bold`}
-              >
-                {isDownloadingIncentive ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                <span className="text-sm">{isDownloadingIncentive ? "Generating..." : "Incentive Report"}</span>
-              </button>
+              <div className="flex items-center gap-1 relative">
+                <button
+                  disabled={isDownloadingIncentive}
+                  onClick={async () => {
+                    setIsDownloadingIncentive(true);
+                    try {
+                      let url = `/api/seller/incentive-report?month=${month}&t1r=${incentiveConfig.t1r}&t1i=${incentiveConfig.t1i}&t2r=${incentiveConfig.t2r}&t2i=${incentiveConfig.t2i}`;
+                      if (selectedAssignerId) url += `&assignerId=${selectedAssignerId}`;
+                      
+                      const res = await fetch(url);
+                      if (!res.ok) throw new Error("Failed to download incentive report");
+                      
+                      const blob = await res.blob();
+                      const link = document.createElement("a");
+                      link.href = window.URL.createObjectURL(blob);
+                      link.download = `Incentive_Report_${month}${selectedAssignerId ? '_' + selectedAssignerId : ''}.xlsx`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    } catch (error: any) {
+                      console.error("Incentive report failed:", error);
+                      alert("Failed to download incentive report.");
+                    } finally {
+                      setIsDownloadingIncentive(false);
+                    }
+                  }}
+                  className={`flex items-center gap-2 ${isDownloadingIncentive ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 hover:shadow-md cursor-pointer'} text-white rounded-l-xl shadow-sm p-2 px-4 transition-colors border-y border-l ${isDownloadingIncentive ? 'border-gray-400' : 'border-emerald-600'} font-bold`}
+                >
+                  {isDownloadingIncentive ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  <span className="text-sm">{isDownloadingIncentive ? "Generating..." : "Incentive Report"}</span>
+                </button>
+                <button
+                  onClick={() => setShowIncentiveSettings(true)}
+                  className="bg-emerald-700 hover:bg-emerald-800 text-white rounded-r-xl shadow-sm p-2 transition-colors border-y border-r border-emerald-700 h-[38px] flex items-center justify-center"
+                  title="Configure Incentive Logic"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -465,6 +485,89 @@ export default function SellerStats({
                     className="px-6 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-bold shadow-lg hover:shadow-xl transition-all"
                   >
                     Close Log
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Incentive Settings Modal */}
+        <AnimatePresence>
+          {showIncentiveSettings && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm"
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col"
+              >
+                <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+                  <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                    <Settings className="w-5 h-5 text-gray-500" /> Incentive Configuration
+                  </h3>
+                  <button onClick={() => setShowIncentiveSettings(false)} className="text-gray-400 hover:text-gray-700">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                <div className="p-6 space-y-4">
+                  <div className="grid grid-cols-2 gap-4 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                    <div className="col-span-2 text-sm font-bold text-blue-800">Tier 1 Target</div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-600 block mb-1">Min Revenue (₹)</label>
+                      <input 
+                        type="number" 
+                        value={incentiveConfig.t1r} 
+                        onChange={(e) => setIncentiveConfig({...incentiveConfig, t1r: Number(e.target.value)})}
+                        className="w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 outline-none text-sm font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-600 block mb-1">Incentive (₹)</label>
+                      <input 
+                        type="number" 
+                        value={incentiveConfig.t1i} 
+                        onChange={(e) => setIncentiveConfig({...incentiveConfig, t1i: Number(e.target.value)})}
+                        className="w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 outline-none text-sm font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 bg-orange-50 p-4 rounded-xl border border-orange-100">
+                    <div className="col-span-2 text-sm font-bold text-orange-800">Tier 2 Target</div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-600 block mb-1">Min Revenue (₹)</label>
+                      <input 
+                        type="number" 
+                        value={incentiveConfig.t2r} 
+                        onChange={(e) => setIncentiveConfig({...incentiveConfig, t2r: Number(e.target.value)})}
+                        className="w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-orange-500 outline-none text-sm font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-600 block mb-1">Incentive (₹)</label>
+                      <input 
+                        type="number" 
+                        value={incentiveConfig.t2i} 
+                        onChange={(e) => setIncentiveConfig({...incentiveConfig, t2i: Number(e.target.value)})}
+                        className="w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-orange-500 outline-none text-sm font-bold"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-gray-50 border-t flex justify-end">
+                  <button 
+                    onClick={() => setShowIncentiveSettings(false)}
+                    className="px-6 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-bold shadow-lg hover:shadow-xl transition-all"
+                  >
+                    Done & Save
                   </button>
                 </div>
               </motion.div>
