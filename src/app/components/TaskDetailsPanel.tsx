@@ -92,6 +92,10 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Core Information</h3>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-xl sm:col-span-2">
+                    <div className="text-xs text-gray-500 mb-1 flex items-center gap-1"><FaFileAlt /> Task ID</div>
+                    <div className="font-mono text-sm text-gray-800 break-all bg-white p-2 border border-gray-200 rounded">{task.id}</div>
+                  </div>
                   <div className="bg-gray-50 p-4 rounded-xl">
                     <div className="text-xs text-gray-500 mb-1 flex items-center gap-1"><FaFileAlt /> Title</div>
                     <div className="font-semibold text-gray-800">{task.title || "—"}</div>

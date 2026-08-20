@@ -140,7 +140,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { FaTimes, FaStickyNote, FaUserCircle, FaTrashAlt, FaPaperclip, FaSpinner, FaSmile, FaMicrophone } from "react-icons/fa";
+import { FaTimes, FaStickyNote, FaUserCircle, FaTrashAlt, FaPaperclip, FaSpinner, FaSmile, FaMicrophone, FaCopy } from "react-icons/fa";
 import { useUser } from "@clerk/nextjs";
 import axios from "axios";
 import { useRouter } from "next/navigation";
@@ -389,6 +389,16 @@ export default function NotesModal({ taskId, initialNotes, onClose }: NotesModal
                       className="text-purple-600 hover:text-purple-800 font-medium bg-purple-50 px-2 py-0.5 rounded transition-colors"
                     >
                       Reply
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(note.content);
+                        toast.success("Note copied to clipboard!");
+                      }}
+                      className="text-gray-500 hover:text-blue-600 font-medium bg-gray-50 hover:bg-blue-50 px-2 py-0.5 rounded transition-colors"
+                      title="Copy Note"
+                    >
+                      <FaCopy size={12} />
                     </button>
                     {userRole === "master" && (
                       <button
