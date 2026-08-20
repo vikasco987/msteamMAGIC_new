@@ -229,9 +229,9 @@ export default function SellerStats({
                     
                     // @ts-ignore
                     await window.html2pdf().set(opt).from(element).save();
-                  } catch (error) {
+                  } catch (error: any) {
                     console.error("PDF generation failed:", error);
-                    alert("Failed to generate PDF. Please try again.");
+                    alert("Failed to generate PDF: " + (error.message || String(error)));
                   } finally {
                     setIsDownloadingPdf(false);
                   }
