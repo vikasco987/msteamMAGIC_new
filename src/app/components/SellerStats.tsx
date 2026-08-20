@@ -200,13 +200,62 @@ export default function SellerStats({
 
             {isMaster && (
               <button
-                onClick={() => {
-                  window.print();
+                disabled={isDownloadingPdf}
+                onClick={async () => {
+                  setIsDownloadingPdf(true);
+                  try {
+                    // @ts-ignore
+                    if (!window.html2pdf) {
+                      await new Promise((resolve, reject) => {
+                        const script = document.createElement("script");
+                        script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
+                        script.onload = resolve;
+                        script.onerror = reject;
+                        document.body.appendChild(script);
+                      });
+                    }
+                    
+                    const element = document.getElementById("pdf-content");
+                    if (!element) throw new Error("Content not found");
+
+                    // Temporarily remove overflow to prevent truncation and hanging
+                    const originalStyles: {el: HTMLElement, overflow: string, height: string}[] = [];
+                    element.querySelectorAll('.overflow-x-auto, .overflow-y-auto, .h-screen, .flex-1, .max-h-screen').forEach((node) => {
+                      const el = node as HTMLElement;
+                      originalStyles.push({ el, overflow: el.style.overflow, height: el.style.height });
+                      el.style.setProperty('overflow', 'visible', 'important');
+                      el.style.setProperty('height', 'auto', 'important');
+                      el.style.setProperty('max-height', 'none', 'important');
+                    });
+
+                    const opt = {
+                      margin: 0.5,
+                      filename: `My_Growth_Report_${month}${selectedAssignerId ? '_' + selectedAssignerId : ''}.pdf`,
+                      image: { type: 'jpeg', quality: 0.98 },
+                      html2canvas: { scale: 1.5, useCORS: true, logging: false },
+                      jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
+                    };
+                    
+                    // @ts-ignore
+                    await window.html2pdf().set(opt).from(element).save();
+
+                    // Restore styles
+                    originalStyles.forEach(({el, overflow, height}) => {
+                      el.style.overflow = overflow;
+                      el.style.height = height;
+                      el.style.maxHeight = '';
+                    });
+                  } catch (error: any) {
+                    console.error("PDF generation failed:", error);
+                    alert("Failed to generate PDF: " + (error.message || String(error)));
+                  } finally {
+                    setIsDownloadingPdf(false);
+                  }
                 }}
-                className="flex items-center gap-2 bg-blue-600 text-white rounded-xl shadow-sm p-2 px-4 hover:shadow-md hover:bg-blue-700 transition-colors border border-blue-600 font-bold cursor-pointer"
+                className={`flex items-center gap-2 ${isDownloadingPdf ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 hover:shadow-md cursor-pointer'} text-white rounded-xl shadow-sm p-2 px-4 transition-colors border ${isDownloadingPdf ? 'border-gray-400' : 'border-blue-600'} font-bold`}
               >
-                <Download className="w-4 h-4" />
-                <span className="text-sm">Print / PDF</span>
+                {isDownloadingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                <span className="text-sm">{isDownloadingPdf ? "Generating..." : "Download PDF"}</span>
               </button>
             )}
           </div>
