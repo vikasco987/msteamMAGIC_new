@@ -3,8 +3,8 @@
 // import React, { useEffect, useState } from "react";
 // import Link from "next/link";
 // import { useUser } from "@clerk/nextjs";
-// import { useRouter } from "next/navigation";
-// import { IndianRupee, TrendingUp, CheckCircle, ShoppingBag, Percent } from "lucide-react"; 
+import { useRouter } from "next/navigation";
+import { IndianRupee, TrendingUp, CheckCircle, ShoppingBag, Percent, Eye, EyeOff } from "lucide-react"; 
 
 // import RevenueByAssigneeChart from "../components/charts/RevenueByAssigneeChart";
 // import MonthReportTable from "../components/tables/MonthReportTable";
@@ -376,6 +376,7 @@ export default function SalesDashboardPage() {
   const [activeTab, setActiveTab] = useState("all");
   const [showGoalProgress, setShowGoalProgress] = useState(false);
   const [cumulativeDayData, setCumulativeDayData] = useState<ReportEntry[]>([]);
+  const [showCards, setShowCards] = useState(false);
 
   // Calculate pending percentage
   const pendingPercentage = stats?.totalRevenue && stats.totalRevenue > 0
@@ -449,7 +450,17 @@ export default function SalesDashboardPage() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Sales Dashboard</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold">Sales Dashboard</h1>
+          <button
+            onClick={() => setShowCards(!showCards)}
+            className="flex items-center gap-2 bg-white rounded-xl shadow-sm p-1.5 px-3 hover:shadow-md border border-gray-100 transition-colors text-gray-600"
+            title={showCards ? "Hide Sales Matrix" : "Unhide Sales Matrix"}
+          >
+            {showCards ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            <span className="text-xs font-bold">{showCards ? "Hide" : "Unhide"}</span>
+          </button>
+        </div>
         <div className="flex items-center gap-3">
           {/* ✅ Redirect Buttons */}
           <button
@@ -476,52 +487,54 @@ export default function SalesDashboardPage() {
       </div>
 
       {/* 📊 This Month Overview */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mt-2"> 
-        {/* Total Revenue */}
-        <div className="bg-gradient-to-r from-purple-500 to-indigo-500 p-5 rounded-xl shadow-lg text-white">
-          <div className="flex items-center justify-between">
-            <h3>Total Revenue</h3>
-            <IndianRupee />
+      {showCards && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mt-2"> 
+          {/* Total Revenue */}
+          <div className="bg-gradient-to-r from-purple-500 to-indigo-500 p-5 rounded-xl shadow-lg text-white">
+            <div className="flex items-center justify-between">
+              <h3>Total Revenue</h3>
+              <IndianRupee />
+            </div>
+            <p className="mt-2 text-2xl font-bold">₹{stats.totalRevenue?.toLocaleString() ?? 0}</p>
           </div>
-          <p className="mt-2 text-2xl font-bold">₹{stats.totalRevenue?.toLocaleString() ?? 0}</p>
-        </div>
 
-        {/* Received */}
-        <div className="bg-gradient-to-r from-green-400 to-emerald-500 p-5 rounded-xl shadow-lg text-white">
-          <div className="flex items-center justify-between">
-            <h3>Received</h3>
-            <CheckCircle />
+          {/* Received */}
+          <div className="bg-gradient-to-r from-green-400 to-emerald-500 p-5 rounded-xl shadow-lg text-white">
+            <div className="flex items-center justify-between">
+              <h3>Received</h3>
+              <CheckCircle />
+            </div>
+            <p className="mt-2 text-2xl font-bold">₹{stats.amountReceived?.toLocaleString() ?? 0}</p>
           </div>
-          <p className="mt-2 text-2xl font-bold">₹{stats.amountReceived?.toLocaleString() ?? 0}</p>
-        </div>
 
-        {/* Pending */}
-        <div className="bg-gradient-to-r from-red-400 to-rose-500 p-5 rounded-xl shadow-lg text-white">
-          <div className="flex items-center justify-between">
-            <h3>Pending</h3>
-            <TrendingUp />
+          {/* Pending */}
+          <div className="bg-gradient-to-r from-red-400 to-rose-500 p-5 rounded-xl shadow-lg text-white">
+            <div className="flex items-center justify-between">
+              <h3>Pending</h3>
+              <TrendingUp />
+            </div>
+            <p className="mt-2 text-2xl font-bold">₹{stats.pendingAmount?.toLocaleString() ?? 0}</p>
           </div>
-          <p className="mt-2 text-2xl font-bold">₹{stats.pendingAmount?.toLocaleString() ?? 0}</p>
-        </div>
-        
-        {/* Pending Percentage */}
-        <div className="bg-gradient-to-r from-pink-500 to-red-600 p-5 rounded-xl shadow-lg text-white">
-          <div className="flex items-center justify-between">
-            <h3>Pending %</h3>
-            <Percent />
+          
+          {/* Pending Percentage */}
+          <div className="bg-gradient-to-r from-pink-500 to-red-600 p-5 rounded-xl shadow-lg text-white">
+            <div className="flex items-center justify-between">
+              <h3>Pending %</h3>
+              <Percent />
+            </div>
+            <p className="mt-2 text-2xl font-bold">{pendingPercentage}%</p>
           </div>
-          <p className="mt-2 text-2xl font-bold">{pendingPercentage}%</p>
-        </div>
 
-        {/* Sales */}
-        <div className="bg-gradient-to-r from-yellow-400 to-amber-500 p-5 rounded-xl shadow-lg text-white">
-          <div className="flex items-center justify-between">
-            <h3>Sales</h3>
-            <ShoppingBag />
+          {/* Sales */}
+          <div className="bg-gradient-to-r from-yellow-400 to-amber-500 p-5 rounded-xl shadow-lg text-white">
+            <div className="flex items-center justify-between">
+              <h3>Sales</h3>
+              <ShoppingBag />
+            </div>
+            <p className="mt-2 text-2xl font-bold">{stats.totalSales ?? 0}</p>
           </div>
-          <p className="mt-2 text-2xl font-bold">{stats.totalSales ?? 0}</p>
         </div>
-      </div>
+      )}
 
       {/* Tabs */}
       <div className="flex space-x-2 border-b mt-8 overflow-x-auto pb-1">
