@@ -225,40 +225,42 @@ export default function SellerStats({
               <span className="text-sm font-medium hidden sm:inline">{showCards ? "Hide" : "Unhide"}</span>
             </button>
 
-            {/* Toggles */}
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-1 bg-white rounded-xl shadow-sm p-1 border border-gray-100">
-                <span className="text-xs font-bold text-gray-500 pl-2 pr-1">GST:</span>
-                <button
-                  onClick={() => setShowWithGST(true)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border ${showWithGST ? 'bg-blue-50 text-blue-600 border-blue-200' : 'text-gray-500 hover:bg-gray-50 border-transparent'}`}
-                >
-                  With
-                </button>
-                <button
-                  onClick={() => setShowWithGST(false)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border ${!showWithGST ? 'bg-blue-50 text-blue-600 border-blue-200' : 'text-gray-500 hover:bg-gray-50 border-transparent'}`}
-                >
-                  Without
-                </button>
-              </div>
+            {/* Toggles - Only visible to Master */}
+            {isMaster && (
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1 bg-white rounded-xl shadow-sm p-1 border border-gray-100">
+                  <span className="text-xs font-bold text-gray-500 pl-2 pr-1">GST:</span>
+                  <button
+                    onClick={() => setShowWithGST(true)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border ${showWithGST ? 'bg-blue-50 text-blue-600 border-blue-200' : 'text-gray-500 hover:bg-gray-50 border-transparent'}`}
+                  >
+                    With
+                  </button>
+                  <button
+                    onClick={() => setShowWithGST(false)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border ${!showWithGST ? 'bg-blue-50 text-blue-600 border-blue-200' : 'text-gray-500 hover:bg-gray-50 border-transparent'}`}
+                  >
+                    Without
+                  </button>
+                </div>
 
-              <div className="flex items-center gap-1 bg-white rounded-xl shadow-sm p-1 border border-gray-100">
-                <span className="text-xs font-bold text-gray-500 pl-2 pr-1">Expenses:</span>
-                <button
-                  onClick={() => setShowWithExpense(true)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border ${showWithExpense ? 'bg-purple-50 text-purple-600 border-purple-200' : 'text-gray-500 hover:bg-gray-50 border-transparent'}`}
-                >
-                  Show
-                </button>
-                <button
-                  onClick={() => setShowWithExpense(false)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border ${!showWithExpense ? 'bg-purple-50 text-purple-600 border-purple-200' : 'text-gray-500 hover:bg-gray-50 border-transparent'}`}
-                >
-                  Hide
-                </button>
+                <div className="flex items-center gap-1 bg-white rounded-xl shadow-sm p-1 border border-gray-100">
+                  <span className="text-xs font-bold text-gray-500 pl-2 pr-1">Expenses:</span>
+                  <button
+                    onClick={() => setShowWithExpense(true)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border ${showWithExpense ? 'bg-purple-50 text-purple-600 border-purple-200' : 'text-gray-500 hover:bg-gray-50 border-transparent'}`}
+                  >
+                    Show
+                  </button>
+                  <button
+                    onClick={() => setShowWithExpense(false)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border ${!showWithExpense ? 'bg-purple-50 text-purple-600 border-purple-200' : 'text-gray-500 hover:bg-gray-50 border-transparent'}`}
+                  >
+                    Hide
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             {isMaster && (
               <button
@@ -492,7 +494,7 @@ export default function SellerStats({
                        <History className="w-5 h-5" /> My Growth History
                     </h3>
                     <p className="text-xs text-purple-100 mt-1 opacity-80 uppercase tracking-widest font-black">
-                      {format(new Date(month + "-01"), "MMMM yyyy")} Breakdown
+                      {format(new Date(month + "-01T00:00:00"), "MMMM yyyy")} Breakdown
                     </p>
                   </div>
                   <button 
