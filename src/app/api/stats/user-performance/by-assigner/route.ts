@@ -3,6 +3,14 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 
+export const dynamic = "force-dynamic";
+
+const safeFloat = (v: any): number => {
+  if (v == null || v === "") return 0;
+  const n = parseFloat(String(v));
+  return isNaN(n) || !isFinite(n) ? 0 : n;
+};
+
 export async function GET(req: Request) {
   try {
     const { userId } = await auth();
@@ -74,6 +82,17 @@ export async function GET(req: Request) {
         createdByEmail: true,
         amount: true,
         received: true,
+        customFields: true,
+      },
+    });
+
+    // ✅ Fetch employee expenses
+    const employeeExpenses = await prisma.employeeExpense.findMany({
+      where: {
+        date: {
+          gte: startDate,
+          lt: endDate,
+        },
       },
     });
 
@@ -86,6 +105,9 @@ export async function GET(req: Request) {
         totalRevenue: number;
         amountReceived: number;
         totalSales: number;
+        taskDirectExpense: number;
+        employeeManualExpense: number;
+        totalExpense: number;
       }
     > = {};
 
@@ -101,22 +123,56 @@ export async function GET(req: Request) {
           totalRevenue: 0,
           amountReceived: 0,
           totalSales: 0,
+          taskDirectExpense: 0,
+          employeeManualExpense: 0,
+          totalExpense: 0,
         };
       }
 
+      const customFields = (task.customFields as any) || {};
+      const delivery = safeFloat(customFields.deliveryCharge);
+      const costPrice = safeFloat(customFields.costPrice);
+      const directExp = delivery + costPrice;
+
       assignerMap[key].totalRevenue += task.amount || 0;
       assignerMap[key].amountReceived += task.received || 0;
+      assignerMap[key].taskDirectExpense += directExp;
       
       if ((task.amount || 0) > 0) {
         assignerMap[key].totalSales += 1;
       }
     }
 
-    // ✅ Convert to array & add pending
-    const data = Object.values(assignerMap).map((a) => ({
-      ...a,
-      pendingAmount: a.totalRevenue - a.amountReceived,
-    }));
+    // Process employee expenses
+    for (const exp of employeeExpenses) {
+      const email = exp.assignerEmail?.trim().toLowerCase() || "";
+      const name = exp.assignerName?.trim() || "Unknown";
+      const key = email || name;
+
+      if (!assignerMap[key]) {
+        // If assigner has expenses but no tasks
+        assignerMap[key] = {
+          name,
+          email,
+          totalRevenue: 0,
+          amountReceived: 0,
+          totalSales: 0,
+          taskDirectExpense: 0,
+          employeeManualExpense: 0,
+          totalExpense: 0,
+        };
+      }
+      assignerMap[key].employeeManualExpense += safeFloat(exp.amount);
+    }
+
+    // ✅ Convert to array & add pending/totalExpense
+    const data = Object.values(assignerMap).map((a) => {
+      a.totalExpense = a.taskDirectExpense + a.employeeManualExpense;
+      return {
+        ...a,
+        pendingAmount: a.totalRevenue - a.amountReceived,
+      };
+    });
 
     return NextResponse.json({ data });
   } catch (error) {

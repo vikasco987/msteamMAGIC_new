@@ -192,11 +192,14 @@ type AssignerReport = {
   amountReceived: number;
   pendingAmount: number; 
   totalSales: number;
+  totalExpense: number;
 };
 
 // 2. Define the calculated data structure (for internal component use)
 type CalculatedReport = AssignerReport & {
   pendingPercentage: number;
+  averageValue: number;
+  netProfit: number;
 };
 
 // 3. Define the Sort Configuration type
@@ -222,6 +225,8 @@ export default function AssignerReportTable() {
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState("");
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: null, direction: "ascending" });
+  const [showWithGST, setShowWithGST] = useState(true);
+  const [showWithExpense, setShowWithExpense] = useState(false);
 
   // --- Utility Functions ---
 
@@ -284,11 +289,21 @@ export default function AssignerReportTable() {
   const processedData = useMemo(() => {
     // 1. Calculate derived values (Pending, Pending Percentage)
     const dataWithCalculations: CalculatedReport[] = data.map(row => {
-      const pendingAmount = row.totalRevenue - row.amountReceived;
+      const adjustedRevenue = showWithGST ? row.totalRevenue : row.totalRevenue / 1.18;
+      const adjustedReceived = showWithGST ? row.amountReceived : row.amountReceived / 1.18;
+      const pendingAmount = adjustedRevenue - adjustedReceived;
+      
+      const averageValue = row.totalSales > 0 ? adjustedRevenue / row.totalSales : 0;
+      const netProfit = adjustedRevenue - (row.totalExpense || 0);
+
       return {
         ...row,
+        totalRevenue: adjustedRevenue,
+        amountReceived: adjustedReceived,
         pendingAmount,
-        pendingPercentage: row.totalRevenue > 0 ? (pendingAmount / row.totalRevenue) * 100 : 0,
+        pendingPercentage: adjustedRevenue > 0 ? (pendingAmount / adjustedRevenue) * 100 : 0,
+        averageValue,
+        netProfit,
       };
     });
 
@@ -355,18 +370,52 @@ export default function AssignerReportTable() {
           👤 Sales by Assigner
         </h2>
         
-        {/* Month Selector */}
-        <div className="flex items-center gap-2">
-          <Calendar size={18} className="text-blue-500" />
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-bold bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
-          >
-            {availableMonths.map(month => (
-              <option key={month.value} value={month.value}>{month.label}</option>
-            ))}
-          </select>
+        {/* Toggles & Month Selector */}
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-1 border border-gray-200">
+            <span className="text-xs font-bold text-gray-500 pl-2 pr-1">GST:</span>
+            <button
+              onClick={() => setShowWithGST(true)}
+              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all shadow-sm ${showWithGST ? 'bg-white text-blue-600 border border-gray-300' : 'text-gray-500 hover:bg-gray-100 border border-transparent'}`}
+            >
+              With
+            </button>
+            <button
+              onClick={() => setShowWithGST(false)}
+              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all shadow-sm ${!showWithGST ? 'bg-white text-blue-600 border border-gray-300' : 'text-gray-500 hover:bg-gray-100 border border-transparent'}`}
+            >
+              Without
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-1 border border-gray-200">
+            <span className="text-xs font-bold text-gray-500 pl-2 pr-1">Expenses:</span>
+            <button
+              onClick={() => setShowWithExpense(true)}
+              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all shadow-sm ${showWithExpense ? 'bg-white text-purple-600 border border-gray-300' : 'text-gray-500 hover:bg-gray-100 border border-transparent'}`}
+            >
+              Show
+            </button>
+            <button
+              onClick={() => setShowWithExpense(false)}
+              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all shadow-sm ${!showWithExpense ? 'bg-white text-purple-600 border border-gray-300' : 'text-gray-500 hover:bg-gray-100 border border-transparent'}`}
+            >
+              Hide
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Calendar size={18} className="text-blue-500" />
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-bold bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
+            >
+              {availableMonths.map(month => (
+                <option key={month.value} value={month.value}>{month.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -407,6 +456,19 @@ export default function AssignerReportTable() {
                 <th className="p-4 font-bold tracking-wider text-right cursor-pointer" data-tooltip-id="revenue-tip" onClick={() => requestSort("totalRevenue")}>
                   <span className="flex items-center justify-end gap-2"><IndianRupee size={16} /> Revenue {getSortIcon("totalRevenue")}</span>
                 </th>
+                <th className="p-4 font-bold tracking-wider text-right cursor-pointer" data-tooltip-id="average-tip" onClick={() => requestSort("averageValue")}>
+                  <span className="flex items-center justify-end gap-2">Avg Value {getSortIcon("averageValue")}</span>
+                </th>
+                {showWithExpense && (
+                  <th className="p-4 font-bold tracking-wider text-right cursor-pointer text-red-100" data-tooltip-id="expense-tip" onClick={() => requestSort("totalExpense")}>
+                    <span className="flex items-center justify-end gap-2">Expense {getSortIcon("totalExpense")}</span>
+                  </th>
+                )}
+                {showWithExpense && (
+                  <th className="p-4 font-bold tracking-wider text-right cursor-pointer text-green-300" data-tooltip-id="net-tip" onClick={() => requestSort("netProfit")}>
+                    <span className="flex items-center justify-end gap-2">Net Profit {getSortIcon("netProfit")}</span>
+                  </th>
+                )}
                 <th className="p-4 font-bold tracking-wider text-right cursor-pointer" data-tooltip-id="received-tip" onClick={() => requestSort("amountReceived")}>
                   <span className="flex items-center justify-end gap-2">Received {getSortIcon("amountReceived")}</span>
                 </th>
@@ -448,12 +510,20 @@ export default function AssignerReportTable() {
                     <td className="p-4 font-bold text-gray-700">{assigner.name}</td>
                     <td className="p-4 text-gray-500">{assigner.email}</td>
                     <td className="p-4 text-right font-semibold text-gray-600">{assigner.totalSales.toLocaleString()}</td>
-                    <td className="p-4 text-right font-bold text-green-700">₹{assigner.totalRevenue.toLocaleString()}</td>
+                    <td className="p-4 text-right font-bold text-green-700">₹{assigner.totalRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                    <td className="p-4 text-right font-medium text-gray-600">₹{assigner.averageValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
                     
+                    {showWithExpense && (
+                      <td className="p-4 text-right font-bold text-red-600">₹{(assigner.totalExpense || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                    )}
+                    {showWithExpense && (
+                      <td className="p-4 text-right font-bold text-green-700">₹{assigner.netProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                    )}
+
                     {/* Received Column with Progress Bar */}
                     <td className="p-4 text-right font-bold text-blue-700">
                         <span className="flex flex-col items-end gap-1">
-                            ₹{assigner.amountReceived.toLocaleString()}
+                            ₹{assigner.amountReceived.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                             {assigner.totalRevenue > 0 && (
                                 <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
                                     <div
@@ -507,6 +577,9 @@ export default function AssignerReportTable() {
       <Tooltip id="received-tip" content="Actual amount received from sales this month." />
       <Tooltip id="pending-tip" content="Remaining unpaid balance (Revenue - Received)." />
       <Tooltip id="pending-percent-tip" content="Percentage of total revenue that remains pending." />
+      <Tooltip id="average-tip" content="Average revenue per sale (Total Revenue / Total Sales)." />
+      {showWithExpense && <Tooltip id="expense-tip" content="Total expenses (salary, incentives, delivery, cost price) for this assigner." />}
+      {showWithExpense && <Tooltip id="net-tip" content="Net Profit (Total Revenue - Total Expense)." />}
     </div>
   );
 }
