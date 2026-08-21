@@ -70,7 +70,7 @@ export async function GET(req: Request) {
 
     const history = Object.entries(dayWise).map(([date, tasks]) => ({
       date,
-      count: tasks.length,
+      count: tasks.filter((t) => (t.amount || 0) > 0).length,
       revenue: tasks.reduce((sum, t) => sum + (t.amount || 0), 0),
       tasks: tasks.map(t => ({
         id: t.id,

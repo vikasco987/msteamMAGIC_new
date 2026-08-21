@@ -160,7 +160,7 @@ export async function GET(req: Request) {
     const totalRevenue = tasks.reduce((sum, t) => sum + (t.amount ?? 0), 0);
     const totalReceived = tasks.reduce((sum, t) => sum + (t.received ?? 0), 0);
     const pendingRevenue = totalRevenue - totalReceived;
-    const totalSales = tasks.length;
+    const totalSales = tasks.filter((t) => (t.amount ?? 0) > 0).length;
 
     return NextResponse.json(
       {

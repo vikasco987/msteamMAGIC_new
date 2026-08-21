@@ -106,7 +106,10 @@ export async function GET(req: Request) {
 
       assignerMap[key].totalRevenue += task.amount || 0;
       assignerMap[key].amountReceived += task.received || 0;
-      assignerMap[key].totalSales += 1;
+      
+      if ((task.amount || 0) > 0) {
+        assignerMap[key].totalSales += 1;
+      }
     }
 
     // ✅ Convert to array & add pending
