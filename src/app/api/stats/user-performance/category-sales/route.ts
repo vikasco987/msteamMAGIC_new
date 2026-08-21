@@ -122,6 +122,8 @@ const categoryLabels: Record<string, string> = {
   license: "🧾 Food License",
   photo: "📸 Photo Upload",
   account: "📂 Account Handling",
+  "printer + software": "🖨️💿 Printer + Software",
+  printer: "🖨️ Printer",
   other: "🛠️ Other",
 };
 
@@ -185,21 +187,23 @@ export async function GET(req: Request) {
     }
 
     // Prepare output and calculate derived fields (Pending Amount and Percentage)
-    const result = Object.entries(categoryMap).map(([category, stats]) => {
-      const pendingAmount = stats.totalRevenue - stats.amountReceived;
-      const pendingPercentage = stats.totalRevenue > 0 
-        ? (pendingAmount / stats.totalRevenue) * 100 
-        : 0;
+    const result = Object.entries(categoryMap)
+      .filter(([category, stats]) => stats.totalRevenue > 0) // Hide categories with 0 revenue
+      .map(([category, stats]) => {
+        const pendingAmount = stats.totalRevenue - stats.amountReceived;
+        const pendingPercentage = stats.totalRevenue > 0 
+          ? (pendingAmount / stats.totalRevenue) * 100 
+          : 0;
 
-      return {
-        category,
-        label: categoryLabels[category] || category,
-        ...stats,
-        // ADDED: Calculated fields for immediate use on the frontend
-        pendingAmount,
-        pendingPercentage,
-      };
-    });
+        return {
+          category,
+          label: categoryLabels[category] || category,
+          ...stats,
+          // ADDED: Calculated fields for immediate use on the frontend
+          pendingAmount,
+          pendingPercentage,
+        };
+      });
 
     return NextResponse.json({ data: result, month: monthParam });
   } catch (error) {
