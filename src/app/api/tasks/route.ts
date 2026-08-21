@@ -843,7 +843,7 @@ export async function POST(req: NextRequest) {
       const existing = await prisma.serialNumber.findUnique({
         where: { number: cleanSerial }
       });
-      if (existing && existing.status !== "Available" && !isRTO) {
+      if (existing && existing.status !== "Available" && existing.status !== "Returned" && !isRTO) {
         return NextResponse.json(
           { error: `⚠️ Serial number ${cleanSerial} is already shipped or registered in inventory!` },
           { status: 400 }
@@ -1009,6 +1009,41 @@ export async function POST(req: NextRequest) {
             });
           }
 
+          let isSerialNumberAvailable = false;
+          let serialNumberId = null;
+          let cycleNumber = 1;
+
+          if (cleanSerial) {
+            const existingSerial = await prisma.serialNumber.findUnique({
+              where: { number: cleanSerial }
+            });
+
+            if (existingSerial) {
+              if (existingSerial.status === "Available" || existingSerial.status === "Returned") {
+                isSerialNumberAvailable = true;
+              }
+              // Mark as Shipped
+              const updatedSerial = await prisma.serialNumber.update({
+                where: { id: existingSerial.id },
+                data: { status: "Shipped", taskId: task.id, dispatchCount: { increment: 1 } }
+              });
+              serialNumberId = updatedSerial.id;
+              cycleNumber = updatedSerial.dispatchCount;
+            } else {
+              // Create new shipped serial (inline creation)
+              const newSerial = await prisma.serialNumber.create({
+                data: {
+                  number: cleanSerial,
+                  status: "Shipped",
+                  inventoryItemId: printerItem.id,
+                  taskId: task.id,
+                  dispatchCount: 1
+                }
+              });
+              serialNumberId = newSerial.id;
+            }
+          }
+
           if (validAwb) {
             // Create the dispatch log
             await prisma.dispatchLog.create({
@@ -1017,38 +1052,11 @@ export async function POST(req: NextRequest) {
                 inventoryItemId: printerItem.id,
                 taskId: task.id,
                 trackingStatus: "Pending",
-                dispatchDate: new Date()
+                dispatchDate: new Date(),
+                serialNumberId,
+                cycleNumber
               }
             });
-          }
-
-          let isSerialNumberAvailable = false;
-
-          if (cleanSerial) {
-            const existingSerial = await prisma.serialNumber.findUnique({
-              where: { number: cleanSerial }
-            });
-
-            if (existingSerial) {
-              if (existingSerial.status === "Available") {
-                isSerialNumberAvailable = true;
-              }
-              // Mark as Shipped
-              await prisma.serialNumber.update({
-                where: { id: existingSerial.id },
-                data: { status: "Shipped", taskId: task.id }
-              });
-            } else {
-              // Create new shipped serial (inline creation)
-              await prisma.serialNumber.create({
-                data: {
-                  number: cleanSerial,
-                  status: "Shipped",
-                  inventoryItemId: printerItem.id,
-                  taskId: task.id
-                }
-              });
-            }
           }
 
           // Deduct 1 from inventory quantity ONLY if we shipped an existing Available serial

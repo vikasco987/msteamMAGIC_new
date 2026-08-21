@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
@@ -9,70 +9,70 @@ datasource db {
 }
 
 model Task {
-  id              String   @id @default(auto()) @map("_id") @db.ObjectId
-  title           String
-  parentTaskId    String?  
-  status          String
-  tags            String[] @default([])
-  highlightColor  String?
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  title          String
+  parentTaskId   String?
+  status         String
+  tags           String[] @default([])
+  highlightColor String?
 
-  dueDate         DateTime?
-  priority        String?
-  projectId       String?
-  isHidden        Boolean  @default(false)
+  dueDate   DateTime?
+  priority  String?
+  projectId String?
+  isHidden  Boolean   @default(false)
 
-  assignerEmail   String?
-  assigneeEmail   String?
-  assignerName    String?
-  assignerId      String?
-  assigneeName    String?
-  assigneeId      String?
-  assigneeIds     String[] @default([])
+  assignerEmail String?
+  assigneeEmail String?
+  assignerName  String?
+  assignerId    String?
+  assigneeName  String?
+  assigneeId    String?
+  assigneeIds   String[] @default([])
 
   createdByClerkId String
-  createdByName    String?      
-  createdByEmail   String?      
+  createdByName    String?
+  createdByEmail   String?
 
-  attachments     String[] @default([])
-  paymentProofs   String[] @default([])
+  attachments   String[] @default([])
+  paymentProofs String[] @default([])
 
-  amount          Float?
-  received        Float?
+  amount   Float?
+  received Float?
 
-  paymentHistory  Json[] @default([]) // keep for transaction logs
-  customFields    Json?
+  paymentHistory Json[] @default([]) // keep for transaction logs
+  customFields   Json?
 
-  phone           String?
-  email           String?
-  shopName        String?
-  location        String?
-  accountNumber   String?
-  ifscCode        String?
-  restId          String?
-  customerName    String?
-  outletName      String?
-  packageAmount   String?
-  startDate       String?
-  endDate         String?
-  timeline        String?
+  phone         String?
+  email         String?
+  shopName      String?
+  location      String?
+  accountNumber String?
+  ifscCode      String?
+  restId        String?
+  customerName  String?
+  outletName    String?
+  packageAmount String?
+  startDate     String?
+  endDate       String?
+  timeline      String?
 
-  aadhaarUrl      String?
-  panUrl          String?
-  selfieUrl       String?
-  chequeUrl       String?
-  menuCardUrls    String[] @default([])
+  aadhaarUrl   String?
+  panUrl       String?
+  selfieUrl    String?
+  chequeUrl    String?
+  menuCardUrls String[] @default([])
 
   // Relations
-  notes           Note[]
-  subtasks        Subtask[]       @relation("TaskSubtasks")
-  paymentRemarks  PaymentRemark[] 
-  payments        Payment[]       // 👈 NEW relation for separate payments
-  activities      Activity[]
-  dispatchLog     DispatchLog?
-  serialNumbers   SerialNumber[]
+  notes          Note[]
+  subtasks       Subtask[]       @relation("TaskSubtasks")
+  paymentRemarks PaymentRemark[]
+  payments       Payment[] // 👈 NEW relation for separate payments
+  activities     Activity[]
+  dispatchLog    DispatchLog?
+  serialNumbers  SerialNumber[]
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
 }
 
 model Subtask {
@@ -80,113 +80,113 @@ model Subtask {
   title     String
   completed Boolean @default(false)
 
-  taskId    String @db.ObjectId
-  task      Task   @relation("TaskSubtasks", fields: [taskId], references: [id])
+  taskId String @db.ObjectId
+  task   Task   @relation("TaskSubtasks", fields: [taskId], references: [id])
 }
 
 model Note {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  content      String
-  createdAt    DateTime @default(now())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  content   String
+  createdAt DateTime @default(now())
 
-  fileUrl      String?
+  fileUrl String?
 
-  authorName   String?
-  authorEmail  String?
-  mentions     String[] @default([]) // Array of Clerk user IDs
-  reactions    Json[]   @default([]) // Array of { emoji: string, userId: string, userName: string }
-  readBy       String[] @default([]) // Array of Clerk user IDs who have read this note
+  authorName  String?
+  authorEmail String?
+  mentions    String[] @default([]) // Array of Clerk user IDs
+  reactions   Json[]   @default([]) // Array of { emoji: string, userId: string, userName: string }
+  readBy      String[] @default([]) // Array of Clerk user IDs who have read this note
 
-  taskId       String @db.ObjectId
-  task         Task   @relation(fields: [taskId], references: [id])
+  taskId String @db.ObjectId
+  task   Task   @relation(fields: [taskId], references: [id])
 }
 
 model PaymentRemark {
-  id             String   @id @default(auto()) @map("_id") @db.ObjectId
-  remark         String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime? @updatedAt
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  remark    String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
 
   // 👤 Author Info (from Clerk)
-  authorName     String?
-  authorEmail    String?
-  createdById    String?   // Clerk userId of creator
+  authorName  String?
+  authorEmail String?
+  createdById String? // Clerk userId of creator
 
   // 💰 Payment Details (linked to Task)
-  paymentStatus     String?   // e.g. "pending", "partial", "paid"
-  amountDiscussed   Float?    // from Task.amount (negotiated)
-  amountReceived    Float?    // from Task.received or this remark
+  paymentStatus   String? // e.g. "pending", "partial", "paid"
+  amountDiscussed Float? // from Task.amount (negotiated)
+  amountReceived  Float? // from Task.received or this remark
 
   // ⏰ Follow-ups & Deadlines
-  nextFollowUpDate  DateTime? // next recovery follow-up
-  followUpStatus    String?   // "scheduled", "completed", "missed"
-  pendingDeadline      DateTime?
-  pendingDeadlineSet   Boolean  @default(false)
+  nextFollowUpDate   DateTime? // next recovery follow-up
+  followUpStatus     String? // "scheduled", "completed", "missed"
+  pendingDeadline    DateTime?
+  pendingDeadlineSet Boolean   @default(false)
 
   // 📞 Communication
-  contactMethod     String?   // "call", "visit", "email", "whatsapp"
-  contactedBy       String?   // who contacted the client
-  contactOutcome    String?   // "not reachable", "negotiated", "promised date", etc.
+  contactMethod  String? // "call", "visit", "email", "whatsapp"
+  contactedBy    String? // who contacted the client
+  contactOutcome String? // "not reachable", "negotiated", "promised date", etc.
 
   // ⚠️ Priority & Reasoning
-  priorityLevel     String?   // "high", "medium", "low"
-  pendingReason     String?   // why payment is pending (e.g., "cash flow", "dispute", "invoice issue")
-  customerFeedback  String?   // any remarks from customer
-  internalNotes     String?   // internal analysis or notes
+  priorityLevel    String? // "high", "medium", "low"
+  pendingReason    String? // why payment is pending (e.g., "cash flow", "dispute", "invoice issue")
+  customerFeedback String? // any remarks from customer
+  internalNotes    String? // internal analysis or notes
 
   // 🔗 Relation to Task
-  taskId            String   @db.ObjectId
-  task              Task     @relation(fields: [taskId], references: [id])
+  taskId String @db.ObjectId
+  task   Task   @relation(fields: [taskId], references: [id])
 
   // 🔍 Analytics & tracking
-  overdueDays       Int?      // auto-calculated: days overdue past pendingDeadline
-  followUpCount     Int?      @default(0) // number of follow-ups done
-  reminderSent      Boolean   @default(false) // whether reminder sent
+  overdueDays   Int? // auto-calculated: days overdue past pendingDeadline
+  followUpCount Int?    @default(0) // number of follow-ups done
+  reminderSent  Boolean @default(false) // whether reminder sent
 
   // 🤖 Automated Recovery & Payment Link Tracking
-  autoPaymentLink     String?   // Generated Razorpay / Payment Link
+  autoPaymentLink     String? // Generated Razorpay / Payment Link
   autoLinkGeneratedAt DateTime?
   autoReminderSentAt  DateTime?
-  autoReminderStatus  String?   // "PENDING", "SENT", "FAILED"
+  autoReminderStatus  String? // "PENDING", "SENT", "FAILED"
 }
 
 model Payment {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  utr       String?
-  amount    Float    @default(0)
-  received  Float    @default(0)
-  fileUrl   String?
-  invoiceUrl String?  // 👈 Link to Cloudinary stored PDF
-  updatedBy String?
-  invoiceNo String?
-  createdAt DateTime? @default(now())
-  updatedAt DateTime @default(now())
-  mode          String?    // Payment mode selector
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  utr        String?
+  amount     Float     @default(0)
+  received   Float     @default(0)
+  fileUrl    String?
+  invoiceUrl String? // 👈 Link to Cloudinary stored PDF
+  updatedBy  String?
+  invoiceNo  String?
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime  @default(now())
+  mode       String? // Payment mode selector
 
-  taskId    String?  @db.ObjectId
-  task      Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId String? @db.ObjectId
+  task   Task?   @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@index([taskId])
 }
 
 model Goal {
-  id              String   @id @default(auto()) @map("_id") @db.ObjectId
-  period          String   @unique
-  revenueGoal     Float
-  leadsGoal       Int
-  collectionGoal  Float
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  period         String   @unique
+  revenueGoal    Float
+  leadsGoal      Int
+  collectionGoal Float
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model User {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  clerkId   String   @unique
-  email     String   @unique
-  name      String?
-  role      String   // "ADMIN", "MASTER", "SELLER"
+  id      String  @id @default(auto()) @map("_id") @db.ObjectId
+  clerkId String  @unique
+  email   String  @unique
+  name    String?
+  role    String // "ADMIN", "MASTER", "SELLER"
 
-  isTeamLeader Boolean @default(false)
+  isTeamLeader Boolean  @default(false)
   leaderIds    String[] @default([]) // Clerk IDs of the Team Leaders
 
   createdAt DateTime @default(now())
@@ -194,153 +194,151 @@ model User {
 }
 
 model Attendance {
-  id             String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId         String
-  employeeName   String?
-  faceImage      String?
-  location       Json?
-  deviceInfo     String?
+  id           String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String
+  employeeName String?
+  faceImage    String?
+  location     Json?
+  deviceInfo   String?
 
-  checkIn        DateTime?
-  checkOut       DateTime?
+  checkIn  DateTime?
+  checkOut DateTime?
 
   checkInReason  String?
   checkOutReason String?
 
-  date           DateTime        // ✅ NO default
-  status         String?
-  verified       Boolean   @default(false)
+  date     DateTime // ✅ NO default
+  status   String?
+  verified Boolean  @default(false)
 
-  workingHours   Float?
-  overtimeHours  Float?
-  remarks        String?
+  workingHours  Float?
+  overtimeHours Float?
+  remarks       String?
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
- 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model AttendanceSummary {
-  id             String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId         String   @unique
-  totalDays      Int      @default(0)
-  presentDays    Int      @default(0)
-  leaveDays      Int      @default(0)
-  overtimeHours  Float    @default(0)
-  updatedAt      DateTime @updatedAt
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @unique
+  totalDays     Int      @default(0)
+  presentDays   Int      @default(0)
+  leaveDays     Int      @default(0)
+  overtimeHours Float    @default(0)
+  updatedAt     DateTime @updatedAt
 }
 
 model DeletedPayment {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  originalTask String   // taskId from Task
-  paymentData  Json     // the actual payment entry that was deleted
-  deletedBy    String?  // userId / email of the person who deleted
+  originalTask String // taskId from Task
+  paymentData  Json // the actual payment entry that was deleted
+  deletedBy    String? // userId / email of the person who deleted
   deletedAt    DateTime @default(now())
 }
 
 model Customer {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  name        String
-  phone       String   @unique
-  email       String?
-  remark      String?
-  remarks     String[]  @default([]) 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  phone     String   @unique
+  email     String?
+  remark    String?
+  remarks   String[] @default([])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Activity {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  type      String   // "STATUS_CHANGE", "NOTE_ADDED", "PAYMENT_ADDED", "SUBTASK_TOGGLED", "TASK_UPDATED"
-  content   String
-  author    String
-  authorId  String   // Clerk userId
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  type     String // "STATUS_CHANGE", "NOTE_ADDED", "PAYMENT_ADDED", "SUBTASK_TOGGLED", "TASK_UPDATED"
+  content  String
+  author   String
+  authorId String // Clerk userId
 
-  taskId    String   @db.ObjectId
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId String @db.ObjectId
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 }
 
 model Notification {
-  id              String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId          String   // Clerk user ID of the recipient
-  type            String   // "MENTION", "TASK_COMPLETED", "PAYMENT_ADDED", "CRM_FOLLOWUP"
-  title           String?  // Notification title
-  content         String   // The notification message
-  taskId          String?  @db.ObjectId
-  formId          String?  @db.ObjectId
-  responseId      String?  @db.ObjectId
-  isRead          Boolean  @default(false)
-  isSystem        Boolean  @default(false) // For automated alerts
-  scheduledAt     DateTime? @default(now()) // When this notification should become visible
-  createdAt       DateTime @default(now())
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String // Clerk user ID of the recipient
+  type        String // "MENTION", "TASK_COMPLETED", "PAYMENT_ADDED", "CRM_FOLLOWUP"
+  title       String? // Notification title
+  content     String // The notification message
+  taskId      String?   @db.ObjectId
+  formId      String?   @db.ObjectId
+  responseId  String?   @db.ObjectId
+  isRead      Boolean   @default(false)
+  isSystem    Boolean   @default(false) // For automated alerts
+  scheduledAt DateTime? @default(now()) // When this notification should become visible
+  createdAt   DateTime  @default(now())
 }
 
 model DynamicForm {
-  id              String   @id @default(auto()) @map("_id") @db.ObjectId
-  title           String
-  description     String?
-  isPublished     Boolean  @default(false)
-  
-  createdBy       String   // Clerk userId
-  createdByName   String?
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String?
+  isPublished Boolean @default(false)
 
-  visibleToRoles  String[] @default([])
-  visibleToUsers  String[] @default([])
-  
+  createdBy     String // Clerk userId
+  createdByName String?
+
+  visibleToRoles String[] @default([])
+  visibleToUsers String[] @default([])
+
   columnPermissions Json? // { "roles": { "ADMIN": { "col1": "edit", ... } }, "users": { "clerkId": { "col1": "view", ... } } }
-  
+
   fields          FormField[]
   responses       FormResponse[]
   internalColumns InternalColumn[]
 
-  pinnedBy        String[] @default([]) // Array of Clerk User IDs who pinned this form
+  pinnedBy String[] @default([]) // Array of Clerk User IDs who pinned this form
 
-  defaultColumnOrder String[] @default([])
+  defaultColumnOrder   String[] @default([])
   defaultHiddenColumns String[] @default([])
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model FormField {
-  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
   label       String
-  type        String      // "text", "number", "date", "dropdown", etc.
+  type        String // "text", "number", "date", "dropdown", etc.
   placeholder String?
-  required    Boolean     @default(false)
-  options     String[]    @default([]) // For dropdowns/radios
-  order       Int         @default(0)
+  required    Boolean  @default(false)
+  options     String[] @default([]) // For dropdowns/radios
+  order       Int      @default(0)
 
-  formId      String      @db.ObjectId
-  form        DynamicForm @relation(fields: [formId], references: [id], onDelete: Cascade)
-  
+  formId String      @db.ObjectId
+  form   DynamicForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+
   responseValues ResponseValue[]
 }
 
 model FormResponse {
-  id              String      @id @default(auto()) @map("_id") @db.ObjectId
-  formId          String      @db.ObjectId
-  form            DynamicForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  id     String      @id @default(auto()) @map("_id") @db.ObjectId
+  formId String      @db.ObjectId
+  form   DynamicForm @relation(fields: [formId], references: [id], onDelete: Cascade)
 
-  submittedBy     String?     // Clerk userId (if logged in)
+  submittedBy     String? // Clerk userId (if logged in)
   submittedByName String?
-  
-  values          ResponseValue[]
-  internalValues  InternalValue[]
-  remarks         FormRemark[]
-  payments        FormPayment[]
+
+  values         ResponseValue[]
+  internalValues InternalValue[]
+  remarks        FormRemark[]
+  payments       FormPayment[]
 
   // Permission Controls
-  visibleToRoles  String[]    @default([])
-  visibleToUsers  String[]    @default([])
-  assignedTo      String[]    @default([]) // Array of Clerk User IDs assigned to this lead/response
-  rowColor        String?     // Custom highlight color for the row
+  visibleToRoles String[] @default([])
+  visibleToUsers String[] @default([])
+  assignedTo     String[] @default([]) // Array of Clerk User IDs assigned to this lead/response
+  rowColor       String? // Custom highlight color for the row
 
-  submittedAt     DateTime    @default(now())
-  isTouched       Boolean     @default(false)
+  submittedAt DateTime @default(now())
+  isTouched   Boolean  @default(false)
 
   @@index([formId])
   @@index([submittedAt])
@@ -349,15 +347,15 @@ model FormResponse {
 }
 
 model ResponseValue {
-  id          String      @id @default(auto()) @map("_id") @db.ObjectId
-  
-  responseId  String      @db.ObjectId
-  response    FormResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  id String @id @default(auto()) @map("_id") @db.ObjectId
 
-  fieldId     String      @db.ObjectId
-  field       FormField   @relation(fields: [fieldId], references: [id], onDelete: Cascade)
-  
-  value       String      // Store as string
+  responseId String       @db.ObjectId
+  response   FormResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+
+  fieldId String    @db.ObjectId
+  field   FormField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  value String // Store as string
 
   @@index([responseId])
   @@index([fieldId])
@@ -365,45 +363,45 @@ model ResponseValue {
 }
 
 model InternalColumn {
-  id              String      @id @default(auto()) @map("_id") @db.ObjectId
-  label           String
-  type            String      // text, number, currency, date, dropdown, user, formula, checkbox, etc.
-  options         Json?       // For dropdown colors and options [{label: "New", color: "#eee"}]
-  order           Int         @default(0)
-  
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  label   String
+  type    String // text, number, currency, date, dropdown, user, formula, checkbox, etc.
+  options Json? // For dropdown colors and options [{label: "New", color: "#eee"}]
+  order   Int    @default(0)
+
   // Advanced Settings
-  isRequired      Boolean     @default(false)
-  isUnique        Boolean     @default(false)
-  isLocked        Boolean     @default(false)
-  showInPublic    Boolean     @default(false)
-  formula         String?     // For dynamic calculations
-  defaultValue    String?
-  settings        Json?       // Any other type-specific settings
+  isRequired   Boolean @default(false)
+  isUnique     Boolean @default(false)
+  isLocked     Boolean @default(false)
+  showInPublic Boolean @default(false)
+  formula      String? // For dynamic calculations
+  defaultValue String?
+  settings     Json? // Any other type-specific settings
 
   // Permission Controls
-  visibleToRoles  String[]    @default([])
-  visibleToUsers  String[]    @default([])
-  
-  formId          String      @db.ObjectId
-  form            DynamicForm @relation(fields: [formId], references: [id], onDelete: Cascade)
-  
-  values          InternalValue[]
+  visibleToRoles String[] @default([])
+  visibleToUsers String[] @default([])
+
+  formId String      @db.ObjectId
+  form   DynamicForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  values InternalValue[]
 
   @@index([formId])
 }
 
 model InternalValue {
-  id              String      @id @default(auto()) @map("_id") @db.ObjectId
-  responseId      String      @db.ObjectId
-  response        FormResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
-  columnId        String      @db.ObjectId
-  column          InternalColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
-  value           String      @default("")
-  
+  id         String         @id @default(auto()) @map("_id") @db.ObjectId
+  responseId String         @db.ObjectId
+  response   FormResponse   @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  columnId   String         @db.ObjectId
+  column     InternalColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  value      String         @default("")
+
   // Metadata
-  updatedBy       String?     // UserID
-  updatedByName   String?
-  updatedAt       DateTime    @updatedAt
+  updatedBy     String? // UserID
+  updatedByName String?
+  updatedAt     DateTime @updatedAt
 
   @@unique([responseId, columnId])
   @@index([responseId])
@@ -412,84 +410,84 @@ model InternalValue {
 }
 
 model FormActivity {
-  id              String      @id @default(auto()) @map("_id") @db.ObjectId
-  responseId      String      @db.ObjectId
-  userId          String
-  userName        String
-  type            String      // "CELL_UPDATE", "STATUS_CHANGE", "NOTE_ADDED", "CONVERTED"
-  columnName      String?
-  oldValue        String?
-  newValue        String?
-  createdAt       DateTime    @default(now())
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  responseId String   @db.ObjectId
+  userId     String
+  userName   String
+  type       String // "CELL_UPDATE", "STATUS_CHANGE", "NOTE_ADDED", "CONVERTED"
+  columnName String?
+  oldValue   String?
+  newValue   String?
+  createdAt  DateTime @default(now())
 
   @@index([responseId])
 }
 
 model SavedView {
-  id              String   @id @default(auto()) @map("_id") @db.ObjectId
-  name            String
-  formId          String   @db.ObjectId
-  conditions      Json     // Array of { colId, op, val, val2 }
-  conjunction     String   // "AND" | "OR"
-  createdBy       String   // Clerk userId
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  formId      String   @db.ObjectId
+  conditions  Json // Array of { colId, op, val, val2 }
+  conjunction String // "AND" | "OR"
+  createdBy   String // Clerk userId
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model AIAnalysis {
-  id              String   @id @default(auto()) @map("_id") @db.ObjectId
-  formId          String   @db.ObjectId
-  query           String?  // The original prompt/request
-  analysisData    Json?    // Optional structured JSON
-  htmlReport      String   // The cached HTML content
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  formId       String   @db.ObjectId
+  query        String? // The original prompt/request
+  analysisData Json? // Optional structured JSON
+  htmlReport   String // The cached HTML content
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([formId])
 }
 
 model FormRemark {
-  id                String    @id @default(auto()) @map("_id") @db.ObjectId
-  requestId         String?   // ⚡ IDEMPOTENCY KEY (Prevents Double Saving via Code Check)
-  remark            String
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime? @updatedAt
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  requestId String? // ⚡ IDEMPOTENCY KEY (Prevents Double Saving via Code Check)
+  remark    String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
 
-  authorName        String?
-  authorEmail       String?
-  createdById       String?   // Clerk userId of creator
+  authorName  String?
+  authorEmail String?
+  createdById String? // Clerk userId of creator
 
-  nextFollowUpDate  DateTime? 
-  followUpStatus    String?   
-  leadStatus        String?   // NEW: Track specific lead status in remarks history
+  nextFollowUpDate DateTime?
+  followUpStatus   String?
+  leadStatus       String? // NEW: Track specific lead status in remarks history
 
-  responseId        String    @db.ObjectId
-  response          FormResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
-  
-  columnId          String?   // Link to InternalColumn for specific status tracking
-  
+  responseId String       @db.ObjectId
+  response   FormResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+
+  columnId String? // Link to InternalColumn for specific status tracking
+
   @@index([responseId])
   @@index([columnId])
 }
 
 model FormPayment {
-  id          String    @id @default(auto()) @map("_id") @db.ObjectId
-  responseId  String    @db.ObjectId
-  response    FormResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
-  formId      String    @db.ObjectId
+  id         String       @id @default(auto()) @map("_id") @db.ObjectId
+  responseId String       @db.ObjectId
+  response   FormResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  formId     String       @db.ObjectId
 
-  amount      Float     // Total amount (entered by user)
-  received    Float     @default(0) // Amount received
+  amount   Float // Total amount (entered by user)
+  received Float @default(0) // Amount received
   // pending = amount - received (calculated on client)
 
-  note        String?   // Optional payment note
-  paymentDate DateTime  @default(now()) // Date of payment entry
+  note        String? // Optional payment note
+  paymentDate DateTime @default(now()) // Date of payment entry
 
-  createdById   String?  // Clerk userId
+  createdById   String? // Clerk userId
   createdByName String?
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([responseId])
   @@index([formId])
@@ -497,35 +495,35 @@ model FormPayment {
 }
 
 model SidebarPermission {
-  id              String   @id @default(auto()) @map("_id") @db.ObjectId
-  role            String   @unique
-  sidebarItems    String[] // List of sidebar item labels visible for this role
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  role         String   @unique
+  sidebarItems String[] // List of sidebar item labels visible for this role
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Backup {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  fileName  String
-  date      DateTime @default(now())
-  sizeMB    Float
-  status    String   // "success", "failed"
-  s3Url     String?
-  error     String?
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  fileName String
+  date     DateTime @default(now())
+  sizeMB   Float
+  status   String // "success", "failed"
+  s3Url    String?
+  error    String?
 
   createdAt DateTime @default(now())
 }
 
 model BusinessSettings {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  name        String?
-  address     String?
-  gstin       String?
-  phone       String?
-  email       String?
-  website     String?
-  logo        String?
+  id      String  @id @default(auto()) @map("_id") @db.ObjectId
+  name    String?
+  address String?
+  gstin   String?
+  phone   String?
+  email   String?
+  website String?
+  logo    String?
 
   // Bank Details
   bankName      String?
@@ -535,9 +533,9 @@ model BusinessSettings {
   ifscCode      String?
 
   // Terms
-  terms          String?
-  signatureUrl   String?
-  
+  terms        String?
+  signatureUrl String?
+
   // Hardware defaults
   defaultPrinterCost String?
 
@@ -551,40 +549,40 @@ model BusinessSettings {
   // Employee Portal Permissions
   showEmployeeSalaryHistory Boolean @default(false)
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model CashfreeLink {
-  id              String   @id @default(auto()) @map("_id") @db.ObjectId
-  orderId         String   @unique
-  name            String
-  email           String
-  phone           String
-  amount          Float
-  totalAmount     Float
-  purpose         String
-  paymentLink     String
-  status          String   @default("pending") // pending, paid, failed
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  orderId          String   @unique
+  name             String
+  email            String
+  phone            String
+  amount           Float
+  totalAmount      Float
+  purpose          String
+  paymentLink      String
+  status           String   @default("pending") // pending, paid, failed
   paymentSessionId String?
-  createdBy       String?
-  creatorId       String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdBy        String?
+  creatorId        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@index([email])
   @@index([phone])
 }
 
 model ShortLink {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  shortId     String   @unique
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  shortId     String    @unique
   originalUrl String
-  orderId     String   @unique
-  visits      Int      @default(0)
+  orderId     String    @unique
+  visits      Int       @default(0)
   expiresAt   DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model GeneralExpense {
@@ -600,80 +598,90 @@ model GeneralExpense {
 
 // 📦 New Model for Inventory Items
 model InventoryItem {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  name        String   @unique // e.g., "Printer", "Printer Plus Software"
-  sku         String?  @unique
-  quantity    Int      @default(0) // Total stock available
-  type        String   // "HARDWARE" or "SOFTWARE"
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String   @unique // e.g., "Printer", "Printer Plus Software"
+  sku       String?  @unique
+  quantity  Int      @default(0) // Total stock available
+  type      String // "HARDWARE" or "SOFTWARE"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  dispatches  DispatchLog[]
+  dispatches    DispatchLog[]
   serialNumbers SerialNumber[]
 }
 
 // 🚚 New Model for Tracking / Dispatch
 model DispatchLog {
-  id              String   @id @default(auto()) @map("_id") @db.ObjectId
-  awbNumber       String   @unique
-  courierName     String?  // e.g., "Delhivery", "BlueDart"
-  trackingStatus  String   @default("Pending") // Pending, In Transit, Delivered, RTO
-  dispatchDate    DateTime?
-  attemptsMade    Int      @default(0)
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  awbNumber      String    @unique
+  courierName    String? // e.g., "Delhivery", "BlueDart"
+  trackingStatus String    @default("Pending") // Pending, In Transit, Delivered, RTO
+  dispatchDate   DateTime?
+  attemptsMade   Int       @default(0)
 
-  inventoryItemId String   @db.ObjectId
+  inventoryItemId String        @db.ObjectId
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
-  
-  taskId          String   @unique @db.ObjectId
-  task            Task     @relation(fields: [taskId], references: [id])
 
-  history         Json[]   @default([]) // Array of { status, changedBy, changedAt }
+  taskId String @unique @db.ObjectId
+  task   Task   @relation(fields: [taskId], references: [id])
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  serialNumberId String?       @db.ObjectId
+  serialNumber   SerialNumber? @relation(fields: [serialNumberId], references: [id])
+  cycleNumber    Int           @default(1)
+
+  history Json[] @default([]) // Array of { status, changedBy, changedAt }
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // 🏷️ New Model for tracking specific hardware serial numbers
 model SerialNumber {
   id              String        @id @default(auto()) @map("_id") @db.ObjectId
   number          String        @unique
-  status          String        @default("Available") // "Available", "Shipped", "Defective"
+  status          String        @default("Available") // "Available", "Shipped", "Returned", "Defective"
   inventoryItemId String        @db.ObjectId
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
   taskId          String?       @db.ObjectId
   task            Task?         @relation(fields: [taskId], references: [id])
-  remarks         String?
-  createdByName   String?
-  createdByEmail  String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+
+  rtoCount      Int           @default(0)
+  dispatchCount Int           @default(0)
+  deliveryCount Int           @default(0)
+  dispatches    DispatchLog[]
+
+  remarks        String?
+  createdByName  String?
+  createdByEmail String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 // 💰 Model for Employee Advances (Loans/Salary Advance)
 model EmployeeAdvance {
-  id              String   @id @default(auto()) @map("_id") @db.ObjectId
-  employeeEmail   String
-  advanceNo       String   @unique
-  amount          Float
-  approvedAmount  Float?
-  remainingAmount Float
+  id               String @id @default(auto()) @map("_id") @db.ObjectId
+  employeeEmail    String
+  advanceNo        String @unique
+  amount           Float
+  approvedAmount   Float?
+  remainingAmount  Float
   monthlyDeduction Float
-  purpose         String
-  
-  requestedDate   DateTime @default(now())
-  approvedDate    DateTime?
-  disbursedDate   DateTime?
-  
-  // Status: Requested, Approved, Disbursed, PartiallyRecovered, Recovered, Cancelled
-  status          String   @default("Requested") 
-  
-  approvedBy      String?
-  paymentMode     String?
-  referenceNo     String?
-  remarks         String?
+  purpose          String
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  requestedDate DateTime  @default(now())
+  approvedDate  DateTime?
+  disbursedDate DateTime?
+
+  // Status: Requested, Approved, Disbursed, PartiallyRecovered, Recovered, Cancelled
+  status String @default("Requested")
+
+  approvedBy  String?
+  paymentMode String?
+  referenceNo String?
+  remarks     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([employeeEmail])
 }
@@ -683,15 +691,15 @@ model EmployeeExpense {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
   assignerEmail String
   assignerName  String?
-  title         String   // e.g. "Monthly Salary", "Travel Allowance", "Incentive"
+  title         String // e.g. "Monthly Salary", "Travel Allowance", "Incentive"
   category      String   @default("Salary") // Salary, Incentive, Travel, Phone, Bonus, Other
   amount        Float
   date          DateTime
   status        String   @default("Pending") // Paid, Processing, Pending, On Hold
-  paymentMode   String?  // UPI, Bank Transfer, Cash, Cheque
-  referenceNo   String?  // UTR / Transaction Ref
+  paymentMode   String? // UPI, Bank Transfer, Cash, Cheque
+  referenceNo   String? // UTR / Transaction Ref
   remarks       String?
-  metadata      Json?    // Optional structured data (e.g. salaryMonth, workingDays)
+  metadata      Json? // Optional structured data (e.g. salaryMonth, workingDays)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -701,13 +709,13 @@ model EmployeeExpense {
 
 // 💼 Model for Employee Profiles & Base Salary Payroll Setup
 model EmployeeProfile {
-  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
-  email                 String   @unique
+  id                    String    @id @default(auto()) @map("_id") @db.ObjectId
+  email                 String    @unique
   name                  String?
   phone                 String?
-  department            String?  @default("Sales")
+  department            String?   @default("Sales")
   designation           String?
-  baseSalary            Float    @default(0)
+  baseSalary            Float     @default(0)
   joiningDate           DateTime?
   accountHolderName     String?
   bankAccount           String?
@@ -730,39 +738,38 @@ model EmployeeProfile {
   permanentAddress      String?
   maritalStatus         String?
   gender                String?
-  
+
   // 🔄 Employee Lifecycle (Version 1.5)
-  employmentStatus      String   @default("Active") // Active, Notice Period, Inactive, Suspended
+  employmentStatus      String    @default("Active") // Active, Notice Period, Inactive, Suspended
   lastWorkingDate       DateTime?
   exitReason            String?
-  finalSettlementStatus String?  // Pending, Completed
+  finalSettlementStatus String? // Pending, Completed
 
-  isLocked              Boolean  @default(false)
-  verificationStatus    String   @default("PENDING") // PENDING, APPROVED, REJECTED
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  isLocked           Boolean  @default(false)
+  verificationStatus String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }
-
 
 // 📖 Model for Employee Financial Ledger (Running history of credits/debits)
 model EmployeeLedger {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
   employeeEmail String
   date          DateTime @default(now())
-  
+
   // Generic Transaction Types: Salary Credit, Salary Payment, Advance, Incentive, Deduction, etc.
-  type          String   
-  description   String?
-  
-  credit        Float    @default(0) // Money added to employee (e.g. Salary, Incentive)
-  debit         Float    @default(0) // Money paid/deducted from employee (e.g. Paid Salary, Advance)
-  
-  referenceId   String?  // Link to EmployeeExpense or Advance ID
-  
-  createdBy     String?  // Who created this entry
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
+  type        String
+  description String?
+
+  credit Float @default(0) // Money added to employee (e.g. Salary, Incentive)
+  debit  Float @default(0) // Money paid/deducted from employee (e.g. Paid Salary, Advance)
+
+  referenceId String? // Link to EmployeeExpense or Advance ID
+
+  createdBy String? // Who created this entry
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([employeeEmail])
   @@index([date])
 }
@@ -773,20 +780,20 @@ model CashbookEntry {
   voucherNo       String?  @unique
   transactionDate DateTime @default(now())
   description     String
-  
-  type            String   // "IN" (Credit) or "OUT" (Debit)
-  category        String   // "Payroll", "Advance", "Reimbursement", "Office Expense", "Purchase", "Sales", "Bank Deposit", "Bank Withdrawal"
-  amount          Float
-  status          String   @default("Approved") // "Pending", "Approved", "Paid", "Failed", "Cancelled"
-  
-  paymentMode     String?  // UPI, Bank Transfer, Cash, Cheque
-  referenceNo     String?  // UTR / Transaction Ref / Cheque No
-  notes           String?
-  branchId        String?
-  
-  createdBy       String?  // Clerk User ID or email
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+
+  type     String // "IN" (Credit) or "OUT" (Debit)
+  category String // "Payroll", "Advance", "Reimbursement", "Office Expense", "Purchase", "Sales", "Bank Deposit", "Bank Withdrawal"
+  amount   Float
+  status   String @default("Approved") // "Pending", "Approved", "Paid", "Failed", "Cancelled"
+
+  paymentMode String? // UPI, Bank Transfer, Cash, Cheque
+  referenceNo String? // UTR / Transaction Ref / Cheque No
+  notes       String?
+  branchId    String?
+
+  createdBy String? // Clerk User ID or email
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([transactionDate])
   @@index([category])

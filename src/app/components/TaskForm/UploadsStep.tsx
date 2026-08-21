@@ -2351,7 +2351,7 @@ export default function UploadsStep(props: UploadsStepProps) {
                           placeholder="Search or enter Serial Number (Optional)"
                           options={availableSerials.map((s) => ({
                             value: s.number,
-                            label: `${s.number} (Available)`,
+                            label: `${s.number} (${s.status === "Returned" ? "Returned/RTO" : "Available"})`,
                           }))}
                           onChange={(newValue) => setSerialNumber(newValue ? newValue.value : "")}
                           value={
@@ -2359,7 +2359,7 @@ export default function UploadsStep(props: UploadsStepProps) {
                               ? {
                                   value: serialNumber,
                                   label: availableSerials.find((s) => s.number === serialNumber)
-                                    ? `${serialNumber} (Available)`
+                                    ? `${serialNumber} (${availableSerials.find((s) => s.number === serialNumber).status === "Returned" ? "Returned/RTO" : "Available"})`
                                     : serialNumber,
                                 }
                               : null
@@ -2390,6 +2390,12 @@ export default function UploadsStep(props: UploadsStepProps) {
                         <p className="text-[10px] text-slate-500 font-medium mt-1">
                           💡 You can select an available serial number or type a new one to register it automatically. Duplicates will be rejected on submission.
                         </p>
+                        {serialNumber && availableSerials.find(s => s.number === serialNumber)?.status === "Returned" && (
+                          <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-700 text-xs font-semibold flex items-start gap-1">
+                            <span>⚠️</span>
+                            <span>This printer was previously RTO. This will be its 2nd+ dispatch.</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

@@ -15,7 +15,7 @@ export async function GET(req: Request) {
       where: { name: itemName },
       include: {
         serialNumbers: {
-          where: status ? { status } : undefined,
+          where: status === "Available" ? { status: { in: ["Available", "Returned"] } } : (status ? { status } : undefined),
           include: {
             task: {
               include: {
