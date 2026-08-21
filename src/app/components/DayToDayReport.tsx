@@ -2835,6 +2835,7 @@ export default function ShopReport({ assignerId }: { assignerId?: string } = {})
   const [pendingFilter, setPendingFilter] = useState<"all" | "pending" | "paid">("all");
   const [sortPendingDesc, setSortPendingDesc] = useState<boolean>(true);
   const [showTaskId, setShowTaskId] = useState(false); // ✅ toggle for TaskId column
+  const [showZeroRevenue, setShowZeroRevenue] = useState(false); // ✅ toggle for 0 revenue
   const [isExporting, setIsExporting] = useState(false);
 
   const { user, isLoaded } = useUser();
@@ -2879,6 +2880,10 @@ export default function ShopReport({ assignerId }: { assignerId?: string } = {})
   let filteredData = data.filter((item) =>
     Object.values(item).join(" ").toLowerCase().includes(search.toLowerCase())
   );
+
+  if (!showZeroRevenue) {
+    filteredData = filteredData.filter((item) => item.totalRevenue > 0);
+  }
 
   if (pendingFilter === "pending")
     filteredData = filteredData.filter((item) => item.pending > 0);
@@ -2963,9 +2968,17 @@ export default function ShopReport({ assignerId }: { assignerId?: string } = {})
               {/* Task ID Toggle */}
               <button
                 onClick={() => setShowTaskId(!showTaskId)}
-                className="px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl shadow hover:from-purple-600 hover:to-purple-700 transition-all flex items-center gap-2"
+                className="px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl shadow hover:from-purple-600 hover:to-purple-700 transition-all flex items-center gap-2 whitespace-nowrap"
               >
                 {showTaskId ? <EyeOff size={16} /> : <Eye size={16} />} Task ID
+              </button>
+
+              {/* Zero Revenue Toggle */}
+              <button
+                onClick={() => setShowZeroRevenue(!showZeroRevenue)}
+                className="px-4 py-2 bg-gradient-to-r from-teal-500 to-teal-600 text-white rounded-xl shadow hover:from-teal-600 hover:to-teal-700 transition-all flex items-center gap-2 whitespace-nowrap"
+              >
+                {showZeroRevenue ? <EyeOff size={16} /> : <Eye size={16} />} {showZeroRevenue ? "Hide 0 Revenue" : "Show All"}
               </button>
 
               {/* Export Excel (Master Only) */}
