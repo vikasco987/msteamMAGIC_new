@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 
+const safeFloat = (v: any): number => {
+  if (v == null || v === "") return 0;
+  const n = parseFloat(String(v));
+  return isNaN(n) || !isFinite(n) ? 0 : n;
+};
+
 export async function GET(req: NextRequest) {
   try {
     const { userId } = await auth();
@@ -40,8 +46,9 @@ export async function GET(req: NextRequest) {
         : {}),
     };
 
+    let userIds: string[] = [];
     if (!isPrivileged) {
-      let userIds = [userId];
+      userIds = [userId];
       if (isTL) {
           const members = await prisma.user.findMany({
               where: { leaderIds: { has: userId } },
@@ -66,12 +73,27 @@ export async function GET(req: NextRequest) {
         createdAt: true,
         amount: true,
         received: true,
+        customFields: true,
       },
+    });
+
+    let expenseFilter = {};
+    if (!isPrivileged && userIds.length > 0) {
+      const targetUsers = await prisma.user.findMany({
+        where: { clerkId: { in: userIds } },
+        select: { email: true }
+      });
+      const emails = targetUsers.map(u => u.email).filter(Boolean) as string[];
+      expenseFilter = { assignerEmail: { in: emails } };
+    }
+
+    const expenses = await prisma.employeeExpense.findMany({
+      where: expenseFilter
     });
 
     const monthlyMap: Record<
       string,
-      { totalRevenue: number; amountReceived: number; totalLeads: number }
+      { totalRevenue: number; amountReceived: number; totalLeads: number; totalExpense: number }
     > = {};
 
     for (const task of tasks) {
@@ -83,14 +105,36 @@ export async function GET(req: NextRequest) {
           totalRevenue: 0,
           amountReceived: 0,
           totalLeads: 0,
+          totalExpense: 0,
         };
       }
+
+      const customFields = (task.customFields as any) || {};
+      const delivery = safeFloat(customFields.deliveryCharge);
+      const costPrice = safeFloat(customFields.costPrice);
+      monthlyMap[monthKey].totalExpense += (delivery + costPrice);
 
       monthlyMap[monthKey].totalRevenue +=
         typeof task.amount === "number" ? task.amount : 0;
       monthlyMap[monthKey].amountReceived +=
         typeof task.received === "number" ? task.received : 0;
       monthlyMap[monthKey].totalLeads += 1;
+    }
+
+    for (const exp of expenses) {
+      if (!exp.date) continue;
+      const monthKey = new Date(exp.date).toISOString().slice(0, 7); // "YYYY-MM"
+      if (!monthlyMap[monthKey]) {
+        // Only add expense to months that already have revenue data, or we could initialize it.
+        // Usually we want to see it even if there's no revenue.
+        monthlyMap[monthKey] = {
+          totalRevenue: 0,
+          amountReceived: 0,
+          totalLeads: 0,
+          totalExpense: 0,
+        };
+      }
+      monthlyMap[monthKey].totalExpense += safeFloat(exp.amount);
     }
 
     const sortedMonths = Object.keys(monthlyMap).sort(); // Sort chronologically ascending
@@ -102,6 +146,7 @@ export async function GET(req: NextRequest) {
         totalRevenue: 0,
         amountReceived: 0,
         totalLeads: 0,
+        totalExpense: 0,
       };
 
       cumulativeTotal += current.totalRevenue; // Add current month's revenue to the cumulative total
@@ -127,7 +172,9 @@ export async function GET(req: NextRequest) {
         ),
         totalLeads: current.totalLeads,
         leadsGrowth: calcGrowth(current.totalLeads, previous.totalLeads),
-        cumulativeRevenue: cumulativeTotal, // Add the new cumulative field
+        cumulativeRevenue: cumulativeTotal,
+        totalExpense: current.totalExpense,
+        expenseGrowth: calcGrowth(current.totalExpense, previous.totalExpense),
       };
     });
 

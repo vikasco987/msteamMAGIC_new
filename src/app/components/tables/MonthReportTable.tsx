@@ -12,6 +12,7 @@ type MonthReport = {
   amountReceived: number;
   pendingAmount: number;
   totalLeads: number;
+  totalExpense: number;
 };
 
 type SortConfig = {
@@ -27,6 +28,8 @@ export default function MonthReportTable() {
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: null, direction: "ascending" });
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMonth, setSelectedMonth] = useState<MonthReport | null>(null);
+  const [showWithGST, setShowWithGST] = useState(true);
+  const [showWithExpense, setShowWithExpense] = useState(false);
 
   const totalPages = Math.ceil(total / limit);
 
@@ -51,11 +54,22 @@ export default function MonthReportTable() {
 
   // Memoize filtered and sorted data for performance
   const processedData = useMemo(() => {
-    // 1. Map data to include calculated pendingPercentage
-    const dataWithCalculations = data.map(row => ({
-        ...row,
-        pendingPercentage: row.totalRevenue > 0 ? (row.pendingAmount / row.totalRevenue) * 100 : 0,
-    }));
+    // 1. Map data to include calculated pendingPercentage and adjust for GST/Expense
+    const dataWithCalculations = data.map(row => {
+        const adjustedRevenue = showWithGST ? row.totalRevenue : row.totalRevenue / 1.18;
+        const adjustedReceived = showWithGST ? row.amountReceived : row.amountReceived / 1.18;
+        const pendingAmount = adjustedRevenue - adjustedReceived;
+        const netProfit = adjustedRevenue - (row.totalExpense || 0);
+
+        return {
+          ...row,
+          totalRevenue: adjustedRevenue,
+          amountReceived: adjustedReceived,
+          pendingAmount: pendingAmount,
+          pendingPercentage: adjustedRevenue > 0 ? (pendingAmount / adjustedRevenue) * 100 : 0,
+          netProfit: netProfit
+        };
+    });
 
     let sortedData = [...dataWithCalculations];
 
@@ -95,7 +109,7 @@ export default function MonthReportTable() {
     }
 
     return sortedData;
-  }, [data, sortConfig, searchQuery]);
+  }, [data, sortConfig, searchQuery, showWithGST, showWithExpense]);
   
   const requestSort = (key: keyof MonthReport | 'pendingPercentage') => {
     let direction: "ascending" | "descending" = "ascending";
@@ -127,8 +141,43 @@ export default function MonthReportTable() {
   return (
     <div className="bg-white p-8 rounded-lg shadow-2xl border border-gray-100 font-sans text-gray-900 transition-shadow duration-300 hover:shadow-3xl">
       {/* Header */}
-      <div className="mb-8 border-b-2 border-gray-200 pb-4 flex items-center justify-between">
+      <div className="mb-4 border-b-2 border-gray-200 pb-4 flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-3xl font-bold tracking-tight">Month-over-Month Report</h2>
+        
+        {/* Toggles */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1 bg-gray-50 rounded-xl p-1 border border-gray-200">
+            <span className="text-xs font-bold text-gray-500 pl-2 pr-1">GST:</span>
+            <button
+              onClick={() => setShowWithGST(true)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border ${showWithGST ? 'bg-blue-100 text-blue-700 border-blue-300' : 'text-gray-500 hover:bg-white border-transparent'}`}
+            >
+              With
+            </button>
+            <button
+              onClick={() => setShowWithGST(false)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border ${!showWithGST ? 'bg-blue-100 text-blue-700 border-blue-300' : 'text-gray-500 hover:bg-white border-transparent'}`}
+            >
+              Without
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1 bg-gray-50 rounded-xl p-1 border border-gray-200">
+            <span className="text-xs font-bold text-gray-500 pl-2 pr-1">Expenses:</span>
+            <button
+              onClick={() => setShowWithExpense(true)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border ${showWithExpense ? 'bg-purple-100 text-purple-700 border-purple-300' : 'text-gray-500 hover:bg-white border-transparent'}`}
+            >
+              Show
+            </button>
+            <button
+              onClick={() => setShowWithExpense(false)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border ${!showWithExpense ? 'bg-purple-100 text-purple-700 border-purple-300' : 'text-gray-500 hover:bg-white border-transparent'}`}
+            >
+              Hide
+            </button>
+          </div>
+        </div>
       </div>
 
       {data.length === 0 ? (
@@ -171,6 +220,16 @@ export default function MonthReportTable() {
                   <th className="p-4 font-bold tracking-wider text-right cursor-pointer" data-tooltip-id="pending-percent-tip" onClick={() => requestSort("pendingPercentage")}>
                     <span className="flex items-center justify-end gap-2"><ArrowDown size={16} /> Pending % {getSortIcon("pendingPercentage")}</span>
                   </th>
+                  {showWithExpense && (
+                    <>
+                      <th className="p-4 font-bold tracking-wider text-right cursor-pointer text-red-100" onClick={() => requestSort("totalExpense" as any)}>
+                        <span className="flex items-center justify-end gap-1"><IndianRupee size={16} /> Expense {getSortIcon("totalExpense" as any)}</span>
+                      </th>
+                      <th className="p-4 font-bold tracking-wider text-right cursor-pointer text-green-100" onClick={() => requestSort("netProfit" as any)}>
+                        <span className="flex items-center justify-end gap-1"><IndianRupee size={16} /> Net Profit {getSortIcon("netProfit" as any)}</span>
+                      </th>
+                    </>
+                  )}
                   <th className="p-4 font-bold tracking-wider text-right cursor-pointer" data-tooltip-id="leads-tip" onClick={() => requestSort("totalLeads")}>
                     <span className="flex items-center justify-end gap-2"><Users size={16} /> Leads {getSortIcon("totalLeads")}</span>
                   </th>
@@ -259,6 +318,20 @@ export default function MonthReportTable() {
                             )}
                         </span>
                       </td>
+                      {showWithExpense && (
+                        <>
+                          <td className="p-4 font-bold text-red-600 text-right">
+                            <span className="flex items-center justify-end gap-2">
+                              ₹{(row.totalExpense || 0).toLocaleString()}
+                            </span>
+                          </td>
+                          <td className="p-4 font-bold text-green-600 text-right">
+                            <span className="flex items-center justify-end gap-2">
+                              ₹{(row as any).netProfit?.toLocaleString() || 0}
+                            </span>
+                          </td>
+                        </>
+                      )}
                       <td className="p-4 font-bold text-gray-600 text-right">
                         <span className="flex items-center justify-end gap-2">
                           {row.totalLeads.toLocaleString()}

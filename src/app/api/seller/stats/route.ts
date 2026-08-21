@@ -94,6 +94,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 
+const safeFloat = (v: any): number => {
+  if (v == null || v === "") return 0;
+  const n = parseFloat(String(v));
+  return isNaN(n) || !isFinite(n) ? 0 : n;
+};
+
 export async function GET(req: Request) {
   try {
     const { userId } = await auth(); // ⚡️ no need for await here
@@ -147,7 +153,22 @@ export async function GET(req: Request) {
         amount: true,
         received: true,
         createdAt: true,
+        customFields: true,
       },
+    });
+
+    // Fetch emails to get Employee Expenses
+    const targetUsers = await prisma.user.findMany({
+      where: { clerkId: { in: userIds } },
+      select: { email: true }
+    });
+    const emails = targetUsers.map(u => u.email).filter(Boolean);
+
+    const expenses = await prisma.employeeExpense.findMany({
+      where: {
+        date: { gte: startDate, lt: endDate },
+        assignerEmail: { in: emails as string[] }
+      }
     });
 
     if (!tasks.length) {
@@ -157,10 +178,21 @@ export async function GET(req: Request) {
     }
 
     // Revenue calculations
-    const totalRevenue = tasks.reduce((sum, t) => sum + (t.amount ?? 0), 0);
+    let totalTaskDirectExpense = 0;
+    const totalRevenue = tasks.reduce((sum, t) => {
+      const customFields = (t.customFields as any) || {};
+      const delivery = safeFloat(customFields.deliveryCharge);
+      const costPrice = safeFloat(customFields.costPrice);
+      totalTaskDirectExpense += (delivery + costPrice);
+      
+      return sum + (t.amount ?? 0);
+    }, 0);
     const totalReceived = tasks.reduce((sum, t) => sum + (t.received ?? 0), 0);
     const pendingRevenue = totalRevenue - totalReceived;
     const totalSales = tasks.filter((t) => (t.amount ?? 0) > 0).length;
+
+    const employeeManualExpenses = expenses.reduce((sum, e) => sum + safeFloat(e.amount), 0);
+    const totalExpense = totalTaskDirectExpense + employeeManualExpenses;
 
     return NextResponse.json(
       {
@@ -170,6 +202,7 @@ export async function GET(req: Request) {
         totalReceived,
         pendingRevenue,
         totalSales,
+        totalExpense,
       },
       { status: 200 }
     );

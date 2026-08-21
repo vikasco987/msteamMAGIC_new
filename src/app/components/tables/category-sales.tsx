@@ -23,6 +23,7 @@ export default function CategorySalesTable() {
   const [data, setData] = useState<CategorySales[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [showWithGST, setShowWithGST] = useState(true);
 
   // Format month label (Aug 2025)
   const formatMonthLabel = (date: Date) =>
@@ -88,19 +89,37 @@ export default function CategorySalesTable() {
         <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
           📊 Category-wise Sales
         </h2>
-        <div className="flex items-center gap-2">
-          <Calendar size={18} className="text-blue-500" />
-          <select
-            value={selectedMonth}
-            onChange={handleMonthChange}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-bold bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
-          >
-            {monthsList.map((m) => (
-              <option key={m.value} value={m.value}>
-                {m.label}
-              </option>
-            ))}
-          </select>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-1 bg-gray-50 rounded-xl p-1 border border-gray-200">
+            <span className="text-xs font-bold text-gray-500 pl-2 pr-1">GST:</span>
+            <button
+              onClick={() => setShowWithGST(true)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border ${showWithGST ? 'bg-blue-100 text-blue-700 border-blue-300' : 'text-gray-500 hover:bg-white border-transparent'}`}
+            >
+              With
+            </button>
+            <button
+              onClick={() => setShowWithGST(false)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border ${!showWithGST ? 'bg-blue-100 text-blue-700 border-blue-300' : 'text-gray-500 hover:bg-white border-transparent'}`}
+            >
+              Without
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Calendar size={18} className="text-blue-500" />
+            <select
+              value={selectedMonth}
+              onChange={handleMonthChange}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-bold bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
+            >
+              {monthsList.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -140,9 +159,12 @@ export default function CategorySalesTable() {
             {/* Table Body */}
             <tbody>
               {data.map((c, idx) => {
-                const pending = c.totalRevenue - c.amountReceived;
-                const pendingPercentage = c.totalRevenue > 0 
-                    ? (pending / c.totalRevenue) * 100 
+                const adjustedRevenue = showWithGST ? c.totalRevenue : c.totalRevenue / 1.18;
+                const adjustedReceived = showWithGST ? c.amountReceived : c.amountReceived / 1.18;
+                const pending = adjustedRevenue - adjustedReceived;
+                
+                const pendingPercentage = adjustedRevenue > 0 
+                    ? (pending / adjustedRevenue) * 100 
                     : 0;
 
                 const rowBg = idx % 2 === 0 ? "bg-white" : "bg-gray-50";
@@ -178,17 +200,17 @@ export default function CategorySalesTable() {
                     </td>
                     
                     <td className="p-4 text-right font-bold text-green-700">
-                      ₹{c.totalRevenue.toLocaleString()}
+                      ₹{adjustedRevenue.toLocaleString()}
                     </td>
                     
                     {/* Amount Received with Progress Bar (Design from previous fix) */}
                     <td className="p-4 text-right font-bold text-blue-700">
                         <span className="flex flex-col items-end gap-1">
-                            ₹{c.amountReceived.toLocaleString()}
-                            {c.totalRevenue > 0 && (
+                            ₹{adjustedReceived.toLocaleString()}
+                            {adjustedRevenue > 0 && (
                                 <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
                                     <div
-                                        style={{ width: `${(c.amountReceived / c.totalRevenue) * 100}%` }}
+                                        style={{ width: `${(adjustedReceived / adjustedRevenue) * 100}%` }}
                                         className={`h-full ${progressBarColor} transition-all duration-500 ease-out`}
                                     ></div>
                                 </div>
@@ -200,12 +222,12 @@ export default function CategorySalesTable() {
                     <td className="p-4 text-right">
                       <span
                         className={`px-3 py-1 text-xs rounded-full font-bold inline-block min-w-[70px] text-center ${
-                          pending === 0
+                          pending <= 0.01
                             ? "bg-green-100 text-green-700"
                             : "bg-red-100 text-red-700"
                         }`}
                       >
-                        ₹{pending.toLocaleString()}
+                        ₹{pending.toFixed(2)}
                       </span>
                     </td>
                     

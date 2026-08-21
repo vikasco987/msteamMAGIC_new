@@ -34,6 +34,7 @@ interface Stats {
   totalReceived: number;
   pendingRevenue: number;
   totalSales: number;
+  totalExpense: number;
 }
 
 export default function SellerStats({ 
@@ -48,6 +49,8 @@ export default function SellerStats({
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [showCards, setShowCards] = useState<boolean>(false);
+  const [showWithGST, setShowWithGST] = useState(true);
+  const [showWithExpense, setShowWithExpense] = useState(false);
 
   const [showHistory, setShowHistory] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -222,6 +225,41 @@ export default function SellerStats({
               <span className="text-sm font-medium hidden sm:inline">{showCards ? "Hide" : "Unhide"}</span>
             </button>
 
+            {/* Toggles */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1 bg-white rounded-xl shadow-sm p-1 border border-gray-100">
+                <span className="text-xs font-bold text-gray-500 pl-2 pr-1">GST:</span>
+                <button
+                  onClick={() => setShowWithGST(true)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border ${showWithGST ? 'bg-blue-50 text-blue-600 border-blue-200' : 'text-gray-500 hover:bg-gray-50 border-transparent'}`}
+                >
+                  With
+                </button>
+                <button
+                  onClick={() => setShowWithGST(false)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border ${!showWithGST ? 'bg-blue-50 text-blue-600 border-blue-200' : 'text-gray-500 hover:bg-gray-50 border-transparent'}`}
+                >
+                  Without
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1 bg-white rounded-xl shadow-sm p-1 border border-gray-100">
+                <span className="text-xs font-bold text-gray-500 pl-2 pr-1">Expenses:</span>
+                <button
+                  onClick={() => setShowWithExpense(true)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border ${showWithExpense ? 'bg-purple-50 text-purple-600 border-purple-200' : 'text-gray-500 hover:bg-gray-50 border-transparent'}`}
+                >
+                  Show
+                </button>
+                <button
+                  onClick={() => setShowWithExpense(false)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border ${!showWithExpense ? 'bg-purple-50 text-purple-600 border-purple-200' : 'text-gray-500 hover:bg-gray-50 border-transparent'}`}
+                >
+                  Hide
+                </button>
+              </div>
+            </div>
+
             {isMaster && (
               <button
                 disabled={isDownloadingPdf}
@@ -366,37 +404,66 @@ export default function SellerStats({
               animate="visible"
               className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
             >
-              <StatCard
-                title="Total Revenue"
-                value={formatCurrency(stats.totalRevenue)}
-                icon={<DollarSign />}
-                color="from-green-400 to-green-600"
-                variant={cardVariants}
-              />
-              <StatCard
-                title="Received"
-                value={formatCurrency(stats.totalReceived)}
-                icon={<CheckCircle />}
-                color="from-blue-400 to-blue-600"
-                variant={cardVariants}
-              />
-              <StatCard
-                title="Pending"
-                value={formatCurrency(stats.pendingRevenue)}
-                icon={<Clock />}
-                color="from-yellow-400 to-yellow-600"
-                variant={cardVariants}
-              />
-              <StatCard
-                title="Total Sales"
-                value={stats.totalSales.toLocaleString()}
-                icon={<ShoppingCart />}
-                color="from-purple-400 to-purple-600"
-                variant={cardVariants}
-                onAction={fetchHistory}
-                actionLabel="View History"
-                actionLoading={historyLoading}
-              />
+              {(() => {
+                const adjustedRevenue = showWithGST ? stats.totalRevenue : stats.totalRevenue / 1.18;
+                const adjustedReceived = showWithGST ? stats.totalReceived : stats.totalReceived / 1.18;
+                const pendingRevenue = adjustedRevenue - adjustedReceived;
+                const netProfit = adjustedRevenue - (stats.totalExpense || 0);
+
+                return (
+                  <>
+                    <StatCard
+                      title="Total Revenue"
+                      value={formatCurrency(adjustedRevenue)}
+                      icon={<DollarSign />}
+                      color="from-green-400 to-green-600"
+                      variant={cardVariants}
+                    />
+                    <StatCard
+                      title="Received"
+                      value={formatCurrency(adjustedReceived)}
+                      icon={<CheckCircle />}
+                      color="from-blue-400 to-blue-600"
+                      variant={cardVariants}
+                    />
+                    <StatCard
+                      title="Pending"
+                      value={formatCurrency(pendingRevenue)}
+                      icon={<Clock />}
+                      color="from-yellow-400 to-yellow-600"
+                      variant={cardVariants}
+                    />
+                    <StatCard
+                      title="Total Sales"
+                      value={stats.totalSales.toLocaleString()}
+                      icon={<ShoppingCart />}
+                      color="from-purple-400 to-purple-600"
+                      variant={cardVariants}
+                      onAction={fetchHistory}
+                      actionLabel="View History"
+                      actionLoading={historyLoading}
+                    />
+                    {showWithExpense && (
+                      <StatCard
+                        title="Total Expense"
+                        value={formatCurrency(stats.totalExpense || 0)}
+                        icon={<DollarSign />}
+                        color="from-red-400 to-red-600"
+                        variant={cardVariants}
+                      />
+                    )}
+                    {showWithExpense && (
+                      <StatCard
+                        title="Net Profit"
+                        value={formatCurrency(netProfit)}
+                        icon={<TrendingUp />}
+                        color="from-emerald-400 to-emerald-600"
+                        variant={cardVariants}
+                      />
+                    )}
+                  </>
+                );
+              })()}
             </motion.div>
           )}
         </AnimatePresence>
