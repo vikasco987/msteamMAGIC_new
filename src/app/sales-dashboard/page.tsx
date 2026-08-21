@@ -71,9 +71,6 @@ export default function SalesDashboardPage() {
 
   // Hydration Fix: Ensure component is mounted on client
   const [hasMounted, setHasMounted] = useState(false);
-  const [authorized, setAuthorized] = useState(false);
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
 
   const [stats, setStats] = useState<SalesStats | null>(null);
   const [monthlyData, setMonthlyData] = useState<MonthlyChartData[]>([]);
@@ -84,8 +81,6 @@ export default function SalesDashboardPage() {
   const [activeTab, setActiveTab] = useState("all");
   const [showGoalProgress, setShowGoalProgress] = useState(false);
   const [showCards, setShowCards] = useState(false);
-
-  const DASHBOARD_PASSWORD = process.env.NEXT_PUBLIC_DASHBOARD_PASSWORD;
 
   useEffect(() => {
     setHasMounted(true);
@@ -101,8 +96,6 @@ export default function SalesDashboardPage() {
 
   /* ---------- Data Load ---------- */
   useEffect(() => {
-    if (!authorized) return;
-
     const fetchData = async () => {
       try {
         const [statsRes, monthlyRes, assigneeRes, dayRes, weekRes, monthRes] = await Promise.all([
@@ -139,18 +132,9 @@ export default function SalesDashboardPage() {
     };
 
     fetchData();
-  }, [authorized]);
+  }, []);
 
   if (!hasMounted) return null; // Prevent hydration flash
-
-  const handlePasswordSubmit = () => {
-    if (password === DASHBOARD_PASSWORD) {
-      setAuthorized(true);
-      setError("");
-    } else {
-      setError("Invalid security password");
-    }
-  };
 
   const pendingPercentage = stats?.totalRevenue && stats.totalRevenue > 0
     ? ((stats.pendingAmount / stats.totalRevenue) * 100).toFixed(1)
@@ -159,34 +143,6 @@ export default function SalesDashboardPage() {
   /* ---------------- Render Logic ---------------- */
 
   if (!user) return <div className="p-10 text-center">Checking Permissions...</div>;
-
-  if (!authorized) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="bg-white p-8 rounded-xl shadow-xl w-full max-w-sm">
-          <div className="flex items-center gap-2 mb-6">
-            <Lock className="text-indigo-600" size={24} />
-            <h2 className="text-xl font-bold">Secure Access</h2>
-          </div>
-          <input
-            type="password"
-            placeholder="Enter security key"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handlePasswordSubmit()}
-            className="w-full border border-gray-300 px-4 py-2 rounded-lg mb-2 outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          {error && <p className="text-red-500 text-xs mb-4">{error}</p>}
-          <button
-            onClick={handlePasswordSubmit}
-            className="w-full bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
-          >
-            Unlock Dashboard 
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (                                                                                                                                                                                                                                                                                                                                    
     <div className="min-h-screen bg-gray-50 p-6 space-y-6">
