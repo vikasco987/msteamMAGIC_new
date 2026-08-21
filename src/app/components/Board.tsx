@@ -329,7 +329,8 @@ export default function Board() {
         task.email?.toLowerCase().includes(lowerFilter) ||
         task.customFields?.shopName?.toString().toLowerCase().includes(lowerFilter) ||
         task.customFields?.customerName?.toString().toLowerCase().includes(lowerFilter) ||
-        task.customFields?.phone?.toString().includes(lowerFilter);
+        task.customFields?.phone?.toString().includes(lowerFilter) ||
+        task.id?.toLowerCase().includes(lowerFilter);
 
       const matchesCategory = selectedCategories.length === 0 ||
         selectedCategories.includes(task.tags?.[0]?.toLowerCase() || "other");

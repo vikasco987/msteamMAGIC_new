@@ -1246,14 +1246,21 @@ export async function GET(req: NextRequest) {
       }
 
       if (query) {
+        const queryConditions: any[] = [
+          { title: { contains: query, mode: 'insensitive' } },
+          { shopName: { contains: query, mode: 'insensitive' } },
+          { email: { contains: query, mode: 'insensitive' } },
+          { phone: { contains: query, mode: 'insensitive' } },
+          { customerName: { contains: query, mode: 'insensitive' } },
+        ];
+
+        // If query looks like a valid MongoDB ObjectId (24 hex characters)
+        if (/^[0-9a-fA-F]{24}$/.test(query)) {
+          queryConditions.push({ id: query });
+        }
+
         where.AND.push({
-          OR: [
-            { title: { contains: query, mode: 'insensitive' } },
-            { shopName: { contains: query, mode: 'insensitive' } },
-            { email: { contains: query, mode: 'insensitive' } },
-            { phone: { contains: query, mode: 'insensitive' } },
-            { customerName: { contains: query, mode: 'insensitive' } },
-          ]
+          OR: queryConditions
         });
       }
 
