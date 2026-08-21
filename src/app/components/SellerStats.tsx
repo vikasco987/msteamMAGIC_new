@@ -14,7 +14,9 @@ import {
   ChevronDown,
   Download,
   Settings,
-  X
+  X,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { format } from "date-fns";
@@ -45,6 +47,7 @@ export default function SellerStats({
   const [month, setMonth] = useState<string>(format(new Date(), "yyyy-MM"));
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
+  const [showCards, setShowCards] = useState<boolean>(false);
 
   const [showHistory, setShowHistory] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -210,6 +213,15 @@ export default function SellerStats({
               />
             </div>
 
+            <button
+              onClick={() => setShowCards(!showCards)}
+              className="flex items-center gap-2 bg-white rounded-xl shadow-sm p-2 px-3 hover:shadow-md border border-gray-100 transition-colors text-gray-600"
+              title={showCards ? "Hide Sales Matrix" : "Unhide Sales Matrix"}
+            >
+              {showCards ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              <span className="text-sm font-medium hidden sm:inline">{showCards ? "Hide" : "Unhide"}</span>
+            </button>
+
             {isMaster && (
               <button
                 disabled={isDownloadingPdf}
@@ -346,7 +358,7 @@ export default function SellerStats({
 
         {/* Stats Cards */}
         <AnimatePresence>
-          {stats && (
+          {stats && showCards && (
             <motion.div
               key="stats-cards"
               variants={staggerContainerVariants}

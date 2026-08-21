@@ -340,7 +340,7 @@ export default function AssignerReportTable() {
     }
 
     return filteredAndSortedData;
-  }, [data, sortConfig, searchQuery]);
+  }, [data, sortConfig, searchQuery, showWithGST, showWithExpense]);
   
   // Request sort utility
   const requestSort = (key: keyof CalculatedReport) => {
