@@ -576,6 +576,7 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
           )}
 
           <div className="grid grid-cols-1 gap-y-1 mt-1">
+            <FieldWithCopy label="🆔 Task ID" value={task.id} />
             <FieldWithCopy label="🏪 Shop" value={cf.shopName} />
             <FieldWithCopy label="🏷️ Outlet" value={cf.outletName} />
             <FieldWithCopy label="👤 Cust" value={cf.customerName} />
