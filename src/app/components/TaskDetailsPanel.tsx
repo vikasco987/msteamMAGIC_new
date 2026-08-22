@@ -69,7 +69,7 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
   const [lightbox, setLightbox] = useState<LightboxState>(null);
   
   const userRole = String(user?.publicMetadata?.role || user?.unsafeMetadata?.role || "USER").trim().toUpperCase();
-  const isMaster = userRole === "MASTER";
+  const isMaster = ["MASTER", "ADMIN"].includes(userRole);
   const [isEditing, setIsEditing] = useState(false);
   const [editedTask, setEditedTask] = useState<any>({});
   const [savingTask, setSavingTask] = useState(false);
