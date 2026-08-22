@@ -23,6 +23,11 @@ const middleware = clerkMiddleware(async (auth, req) => {
         return NextResponse.redirect(new URL("/dashboard", req.url));
     }
 
+    // ✅ Explicitly bypass authentication for certain public API routes
+    if (url.pathname.startsWith('/api/dispatch/track') || url.pathname.startsWith('/api/public-tasks')) {
+        return NextResponse.next();
+    }
+
     // ✅ Protect all non-public routes
     if (!isPublicRoute(req)) {
         await auth.protect();
