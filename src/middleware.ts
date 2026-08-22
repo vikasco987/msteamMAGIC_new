@@ -13,7 +13,7 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 // ✅ Attach middleware logic
-const middleware = clerkMiddleware((auth, req) => {
+const middleware = clerkMiddleware(async (auth, req) => {
     const url = new URL(req.url);
 
     // ✅ Redirect '/' to '/dashboard'
@@ -23,7 +23,7 @@ const middleware = clerkMiddleware((auth, req) => {
 
     // ✅ Protect all non-public routes
     if (!isPublicRoute(req)) {
-        auth().protect();
+        await auth.protect();
     }
 
     return NextResponse.next();
