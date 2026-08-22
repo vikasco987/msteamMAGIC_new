@@ -110,7 +110,7 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
                 </SignedOut>
                 <SignedIn>
                   <div className="flex items-center gap-4">
-                    {isLoaded && user && (
+                    {userLoaded && user && (
                       <div className="hidden md:flex flex-col text-right">
                         <span className="text-sm font-black text-slate-800 leading-none">Welcome, {user.firstName}</span>
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Enterprise Plan</span>
