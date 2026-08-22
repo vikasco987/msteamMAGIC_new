@@ -467,10 +467,19 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
                     </DropdownMenu.Item>
 
                     <DropdownMenu.Item 
-                      onClick={() => {
-                        const sharedUrl = `${window.location.origin}/shared/${task.id}`;
-                        navigator.clipboard.writeText(sharedUrl);
-                        toast.success("Public share link copied!");
+                      onClick={async (e) => {
+                        const loadingToast = toast.loading("Generating secure 24h link...");
+                        try {
+                          const res = await fetch(`/api/tasks/${task.id}/share`, { method: "POST" });
+                          const data = await res.json();
+                          if (!res.ok) throw new Error(data.error || "Failed to generate link");
+                          
+                          const sharedUrl = `${window.location.origin}/shared/t/${data.token}`;
+                          await navigator.clipboard.writeText(sharedUrl);
+                          toast.success("Expiring share link copied!", { id: loadingToast });
+                        } catch (err: any) {
+                          toast.error(err.message || "Failed to generate link", { id: loadingToast });
+                        }
                       }}
                       className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50 rounded-lg cursor-pointer outline-none"
                     >
