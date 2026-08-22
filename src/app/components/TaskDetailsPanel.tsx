@@ -23,23 +23,15 @@ type LightboxState = {
   title: string;
 } | null;
 
-
-const InfoField = ({ 
-  label, value, icon, copyable = false, isLink = false,
-  editable = false, onChange, type = "text", options = [] 
-}: { 
-  label: string, value: any, icon?: React.ReactNode, copyable?: boolean, isLink?: boolean,
-  editable?: boolean, onChange?: (val: any) => void, type?: "text" | "number" | "textarea" | "select" | "date", options?: string[]
-}) => {
-  const displayValue = value === undefined || value === null ? "" : String(value);
+const InfoField = ({ label, value, icon, copyable = false, isLink = false }: { label: string, value: any, icon?: React.ReactNode, copyable?: boolean, isLink?: boolean }) => {
+  if (value === undefined || value === null || value === "") return null;
+  
+  const displayValue = String(value);
 
   const handleCopy = () => {
-    if (!displayValue) return;
     navigator.clipboard.writeText(displayValue);
-    import("react-hot-toast").then((m) => m.default.success(`${label} copied!`));
+    toast.success(`${label} copied!`);
   };
-
-  if (!editable && (value === undefined || value === null || value === "")) return null;
 
   return (
     <div className="bg-gray-50 p-4 rounded-xl flex items-start justify-between group hover:bg-gray-100 transition-colors border border-gray-100">
@@ -47,43 +39,262 @@ const InfoField = ({
         <div className="text-xs text-gray-500 mb-1 flex items-center gap-1 font-bold uppercase tracking-wider">
           {icon} {label}
         </div>
-        {editable ? (
-          type === "textarea" ? (
-            <textarea 
-              value={displayValue} 
-              onChange={(e) => onChange?.(e.target.value)}
-              className="w-full text-sm p-2 border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
-              rows={3}
-            />
-          ) : type === "select" ? (
-            <select
-              value={displayValue}
-              onChange={(e) => onChange?.(e.target.value)}
-              className="w-full text-sm p-2 border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
-            >
-              <option value="">Select...</option>
-              {options.map(o => <option key={o} value={o}>{o.replace(/_/g, ' ')}</option>)}
-            </select>
-          ) : (
-            <input 
-              type={type} 
-              value={displayValue} 
-              onChange={(e) => onChange?.(type === 'number' ? Number(e.target.value) : e.target.value)}
-              className="w-full text-sm p-2 border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
-            />
-          )
+        {isLink ? (
+          <a href={displayValue} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 hover:underline break-all text-sm">
+            {displayValue}
+          </a>
         ) : (
-          isLink ? (
-            <a href={displayValue} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 hover:underline break-all text-sm">
-              {displayValue}
-            </a>
-          ) : (
-            <div className="font-semibold text-gray-800 break-words whitespace-pre-wrap text-sm">{displayValue || "-"}</div>
-          )
+          <div className="font-semibold text-gray-800 break-words whitespace-pre-wrap text-sm">{displayValue}</div>
         )}
       </div>
-      {!editable && copyable && displayValue && (
+      {copyable && (
+        <button 
+          onClick={handleCopy}
+          className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all flex-shrink-0"
+          title="Copy"
+        >
+          <FaCopy />
+        </button>
+      )}
+    </div>
+  );
+};
+
+export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelProps) {
+  const { user } = useUser();
+  const [task, setTask] = useState<Task | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'overview' | 'customer' | 'financials' | 'invoices' | 'documents' | 'custom' | 'discussion'>('overview');
+  const [lightbox, setLightbox] = useState<LightboxState>(null);
+  
+  const userRole = (user?.publicMetadata?.role as string)?.toUpperCase() || "USER";
+  const isMaster = userRole === "MASTER";
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedTask, setEditedTask] = useState<any>({});
+  const [savingTask, setSavingTask] = useState(false);
+
+  const handleEditChange = (field: string, value: any, isCustom = false) => {
+    setEditedTask((prev: any) => {
+      if (isCustom) {
+        return { ...prev, customFields: { ...(prev.customFields || {}), [field]: value } };
+      }
+      return { ...prev, [field]: value };
+    });
+  };
+
+  const handleSave = async () => {
+    setSavingTask(true);
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editedTask)
+      });
+      if (!res.ok) throw new Error("Failed to save changes");
+      const updated = await res.json();
+      setTask(updated.task);
+      setIsEditing(false);
+      setEditedTask({});
+      toast.success("Task updated successfully!");
+    } catch(err) {
+      toast.error("Error saving task");
+    } finally {
+      setSavingTask(false);
+    }
+  };
+
+  const handleDeleteTask = async () => {
+    if (!confirm("Are you sure you want to completely DELETE this task? This cannot be undone!")) return;
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      toast.success("Task deleted successfully!");
+      onClose(); // close panel
+      window.location.reload(); // Refresh the list
+    } catch(err) {
+      toast.error("Error deleting task");
+    }
+  };
+
+  const handleRemoveDoc = (type: string, urlToRemove: string, isArray: boolean = false) => {
+    if (!confirm("Remove this document?")) return;
+    setEditedTask((prev: any) => {
+      const updated = { ...prev };
+      if (isArray) {
+        updated[type] = (updated[type] || task?.[type as keyof Task] || []).filter((u: string) => u !== urlToRemove);
+      } else {
+        updated[type] = null;
+      }
+      return updated;
+    });
+  };
+
+  useEffect(() => {
+    if (isEditing && task) {
+      setEditedTask({ ...task });
+    }
+  }, [isEditing, task]);
+  
+  // Discussion State
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [noteInput, setNoteInput] = useState("");
+  const [uploadingNote, setUploadingNote] = useState(false);
+  const [noteFile, setNoteFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!taskId) {
+      setTask(null);
+      setActiveTab('overview');
+      setLightbox(null);
+      return;
+    }
+
+    const fetchTaskDetails = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/tasks/${taskId}`);
+        if (!res.ok) {
+          throw new Error("Failed to fetch task details");
+        }
+        const data = await res.json();
+        setTask(data);
+      } catch (err: any) {
+        setError(err.message || "An error occurred");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTaskDetails();
+  }, [taskId]);
+
+  // Lightbox Keyboard listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && lightbox) {
+        setLightbox(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lightbox]);
+
+  // Fetch Notes for Discussion
+  useEffect(() => {
+    if (activeTab === 'discussion' && taskId) {
+      setNotesLoading(true);
+      fetch(`/api/notes?taskId=${taskId}`)
+        .then(res => res.json())
+        .then(data => { setNotes(data); setNotesLoading(false); })
+        .catch(err => { console.error("Error fetching notes:", err); setNotesLoading(false); });
+    }
+  }, [activeTab, taskId]);
+
+  const handleAddNote = async () => {
+    if (!noteInput.trim() && !noteFile) return;
+    setUploadingNote(true);
+    try {
+      let uploadedFileUrl = "";
+      if (noteFile) {
+        const formData = new FormData();
+        formData.append("file", noteFile);
+        const res = await fetch("/api/upload", { method: "POST", body: formData });
+        if (!res.ok) throw new Error("Upload failed");
+        const data = await res.json();
+        uploadedFileUrl = data.url;
+      }
+      
+      const authorName = `${user?.firstName || ""} ${user?.lastName || ""}`.trim();
+      const authorEmail = user?.primaryEmailAddress?.emailAddress || "unknown@example.com";
+      
+      const noteRes = await fetch("/api/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          taskId,
+          content: noteInput,
+          authorName,
+          authorEmail,
+          fileUrl: uploadedFileUrl || undefined,
+        })
+      });
+      if (!noteRes.ok) throw new Error("Note creation failed");
+      const newNote = await noteRes.json();
+      setNotes(prev => [newNote, ...prev]);
+      setNoteInput("");
+      setNoteFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      toast.success("Note added!");
+    } catch(e) {
+      console.error(e);
+      toast.error("Failed to add note.");
+    } finally {
+      setUploadingNote(false);
+    }
+  };
+
+  // Helper to determine document type
+  const getDocType = (url: string): 'pdf' | 'image' => {
+    if (url.toLowerCase().includes('.pdf')) return 'pdf';
+    return 'image';
+  };
+
+  // Helper to render Document Cards
+  const renderDocCard = (url: string, title: string) => {
+    if (!url) return null;
+    const type = getDocType(url);
+    const isPdf = type === 'pdf';
+
+    return (
+      <div 
+        onClick={() => setLightbox({ url, type, title })}
+        className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col items-center justify-center gap-3 cursor-pointer hover:shadow-md hover:border-blue-300 transition-all group"
+      >
+        <div className={`p-4 rounded-full ${isPdf ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'} group-hover:scale-110 transition-transform`}>
+          {isPdf ? <FaFilePdf size={28} /> : <FaImage size={28} />}
+        </div>
+        <div className="text-center w-full">
+          <p className="font-bold text-sm text-gray-800 truncate">{title}</p>
+          <p className="text-xs text-gray-500 uppercase">{isPdf ? 'PDF Document' : 'Image File'}</p>
+        </div>
+      </div>
+    );
+  };
+
+  const excludeCustomFields = ['shopName', 'phone', 'email', 'location', 'costPrice', 'afe', 'utrNumber', 'transactionId', 'awbNumber', 'awb', 'previousDispatches'];
+  const hasCustomFields = task?.customFields && Object.keys(task.customFields).filter(key => !excludeCustomFields.includes(key)).length > 0;
+
+  const totalAmt = Number(task?.amount || 0);
+  const rcvdAmt = Number(task?.received || 0);
+  const percentPaid = totalAmt > 0 ? Math.min(100, Math.round((rcvdAmt / totalAmt) * 100)) : 0;
+
+  return (
+    <div className={`fixed inset-0 z-[100] flex justify-end ${taskId ? "opacity-100 visible" : "opacity-0 invisible"} transition-all duration-300`}>
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+
+      {/* Panel */}
+      <div className={`relative w-full max-w-3xl h-full bg-white shadow-2xl flex flex-col transform transition-transform duration-300 ${taskId ? 'translate-x-0' : 'translate-x-full'}`}>
         
+        {/* Sticky Header */}
+        <div className="flex flex-col border-b border-gray-100 bg-white sticky top-0 z-20">
+          <div className="flex items-center justify-between p-6 pb-4">
+            <h2 className="text-2xl font-extrabold text-gray-900 flex items-center gap-3">
+              Task Details
+              {task && (
+                <span className={`text-[10px] px-2 py-1 rounded-full uppercase font-black tracking-wider ${
+                  task.status === "Completed" ? "bg-green-100 text-green-700" :
+                  task.status === "Pending" ? "bg-yellow-100 text-yellow-700" :
+                  "bg-gray-200 text-gray-700"
+                }`}>
+                  {task.status.replace("_", " ")}
+                </span>
+              )}
+            </h2>
             <div className="flex items-center gap-2">
               {isMaster && !isEditing && (
                 <>
@@ -101,7 +312,7 @@ const InfoField = ({
                     Cancel
                   </button>
                   <button onClick={handleSave} disabled={savingTask} className="flex items-center gap-2 bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-green-700 transition-colors disabled:opacity-50">
-                    {savingTask ? <FaSpinner className="animate-spin" /> : <FaSave />} Save Changes
+                    {savingTask ? <FaSpinner className="animate-spin" /> : <FaSave />} Save
                   </button>
                 </>
               )}
@@ -112,7 +323,6 @@ const InfoField = ({
                 <FaTimes size={20} />
               </button>
             </div>
-
           </div>
 
           {/* Tabs */}
@@ -159,25 +369,9 @@ const InfoField = ({
                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <InfoField label="Task ID" value={task.id} icon={<FaFileAlt />} copyable />
-                    <InfoField 
-    label="Title" 
-    value={(isEditing ? editedTask.title : (task.title))} 
-    editable={isEditing} 
-    onChange={(val) => handleEditChange('title', val, false)}
-    type="text"
-    
-    icon={<FaFileAlt 
-  />} copyable />
+                    <InfoField label="Title" value={(isEditing ? editedTask.title : (task.title))} editable={isEditing} onChange={(val) => handleEditChange('title', val, false)} type="text"  icon={<FaFileAlt />} copyable />
                     <InfoField label="Created At" value={task.createdAt ? format(new Date(task.createdAt), "dd MMM yyyy, hh:mm a") : ""} icon={<FaClock />} />
-                    <InfoField 
-    label="Priority" 
-    value={(isEditing ? editedTask.priority : (task.priority))} 
-    editable={isEditing} 
-    onChange={(val) => handleEditChange('priority', val, false)}
-    type="select"
-    options={["low", "medium", "high", "urgent"]}
-    icon={<FaExclamationTriangle 
-  />} copyable />
+                    <InfoField label="Priority" value={(isEditing ? editedTask.priority : (task.priority))} editable={isEditing} onChange={(val) => handleEditChange('priority', val, false)} type="select" options={["low", "medium", "high", "urgent"]} icon={<FaExclamationTriangle />} copyable />
                     
                     {/* Assignment Info */}
                     <div className="bg-indigo-50 p-5 rounded-xl sm:col-span-2 border border-indigo-100">
@@ -210,73 +404,17 @@ const InfoField = ({
               {activeTab === 'customer' && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <InfoField 
-    label="Shop Name" 
-    value={(isEditing ? editedTask.customFields?.shopName : (task.shopName || task.customFields?.shopName))} 
-    editable={isEditing} 
-    onChange={(val) => handleEditChange('shopName', val, true)}
-    type="text"
-    
-    icon={<FaUser 
-  />} copyable />
-                    <InfoField 
-    label="Customer Name" 
-    value={(isEditing ? editedTask.customerName : (task.customerName))} 
-    editable={isEditing} 
-    onChange={(val) => handleEditChange('customerName', val, false)}
-    type="text"
-    
-    icon={<FaUser 
-  />} copyable />
-                    <InfoField 
-    label="Phone Number" 
-    value={(isEditing ? editedTask.customFields?.phone : (task.phone || task.customFields?.phone))} 
-    editable={isEditing} 
-    onChange={(val) => handleEditChange('phone', val, true)}
-    type="text"
-    
-    icon={<FaPhone 
-  />} copyable />
-                    <InfoField 
-    label="Email" 
-    value={(isEditing ? editedTask.customFields?.email : (task.email || task.customFields?.email))} 
-    editable={isEditing} 
-    onChange={(val) => handleEditChange('email', val, true)}
-    type="text"
-    
-    icon={<FaEnvelope 
-  />} copyable />
+                    <InfoField label="Shop Name" value={(isEditing ? editedTask.customFields?.shopName : (task.shopName || task.customFields?.shopName))} editable={isEditing} onChange={(val) => handleEditChange('shopName', val, true)} type="text"  icon={<FaUser />} copyable />
+                    <InfoField label="Customer Name" value={(isEditing ? editedTask.customerName : (task.customerName))} editable={isEditing} onChange={(val) => handleEditChange('customerName', val, false)} type="text"  icon={<FaUser />} copyable />
+                    <InfoField label="Phone Number" value={(isEditing ? editedTask.customFields?.phone : (task.phone || task.customFields?.phone))} editable={isEditing} onChange={(val) => handleEditChange('phone', val, true)} type="text"  icon={<FaPhone />} copyable />
+                    <InfoField label="Email" value={(isEditing ? editedTask.customFields?.email : (task.email || task.customFields?.email))} editable={isEditing} onChange={(val) => handleEditChange('email', val, true)} type="text"  icon={<FaEnvelope />} copyable />
                     <div className="sm:col-span-2">
-                      <InfoField 
-    label="Location" 
-    value={(isEditing ? editedTask.customFields?.location : (task.location || task.customFields?.location))} 
-    editable={isEditing} 
-    onChange={(val) => handleEditChange('location', val, true)}
-    type="text"
-    
-    icon={<FaMapMarkerAlt 
-  />} copyable isLink={(task.location || task.customFields?.location || "").toString().startsWith("http")} />
+                      <InfoField label="Location" value={(isEditing ? editedTask.customFields?.location : (task.location || task.customFields?.location))} editable={isEditing} onChange={(val) => handleEditChange('location', val, true)} type="text"  icon={<FaMapMarkerAlt />} copyable isLink={(task.location || task.customFields?.location || "").toString().startsWith("http")} />
                     </div>
                     <div className="sm:col-span-2">
-                      <InfoField 
-    label="Outlet Name" 
-    value={(isEditing ? editedTask.outletName : (task.outletName))} 
-    editable={isEditing} 
-    onChange={(val) => handleEditChange('outletName', val, false)}
-    type="text"
-    
-    icon={<FaMapMarkerAlt 
-  />} copyable />
+                      <InfoField label="Outlet Name" value={(isEditing ? editedTask.outletName : (task.outletName))} editable={isEditing} onChange={(val) => handleEditChange('outletName', val, false)} type="text"  icon={<FaMapMarkerAlt />} copyable />
                     </div>
-                    <InfoField 
-    label="Restaurant ID" 
-    value={(isEditing ? editedTask.restId : (task.restId))} 
-    editable={isEditing} 
-    onChange={(val) => handleEditChange('restId', val, false)}
-    type="text"
-    
-    icon={<FaIdCard 
-  />} copyable />
+                    <InfoField label="Restaurant ID" value={(isEditing ? editedTask.restId : (task.restId))} editable={isEditing} onChange={(val) => handleEditChange('restId', val, false)} type="text"  icon={<FaIdCard />} copyable />
                   </div>
                 </div>
               )}
@@ -318,90 +456,18 @@ const InfoField = ({
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-                    <InfoField 
-    label="Account Number" 
-    value={(isEditing ? editedTask.accountNumber : (task.accountNumber))} 
-    editable={isEditing} 
-    onChange={(val) => handleEditChange('accountNumber', val, false)}
-    type="text"
-    
-    icon={<FaMoneyBillWave 
-  />} copyable />
-                    <InfoField 
-    label="IFSC Code" 
-    value={(isEditing ? editedTask.ifscCode : (task.ifscCode))} 
-    editable={isEditing} 
-    onChange={(val) => handleEditChange('ifscCode', val, false)}
-    type="text"
-    
-    icon={<FaMoneyBillWave 
-  />} copyable />
-                    <InfoField 
-    label="Package Amount" 
-    value={(isEditing ? editedTask.packageAmount : (task.packageAmount))} 
-    editable={isEditing} 
-    onChange={(val) => handleEditChange('packageAmount', val, false)}
-    type="number"
-    
-    icon={<FaMoneyBillWave 
-  />} copyable />
-                    <InfoField 
-    label="Start Date" 
-    value={(isEditing ? editedTask.startDate : (task.startDate))} 
-    editable={isEditing} 
-    onChange={(val) => handleEditChange('startDate', val, false)}
-    type="date"
-    
-    icon={<FaCalendarAlt 
-  />} copyable />
-                    <InfoField 
-    label="End Date" 
-    value={(isEditing ? editedTask.endDate : (task.endDate))} 
-    editable={isEditing} 
-    onChange={(val) => handleEditChange('endDate', val, false)}
-    type="date"
-    
-    icon={<FaCalendarAlt 
-  />} copyable />
-                    <InfoField 
-    label="Timeline" 
-    value={(isEditing ? editedTask.timeline : (task.timeline))} 
-    editable={isEditing} 
-    onChange={(val) => handleEditChange('timeline', val, false)}
-    type="text"
-    
-    icon={<FaClock 
-  />} copyable />
+                    <InfoField label="Account Number" value={(isEditing ? editedTask.accountNumber : (task.accountNumber))} editable={isEditing} onChange={(val) => handleEditChange('accountNumber', val, false)} type="text"  icon={<FaMoneyBillWave />} copyable />
+                    <InfoField label="IFSC Code" value={(isEditing ? editedTask.ifscCode : (task.ifscCode))} editable={isEditing} onChange={(val) => handleEditChange('ifscCode', val, false)} type="text"  icon={<FaMoneyBillWave />} copyable />
+                    <InfoField label="Package Amount" value={(isEditing ? editedTask.packageAmount : (task.packageAmount))} editable={isEditing} onChange={(val) => handleEditChange('packageAmount', val, false)} type="number"  icon={<FaMoneyBillWave />} copyable />
+                    <InfoField label="Start Date" value={(isEditing ? editedTask.startDate : (task.startDate))} editable={isEditing} onChange={(val) => handleEditChange('startDate', val, false)} type="date"  icon={<FaCalendarAlt />} copyable />
+                    <InfoField label="End Date" value={(isEditing ? editedTask.endDate : (task.endDate))} editable={isEditing} onChange={(val) => handleEditChange('endDate', val, false)} type="date"  icon={<FaCalendarAlt />} copyable />
+                    <InfoField label="Timeline" value={(isEditing ? editedTask.timeline : (task.timeline))} editable={isEditing} onChange={(val) => handleEditChange('timeline', val, false)} type="text"  icon={<FaClock />} copyable />
                   </div>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <InfoField 
-    label="UTR Number" 
-    value={(isEditing ? editedTask.customFields?.utrNumber : (task.customFields?.utrNumber))} 
-    editable={isEditing} 
-    onChange={(val) => handleEditChange('utrNumber', val, true)}
-    type="text"
-    
-    icon={<FaFileInvoice 
-  />} copyable />
-                    <InfoField 
-    label="Transaction ID" 
-    value={(isEditing ? editedTask.customFields?.transactionId : (task.customFields?.transactionId))} 
-    editable={isEditing} 
-    onChange={(val) => handleEditChange('transactionId', val, true)}
-    type="text"
-    
-    icon={<FaFileInvoice 
-  />} copyable />
-                    <InfoField 
-    label="AWB Number" 
-    value={(isEditing ? editedTask.customFields?.customFieldsawbNumber : (task.customFields?.awbNumber || task.customFields?.awb))} 
-    editable={isEditing} 
-    onChange={(val) => handleEditChange('customFieldsawbNumber', val, true)}
-    type="text"
-    
-    icon={<FaFileInvoice 
-  />} copyable />
+                    <InfoField label="UTR Number" value={(isEditing ? editedTask.customFields?.utrNumber : (task.customFields?.utrNumber))} editable={isEditing} onChange={(val) => handleEditChange('utrNumber', val, true)} type="text"  icon={<FaFileInvoice />} copyable />
+                    <InfoField label="Transaction ID" value={(isEditing ? editedTask.customFields?.transactionId : (task.customFields?.transactionId))} editable={isEditing} onChange={(val) => handleEditChange('transactionId', val, true)} type="text"  icon={<FaFileInvoice />} copyable />
+                    <InfoField label="AWB Number" value={(isEditing ? editedTask.customFields?.customFieldsawbNumber : (task.customFields?.awbNumber || task.customFields?.awb))} editable={isEditing} onChange={(val) => handleEditChange('customFieldsawbNumber', val, true)} type="text"  icon={<FaFileInvoice />} copyable />
                   </div>
                 </div>
               )}
