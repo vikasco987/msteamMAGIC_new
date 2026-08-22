@@ -9,7 +9,8 @@ const isPublicRoute = createRouteMatcher([
     '/shared(.*)',
     '/dispatch/track(.*)',
     '/api/cashfree(.*)',
-    '/api/webhook(.*)'
+    '/api/webhook(.*)',
+    '/api/public-tasks(.*)'
 ]);
 
 // ✅ Attach middleware logic
