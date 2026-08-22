@@ -7,19 +7,26 @@ import {
   SignUpButton,
   UserButton,
   useUser,
+  useAuth,
 } from '@clerk/nextjs';
 import { useEffect, useState, Suspense } from 'react';
-import { useSearchParams, usePathname } from 'next/navigation';
+import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import Sidebar from '../app/components/Sidebar';
 import AttendanceTicker from '../app/components/AttendanceTicker';
 import { Search, Bell, Command, Sun, Moon } from 'lucide-react';
 
 function ClientLayoutContent({ children }: { children: React.ReactNode }) {
-  const { user, isLoaded } = useUser();
+  const { user, isLoaded: userLoaded } = useUser();
+  const { isLoaded: authLoaded, isSignedIn } = useAuth();
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const router = useRouter();
+  
   const isSharedPage = pathname.startsWith('/shared/');
   const isTrackPage = pathname.startsWith('/dispatch/track');
+  // Check if it's a public route so we don't accidentally block it
+  const isPublicRoute = isSharedPage || isTrackPage || pathname.startsWith('/api/cashfree/') || pathname === '/' || pathname.startsWith('/sign-in') || pathname.startsWith('/sign-up');
+  
   const isFullView = searchParams.get('fullview') === 'true' || searchParams.has('edit') || isSharedPage || isTrackPage;
   const [mounted, setMounted] = useState(false);
 
@@ -27,7 +34,30 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
     setMounted(true);
   }, []);
 
+  // 🛡️ Global Auth Guard: Redirects instantly when session expires
+  useEffect(() => {
+    if (authLoaded && userLoaded && mounted) {
+      if (!isSignedIn && !isPublicRoute) {
+        router.replace('/sign-in');
+      }
+    }
+  }, [authLoaded, userLoaded, isSignedIn, isPublicRoute, router, mounted]);
+
   if (!mounted) return <div className="flex h-screen w-full items-center justify-center bg-slate-950 text-white">Initializing Engine...</div>;
+
+  // Block rendering of protected children if session is dead to stop API infinite loops
+  const shouldBlockRendering = !isPublicRoute && authLoaded && userLoaded && !isSignedIn;
+
+  if (shouldBlockRendering) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-indigo-500/30 border-t-indigo-600 rounded-full animate-spin" />
+          <p className="text-slate-500 font-bold animate-pulse uppercase tracking-widest text-xs">Session Expired. Redirecting...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#f8fafc] font-sans antialiased text-slate-900">
