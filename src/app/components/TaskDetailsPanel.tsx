@@ -68,7 +68,7 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
   const [activeTab, setActiveTab] = useState<'overview' | 'customer' | 'financials' | 'invoices' | 'documents' | 'custom' | 'discussion'>('overview');
   const [lightbox, setLightbox] = useState<LightboxState>(null);
   
-  const userRole = String(user?.publicMetadata?.role || user?.unsafeMetadata?.role || "USER").toUpperCase();
+  const userRole = String(user?.publicMetadata?.role || user?.unsafeMetadata?.role || "USER").trim().toUpperCase();
   const isMaster = userRole === "MASTER";
   const [isEditing, setIsEditing] = useState(false);
   const [editedTask, setEditedTask] = useState<any>({});
@@ -284,7 +284,7 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
         <div className="flex flex-col border-b border-gray-100 bg-white sticky top-0 z-20">
           <div className="flex items-center justify-between p-6 pb-4">
             <h2 className="text-2xl font-extrabold text-gray-900 flex items-center gap-3">
-              Task Details
+              Task Details <span className="text-xs text-gray-400 font-normal ml-2">({userRole})</span>
               {task && (
                 <span className={`text-[10px] px-2 py-1 rounded-full uppercase font-black tracking-wider ${
                   task.status === "Completed" ? "bg-green-100 text-green-700" :
