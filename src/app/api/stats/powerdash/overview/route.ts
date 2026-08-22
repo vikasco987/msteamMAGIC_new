@@ -23,10 +23,18 @@ export async function GET() {
 
     const where: any = {};
     if (!isPrivileged) {
-      if (isTL) {
-        where.createdByClerkId = { in: [userId, ...teamMemberIds] };
+      if (isTL && teamMemberIds.length > 0) {
+        where.OR = [
+          { createdByClerkId: { in: [userId, ...teamMemberIds] } },
+          { assigneeIds: { hasSome: [userId, ...teamMemberIds] } },
+          { assigneeId: { in: [userId, ...teamMemberIds] } }
+        ];
       } else {
-        where.createdByClerkId = userId;
+        where.OR = [
+          { createdByClerkId: userId },
+          { assigneeIds: { has: userId } },
+          { assigneeId: userId }
+        ];
       }
     }
 
