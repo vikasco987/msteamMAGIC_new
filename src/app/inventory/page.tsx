@@ -32,6 +32,8 @@ export default function InventoryDashboard() {
   const [trackerSerials, setTrackerSerials] = useState<any[]>([]);
   const [loadingTracker, setLoadingTracker] = useState(false);
   const [trackerSearch, setTrackerSearch] = useState("");
+  const [selectedTrackerItem, setSelectedTrackerItem] = useState<string | null>("Printer");
+  const [trackerStatusFilter, setTrackerStatusFilter] = useState<string>("All");
 
   // Remarks editing states
   const [editingRemarksId, setEditingRemarksId] = useState<string | null>(null);
@@ -116,10 +118,11 @@ export default function InventoryDashboard() {
     }
   };
 
-  const fetchTrackerSerials = async () => {
+  const fetchTrackerSerials = async (itemName?: string) => {
     try {
+      const itemToFetch = itemName || selectedTrackerItem || "Printer";
       setLoadingTracker(true);
-      const res = await fetch("/api/inventory/serial-numbers?itemName=Printer");
+      const res = await fetch(`/api/inventory/serial-numbers?itemName=${encodeURIComponent(itemToFetch)}`);
       const data = await res.json();
       setTrackerSerials(data.serialNumbers || []);
     } catch (e) {
@@ -137,7 +140,7 @@ export default function InventoryDashboard() {
     if (activeDashboardTab === "tracker") {
       fetchTrackerSerials();
     }
-  }, [activeDashboardTab]);
+  }, [activeDashboardTab, selectedTrackerItem]);
 
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -351,14 +354,44 @@ export default function InventoryDashboard() {
     }
   };
 
-  // Filtered tracker serials based on search term
+  // Filtered tracker serials based on search term and status
   const filteredTrackerSerials = trackerSerials.filter((s) => {
+    // Search matching
     const term = trackerSearch.toLowerCase();
     const matchesSerial = s.number.toLowerCase().includes(term);
     const matchesShop = s.task?.shopName?.toLowerCase().includes(term) || s.task?.customerName?.toLowerCase().includes(term);
     const matchesAwb = s.task?.dispatchLog?.awbNumber?.toLowerCase().includes(term);
     const matchesCourier = s.task?.dispatchLog?.courierName?.toLowerCase().includes(term);
-    return matchesSerial || matchesShop || matchesAwb || matchesCourier;
+    const matchesSearch = matchesSerial || matchesShop || matchesAwb || matchesCourier;
+
+    // Status matching
+    let effectiveStatus = s.status;
+    if (s.status === "Shipped") {
+      const trackingStatus = s.task?.dispatchLog?.trackingStatus || "Pending";
+      if (trackingStatus === "Delivered") effectiveStatus = "Delivered";
+      else if (trackingStatus === "In Transit" || trackingStatus === "Out for Delivery") effectiveStatus = "In Transit";
+      else if (trackingStatus.toLowerCase().includes("rto")) effectiveStatus = "RTO Return";
+      else effectiveStatus = "Pending Ship";
+    }
+    
+    let matchesStatus = true;
+    if (trackerStatusFilter !== "All") {
+       if (trackerStatusFilter === "In Stock") {
+         matchesStatus = effectiveStatus === "Available";
+       } else if (trackerStatusFilter === "Defective") {
+         matchesStatus = effectiveStatus === "Defective";
+       } else if (trackerStatusFilter === "Delivered") {
+         matchesStatus = effectiveStatus === "Delivered";
+       } else if (trackerStatusFilter === "In Transit") {
+         matchesStatus = effectiveStatus === "In Transit";
+       } else if (trackerStatusFilter === "RTO Return") {
+         matchesStatus = effectiveStatus === "RTO Return";
+       } else if (trackerStatusFilter === "Pending Ship") {
+         matchesStatus = effectiveStatus === "Pending Ship";
+       }
+    }
+
+    return matchesSearch && matchesStatus;
   });
 
   // --- Summary Metrics Calculations ---
@@ -680,7 +713,7 @@ export default function InventoryDashboard() {
                 : "text-slate-500 hover:text-slate-800"
             }`}
           >
-            🕵️‍♂️ Printer Tracking Dashboard
+            🕵️‍♂️ {selectedTrackerItem ? `${selectedTrackerItem} Tracking` : "Item Tracking Dashboard"}
           </button>
         </div>
 
@@ -722,12 +755,25 @@ export default function InventoryDashboard() {
                         {item.quantity}
                       </p>
                     </div>
-                    <button 
-                      onClick={() => handleOpenEditStock(item)}
-                      className="text-xs font-bold text-indigo-600 hover:text-indigo-800 uppercase tracking-wider"
-                    >
-                      Edit Stock
-                    </button>
+                    <div className="flex flex-col gap-2 items-end">
+                      {item.type === "HARDWARE" && (
+                        <button 
+                          onClick={() => {
+                            setSelectedTrackerItem(item.name);
+                            setActiveDashboardTab("tracker");
+                          }}
+                          className="text-[10px] font-black text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-md uppercase tracking-wider transition-colors"
+                        >
+                          View Report
+                        </button>
+                      )}
+                      <button 
+                        onClick={() => handleOpenEditStock(item)}
+                        className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 uppercase tracking-wider"
+                      >
+                        Edit Stock
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))
@@ -740,15 +786,30 @@ export default function InventoryDashboard() {
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             {/* Toolbar */}
             <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-center gap-4">
-              <div className="relative w-full sm:max-w-xs">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search Serial, Shop, AWB..."
-                  value={trackerSearch}
-                  onChange={(e) => setTrackerSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-white"
-                />
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                <div className="relative w-full sm:w-64">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search Serial, Shop, AWB..."
+                    value={trackerSearch}
+                    onChange={(e) => setTrackerSearch(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-white"
+                  />
+                </div>
+                <select
+                  value={trackerStatusFilter}
+                  onChange={(e) => setTrackerStatusFilter(e.target.value)}
+                  className="w-full sm:w-auto p-2 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-white font-medium text-slate-700 cursor-pointer"
+                >
+                  <option value="All">All Statuses</option>
+                  <option value="In Stock">In Stock (Available)</option>
+                  <option value="Pending Ship">Pending Ship</option>
+                  <option value="In Transit">In Transit / Out for Delivery</option>
+                  <option value="Delivered">Delivered</option>
+                  <option value="RTO Return">RTO Return</option>
+                  <option value="Defective">Defective</option>
+                </select>
               </div>
               <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">
                 Total Devices Registered: {trackerSerials.length}
