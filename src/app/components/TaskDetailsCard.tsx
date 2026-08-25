@@ -200,7 +200,7 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
 
   const displayAssignerName = task.assigner?.name || task.assignerName || "—";
   const displayAssignerEmail = task.assigner?.email || task.assignerEmail || "";
-  const displayAssigneeName = task.assignees?.map(a => a?.name || a?.email).filter(Boolean).join(", ") || task.assignee?.name || "—";
+  const displayAssigneeName = task.assignees?.map(a => a?.name || a?.email).filter(Boolean).join(", ") || task.assigneeName || task.assignee?.name || "—";
   const displayAssigneeEmail = task.assignee?.email || task.assigneeEmail || "";
 
   const isHardwareTask = task.title?.toLowerCase().includes("printer") || task.title?.toLowerCase().includes("hardware") || task.title?.toLowerCase().includes("machine") || false;

@@ -7597,7 +7597,7 @@ export default function TaskTableView({
                                   ))
                                 ) : (
                                   <span className="text-blue-600 font-medium text-xs">
-                                    {task.assigneeEmail || "—"}
+                                    {task.assigneeName || task.assigneeEmail || "—"}
                                   </span>
                                 )
                             )}

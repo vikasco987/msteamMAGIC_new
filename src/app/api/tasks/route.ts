@@ -1462,7 +1462,7 @@ export async function GET(req: NextRequest) {
         email: task.assignerEmail || "",
       };
 
-      const assignees = Array.isArray(task.assigneeIds)
+      const assignees = Array.isArray(task.assigneeIds) && task.assigneeIds.length > 0
         ? task.assigneeIds.map((id) => {
           const u = userMap[id];
           return {
@@ -1471,7 +1471,7 @@ export async function GET(req: NextRequest) {
             email: u?.email || "",
           };
         })
-        : [];
+        : (task.assigneeId ? [{ id: task.assigneeId, name: task.assigneeName || "—", email: task.assigneeEmail || "" }] : []);
 
       return {
         ...task,
