@@ -11,6 +11,27 @@ export async function GET(req: Request) {
     const status = searchParams.get("status") || undefined;
     const itemName = searchParams.get("itemName") || "Printer";
 
+    if (itemName === "All") {
+      const serialNumbers = await prisma.serialNumber.findMany({
+        where: status === "Available" ? { status: { in: ["Available", "Returned"] } } : (status ? { status } : undefined),
+        include: {
+          task: {
+            include: {
+              dispatchLog: true
+            }
+          },
+          inventoryItem: true,
+          dispatches: {
+            include: {
+              task: true
+            }
+          }
+        },
+        orderBy: { number: "asc" }
+      });
+      return NextResponse.json({ serialNumbers }, { status: 200 });
+    }
+
     const inventoryItem = await prisma.inventoryItem.findUnique({
       where: { name: itemName },
       include: {
@@ -20,6 +41,12 @@ export async function GET(req: Request) {
             task: {
               include: {
                 dispatchLog: true
+              }
+            },
+            inventoryItem: true,
+            dispatches: {
+              include: {
+                task: true
               }
             }
           },

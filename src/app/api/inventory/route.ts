@@ -8,10 +8,25 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const items = await prisma.inventoryItem.findMany({
-      orderBy: { name: "asc" }
+      orderBy: { name: "asc" },
+      include: {
+        _count: {
+          select: {
+            serialNumbers: {
+              where: { status: { in: ["Available", "Returned"] } }
+            }
+          }
+        }
+      }
     });
 
-    return NextResponse.json({ items }, { status: 200 });
+    const enrichedItems = items.map(item => ({
+      ...item,
+      // Always show the EXACT number of available physical serials for HARDWARE, overriding manual numbers that may have gone out of sync
+      quantity: item.type === "HARDWARE" ? item._count.serialNumbers : item.quantity
+    }));
+
+    return NextResponse.json({ items: enrichedItems }, { status: 200 });
   } catch (error) {
     console.error("GET /api/inventory error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

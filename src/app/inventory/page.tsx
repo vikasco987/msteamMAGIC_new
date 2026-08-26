@@ -1,15 +1,18 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { Search, Printer, RotateCcw, AlertTriangle, CheckCircle, Clock, Truck, ShieldAlert, Trash2 } from "lucide-react";
+import React, { useEffect, useState, useRef } from "react";
+import { Search, Printer, RotateCcw, AlertTriangle, CheckCircle, Clock, Truck, ShieldAlert, Trash2, PieChart, History } from "lucide-react";
 import toast from "react-hot-toast";
+import ItemReportsModal from "./components/ItemReportsModal";
+import SerialHistoryModal from "./components/SerialHistoryModal";
 
 export default function InventoryDashboard() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Tab control: "stock" or "tracker"
-  const [activeDashboardTab, setActiveDashboardTab] = useState<"stock" | "tracker">("stock");
+  // Tab control: "stock", "tracker", or "usage_report"
+  const [activeDashboardTab, setActiveDashboardTab] = useState<"stock" | "tracker" | "usage_report">("stock");
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [newItemData, setNewItemData] = useState({ name: "", sku: "", quantity: "0", type: "HARDWARE" });
@@ -38,6 +41,16 @@ export default function InventoryDashboard() {
   // Remarks editing states
   const [editingRemarksId, setEditingRemarksId] = useState<string | null>(null);
   const [remarksInput, setRemarksInput] = useState("");
+
+  const [showItemReportsModal, setShowItemReportsModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [selectedHistorySerial, setSelectedHistorySerial] = useState<any>(null);
+
+  // Global Usage Report states
+  const [globalUsageSerials, setGlobalUsageSerials] = useState<any[]>([]);
+  const [loadingUsageReport, setLoadingUsageReport] = useState(false);
+  const [usageSearch, setUsageSearch] = useState("");
+  const [usageDateFilter, setUsageDateFilter] = useState<string>("All Time");
 
   const hasAutoOpenedRef = useRef(false);
   const serialImageInputRef = useRef<HTMLInputElement>(null);
@@ -132,6 +145,23 @@ export default function InventoryDashboard() {
     }
   };
 
+  const fetchUsageReportData = async () => {
+    try {
+      setLoadingUsageReport(true);
+      const res = await fetch(`/api/inventory/serial-numbers?itemName=All`);
+      const data = await res.json();
+      // Filter for items that actually have a task attached
+      const usedItems = (data.serialNumbers || []).filter((s: any) => s.task);
+      // Sort by the task date (descending)
+      usedItems.sort((a: any, b: any) => new Date(b.task.createdAt).getTime() - new Date(a.task.createdAt).getTime());
+      setGlobalUsageSerials(usedItems);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingUsageReport(false);
+    }
+  };
+
   useEffect(() => {
     fetchInventory();
   }, []);
@@ -139,6 +169,8 @@ export default function InventoryDashboard() {
   useEffect(() => {
     if (activeDashboardTab === "tracker") {
       fetchTrackerSerials();
+    } else if (activeDashboardTab === "usage_report") {
+      fetchUsageReportData();
     }
   }, [activeDashboardTab, selectedTrackerItem]);
 
@@ -628,23 +660,24 @@ export default function InventoryDashboard() {
                             </span>
                           </div>
                         </div>
-                        <div className="flex gap-2 shrink-0 items-center">
-                          {s.status === "Available" && (
-                            <button
-                              onClick={() => handleUpdateSerialStatus(s.id, "Defective")}
-                              className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-[9px] font-black text-amber-700 rounded border border-amber-100 uppercase transition-all"
-                            >
-                              Defective
-                            </button>
-                          )}
-                          {s.status === "Defective" && (
-                            <button
-                              onClick={() => handleUpdateSerialStatus(s.id, "Available")}
-                              className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-[9px] font-black text-emerald-700 rounded border border-emerald-100 uppercase transition-all"
-                            >
-                              Available
-                            </button>
-                          )}
+                        <div className="flex gap-2 justify-end items-center">
+                          <button
+                            onClick={() => { setSelectedHistorySerial(s); setShowHistoryModal(true); }}
+                            className="text-[10px] text-indigo-600 font-bold underline hover:text-indigo-800"
+                          >
+                            History
+                          </button>
+                          <select
+                            value={s.status}
+                            onChange={(e) => handleUpdateSerialStatus(s.id, e.target.value)}
+                            className="px-2 py-1 bg-slate-50 border border-slate-200 rounded text-[10px] uppercase font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
+                          >
+                            <option value="Available">Available</option>
+                            <option value="Shipped">Shipped</option>
+                            <option value="Delivered">Delivered</option>
+                            <option value="Returned">Returned (RTO)</option>
+                            <option value="Defective">Defective</option>
+                          </select>
                           <button
                             onClick={() => handleDeleteSerial(s.id)}
                             className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded transition-all"
@@ -714,6 +747,17 @@ export default function InventoryDashboard() {
             }`}
           >
             🕵️‍♂️ {selectedTrackerItem ? `${selectedTrackerItem} Tracking` : "Item Tracking Dashboard"}
+          </button>
+          <button
+            onClick={() => setActiveDashboardTab("usage_report")}
+            className={`pb-3 font-bold text-sm transition-all relative flex items-center gap-1.5 ${
+              activeDashboardTab === "usage_report"
+                ? "text-indigo-600 border-b-2 border-indigo-600"
+                : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            <PieChart size={18} />
+            Global Usage Report
           </button>
         </div>
 
@@ -811,9 +855,18 @@ export default function InventoryDashboard() {
                   <option value="Defective">Defective</option>
                 </select>
               </div>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">
-                Total Devices Registered: {trackerSerials.length}
-              </p>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setShowItemReportsModal(true)}
+                  className="flex items-center gap-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors"
+                >
+                  <PieChart size={16} />
+                  View Item Reports
+                </button>
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider hidden sm:block">
+                  Total Devices: {trackerSerials.length}
+                </p>
+              </div>
             </div>
 
             {/* Metric Cards Grid */}
@@ -955,6 +1008,17 @@ export default function InventoryDashboard() {
                           {/* 6. Actions */}
                           <td className="p-4 text-right">
                             <div className="flex gap-2 justify-end items-center">
+                              <button
+                                onClick={() => {
+                                  setSelectedHistorySerial(serial);
+                                  setShowHistoryModal(true);
+                                }}
+                                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold uppercase rounded text-[10px] tracking-wider transition-colors flex items-center gap-1"
+                                title="View History"
+                              >
+                                <History size={12} />
+                                History
+                              </button>
                               {serial.task && (
                                 <a
                                   href={`/team-board?task=${serial.task.id}`}
@@ -963,22 +1027,17 @@ export default function InventoryDashboard() {
                                   View Task
                                 </a>
                               )}
-                              {serial.status === "Available" && (
-                                <button
-                                  onClick={() => handleUpdateSerialStatus(serial.id, "Defective")}
-                                  className="px-2 py-1 bg-rose-50 text-rose-700 border border-rose-100 rounded text-[10px] uppercase font-bold"
-                                >
-                                  Defective
-                                </button>
-                              )}
-                              {serial.status === "Defective" && (
-                                <button
-                                  onClick={() => handleUpdateSerialStatus(serial.id, "Available")}
-                                  className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded text-[10px] uppercase font-bold"
-                                >
-                                  Make Available
-                                </button>
-                              )}
+                              <select
+                                value={serial.status}
+                                onChange={(e) => handleUpdateSerialStatus(serial.id, e.target.value)}
+                                className="px-2 py-1 bg-slate-50 border border-slate-200 rounded text-[10px] uppercase font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
+                              >
+                                <option value="Available">Available</option>
+                                <option value="Shipped">Shipped</option>
+                                <option value="Delivered">Delivered</option>
+                                <option value="Returned">Returned (RTO)</option>
+                                <option value="Defective">Defective</option>
+                              </select>
                               <button
                                 onClick={() => handleDeleteSerial(serial.id)}
                                 className="p-1 hover:bg-slate-200 text-slate-400 hover:text-rose-600 rounded transition-colors"
@@ -1224,6 +1283,144 @@ export default function InventoryDashboard() {
           </div>
         </div>
       )}
+
+      {/* Tab 3: Global Usage Report */}
+      {activeDashboardTab === "usage_report" && (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-6">
+          {/* Toolbar */}
+          <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+              <div className="relative w-full sm:w-64">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search Serial, Task, User..."
+                  value={usageSearch}
+                  onChange={(e) => setUsageSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-white"
+                />
+              </div>
+              <select
+                value={usageDateFilter}
+                onChange={(e) => setUsageDateFilter(e.target.value)}
+                className="w-full sm:w-auto p-2 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-white font-medium text-slate-700 cursor-pointer"
+              >
+                <option value="All Time">All Time</option>
+                <option value="Today">Today</option>
+                <option value="Yesterday">Yesterday</option>
+                <option value="This Week">This Week</option>
+                <option value="This Month">This Month</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-4">
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider hidden sm:block">
+                Total Items Used: {globalUsageSerials.length}
+              </p>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="overflow-x-auto min-h-[400px]">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/50 border-b border-slate-200 text-xs text-slate-400 font-bold uppercase tracking-wider">
+                  <th className="p-4">Date Used</th>
+                  <th className="p-4">Used By</th>
+                  <th className="p-4">Serial Number</th>
+                  <th className="p-4">Item Type</th>
+                  <th className="p-4">Task Used In</th>
+                </tr>
+              </thead>
+              <tbody className="text-sm">
+                {loadingUsageReport ? (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center text-slate-400 font-medium">
+                      Loading usage report...
+                    </td>
+                  </tr>
+                ) : globalUsageSerials.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center text-slate-400 font-medium">
+                      No inventory usage found.
+                    </td>
+                  </tr>
+                ) : (
+                  globalUsageSerials.filter(s => {
+                    const term = usageSearch.toLowerCase();
+                    const matchesSearch = s.number.toLowerCase().includes(term) || 
+                                          (s.task?.title || "").toLowerCase().includes(term) ||
+                                          (s.task?.createdByName || "").toLowerCase().includes(term) ||
+                                          (s.inventoryItem?.name || "").toLowerCase().includes(term);
+                    
+                    let matchesDate = true;
+                    if (usageDateFilter !== "All Time") {
+                      const date = new Date(s.task?.createdAt || s.updatedAt);
+                      const today = new Date();
+                      if (usageDateFilter === "Today") {
+                        matchesDate = date.toDateString() === today.toDateString();
+                      } else if (usageDateFilter === "Yesterday") {
+                        const yesterday = new Date(today);
+                        yesterday.setDate(yesterday.getDate() - 1);
+                        matchesDate = date.toDateString() === yesterday.toDateString();
+                      } else if (usageDateFilter === "This Week") {
+                        const startOfWeek = new Date(today);
+                        startOfWeek.setDate(today.getDate() - today.getDay());
+                        matchesDate = date >= startOfWeek;
+                      } else if (usageDateFilter === "This Month") {
+                        matchesDate = date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
+                      }
+                    }
+                    
+                    return matchesSearch && matchesDate;
+                  }).map((s, idx) => (
+                    <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                      <td className="p-4 whitespace-nowrap text-slate-600 font-medium">
+                        {new Date(s.task?.createdAt || s.updatedAt).toLocaleDateString()}
+                      </td>
+                      <td className="p-4 whitespace-nowrap font-bold text-slate-800">
+                        {s.task?.createdByName || s.task?.assigneeName || "Unknown"}
+                      </td>
+                      <td className="p-4 whitespace-nowrap">
+                        <span className="font-mono bg-slate-100 px-2 py-1 rounded text-slate-700 font-bold">
+                          {s.number}
+                        </span>
+                      </td>
+                      <td className="p-4 whitespace-nowrap">
+                        <span className="px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700">
+                          {s.inventoryItem?.name || "Printer"}
+                        </span>
+                      </td>
+                      <td className="p-4 text-slate-600 font-medium truncate max-w-xs">
+                        {s.task?.title || "Unknown Task"}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Item Reports Modal */}
+      {showItemReportsModal && (
+        <ItemReportsModal 
+          isOpen={showItemReportsModal} 
+          onClose={() => setShowItemReportsModal(false)} 
+          itemName={selectedTrackerItem || "Unknown Item"} 
+          serials={trackerSerials} 
+        />
+      )}
+
+      {/* Serial History Modal */}
+      {showHistoryModal && (
+        <SerialHistoryModal
+          isOpen={showHistoryModal}
+          onClose={() => setShowHistoryModal(false)}
+          serial={selectedHistorySerial}
+        />
+      )}
+
       <input
         type="file"
         ref={serialImageInputRef}

@@ -1956,7 +1956,7 @@ export default function UploadsStep(props: UploadsStepProps) {
       const loadSerials = async () => {
         try {
           setLoadingSerials(true);
-          const res = await fetch("/api/inventory/serial-numbers?itemName=Printer&status=Available");
+          const res = await fetch("/api/inventory/serial-numbers?itemName=All&status=Available");
           const data = await res.json();
           setAvailableSerials(data.serialNumbers || []);
         } catch (e) {
