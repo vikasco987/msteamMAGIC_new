@@ -3,8 +3,8 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Search, Printer, RotateCcw, AlertTriangle, CheckCircle, Clock, Truck, ShieldAlert, Trash2, PieChart, History } from "lucide-react";
 import toast from "react-hot-toast";
-import ItemReportsModal from "./components/ItemReportsModal";
-import SerialHistoryModal from "./components/SerialHistoryModal";
+import ItemReportsModal from "../components/ItemReportsModal";
+import SerialHistoryModal from "../components/SerialHistoryModal";
 
 export default function InventoryDashboard() {
   const [items, setItems] = useState<any[]>([]);
