@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import React, { useEffect, useState, useRef } from "react";
 import { Search, Printer, RotateCcw, AlertTriangle, CheckCircle, Clock, Truck, ShieldAlert, Trash2, PieChart, History } from "lucide-react";
 import toast from "react-hot-toast";
 import ItemReportsModal from "./components/ItemReportsModal";
