@@ -28,12 +28,16 @@ const stripEmojis = (str: string | null | undefined): string => {
 };
 
 const TASK_CATEGORIES = [
-  { label: "🍽️ Zomato Onboarding", value: "zomato onboarding" },
-  { label: "🍔 Swiggy Onboarding", value: "swiggy onboarding" },
-  { label: "🍽️🍔 Zomato + Swiggy Combo", value: "zomato + swiggy combo" },
-  { label: "🧾 Food License", value: "food license" },
-  { label: "📸 Photo Upload", value: "photo upload" },
-  { label: "📂 Account Handling", value: "account handling" },
+  { label: "🍽️ Zomato Onboarding", value: "zomato" },
+  { label: "🍔 Swiggy Onboarding", value: "swiggy" },
+  { label: "🍽️🍔 Zomato + Swiggy Combo", value: "combo" },
+  { label: "🧾 Food License", value: "license" },
+  { label: "📸 Photo Upload", value: "photo" },
+  { label: "📂 Account Handling", value: "account" },
+  { label: "🖨️ Printer Setup", value: "printer" },
+  { label: "🖨️💻 Printer + Software", value: "printer_software" },
+  { label: "🔄 RTO Printer", value: "rto_printer" },
+  { label: "⚠️ Escalation", value: "escalation" },
   { label: "🛠️ Other", value: "other" },
 ];
 
@@ -332,8 +336,8 @@ export default function Board() {
         task.customFields?.phone?.toString().includes(lowerFilter) ||
         task.id?.toLowerCase().includes(lowerFilter);
 
-      const matchesCategory = selectedCategories.length === 0 ||
-        selectedCategories.includes(task.tags?.[0]?.toLowerCase() || "other");
+      const taskCategory = (task.customFields?.activeTab || task.tags?.[0] || "other").toString().toLowerCase();
+      const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(taskCategory);
 
       const matchesDate = selectedDates.length === 0 || (() => {
         const d = new Date(task.createdAt);
