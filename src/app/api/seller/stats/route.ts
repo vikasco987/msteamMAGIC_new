@@ -256,6 +256,32 @@ export async function GET(req: Request) {
         }
       }
     }
+    // --- TOP SELLER CALCULATION ---
+    let topSellerName = null;
+    try {
+      const topSellers = await prisma.task.groupBy({
+        by: ['assignerId', 'assignerName'],
+        where: {
+          createdAt: { gte: startDate, lt: endDate },
+          assignerId: { not: null },
+          amount: { gt: 0 }
+        },
+        _sum: {
+          amount: true
+        },
+        orderBy: {
+          _sum: {
+            amount: 'desc'
+          }
+        },
+        take: 1
+      });
+      if (topSellers.length > 0) {
+        topSellerName = topSellers[0].assignerName || "Unknown Seller";
+      }
+    } catch (err) {
+      console.error("Failed to fetch top seller", err);
+    }
 
     return NextResponse.json(
       {
@@ -273,6 +299,7 @@ export async function GET(req: Request) {
         daysRemaining,
         requiredDaily,
         status,
+        topSellerName,
       },
       { status: 200 }
     );

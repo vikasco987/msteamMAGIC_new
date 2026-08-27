@@ -456,6 +456,32 @@ export default function SellerStats({
           )}
         </AnimatePresence>
 
+        {/* TOP SELLER BANNER */}
+        <AnimatePresence>
+          {stats && (stats as any).topSellerName && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 bg-gradient-to-r from-amber-100 to-yellow-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between shadow-sm"
+            >
+              <div className="flex items-center gap-3">
+                <div className="bg-amber-400 text-white w-10 h-10 rounded-full flex items-center justify-center text-xl shadow-inner">
+                  👑
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-amber-700 uppercase tracking-widest">Top Seller of the Month</h4>
+                  <p className="text-lg font-bold text-gray-900 capitalize">{(stats as any).topSellerName}</p>
+                </div>
+              </div>
+              <div className="hidden sm:block">
+                <span className="bg-white text-amber-600 border border-amber-200 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm">
+                  #1 Rank
+                </span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Stats Cards */}
         <AnimatePresence>
           {stats && showCards && (
