@@ -620,6 +620,24 @@ export default function SellerStats({
           </motion.div>
         )}
 
+        {stats && (stats as any).status === 'ALL_SELLERS' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-slate-50 rounded-2xl border border-dashed border-slate-300 p-6 flex flex-col items-center justify-center text-center space-y-3"
+          >
+            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-slate-400">
+              👥
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-slate-700">Select a Seller</h4>
+              <p className="text-xs text-slate-500 max-w-sm mt-1">
+                Please select an individual seller from the dropdown above to view their Target Achievement.
+              </p>
+            </div>
+          </motion.div>
+        )}
+
         {/* --- 🚀 SALES HISTORY MODAL --- */}
         <AnimatePresence>
           {showHistory && (

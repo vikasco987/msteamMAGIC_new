@@ -130,7 +130,7 @@ export async function GET(req: Request) {
 
     // Target calculations
     const achieved = totalRevenue;
-    const achievementPercentage = target > 0 ? Math.min((achieved / target) * 100, 100) : 0;
+    const achievementPercentage = target > 0 ? (achieved / target) * 100 : 0;
     const remaining = Math.max(target - achieved, 0);
 
     // Days remaining logic
@@ -154,7 +154,9 @@ export async function GET(req: Request) {
     }
 
     let status = "NO_TARGET";
-    if (target > 0) {
+    if (!targetSellerId) {
+      status = "ALL_SELLERS";
+    } else if (target > 0) {
       if (achieved >= target) {
         status = "ACHIEVED";
       } else {
