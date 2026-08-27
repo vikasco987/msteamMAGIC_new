@@ -190,6 +190,7 @@ export async function GET(req: Request) {
     const totalReceived = tasks.reduce((sum, t) => sum + (t.received ?? 0), 0);
     const pendingRevenue = totalRevenue - totalReceived;
     const totalSales = tasks.filter((t) => (t.amount ?? 0) > 0).length;
+    const pendingSalesCount = tasks.filter((t) => (t.amount ?? 0) > (t.received ?? 0)).length;
 
     const employeeManualExpenses = expenses.reduce((sum, e) => sum + safeFloat(e.amount), 0);
     const totalExpense = totalTaskDirectExpense + employeeManualExpenses;
@@ -264,6 +265,7 @@ export async function GET(req: Request) {
         totalReceived,
         pendingRevenue,
         totalSales,
+        pendingSalesCount,
         totalExpense,
         target,
         achievementPercentage,

@@ -16,7 +16,8 @@ import {
   Settings,
   X,
   Eye,
-  EyeOff
+  EyeOff,
+  AlertCircle
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { format } from "date-fns";
@@ -48,7 +49,8 @@ export default function SellerStats({
   const [month, setMonth] = useState<string>(format(new Date(), "yyyy-MM"));
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
-  const [showCards, setShowCards] = useState<boolean>(false);
+  const [showCards, setShowCards] = useState<boolean>(true);
+  const [showTarget, setShowTarget] = useState<boolean>(false);
   const [showWithGST, setShowWithGST] = useState(true);
   const [showWithExpense, setShowWithExpense] = useState(false);
 
@@ -254,14 +256,25 @@ export default function SellerStats({
               />
             </div>
 
-            <button
-              onClick={() => setShowCards(!showCards)}
-              className="flex items-center gap-2 bg-white rounded-xl shadow-sm p-2 px-3 hover:shadow-md border border-gray-100 transition-colors text-gray-600"
-              title={showCards ? "Hide Sales Matrix" : "Unhide Sales Matrix"}
-            >
-              {showCards ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              <span className="text-sm font-medium hidden sm:inline">{showCards ? "Hide" : "Unhide"}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowCards(!showCards)}
+                className={`flex items-center gap-2 rounded-xl shadow-sm p-2 px-3 hover:shadow-md border transition-colors text-sm font-medium ${showCards ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-white text-gray-600 border-gray-100'}`}
+                title={showCards ? "Hide Sales Matrix" : "Show Sales Matrix"}
+              >
+                <Eye className="w-5 h-5" />
+                <span className="hidden sm:inline">Sales Matrix</span>
+              </button>
+
+              <button
+                onClick={() => setShowTarget(!showTarget)}
+                className={`flex items-center gap-2 rounded-xl shadow-sm p-2 px-3 hover:shadow-md border transition-colors text-sm font-medium ${showTarget ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-white text-gray-600 border-gray-100'}`}
+                title={showTarget ? "Hide Target" : "Show Target"}
+              >
+                <span>🎯</span>
+                <span className="hidden sm:inline">Target</span>
+              </button>
+            </div>
 
             {/* Toggles - Only visible to Master */}
             {isMaster && (
@@ -492,6 +505,20 @@ export default function SellerStats({
                       actionLabel="View History"
                       actionLoading={historyLoading}
                     />
+                    <StatCard
+                      title="Avg. Sale Value"
+                      value={formatCurrency(stats.totalSales > 0 ? adjustedRevenue / stats.totalSales : 0)}
+                      icon={<TrendingUp />}
+                      color="from-indigo-400 to-indigo-600"
+                      variant={cardVariants}
+                    />
+                    <StatCard
+                      title="Pending Sales"
+                      value={(stats as any).pendingSalesCount?.toLocaleString() || '0'}
+                      icon={<AlertCircle />}
+                      color="from-orange-400 to-orange-600"
+                      variant={cardVariants}
+                    />
                     {showWithExpense && (
                       <StatCard
                         title="Total Expense"
@@ -518,125 +545,130 @@ export default function SellerStats({
         </AnimatePresence>
 
         {/* TARGET VS ACHIEVEMENT CARD */}
-        {stats && (stats as any).status && (stats as any).status !== 'NO_TARGET' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 overflow-hidden relative"
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-full -z-10 opacity-50"></div>
-            
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-              <div>
-                <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                  <span>🎯</span> TARGET VS ACHIEVEMENT
-                </h3>
-                <div className="mt-2 flex items-baseline gap-4">
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-gray-400 uppercase">Monthly Target</span>
-                    <span className="text-3xl font-black text-gray-900">{formatCurrency((stats as any).target)}</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-gray-400 uppercase">Achieved</span>
-                    <span className="text-3xl font-black text-blue-600">{formatCurrency(stats.totalRevenue)}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className={`px-4 py-2 rounded-xl text-sm font-black uppercase tracking-wider flex items-center gap-2 ${
-                (stats as any).status === 'ACHIEVED' ? 'bg-green-100 text-green-700' :
-                (stats as any).status === 'ON_TRACK' ? 'bg-yellow-100 text-yellow-700' :
-                'bg-red-100 text-red-700'
-              }`}>
-                {(stats as any).status === 'ACHIEVED' && '🏆 Target Achieved'}
-                {(stats as any).status === 'ON_TRACK' && '🟡 On Track'}
-                {(stats as any).status === 'BEHIND' && '🔴 Behind Target'}
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <div className="flex justify-between text-sm font-bold mb-2">
-                <span className="text-gray-600">Progress</span>
-                <span className="text-blue-600">
-                  {((stats as any).achievementPercentage).toFixed(1)}%
-                </span>
-              </div>
-              <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden relative">
-                <div 
-                  className={`h-full rounded-full transition-all duration-1000 ${
-                    (stats as any).achievementPercentage >= 100 ? 'bg-gradient-to-r from-green-400 to-green-500' :
-                    'bg-gradient-to-r from-blue-400 to-blue-500'
-                  }`}
-                  style={{ width: `${Math.min((stats as any).achievementPercentage, 100)}%` }}
-                />
-              </div>
-              {(stats as any).achievementPercentage > 100 && (
-                <div className="text-xs font-bold text-green-600 mt-2 text-right">
-                  Extra Sales: {formatCurrency(stats.totalRevenue - (stats as any).target)}
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-xl">
-              <div>
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Remaining</span>
-                <span className="text-lg font-bold text-gray-800">{formatCurrency((stats as any).remaining)}</span>
-              </div>
-              <div>
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Days Remaining</span>
-                <span className="text-lg font-bold text-gray-800">{(stats as any).daysRemaining} Days</span>
-              </div>
-              <div className="col-span-2 md:col-span-1 border-t md:border-t-0 md:border-l border-gray-200 pt-3 md:pt-0 md:pl-4">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">
-                  {(stats as any).daysRemaining === 0 ? 'Required Today' : 'Required Daily'}
-                </span>
-                <span className="text-lg font-bold text-gray-800">{formatCurrency((stats as any).requiredDaily)}</span>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {stats && (stats as any).status === 'NO_TARGET' && isMaster && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-slate-50 rounded-2xl border border-dashed border-slate-300 p-6 flex flex-col items-center justify-center text-center space-y-3"
-          >
-            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-slate-400">
-              🎯
-            </div>
-            <div>
-              <h4 className="text-sm font-bold text-slate-700">Monthly Target Not Set</h4>
-              <p className="text-xs text-slate-500 max-w-sm mt-1">
-                Admin/Master can set a target for this seller to track their sales performance and daily requirements.
-              </p>
-            </div>
-            <button
-              onClick={() => { setTargetSellerId(selectedAssignerId || assignees[0]?.id || ""); setShowTargetModal(true); }}
-              className="mt-2 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold shadow-sm transition-all"
+        <AnimatePresence>
+          {stats && showTarget && (stats as any).status && (stats as any).status !== 'NO_TARGET' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 overflow-hidden relative"
             >
-              Set Target Now
-            </button>
-          </motion.div>
-        )}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-full -z-10 opacity-50"></div>
+              
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                <div>
+                  <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                    <span>🎯</span> TARGET VS ACHIEVEMENT
+                  </h3>
+                  <div className="mt-2 flex items-baseline gap-4">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-gray-400 uppercase">Monthly Target</span>
+                      <span className="text-3xl font-black text-gray-900">{formatCurrency((stats as any).target)}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-gray-400 uppercase">Achieved</span>
+                      <span className="text-3xl font-black text-blue-600">{formatCurrency(stats.totalRevenue)}</span>
+                    </div>
+                  </div>
+                </div>
 
-        {stats && (stats as any).status === 'ALL_SELLERS' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-slate-50 rounded-2xl border border-dashed border-slate-300 p-6 flex flex-col items-center justify-center text-center space-y-3"
-          >
-            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-slate-400">
-              👥
-            </div>
-            <div>
-              <h4 className="text-sm font-bold text-slate-700">Select a Seller</h4>
-              <p className="text-xs text-slate-500 max-w-sm mt-1">
-                Please select an individual seller from the dropdown above to view their Target Achievement.
-              </p>
-            </div>
-          </motion.div>
-        )}
+                <div className={`px-4 py-2 rounded-xl text-sm font-black uppercase tracking-wider flex items-center gap-2 ${
+                  (stats as any).status === 'ACHIEVED' ? 'bg-green-100 text-green-700' :
+                  (stats as any).status === 'ON_TRACK' ? 'bg-yellow-100 text-yellow-700' :
+                  'bg-red-100 text-red-700'
+                }`}>
+                  {(stats as any).status === 'ACHIEVED' && '🏆 Target Achieved'}
+                  {(stats as any).status === 'ON_TRACK' && '🟡 On Track'}
+                  {(stats as any).status === 'BEHIND' && '🔴 Behind Target'}
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <div className="flex justify-between text-sm font-bold mb-2">
+                  <span className="text-gray-600">Progress</span>
+                  <span className="text-blue-600">
+                    {((stats as any).achievementPercentage).toFixed(1)}%
+                  </span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden relative">
+                  <div 
+                    className={`h-full rounded-full transition-all duration-1000 ${
+                      (stats as any).achievementPercentage >= 100 ? 'bg-gradient-to-r from-green-400 to-green-500' :
+                      'bg-gradient-to-r from-blue-400 to-blue-500'
+                    }`}
+                    style={{ width: `${Math.min((stats as any).achievementPercentage, 100)}%` }}
+                  />
+                </div>
+                {(stats as any).achievementPercentage > 100 && (
+                  <div className="text-xs font-bold text-green-600 mt-2 text-right">
+                    Extra Sales: {formatCurrency(stats.totalRevenue - (stats as any).target)}
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-xl">
+                <div>
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Remaining</span>
+                  <span className="text-lg font-bold text-gray-800">{formatCurrency((stats as any).remaining)}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Days Remaining</span>
+                  <span className="text-lg font-bold text-gray-800">{(stats as any).daysRemaining} Days</span>
+                </div>
+                <div className="col-span-2 md:col-span-1 border-t md:border-t-0 md:border-l border-gray-200 pt-3 md:pt-0 md:pl-4">
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">
+                    {(stats as any).daysRemaining === 0 ? 'Required Today' : 'Required Daily'}
+                  </span>
+                  <span className="text-lg font-bold text-gray-800">{formatCurrency((stats as any).requiredDaily)}</span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {stats && showTarget && (stats as any).status === 'NO_TARGET' && isMaster && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="bg-slate-50 rounded-2xl border border-dashed border-slate-300 p-6 flex flex-col items-center justify-center text-center space-y-3"
+            >
+              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-slate-400">
+                🎯
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-slate-700">Monthly Target Not Set</h4>
+                <p className="text-xs text-slate-500 max-w-sm mt-1">
+                  Admin/Master can set a target for this seller to track their sales performance and daily requirements.
+                </p>
+              </div>
+              <button
+                onClick={() => { setTargetSellerId(selectedAssignerId || assignees[0]?.id || ""); setShowTargetModal(true); }}
+                className="mt-2 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold shadow-sm transition-all"
+              >
+                Set Target Now
+              </button>
+            </motion.div>
+          )}
+
+          {stats && showTarget && (stats as any).status === 'ALL_SELLERS' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="bg-slate-50 rounded-2xl border border-dashed border-slate-300 p-6 flex flex-col items-center justify-center text-center space-y-3"
+            >
+              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-slate-400">
+                👥
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-slate-700">Select a Seller</h4>
+                <p className="text-xs text-slate-500 max-w-sm mt-1">
+                  Please select an individual seller from the dropdown above to view their Target Achievement.
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* --- 🚀 SALES HISTORY MODAL --- */}
         <AnimatePresence>
