@@ -460,23 +460,31 @@ export default function SellerStats({
         <AnimatePresence>
           {stats && (stats as any).topSellerName && (
             <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 bg-gradient-to-r from-amber-100 to-yellow-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between shadow-sm"
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              className="mb-8 relative overflow-hidden rounded-2xl p-5 flex items-center justify-between shadow-2xl border border-yellow-500/30"
             >
-              <div className="flex items-center gap-3">
-                <div className="bg-amber-400 text-white w-10 h-10 rounded-full flex items-center justify-center text-xl shadow-inner">
-                  👑
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-gray-800 to-slate-900 z-0"></div>
+              
+              <div className="flex items-center gap-4 relative z-10">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-yellow-400 blur-md opacity-40 rounded-full animate-pulse"></div>
+                  <div className="bg-gradient-to-br from-yellow-300 to-yellow-600 text-gray-900 w-14 h-14 rounded-full flex items-center justify-center text-2xl shadow-lg border-2 border-yellow-200/50">
+                    🏆
+                  </div>
                 </div>
                 <div>
-                  <h4 className="text-xs font-black text-amber-700 uppercase tracking-widest">Top Seller of the Month</h4>
-                  <p className="text-lg font-bold text-gray-900 capitalize">{(stats as any).topSellerName}</p>
+                  <h4 className="text-[10px] font-black text-yellow-500/80 uppercase tracking-[0.2em] mb-1">Star Performer of the Month</h4>
+                  <p className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-yellow-400 to-amber-500 capitalize drop-shadow-sm">
+                    {(stats as any).topSellerName}
+                  </p>
                 </div>
               </div>
-              <div className="hidden sm:block">
-                <span className="bg-white text-amber-600 border border-amber-200 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm">
-                  #1 Rank
-                </span>
+
+              <div className="hidden sm:flex relative z-10 items-center gap-2 bg-black/40 backdrop-blur-md px-4 py-2 rounded-xl border border-yellow-500/20 shadow-inner">
+                <span className="text-yellow-400 block animate-pulse">✨</span>
+                <span className="text-yellow-100 text-xs font-bold uppercase tracking-wider">MVP</span>
               </div>
             </motion.div>
           )}
