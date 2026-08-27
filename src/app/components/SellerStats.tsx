@@ -484,7 +484,7 @@ export default function SellerStats({
 
               <div className="hidden sm:flex relative z-10 items-center gap-2 bg-black/40 backdrop-blur-md px-4 py-2 rounded-xl border border-yellow-500/20 shadow-inner">
                 <span className="text-yellow-400 block animate-pulse">✨</span>
-                <span className="text-yellow-100 text-xs font-bold uppercase tracking-wider">MVP</span>
+                <span className="text-yellow-100 text-xs font-bold uppercase tracking-wider">#1 Rank MVP</span>
               </div>
             </motion.div>
           )}
