@@ -23,10 +23,16 @@ type LightboxState = {
   title: string;
 } | null;
 
-const InfoField = ({ label, value, icon, copyable = false, isLink = false }: { label: string, value: any, icon?: React.ReactNode, copyable?: boolean, isLink?: boolean }) => {
-  if (value === undefined || value === null || value === "") return null;
+const InfoField = ({ 
+  label, value, icon, copyable = false, isLink = false,
+  editable = false, onChange, type = 'text', options = []
+}: { 
+  label: string, value: any, icon?: React.ReactNode, copyable?: boolean, isLink?: boolean,
+  editable?: boolean, onChange?: (val: any) => void, type?: string, options?: string[]
+}) => {
+  if (!editable && (value === undefined || value === null || value === "")) return null;
   
-  const displayValue = String(value);
+  const displayValue = String(value || "");
 
   const handleCopy = () => {
     navigator.clipboard.writeText(displayValue);
@@ -39,7 +45,25 @@ const InfoField = ({ label, value, icon, copyable = false, isLink = false }: { l
         <div className="text-xs text-gray-500 mb-1 flex items-center gap-1 font-bold uppercase tracking-wider">
           {icon} {label}
         </div>
-        {isLink ? (
+        {editable ? (
+          type === 'select' ? (
+            <select 
+              value={displayValue} 
+              onChange={(e) => onChange && onChange(e.target.value)}
+              className="w-full bg-white border border-gray-300 rounded p-1 text-sm text-gray-800"
+            >
+              <option value="">Select...</option>
+              {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
+          ) : (
+            <input 
+              type={type} 
+              value={displayValue} 
+              onChange={(e) => onChange && onChange(type === 'number' ? Number(e.target.value) : e.target.value)}
+              className="w-full bg-white border border-gray-300 rounded p-1 text-sm text-gray-800"
+            />
+          )
+        ) : isLink ? (
           <a href={displayValue} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 hover:underline break-all text-sm">
             {displayValue}
           </a>
@@ -47,7 +71,7 @@ const InfoField = ({ label, value, icon, copyable = false, isLink = false }: { l
           <div className="font-semibold text-gray-800 break-words whitespace-pre-wrap text-sm">{displayValue}</div>
         )}
       </div>
-      {copyable && (
+      {copyable && !editable && (
         <button 
           onClick={handleCopy}
           className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all flex-shrink-0"
@@ -439,19 +463,33 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex flex-col justify-center items-center shadow-sm">
                       <div className="text-[10px] font-black uppercase text-blue-500 mb-1 tracking-widest">Amount</div>
-                      <div className="font-black text-2xl text-blue-700">₹{Number(task.amount || 0).toLocaleString()}</div>
+                      {isEditing ? (
+                        <div className="flex items-center text-2xl text-blue-700 font-black">₹<input type="number" value={editedTask.amount || 0} onChange={(e) => handleEditChange('amount', Number(e.target.value))} className="w-24 bg-transparent border-b border-blue-300 focus:outline-none text-center" /></div>
+                      ) : (
+                        <div className="font-black text-2xl text-blue-700">₹{Number(task.amount || 0).toLocaleString()}</div>
+                      )}
                     </div>
                     <div className="bg-green-50 p-4 rounded-xl border border-green-100 flex flex-col justify-center items-center shadow-sm">
                       <div className="text-[10px] font-black uppercase text-green-500 mb-1 tracking-widest">Received</div>
-                      <div className="font-black text-2xl text-green-700">₹{Number(task.received || 0).toLocaleString()}</div>
+                      {isEditing ? (
+                        <div className="flex items-center text-2xl text-green-700 font-black">₹<input type="number" value={editedTask.received || 0} onChange={(e) => handleEditChange('received', Number(e.target.value))} className="w-24 bg-transparent border-b border-green-300 focus:outline-none text-center" /></div>
+                      ) : (
+                        <div className="font-black text-2xl text-green-700">₹{Number(task.received || 0).toLocaleString()}</div>
+                      )}
                     </div>
                     <div className="bg-red-50 p-4 rounded-xl border border-red-100 flex flex-col justify-center items-center shadow-sm">
                       <div className="text-[10px] font-black uppercase text-red-500 mb-1 tracking-widest">Pending</div>
-                      <div className="font-black text-2xl text-red-700">₹{Math.max(0, Number(task.amount || 0) - Number(task.received || 0)).toLocaleString()}</div>
+                      <div className="font-black text-2xl text-red-700">
+                        ₹{Math.max(0, Number(isEditing ? (editedTask.amount || 0) : (task.amount || 0)) - Number(isEditing ? (editedTask.received || 0) : (task.received || 0))).toLocaleString()}
+                      </div>
                     </div>
                     <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 flex flex-col justify-center items-center shadow-sm">
                       <div className="text-[10px] font-black uppercase text-orange-500 mb-1 tracking-widest">Cost Price</div>
-                      <div className="font-black text-2xl text-orange-700">₹{Number(task.customFields?.costPrice || task.customFields?.afe || 0).toLocaleString()}</div>
+                      {isEditing ? (
+                        <div className="flex items-center text-2xl text-orange-700 font-black">₹<input type="number" value={editedTask.customFields?.costPrice || editedTask.customFields?.afe || 0} onChange={(e) => handleEditChange('costPrice', Number(e.target.value), true)} className="w-24 bg-transparent border-b border-orange-300 focus:outline-none text-center" /></div>
+                      ) : (
+                        <div className="font-black text-2xl text-orange-700">₹{Number(task.customFields?.costPrice || task.customFields?.afe || 0).toLocaleString()}</div>
+                      )}
                     </div>
                   </div>
 

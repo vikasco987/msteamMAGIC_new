@@ -33,7 +33,8 @@ import {
   Clock,
   CreditCard,
   MapPin,
-  DollarSign
+  DollarSign,
+  Search
 } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -113,6 +114,7 @@ export default function Sidebar() {
   const [mounted, setMounted] = useState(false);
   const roleFromMetadata = user?.publicMetadata?.role as string;
   const userRole = String(isLoaded ? (roleFromMetadata || 'user') : 'user').toLowerCase().trim();
+  const [searchTerm, setSearchTerm] = useState("");
 
   // --- BRAND IDENTITY ---
   const [businessName, setBusinessName] = useState<string>("MAGICSCALE");
@@ -316,6 +318,22 @@ export default function Sidebar() {
         {/* Multi-tier Navigation */}
         <div className="flex-1 overflow-y-auto px-4 py-6 space-y-8 scrollbar-hide relative z-10">
 
+          {/* SEARCH BAR */}
+          {!isCollapsed && (
+            <div className="relative mb-6">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search size={16} className="text-slate-500" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search menu..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-slate-800/50 border border-slate-700/50 text-slate-200 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder-slate-500 transition-all"
+              />
+            </div>
+          )}
+
           {userRole !== 'user' && (
             <div className="space-y-2">
               <NotificationBell isCollapsed={isCollapsed} />
@@ -332,7 +350,7 @@ export default function Sidebar() {
                   <div className="flex-1 h-px bg-slate-800/50" />
                 </div>
               )}
-              {pinnedForms.map((form) => {
+              {pinnedForms.filter(form => searchTerm === "" || form.title.toLowerCase().includes(searchTerm.toLowerCase())).map((form) => {
                 const responseHref = `/crm/forms/${form.id}/responses`;
                 const websiteHref = `/crm/website/${form.id}?fullview=true`;
                 const isResponseActive = pathname === responseHref;
@@ -433,20 +451,27 @@ export default function Sidebar() {
             // Filter group items by role and dynamic permissions
             const visibleItems = group.items.filter(i => {
               const hasHardcodedRole = i.roles.includes(userRole);
+              let hasPermission = hasHardcodedRole;
 
               // If we have dynamic permissions, they override or restrict
               if (dynamicPermissions !== null) {
                 // Safety Lock: Master should always see Access Control & Business Setup to avoid locking out
-                if (userRole === 'master' && (i.label === 'Access Control' || i.label === 'Business Setup' || i.label === 'Payment Portal' || i.label === 'Profit & Loss')) return true;
-                
-                // Ensure new routes are not hidden by stale DB permissions
-                if (i.label === 'Agreements' || i.label === 'Setup Agreement' || i.label === 'My Details') return hasHardcodedRole;
-
-                return dynamicPermissions.includes(i.label);
+                if (userRole === 'master' && (i.label === 'Access Control' || i.label === 'Business Setup' || i.label === 'Payment Portal' || i.label === 'Profit & Loss')) {
+                  hasPermission = true;
+                } else if (i.label === 'Agreements' || i.label === 'Setup Agreement' || i.label === 'My Details') {
+                  hasPermission = hasHardcodedRole;
+                } else {
+                  hasPermission = dynamicPermissions.includes(i.label);
+                }
               }
-
-              // Fallback to hardcoded roles if no dynamic permissions are fetched yet or they are empty
-              return hasHardcodedRole;
+              
+              if (!hasPermission) return false;
+              
+              if (searchTerm.trim() !== "") {
+                return i.label.toLowerCase().includes(searchTerm.toLowerCase());
+              }
+              
+              return true;
             });
             if (visibleItems.length === 0) return null;
 
