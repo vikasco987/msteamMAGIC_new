@@ -49,8 +49,8 @@ export default function SellerStats({
   const [month, setMonth] = useState<string>(format(new Date(), "yyyy-MM"));
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
-  const [showCards, setShowCards] = useState<boolean>(true);
-  const [showTarget, setShowTarget] = useState<boolean>(false);
+  const [showCards, setShowCards] = useState<boolean>(false);
+  const [showTarget, setShowTarget] = useState<boolean>(true);
   const [showWithGST, setShowWithGST] = useState(true);
   const [showWithExpense, setShowWithExpense] = useState(false);
 
