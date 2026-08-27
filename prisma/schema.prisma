@@ -798,3 +798,16 @@ model CashbookEntry {
   @@index([transactionDate])
   @@index([category])
 }
+
+model SellerTarget {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  sellerId  String
+  month     Int
+  year      Int
+  target    Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sellerId, month, year])
+  @@index([sellerId])
+}
