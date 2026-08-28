@@ -282,6 +282,42 @@ export async function GET(req: Request) {
     } catch (err) {
       console.error("Failed to fetch top seller", err);
     }
+    // --- DAILY TRENDS CALCULATION ---
+    const daysInMonth = new Date(yearInt, monthInt, 0).getDate();
+    const dailyTrends = [];
+    let runningCumulativeRevenue = 0;
+    
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${day} ${new Date(yearInt, monthInt - 1, day).toLocaleString('default', { month: 'short' })}`;
+      
+      // Calculate daily revenue
+      const dailyTasks = tasks.filter(t => {
+        const taskDate = new Date(t.createdAt);
+        return taskDate.getDate() === day;
+      });
+      const dailyRevenue = dailyTasks.reduce((sum, t) => sum + (t.amount ?? 0), 0);
+      
+      runningCumulativeRevenue += dailyRevenue;
+      
+      // Calculate Target Pace
+      // E.g., if Target is 30,000 in a 30-day month, pace is 1,000 per day. Day 5 pace = 5,000.
+      let targetPace = 0;
+      if (target > 0) {
+        targetPace = (target / daysInMonth) * day;
+      }
+
+      // If the day is in the future, we might not want to show cumulative revenue dropping to flat, 
+      // but for simplicity, we can just show it flat or stop it at `today`.
+      // Let's cap cumulative revenue and daily revenue to null if the day is in the future (for the current month)
+      const isFuture = isCurrentMonth && day > today.getDate();
+
+      dailyTrends.push({
+        date: dateStr,
+        dailyRevenue: isFuture ? null : dailyRevenue,
+        cumulativeRevenue: isFuture ? null : runningCumulativeRevenue,
+        targetPace: target > 0 ? Math.round(targetPace) : null
+      });
+    }
 
     return NextResponse.json(
       {
@@ -300,6 +336,7 @@ export async function GET(req: Request) {
         requiredDaily,
         status,
         topSellerName,
+        dailyTrends
       },
       { status: 200 }
     );

@@ -22,6 +22,17 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import { format } from "date-fns";
 import { useUser } from "@clerk/nextjs";
+import { 
+  ResponsiveContainer, 
+  ComposedChart, 
+  Bar, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend 
+} from "recharts";
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("en-IN", {
@@ -51,6 +62,7 @@ export default function SellerStats({
   const [error, setError] = useState<string>("");
   const [showCards, setShowCards] = useState<boolean>(false);
   const [showTarget, setShowTarget] = useState<boolean>(true);
+  const [showChart, setShowChart] = useState<boolean>(true);
   const [showWithGST, setShowWithGST] = useState(true);
   const [showWithExpense, setShowWithExpense] = useState(false);
 
@@ -271,8 +283,17 @@ export default function SellerStats({
                 className={`flex items-center gap-2 rounded-xl shadow-sm p-2 px-3 hover:shadow-md border transition-colors text-sm font-medium ${showTarget ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-white text-gray-600 border-gray-100'}`}
                 title={showTarget ? "Hide Target" : "Show Target"}
               >
-                <span>🎯</span>
+                <span className="text-lg">🎯</span>
                 <span className="hidden sm:inline">Target</span>
+              </button>
+
+              <button
+                onClick={() => setShowChart(!showChart)}
+                className={`flex items-center gap-2 rounded-xl shadow-sm p-2 px-3 hover:shadow-md border transition-colors text-sm font-medium ${showChart ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-white text-gray-600 border-gray-100'}`}
+                title={showChart ? "Hide Trends" : "Show Trends"}
+              >
+                <TrendingUp className="w-5 h-5" />
+                <span className="hidden sm:inline">Trends</span>
               </button>
             </div>
 
@@ -699,6 +720,112 @@ export default function SellerStats({
                 <p className="text-xs text-slate-500 max-w-sm mt-1">
                   Please select an individual seller from the dropdown above to view their Target Achievement.
                 </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* --- 📈 DAILY SALES TREND CHART --- */}
+        <AnimatePresence>
+          {stats && showChart && (stats as any).dailyTrends && (stats as any).dailyTrends.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 overflow-hidden relative"
+            >
+              <div className="flex items-center gap-2 mb-6">
+                <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4" />
+                </div>
+                <h3 className="font-bold text-gray-800 text-lg">Sales Pace Analytics</h3>
+              </div>
+              
+              <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={(stats as any).dailyTrends} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                    <XAxis 
+                      dataKey="date" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 10, fill: '#6b7280' }} 
+                      dy={10}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis 
+                      yAxisId="left"
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 10, fill: '#6b7280' }}
+                      tickFormatter={(value) => `₹${value > 1000 ? (value/1000).toFixed(0) + 'k' : value}`}
+                      dx={-10}
+                    />
+                    <YAxis 
+                      yAxisId="right" 
+                      orientation="right" 
+                      hide={true} 
+                    />
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)', padding: '12px' }}
+                      itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+                      labelStyle={{ fontSize: '10px', color: '#6b7280', marginBottom: '4px' }}
+                      formatter={(value: number, name: string) => {
+                        if (name === 'dailyRevenue') return [formatCurrency(value), 'Daily Sales'];
+                        if (name === 'cumulativeRevenue') return [formatCurrency(value), 'Total Pace'];
+                        if (name === 'targetPace') return [formatCurrency(value), 'Target Pace'];
+                        return [value, name];
+                      }}
+                    />
+                    <Legend 
+                      wrapperStyle={{ fontSize: '11px', paddingTop: '20px' }} 
+                      iconType="circle"
+                      formatter={(value) => {
+                        if (value === 'dailyRevenue') return 'Daily Sales (Bar)';
+                        if (value === 'cumulativeRevenue') return 'Cumulative Pace (Line)';
+                        if (value === 'targetPace') return 'Target Pace (Line)';
+                        return value;
+                      }}
+                    />
+                    
+                    <Bar 
+                      yAxisId="left" 
+                      dataKey="dailyRevenue" 
+                      fill="#93c5fd" 
+                      radius={[4, 4, 0, 0]} 
+                      barSize={20}
+                    />
+                    
+                    <Line 
+                      yAxisId="left" 
+                      type="monotone" 
+                      dataKey="cumulativeRevenue" 
+                      stroke="#2563eb" 
+                      strokeWidth={3}
+                      dot={{ r: 3, fill: '#2563eb', strokeWidth: 2, stroke: '#fff' }}
+                      activeDot={{ r: 6, fill: '#2563eb', stroke: '#fff', strokeWidth: 2 }}
+                    />
+                    
+                    {stats && (stats as any).target > 0 && (
+                      <Line 
+                        yAxisId="left" 
+                        type="linear" 
+                        dataKey="targetPace" 
+                        stroke="#f59e0b" 
+                        strokeWidth={2}
+                        strokeDasharray="5 5"
+                        dot={false}
+                        activeDot={false}
+                      />
+                    )}
+                  </ComposedChart>
+                </ResponsiveContainer>
               </div>
             </motion.div>
           )}
