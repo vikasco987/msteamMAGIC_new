@@ -18,4 +18,5 @@ export const ALL_COLUMNS = [
   "tracking",
   "trackingStatus",
   "attemptsLeft",
+  "actions",
 ];

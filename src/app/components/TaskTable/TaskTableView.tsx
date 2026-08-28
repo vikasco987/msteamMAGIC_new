@@ -459,6 +459,7 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import toast from "react-hot-toast";
 import NotesModal from "../../components/NotesModal";
+import TaskDetailsPanel from "../../components/TaskDetailsPanel";
 
 // Import the new modular components
 import { TaskTableHeader } from "./TaskTableHeader";
@@ -490,6 +491,8 @@ export default function TaskTableView({ tasks, user, onTasksUpdate }: Props) {
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [selectedTaskIdForNotes, setSelectedTaskIdForNotes] = useState<string | null>(null);
   const [notesMap, setNotesMap] = useState<{ [taskId: string]: Note[] }>({});
+  
+  const [selectedTaskIdForDetails, setSelectedTaskIdForDetails] = useState<string | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [tasksPerPage, setTasksPerPage] = useState(10);
@@ -925,6 +928,7 @@ export default function TaskTableView({ tasks, user, onTasksUpdate }: Props) {
   setIsNoteModalOpen={setIsNoteModalOpen}
   notesMap={notesMap}
   currentUserRole={role} // Pass role to body for any role-specific rendering
+  onViewDetails={(taskId) => setSelectedTaskIdForDetails(taskId)}
 />
 
           )}
@@ -950,6 +954,13 @@ export default function TaskTableView({ tasks, user, onTasksUpdate }: Props) {
           taskId={selectedTaskIdForNotes}
           initialNotes={notesMap[selectedTaskIdForNotes] || []}
           onNotesUpdated={refetchTasks}
+        />
+      )}
+
+      {selectedTaskIdForDetails && (
+        <TaskDetailsPanel
+          taskId={selectedTaskIdForDetails}
+          onClose={() => setSelectedTaskIdForDetails(null)}
         />
       )}
     </div>
