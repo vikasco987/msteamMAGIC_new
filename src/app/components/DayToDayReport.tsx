@@ -2655,9 +2655,10 @@
 
 import { useEffect, useState } from "react";
 import { format, subMonths } from "date-fns";
-import { Search, Loader2, ArrowUp, ArrowDown, Eye, EyeOff, Download } from "lucide-react";
+import { Search, Loader2, ArrowUp, ArrowDown, Eye, EyeOff, Download, MoreVertical } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser } from "@clerk/nextjs";
+import TaskDetailsPanel from "./TaskDetailsPanel";
 
 interface ReportEntry {
   taskNumber: number;
@@ -2686,6 +2687,8 @@ export default function ShopReport({ assignerId }: { assignerId?: string } = {})
   const [pendingFilter, setPendingFilter] = useState<"all" | "pending" | "paid">("all");
   const [sortPendingDesc, setSortPendingDesc] = useState<boolean>(true);
   const [showTaskId, setShowTaskId] = useState(false); // ✅ toggle for TaskId column
+  const [activeDropdownRow, setActiveDropdownRow] = useState<string | null>(null);
+  const [viewedTaskId, setViewedTaskId] = useState<string | null>(null);
   const [showZeroRevenue, setShowZeroRevenue] = useState(false); // ✅ toggle for 0 revenue
   const [isExporting, setIsExporting] = useState(false);
 
@@ -2900,6 +2903,7 @@ export default function ShopReport({ assignerId }: { assignerId?: string } = {})
                       <th className="px-6 py-3 text-left font-semibold uppercase tracking-wider">Received</th>
                       <th className="px-6 py-3 text-left font-semibold uppercase tracking-wider">Pending</th>
                       <th className="px-6 py-3 text-left font-semibold uppercase tracking-wider">Pending %</th>
+                      <th className="px-6 py-3 text-center font-semibold uppercase tracking-wider w-16">Options</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -2935,6 +2939,32 @@ export default function ShopReport({ assignerId }: { assignerId?: string } = {})
                             </div>
                             <div className="text-xs text-gray-700 mt-1 text-center">{pendingPercent.toFixed(2)}%</div>
                           </td>
+                          <td className="px-6 py-4 text-center">
+                            <div className="relative inline-block text-left">
+                              <button
+                                onClick={() => setActiveDropdownRow(activeDropdownRow === row.taskId ? null : (row.taskId || null))}
+                                className="p-1 rounded-full hover:bg-gray-200 transition-colors focus:outline-none"
+                                aria-label="Options"
+                              >
+                                <MoreVertical className="w-5 h-5 text-gray-600" />
+                              </button>
+                              {activeDropdownRow === row.taskId && row.taskId && (
+                                <div className="origin-top-right absolute right-0 mt-2 w-32 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                                  <div className="py-1">
+                                    <button
+                                      onClick={() => {
+                                        if (row.taskId) setViewedTaskId(row.taskId);
+                                        setActiveDropdownRow(null);
+                                      }}
+                                      className="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                                    >
+                                      View Details
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </td>
                         </tr>
                       );
                     })}
@@ -2945,6 +2975,13 @@ export default function ShopReport({ assignerId }: { assignerId?: string } = {})
           </AnimatePresence>
         </div>
       </div>
+
+      {viewedTaskId && (
+        <TaskDetailsPanel
+          taskId={viewedTaskId}
+          onClose={() => setViewedTaskId(null)}
+        />
+      )}
     </div>
   );
 }
