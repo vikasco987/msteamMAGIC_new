@@ -102,13 +102,7 @@ export async function GET(req: Request) {
                     { isHidden: false }
                 ]
             },
-            {
-                OR: [
-                    { createdByClerkId: { in: teamUserIds } },
-                    { assigneeId: { in: teamUserIds } },
-                    { assigneeIds: { hasSome: teamUserIds } }
-                ]
-            },
+            { createdByClerkId: { in: teamUserIds } },
             startDateParam || endDateParam || (selectedMonth && selectedYear) ? { createdAt: dateFilter } : {}
         ]
       },

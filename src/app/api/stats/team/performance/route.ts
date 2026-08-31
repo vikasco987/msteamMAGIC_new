@@ -161,11 +161,7 @@ export async function GET(req: Request) {
     const tasks = await prisma.task.findMany({
       where: {
         createdAt: { gte: earliestDate },
-        OR: [
-            { createdByClerkId: { in: teamUserIds } },
-            { assigneeId: { in: teamUserIds } },
-            { assigneeIds: { hasSome: teamUserIds } }
-        ]
+        createdByClerkId: { in: teamUserIds }
       },
       select: {
           createdByClerkId: true,
