@@ -5,6 +5,7 @@ import { Search, Printer, RotateCcw, AlertTriangle, CheckCircle, Clock, Truck, S
 import toast from "react-hot-toast";
 import ItemReportsModal from "../components/ItemReportsModal";
 import SerialHistoryModal from "../components/SerialHistoryModal";
+import TakePrinterModal from "../components/TakePrinterModal";
 
 export default function InventoryDashboard() {
   const [items, setItems] = useState<any[]>([]);
@@ -14,6 +15,7 @@ export default function InventoryDashboard() {
   const [activeDashboardTab, setActiveDashboardTab] = useState<"stock" | "tracker" | "usage_report">("stock");
 
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showTakePrinterModal, setShowTakePrinterModal] = useState(false);
   const [newItemData, setNewItemData] = useState({ name: "", sku: "", quantity: "0", type: "HARDWARE" });
 
   // Edit Stock modal states
@@ -713,9 +715,18 @@ export default function InventoryDashboard() {
           </div>
 
           <div className="flex gap-4">
+            <a href="/inventory/printer-report" className="px-4 py-2 bg-purple-50 text-purple-700 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-purple-100 transition-colors flex items-center">
+              Printer Report ➔
+            </a>
             <a href="/dispatch" className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-indigo-100 transition-colors flex items-center">
               Dispatch Dashboard ➔
             </a>
+            <button 
+              onClick={() => setShowTakePrinterModal(true)}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-indigo-700 transition-colors"
+            >
+              🖨️ Take Printer
+            </button>
             <button 
               onClick={() => setShowAddModal(true)}
               className="px-4 py-2 bg-slate-800 text-white rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-slate-700 transition-colors"
@@ -1056,6 +1067,17 @@ export default function InventoryDashboard() {
           </div>
         )}
       </div>
+
+      {showTakePrinterModal && (
+        <TakePrinterModal 
+          onClose={() => setShowTakePrinterModal(false)}
+          onSuccess={() => {
+            fetchInventory();
+            if (activeDashboardTab === "tracker") fetchTrackerSerials();
+            if (activeDashboardTab === "usage_report") fetchUsageReportData();
+          }}
+        />
+      )}
 
       {/* Add Modal */}
       {showAddModal && (

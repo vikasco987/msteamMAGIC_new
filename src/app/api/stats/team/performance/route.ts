@@ -69,7 +69,7 @@ export async function GET(req: Request) {
             where: { leaderIds: { hasSome: tlIds } },
             select: { clerkId: true }
         });
-        teamUserIds = [...tlIds, ...members.map(m => m.clerkId)];
+        teamUserIds = members.map(m => m.clerkId);
         leaderName = "All Teams";
     } else {
         // Individual TL view
@@ -84,8 +84,19 @@ export async function GET(req: Request) {
             select: { clerkId: true }
         });
         
-        teamUserIds = [leaderId, ...members.map(m => m.clerkId)];
+        teamUserIds = members.map(m => m.clerkId);
         leaderName = leaderUser?.name || "Unknown";
+    }
+
+    // If a TL has no members assigned, return empty early to prevent fetching all tasks if teamUserIds is empty
+    if (teamUserIds.length === 0) {
+        return NextResponse.json({
+            leaderName,
+            totalRevenue: 0,
+            totalReceived: 0,
+            totalSales: 0,
+            memberPerformance: []
+        });
     }
 
     // Fetch details for member performance

@@ -811,3 +811,17 @@ model SellerTarget {
   @@unique([sellerId, month, year])
   @@index([sellerId])
 }
+
+// 🖨️ Model for tracking manual printer assignments by users
+model PrinterAssignmentLog {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  printerNo     String
+  taskId        String
+  assigneeName  String
+  assigneeEmail String
+  assignedAt    DateTime @default(now())
+
+  @@index([assigneeEmail])
+  @@index([taskId])
+  @@index([printerNo])
+}

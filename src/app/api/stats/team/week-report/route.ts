@@ -60,7 +60,7 @@ export async function GET(req: Request) {
             where: { leaderIds: { hasSome: tlIds } },
             select: { clerkId: true }
         });
-        teamUserIds = [...tlIds, ...members.map(m => m.clerkId)];
+        teamUserIds = members.map(m => m.clerkId);
     } else {
         let leaderId = userId;
         if (targetTlId && isPrivileged) {
@@ -70,7 +70,16 @@ export async function GET(req: Request) {
             where: { leaderIds: { has: leaderId } },
             select: { clerkId: true }
         });
-        teamUserIds = [leaderId, ...members.map(m => m.clerkId)];
+        teamUserIds = members.map(m => m.clerkId);
+    }
+
+    if (teamUserIds.length === 0) {
+        return NextResponse.json({
+            data: [],
+            total: 0,
+            page,
+            limit
+        });
     }
 
     const dateFilter: any = {};
