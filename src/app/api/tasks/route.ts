@@ -794,6 +794,9 @@ export async function POST(req: NextRequest) {
     const clerkUser = await users.getUser(userId);
     const assignerEmail = clerkUser.emailAddresses?.[0]?.emailAddress || "unknown";
     const assignerName = clerkUser.firstName || clerkUser.username || "Unknown";
+    
+    const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
+    const currentDepartment = dbUser?.currentDepartment || "Digital";
 
     const status = "todo" as const;
 
@@ -899,6 +902,9 @@ export async function POST(req: NextRequest) {
         createdByEmail: assignerEmail,
         createdAt: new Date(),
         updatedAt: new Date(),
+        
+        departmentAtSale: currentDepartment,
+        saleType: body.saleType || "New Sale",
 
         customFields: {
           activeTab: toNullableString(body.activeTab || (body.customFields as any)?.activeTab),

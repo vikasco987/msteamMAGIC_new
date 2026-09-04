@@ -27,6 +27,7 @@ interface User {
     role: string;
     isTeamLeader: boolean;
     leaderIds: string[];
+    currentDepartment?: string;
     banned?: boolean;
 }
 
@@ -101,6 +102,28 @@ export default function TeamManagementPage() {
             if (res.ok) {
                 toast.success("Leaders assigned successfully");
                 setUsers(users.map(u => u.clerkId === targetUserId ? { ...u, leaderIds } : u));
+            } else {
+                toast.error("Assignment failed");
+            }
+        } catch (error) {
+            toast.error("An error occurred");
+        } finally {
+            setUpdatingUserId(null);
+        }
+    };
+
+    const handleAssignDepartment = async (targetUserId: string, currentDepartment: string) => {
+        setUpdatingUserId(targetUserId);
+        try {
+            const res = await fetch('/api/admin/teams', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ targetUserId, currentDepartment })
+            });
+
+            if (res.ok) {
+                toast.success("Department assigned successfully");
+                setUsers(users.map(u => u.clerkId === targetUserId ? { ...u, currentDepartment } : u));
             } else {
                 toast.error("Assignment failed");
             }
@@ -242,6 +265,20 @@ export default function TeamManagementPage() {
                                         <ArrowRightLeft size={14} />
                                         MIGRATE DATA
                                     </button>
+                                </div>
+
+                                <div className="flex flex-col items-end w-32">
+                                    <span className="text-[10px] font-black uppercase text-slate-400 mb-1">Department</span>
+                                    <select
+                                        value={u.currentDepartment || "Digital"}
+                                        onChange={(e) => handleAssignDepartment(u.clerkId, e.target.value)}
+                                        disabled={updatingUserId === u.clerkId}
+                                        className="text-sm font-medium text-slate-900 w-full p-2.5 bg-slate-50 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none hover:border-indigo-400 cursor-pointer"
+                                    >
+                                        <option value="Digital">Digital</option>
+                                        <option value="Retention">Retention</option>
+                                        <option value="Onboarding">Onboarding</option>
+                                    </select>
                                 </div>
 
                                 <div className="flex flex-col items-end w-56">

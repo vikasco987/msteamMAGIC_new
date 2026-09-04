@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
 import { format, parseISO, addDays, subDays } from "date-fns";
 import {
     Download, TrendingUp, Zap, Target, Award, User, Layers, Calendar, ExternalLink, Sun, Moon, UserPlus, PhoneCall, PhoneForwarded, Clock, AlertTriangle, FilePlus, Briefcase, RefreshCw, Activity
@@ -164,6 +165,11 @@ export default function GrandMatrixPage() {
                             <button onClick={() => setViewMode("MASTER")} className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === "MASTER" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : isDark ? "text-slate-500 hover:text-white" : "text-slate-400 hover:text-slate-900"}`}>Master Hub</button>
                             <button onClick={() => setViewMode("DEEP_DIVE")} className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === "DEEP_DIVE" ? "bg-rose-600 text-white shadow-lg shadow-rose-500/20" : isDark ? "text-slate-500 hover:text-white" : "text-slate-400 hover:text-slate-900"}`}>Deep Audit</button>
                         </div>
+                        
+                        <Link href="/department-sales" className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl hover:-translate-y-1 transition-all flex items-center gap-2 ${isDark ? 'bg-amber-600 text-white shadow-amber-500/20' : 'bg-indigo-600 text-white shadow-indigo-600/20'}`}>
+                            Department Sales →
+                        </Link>
+
                         <button onClick={() => fetchMatrix()} className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl hover:-translate-y-1 transition-all flex items-center gap-2 ${isDark ? 'bg-emerald-600 text-white shadow-emerald-500/20' : 'bg-slate-900 text-white shadow-slate-900/10'}`}>
                             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Force Sync
                         </button>

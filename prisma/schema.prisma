@@ -41,6 +41,9 @@ model Task {
 
   paymentHistory Json[] @default([]) // keep for transaction logs
   customFields   Json?
+  
+  departmentAtSale String?
+  saleType         String? @default("New Sale")
 
   phone         String?
   email         String?
@@ -188,6 +191,9 @@ model User {
 
   isTeamLeader Boolean  @default(false)
   leaderIds    String[] @default([]) // Clerk IDs of the Team Leaders
+
+  currentDepartment String? @default("Digital")
+  historyLogs       DepartmentHistoryLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -824,4 +830,16 @@ model PrinterAssignmentLog {
   @@index([assigneeEmail])
   @@index([taskId])
   @@index([printerNo])
+}
+
+model DepartmentHistoryLog {
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId             String   @db.ObjectId
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  previousDepartment String?
+  newDepartment      String
+  changedBy          String?    // Clerk ID of admin
+  createdAt          DateTime @default(now())
+
+  @@index([userId])
 }

@@ -51,6 +51,7 @@ export async function GET(req: NextRequest) {
                 role: (u.publicMetadata?.role as string) || "user",
                 isTeamLeader: dbUser?.isTeamLeader || false,
                 leaderIds: dbUser?.leaderIds || [],
+                currentDepartment: dbUser?.currentDepartment || "Digital",
                 synced: !!dbUser,
                 banned: u.banned
             };
@@ -78,11 +79,14 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
-        const { targetUserId, isTeamLeader, leaderIds } = await req.json();
+        const { targetUserId, isTeamLeader, leaderIds, currentDepartment } = await req.json();
 
         if (!targetUserId) {
             return NextResponse.json({ error: "Missing targetUserId" }, { status: 400 });
         }
+        
+        const existingDbUser = await prisma.user.findUnique({ where: { clerkId: targetUserId } });
+        const previousDepartment = existingDbUser?.currentDepartment || "Digital";
 
         // Get target user from Clerk to ensure they exist and get details
         const targetUser = await client.users.getUser(targetUserId);
@@ -110,6 +114,7 @@ export async function POST(req: NextRequest) {
             update: {
                 isTeamLeader: isTeamLeader !== undefined ? isTeamLeader : undefined,
                 leaderIds: leaderIds !== undefined ? leaderIds : undefined,
+                currentDepartment: currentDepartment !== undefined ? currentDepartment : undefined,
                 name: `${targetUser.firstName || ""} ${targetUser.lastName || ""}`.trim() || targetUser.username || "Unnamed",
                 email: targetUser.emailAddresses[0].emailAddress,
                 role: newRole.toUpperCase()
@@ -118,11 +123,23 @@ export async function POST(req: NextRequest) {
                 clerkId: targetUserId,
                 isTeamLeader: isTeamLeader || false,
                 leaderIds: leaderIds || [],
+                currentDepartment: currentDepartment || "Digital",
                 name: `${targetUser.firstName || ""} ${targetUser.lastName || ""}`.trim() || targetUser.username || "Unnamed",
                 email: targetUser.emailAddresses[0].emailAddress,
                 role: newRole.toUpperCase()
             }
         });
+
+        if (currentDepartment !== undefined && currentDepartment !== previousDepartment) {
+            await prisma.departmentHistoryLog.create({
+                data: {
+                    userId: updatedUser.id,
+                    previousDepartment,
+                    newDepartment: currentDepartment,
+                    changedBy: userId
+                }
+            });
+        }
 
         return NextResponse.json({ success: true, user: updatedUser });
     } catch (error) {
