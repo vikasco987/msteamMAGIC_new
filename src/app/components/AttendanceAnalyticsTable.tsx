@@ -108,7 +108,7 @@ export default function AttendanceAnalyticsTable({ month: propMonth, all = false
       if (Array.isArray(json)) {
         const normalized = json.map((r: any) => ({
           ...r,
-          date: new Date(r.date).toISOString().slice(0, 10)
+          date: new Date(r.date).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })
         }));
         setGranularData(normalized);
       }

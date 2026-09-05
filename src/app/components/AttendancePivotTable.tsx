@@ -83,7 +83,7 @@ export default function AttendancePivotTable({ month: propMonth, all = false }: 
   const grouped: Record<string, Record<string, Attendance>> = {};
   data.forEach((row) => {
     const emp = row.employeeName || row.userId || "Unknown";
-    const dateKey = new Date(row.date).toISOString().slice(0, 10);
+    const dateKey = new Date(row.date).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
     if (!grouped[emp]) grouped[emp] = {};
     grouped[emp][dateKey] = {
       ...row,

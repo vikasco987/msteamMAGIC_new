@@ -62,7 +62,7 @@ function ReportContent() {
         const userLogs = Array.isArray(allLogs) ? allLogs.filter((l: any) => l.userId === userId)
           .map((r: any) => ({
              ...r, 
-             date: new Date(r.date).toISOString().slice(0, 10) 
+             date: new Date(r.date).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }) 
           })) : [];
         
         setLogs(userLogs);
