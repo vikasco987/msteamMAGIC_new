@@ -553,21 +553,21 @@ import { prisma } from "@/lib/prisma";
 import { getAuth } from "@clerk/nextjs/server";
 import moment from "moment-timezone";
 
-// 🔹 Helper: Get tomorrow's IST start & end, and current UTC timestamp
+// 🔹 Helper: Get today's IST start & end, and current UTC timestamp
 function getISTDayRange() {
   const nowIST = moment().tz("Asia/Kolkata");
-  const tomorrowIST = nowIST.clone().add(1, "day").startOf("day"); // ✅ IST midnight for tomorrow
-  const endTomorrowIST = tomorrowIST.clone().endOf("day");
+  const todayIST = nowIST.clone().startOf("day"); // ✅ IST midnight for today
+  const endTodayIST = todayIST.clone().endOf("day");
 
   return {
-    startUTC: tomorrowIST.clone().utc().toDate(),      // for DB query
-    endUTC: endTomorrowIST.clone().utc().toDate(),     // for DB query
-    dateForDB: tomorrowIST.clone().utc().toDate(),     // store as date in DB
+    startUTC: todayIST.clone().utc().toDate(),      // for DB query
+    endUTC: endTodayIST.clone().utc().toDate(),     // for DB query
+    dateForDB: todayIST.clone().utc().toDate(),     // store as date in DB
     nowUTC: nowIST.clone().utc().toDate(),             // actual current timestamp UTC
   };
 }
 
-// ✅ Fetch tomorrow's attendance (if needed)
+// ✅ Fetch today's attendance (if needed)
 export async function GET(req: Request) {
   try {
     const { userId } = getAuth(req as any);
@@ -622,7 +622,7 @@ export async function POST(req: Request) {
 
     const { startUTC, endUTC, dateForDB, nowUTC } = getISTDayRange();
 
-    // Check if user already has an attendance record for tomorrow
+    // Check if user already has an attendance record for today
     let attendance = await prisma.attendance.findFirst({
       where: { userId, date: { gte: startUTC, lte: endUTC } },
       orderBy: { createdAt: "desc" },
@@ -633,7 +633,7 @@ export async function POST(req: Request) {
       attendance = await prisma.attendance.create({
         data: {
           userId,
-          date: dateForDB,   // ✅ tomorrow's IST midnight in UTC
+          date: dateForDB,   // ✅ today's IST midnight in UTC
           checkIn: nowUTC,   // current timestamp in UTC
           status: "Present",
         },

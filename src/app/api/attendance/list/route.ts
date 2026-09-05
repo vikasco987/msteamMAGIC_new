@@ -534,8 +534,11 @@ export async function GET(req: Request) {
         select: { clerkId: true, name: true, email: true }
       });
 
-      // Only inject "Absent" for actual employees
-      const employeeProfiles = await prisma.employeeProfile.findMany({ select: { email: true } });
+      // Only inject "Absent" for actual employees who are active or on notice period
+      const employeeProfiles = await prisma.employeeProfile.findMany({ 
+        where: { employmentStatus: { in: ["Active", "Notice Period"] } },
+        select: { email: true } 
+      });
       const employeeEmails = new Set(employeeProfiles.map(e => e.email.toLowerCase()));
 
       const presentUserIds = new Set(enriched.map(r => r.userId));

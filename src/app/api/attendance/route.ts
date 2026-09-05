@@ -1151,16 +1151,16 @@ function getDistance(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return R * c;
 }
 
-// 🔹 Get tomorrow's IST midnight and current UTC
+// 🔹 Get today's IST midnight and current UTC
 function getISTDayRange() {
   const nowIST = moment().tz("Asia/Kolkata");
-  const tomorrowIST = nowIST.clone().add(1, "day").startOf("day"); // ✅ tomorrow midnight
-  const endTomorrowIST = tomorrowIST.clone().endOf("day");
+  const todayIST = nowIST.clone().startOf("day"); // ✅ today midnight
+  const endTodayIST = todayIST.clone().endOf("day");
 
   return {
-    startUTC: tomorrowIST.clone().utc().toDate(),    // for DB query
-    endUTC: endTomorrowIST.clone().utc().toDate(),   // for DB query
-    dateForDB: tomorrowIST.clone().utc().toDate(),   // store as 'date'
+    startUTC: todayIST.clone().utc().toDate(),    // for DB query
+    endUTC: endTodayIST.clone().utc().toDate(),   // for DB query
+    dateForDB: todayIST.clone().utc().toDate(),   // store as 'date'
     nowUTC: nowIST.clone().utc().toDate(),           // actual current timestamp
   };
 }
@@ -1195,7 +1195,7 @@ export async function POST(req: Request) {
       verified = distance <= MAX_DISTANCE_METERS;
     }
 
-    // ✅ Find tomorrow's attendance record
+    // ✅ Find today's attendance record
     let attendance = await prisma.attendance.findFirst({
       where: { userId, date: { gte: startUTC, lte: endUTC } },
       orderBy: { createdAt: "desc" },
@@ -1212,7 +1212,7 @@ export async function POST(req: Request) {
       }
 
       if (attendance?.checkIn) {
-        return NextResponse.json({ error: "Already checked in tomorrow" }, { status: 400 });
+        return NextResponse.json({ error: "Already checked in today" }, { status: 400 });
       }
 
       let status = !verified ? "Unverified" : "On Time";
@@ -1239,10 +1239,10 @@ export async function POST(req: Request) {
 
     if (type === "checkOut") {
       if (!attendance?.checkIn) {
-        return NextResponse.json({ error: "No check-in found for tomorrow" }, { status: 400 });
+        return NextResponse.json({ error: "No check-in found for today" }, { status: 400 });
       }
       if (attendance.checkOut) {
-        return NextResponse.json({ error: "Already checked out tomorrow" }, { status: 400 });
+        return NextResponse.json({ error: "Already checked out today" }, { status: 400 });
       }
 
       const checkInTime = new Date(attendance.checkIn);
