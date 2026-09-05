@@ -431,24 +431,32 @@ export async function GET(req: Request) {
 
     // ---------------- Default: Today ----------------
     if (!date && !month) {
-      const today = new Date();
-      const startDate = new Date(today.setHours(0, 0, 0, 0));
-      const endDate = new Date(today.setHours(23, 59, 59, 999));
+      // Get today in IST
+      const todayIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+      const y = todayIST.getFullYear();
+      const m = todayIST.getMonth();
+      const d = todayIST.getDate();
+      // IST is UTC +5:30 -> midnight IST is 18:30 previous day UTC
+      const startDate = new Date(Date.UTC(y, m, d, -5, -30, 0, 0));
+      const endDate = new Date(Date.UTC(y, m, d, 18, 29, 59, 999));
       where.date = { gte: startDate, lte: endDate };
     }
 
     // ---------------- Date Filter ----------------
     if (date) {
-      const startDate = new Date(`${date}T00:00:00.000Z`);
-      const endDate = new Date(`${date}T23:59:59.999Z`);
+      const [y, m, d] = date.split('-').map(Number);
+      // IST is UTC +5:30 -> midnight IST is 18:30 previous day UTC
+      const startDate = new Date(Date.UTC(y, m - 1, d, -5, -30, 0, 0));
+      const endDate = new Date(Date.UTC(y, m - 1, d, 18, 29, 59, 999));
       where.date = { gte: startDate, lte: endDate };
     }
 
     // ---------------- Month Filter ----------------
     if (month) {
-      const startDate = new Date(`${month}-01T00:00:00.000Z`);
-      const endDate = new Date(startDate);
-      endDate.setMonth(endDate.getMonth() + 1);
+      const [y, m] = month.split('-').map(Number);
+      // IST midnight of 1st of month
+      const startDate = new Date(Date.UTC(y, m - 1, 1, -5, -30, 0, 0));
+      const endDate = new Date(Date.UTC(y, m, 1, -5, -30, 0, 0)); // 1st of next month
       where.date = { gte: startDate, lt: endDate };
     }
 
