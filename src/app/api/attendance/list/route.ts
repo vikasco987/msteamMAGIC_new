@@ -544,10 +544,30 @@ export async function GET(req: Request) {
           .map(e => e.email.toLowerCase())
       );
 
+      // -------------------------------------------------------------
+      // ONLY show as Absent if they have checked in AT LEAST ONCE this month
+      // -------------------------------------------------------------
+      const currentMonthStart = new Date(targetDateStr);
+      currentMonthStart.setDate(1);
+      currentMonthStart.setHours(0, 0, 0, 0);
+
+      const endOfCurrentMonth = new Date(currentMonthStart);
+      endOfCurrentMonth.setMonth(endOfCurrentMonth.getMonth() + 1);
+
+      const thisMonthAttendances = await prisma.attendance.findMany({
+        where: {
+          date: { gte: currentMonthStart, lt: endOfCurrentMonth }
+        },
+        select: { userId: true },
+        distinct: ['userId']
+      });
+      const activeUserIdsThisMonth = new Set(thisMonthAttendances.map(a => a.userId));
+
       const presentUserIds = new Set(enriched.map(r => r.userId));
       const absentUsers = allUsers.filter(u => 
         !presentUserIds.has(u.clerkId) && 
-        employeeEmails.has(u.email.toLowerCase())
+        employeeEmails.has(u.email.toLowerCase()) &&
+        activeUserIdsThisMonth.has(u.clerkId)
       );
 
       const absentRecords = absentUsers.map(u => ({
