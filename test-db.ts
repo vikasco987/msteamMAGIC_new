@@ -1,16 +1,12 @@
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
 
 async function main() {
-  try {
-    const count = await prisma.attendance.count()
-    console.log('Successfully connected to DB. Attendance count:', count)
-  } catch (e) {
-    console.error('Failed to connect to DB:', e)
-  } finally {
-    await prisma.$disconnect()
-  }
+  const records = await prisma.attendance.findMany({
+    take: 5,
+    orderBy: { createdAt: 'desc' }
+  });
+  console.log("Last 5 attendances:", JSON.stringify(records, null, 2));
 }
 
-main()
+main().catch(console.error).finally(() => prisma.$disconnect());

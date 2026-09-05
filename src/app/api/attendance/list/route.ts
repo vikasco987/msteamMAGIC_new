@@ -536,10 +536,13 @@ export async function GET(req: Request) {
 
       // Only inject "Absent" for actual employees who are active or on notice period
       const employeeProfiles = await prisma.employeeProfile.findMany({ 
-        where: { employmentStatus: { in: ["Active", "Notice Period"] } },
-        select: { email: true } 
+        select: { email: true, employmentStatus: true } 
       });
-      const employeeEmails = new Set(employeeProfiles.map(e => e.email.toLowerCase()));
+      const employeeEmails = new Set(
+        employeeProfiles
+          .filter(e => e.employmentStatus === "Active" || e.employmentStatus === "Notice Period")
+          .map(e => e.email.toLowerCase())
+      );
 
       // -------------------------------------------------------------
       // ONLY show as Absent if they have checked in AT LEAST ONCE this month

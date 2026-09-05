@@ -716,7 +716,9 @@ export default function AttendanceTable({ all = false }: AttendanceTableProps) {
                               {formatTime(row.checkIn)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-mono">
-                              {row.checkOut ? (
+                              {row.status === "Absent" ? (
+                                <span className="text-gray-400">-</span>
+                              ) : row.checkOut ? (
                                 <span className="text-gray-700">{formatTime(row.checkOut)}</span>
                               ) : (
                                 <span className="text-amber-500 font-bold text-xs bg-amber-50 border border-amber-200 px-2 py-1 rounded-full">Working...</span>
