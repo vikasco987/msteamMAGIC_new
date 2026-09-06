@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 import { 
     Filter, Download, Search, LayoutDashboard, TrendingUp, Users, DollarSign,
-    Briefcase, Calendar, ChevronDown, CheckCircle2, AlertCircle, RefreshCw
+    Briefcase, Calendar, ChevronDown, CheckCircle2, AlertCircle, RefreshCw, Crown
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
