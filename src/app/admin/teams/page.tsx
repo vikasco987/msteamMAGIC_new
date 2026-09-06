@@ -11,10 +11,13 @@ import {
     Crown,
     ChevronRight,
     Loader2,
-    CheckCircle2
+    CheckCircle2,
+    ArrowRightLeft,
+    AlertTriangle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import Select from 'react-select';
 
 interface User {
     id: string;
@@ -23,7 +26,9 @@ interface User {
     email: string;
     role: string;
     isTeamLeader: boolean;
-    leaderId: string | null;
+    leaderIds: string[];
+    currentDepartment?: string;
+    banned?: boolean;
 }
 
 export default function TeamManagementPage() {
@@ -39,6 +44,12 @@ export default function TeamManagementPage() {
     const toggleExpandedTL = (tlId: string) => {
         setExpandedTLs(prev => ({ ...prev, [tlId]: !prev[tlId] }));
     };
+
+    // Migration State
+    const [isMigrateModalOpen, setIsMigrateModalOpen] = useState(false);
+    const [migrateFromUser, setMigrateFromUser] = useState<User | null>(null);
+    const [migrateToUser, setMigrateToUser] = useState<string>('');
+    const [migrating, setMigrating] = useState(false);
 
     useEffect(() => {
         if (isLoaded && currentUser) {
@@ -86,18 +97,18 @@ export default function TeamManagementPage() {
         }
     };
 
-    const handleAssignLeader = async (targetUserId: string, leaderId: string | null) => {
+    const handleAssignLeader = async (targetUserId: string, leaderIds: string[]) => {
         setUpdatingUserId(targetUserId);
         try {
             const res = await fetch('/api/admin/teams', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ targetUserId, leaderId })
+                body: JSON.stringify({ targetUserId, leaderIds })
             });
 
             if (res.ok) {
-                toast.success("Leader assigned successfully");
-                setUsers(users.map(u => u.clerkId === targetUserId ? { ...u, leaderId } : u));
+                toast.success("Leaders assigned successfully");
+                setUsers(users.map(u => u.clerkId === targetUserId ? { ...u, leaderIds } : u));
             } else {
                 toast.error("Assignment failed");
             }
@@ -105,6 +116,65 @@ export default function TeamManagementPage() {
             toast.error("An error occurred");
         } finally {
             setUpdatingUserId(null);
+        }
+    };
+
+    const handleAssignDepartment = async (targetUserId: string, currentDepartment: string) => {
+        setUpdatingUserId(targetUserId);
+        try {
+            const res = await fetch('/api/admin/teams', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ targetUserId, currentDepartment })
+            });
+
+            if (res.ok) {
+                toast.success("Department assigned successfully");
+                setUsers(users.map(u => u.clerkId === targetUserId ? { ...u, currentDepartment } : u));
+            } else {
+                toast.error("Assignment failed");
+            }
+        } catch (error) {
+            toast.error("An error occurred");
+        } finally {
+            setUpdatingUserId(null);
+        }
+    };
+
+    const handleMigrateData = async () => {
+        if (!migrateFromUser || !migrateToUser) {
+            toast.error("Please select a destination user");
+            return;
+        }
+        if (migrateFromUser.clerkId === migrateToUser) {
+            toast.error("Source and destination cannot be the same");
+            return;
+        }
+
+        setMigrating(true);
+        try {
+            const res = await fetch('/api/admin/users/transfer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fromUserId: migrateFromUser.clerkId,
+                    toUserId: migrateToUser
+                })
+            });
+
+            if (res.ok) {
+                toast.success("Data migrated successfully");
+                setIsMigrateModalOpen(false);
+                setMigrateFromUser(null);
+                setMigrateToUser('');
+            } else {
+                const data = await res.json();
+                toast.error(data.error || "Migration failed");
+            }
+        } catch (error) {
+            toast.error("An error occurred during migration");
+        } finally {
+            setMigrating(false);
         }
     };
 
@@ -191,6 +261,7 @@ export default function TeamManagementPage() {
                                             {u.role}
                                         </span>
                                         {u.isTeamLeader && <span className="text-[10px] bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full uppercase tracking-tighter font-black">TL Priority</span>}
+                                        {u.banned && <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full uppercase tracking-tighter font-black">BANNED</span>}
                                     </h3>
                                     <p className="text-sm font-bold text-slate-400">{u.email}</p>
                                 </div>
@@ -207,20 +278,75 @@ export default function TeamManagementPage() {
                                         {updatingUserId === u.clerkId ? <Loader2 size={14} className="animate-spin" /> : (u.isTeamLeader ? "REVOKE TL" : "MAKE TL")}
                                     </button>
                                 </div>
-
+                                
                                 <div className="flex flex-col items-end">
-                                    <span className="text-[10px] font-black uppercase text-slate-400 mb-1">Assigned Leader</span>
-                                    <select
-                                        value={u.leaderId || ''}
-                                        onChange={(e) => handleAssignLeader(u.clerkId, e.target.value || null)}
-                                        disabled={u.isTeamLeader || updatingUserId === u.clerkId}
-                                        className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    <span className="text-[10px] font-black uppercase text-slate-400 mb-1">Actions</span>
+                                    <button
+                                        onClick={() => {
+                                            setMigrateFromUser(u);
+                                            setIsMigrateModalOpen(true);
+                                        }}
+                                        className="px-4 py-2 rounded-xl text-xs font-black transition-all bg-amber-100 text-amber-700 hover:bg-amber-200 border border-amber-200 flex items-center gap-2"
                                     >
-                                        <option value="">No Leader</option>
-                                        {teamLeaders.filter(tl => tl.clerkId !== u.clerkId).map(tl => (
-                                            <option key={tl.clerkId} value={tl.clerkId}>{tl.name}</option>
-                                        ))}
+                                        <ArrowRightLeft size={14} />
+                                        MIGRATE DATA
+                                    </button>
+                                </div>
+
+                                <div className="flex flex-col items-end w-32">
+                                    <span className="text-[10px] font-black uppercase text-slate-400 mb-1">Department</span>
+                                    <select
+                                        value={u.currentDepartment || "Digital"}
+                                        onChange={(e) => handleAssignDepartment(u.clerkId, e.target.value)}
+                                        disabled={updatingUserId === u.clerkId}
+                                        className="text-sm font-medium text-slate-900 w-full p-2.5 bg-slate-50 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none hover:border-indigo-400 cursor-pointer"
+                                    >
+                                        <option value="Digital">Digital</option>
+                                        <option value="Retention">Retention</option>
+                                        <option value="Onboarding">Onboarding</option>
                                     </select>
+                                </div>
+
+                                <div className="flex flex-col items-end w-56">
+                                    <span className="text-[10px] font-black uppercase text-slate-400 mb-1">Assigned Leaders</span>
+                                    <Select
+                                        isMulti
+                                        options={teamLeaders.filter(tl => tl.clerkId !== u.clerkId).map(tl => ({
+                                            value: tl.clerkId,
+                                            label: tl.name
+                                        }))}
+                                        value={
+                                            (u.leaderIds || []).map(id => {
+                                                const tl = teamLeaders.find(t => t.clerkId === id);
+                                                return { value: id, label: tl ? tl.name : id };
+                                            })
+                                        }
+                                        onChange={(selectedOptions: any) => {
+                                            const newLeaderIds = selectedOptions ? selectedOptions.map((opt: any) => opt.value) : [];
+                                            handleAssignLeader(u.clerkId, newLeaderIds);
+                                        }}
+                                        isDisabled={u.isTeamLeader || updatingUserId === u.clerkId}
+                                        placeholder="No Leader..."
+                                        className="text-sm font-medium text-slate-900 w-full text-left"
+                                        styles={{
+                                            control: (baseStyles, state) => ({
+                                                ...baseStyles,
+                                                padding: '2px',
+                                                borderRadius: '0.75rem',
+                                                borderColor: state.isFocused ? '#4f46e5' : '#cbd5e1',
+                                                boxShadow: state.isFocused ? '0 0 0 1px #4f46e5' : 'none',
+                                                minHeight: '42px',
+                                                backgroundColor: (u.isTeamLeader || updatingUserId === u.clerkId) ? '#f8fafc' : 'white',
+                                                '&:hover': {
+                                                    borderColor: '#4f46e5'
+                                                }
+                                            }),
+                                            menu: (baseStyles) => ({
+                                                ...baseStyles,
+                                                zIndex: 50
+                                            })
+                                        }}
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -243,7 +369,7 @@ export default function TeamManagementPage() {
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {teamLeaders.map(tl => {
-                            const teamMembers = users.filter(u => u.leaderId === tl.clerkId);
+                            const teamMembers = users.filter(u => u.leaderIds?.includes(tl.clerkId));
                             const isExpanded = !!expandedTLs[tl.clerkId];
                             
                             return (
@@ -316,6 +442,94 @@ export default function TeamManagementPage() {
                     </div>
                 </div>
             )}
+
+            {/* Migration Modal */}
+            <AnimatePresence>
+                {isMigrateModalOpen && migrateFromUser && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white rounded-[24px] p-6 max-w-lg w-full shadow-2xl border border-slate-200"
+                        >
+                            <div className="flex items-center gap-3 text-amber-600 mb-4">
+                                <AlertTriangle size={24} />
+                                <h2 className="text-xl font-black">Migrate Account Data</h2>
+                            </div>
+                            
+                            <p className="text-sm text-slate-600 mb-6 font-medium">
+                                You are about to migrate all data (Tasks, CRM Forms, Attendance, Payments, etc.) from <strong className="text-slate-900">{migrateFromUser.name}</strong> to a new account.
+                                This action is permanent.
+                            </p>
+
+                            <div className="space-y-4 mb-6">
+                                <div>
+                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">From (Old Account)</label>
+                                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-700">
+                                        {migrateFromUser.name} ({migrateFromUser.email})
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">To (New Account)</label>
+                                    <Select
+                                        options={users.filter(u => u.clerkId !== migrateFromUser.clerkId).map(u => ({
+                                            value: u.clerkId,
+                                            label: `${u.name} (${u.email})`
+                                        }))}
+                                        value={
+                                            migrateToUser 
+                                                ? { 
+                                                    value: migrateToUser, 
+                                                    label: `${users.find(u => u.clerkId === migrateToUser)?.name || ''} (${users.find(u => u.clerkId === migrateToUser)?.email || ''})` 
+                                                  } 
+                                                : null
+                                        }
+                                        onChange={(option: any) => setMigrateToUser(option?.value || '')}
+                                        placeholder="Search destination user..."
+                                        className="text-sm font-medium text-slate-900"
+                                        styles={{
+                                            control: (baseStyles, state) => ({
+                                                ...baseStyles,
+                                                padding: '4px',
+                                                borderRadius: '0.75rem',
+                                                borderColor: state.isFocused ? '#f59e0b' : '#cbd5e1',
+                                                boxShadow: state.isFocused ? '0 0 0 1px #f59e0b' : 'none',
+                                                '&:hover': {
+                                                    borderColor: '#f59e0b'
+                                                }
+                                            })
+                                        }}
+                                        isSearchable
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                                <button
+                                    onClick={() => {
+                                        setIsMigrateModalOpen(false);
+                                        setMigrateToUser('');
+                                    }}
+                                    disabled={migrating}
+                                    className="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50"
+                                >
+                                    CANCEL
+                                </button>
+                                <button
+                                    onClick={handleMigrateData}
+                                    disabled={migrating || !migrateToUser}
+                                    className="px-5 py-2.5 rounded-xl text-sm font-black text-white bg-amber-600 hover:bg-amber-700 transition-colors shadow-lg shadow-amber-600/20 disabled:opacity-50 flex items-center gap-2"
+                                >
+                                    {migrating ? <Loader2 size={16} className="animate-spin" /> : <ArrowRightLeft size={16} />}
+                                    {migrating ? "MIGRATING..." : "CONFIRM MIGRATION"}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
