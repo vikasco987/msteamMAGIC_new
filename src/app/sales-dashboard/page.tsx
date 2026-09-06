@@ -158,16 +158,23 @@ export default function SalesDashboardPage() {
             <span className="text-xs font-bold">{showCards ? "Hide" : "Unhide"}</span>
           </button>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <Link
+            href="/department-sales"
+            className="text-sm font-black text-white bg-indigo-900 hover:bg-indigo-800 rounded-lg px-5 py-2.5 shadow-md flex items-center gap-2 transition-all uppercase tracking-wider border border-indigo-700"
+          >
+            <TrendingUp size={16} />
+            Department Sales
+          </Link>
           <button
             onClick={() => router.push("/payments-today")}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-sm"
+            className="px-4 py-2.5 text-sm font-bold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-sm"
           >
             View Today Payments
           </button>
           <Link
             href="/goals"
-            className="text-sm font-medium text-blue-600 hover:bg-blue-50 border border-blue-600 rounded-lg px-4 py-2"
+            className="text-sm font-bold text-indigo-600 hover:bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-2.5 shadow-sm"
           >
             Set Goals
           </Link>
