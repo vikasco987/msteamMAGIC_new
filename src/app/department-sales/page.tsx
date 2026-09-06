@@ -34,6 +34,11 @@ export default function DepartmentSalesDashboard() {
     const [showCards, setShowCards] = useState(true);
     const [activeTab, setActiveTab] = useState('overview');
     const [isFullScreen, setIsFullScreen] = useState(false);
+    
+    // Member History State
+    const [memberHistory, setMemberHistory] = useState<any>(null);
+    const [loadingHistory, setLoadingHistory] = useState(false);
+    const [expandedMember, setExpandedMember] = useState<string | null>(null);
 
     const tabs = [
         { key: "overview", label: "Overview" },
@@ -41,6 +46,7 @@ export default function DepartmentSalesDashboard() {
         { key: "week", label: "Week on Week" },
         { key: "month", label: "Month on Month" },
         { key: "assigner", label: "Assigner-Wise" },
+        { key: "history", label: "Member History" },
     ];
 
     useEffect(() => {
@@ -107,6 +113,30 @@ export default function DepartmentSalesDashboard() {
             setLoading(false);
         }
     };
+
+    const fetchMemberHistory = async () => {
+        setLoadingHistory(true);
+        try {
+            const res = await fetch('/api/stats/department-sales/member-history');
+            if (res.ok) {
+                const json = await res.json();
+                setMemberHistory(json.data);
+            } else {
+                toast.error("Failed to fetch member history");
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("An error occurred");
+        } finally {
+            setLoadingHistory(false);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === 'history' && !memberHistory) {
+            fetchMemberHistory();
+        }
+    }, [activeTab]);
 
     const exportToCSV = () => {
         if (!data?.detailedSales) return;
@@ -482,6 +512,105 @@ export default function DepartmentSalesDashboard() {
                                 </>
                             ),
                             data.analytics.assignerData
+                        )}
+
+                        {/* 6. MEMBER HISTORY TAB */}
+                        {activeTab === 'history' && (
+                            <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm p-6">
+                                <h3 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-2">
+                                    <Calendar className="text-indigo-500" size={20} />
+                                    Department Transfer History
+                                </h3>
+                                
+                                {loadingHistory ? (
+                                    <div className="py-12 flex flex-col items-center justify-center space-y-4">
+                                        <RefreshCw className="animate-spin text-indigo-600" size={24} />
+                                        <p className="text-slate-500 font-bold">Analyzing Transfers...</p>
+                                    </div>
+                                ) : !memberHistory || memberHistory.length === 0 ? (
+                                    <div className="py-12 text-center text-slate-400 font-medium">No transfer history found.</div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {memberHistory.map((member: any) => (
+                                            <div key={member.clerkId} className="border border-slate-200 rounded-2xl overflow-hidden transition-all">
+                                                <div 
+                                                    className={`p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50 ${expandedMember === member.clerkId ? 'bg-slate-50 border-b border-slate-200' : 'bg-white'}`}
+                                                    onClick={() => setExpandedMember(expandedMember === member.clerkId ? null : member.clerkId)}
+                                                >
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center font-black text-indigo-700">
+                                                            {member.name.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-bold text-slate-900">{member.name}</h4>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <span className="text-xs font-semibold text-slate-500">Current:</span>
+                                                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${
+                                                                    member.currentDepartment === 'Digital' ? 'bg-indigo-100 text-indigo-700' :
+                                                                    member.currentDepartment === 'Retention' ? 'bg-emerald-100 text-emerald-700' :
+                                                                    member.currentDepartment === 'Onboarding' ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-700'
+                                                                }`}>
+                                                                    {member.currentDepartment}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-4">
+                                                        <span className="text-sm font-bold text-slate-500">{member.tenures.length} Tenures</span>
+                                                        <ChevronDown size={20} className={`text-slate-400 transition-transform ${expandedMember === member.clerkId ? 'rotate-180' : ''}`} />
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Expanded Timeline */}
+                                                {expandedMember === member.clerkId && (
+                                                    <div className="p-6 bg-slate-50/50">
+                                                        <div className="relative pl-6 border-l-2 border-slate-200 space-y-8">
+                                                            {member.tenures.map((t: any, idx: number) => (
+                                                                <div key={idx} className="relative">
+                                                                    <div className={`absolute -left-[31px] top-1 w-4 h-4 rounded-full border-4 border-white ${t.isCurrent ? 'bg-indigo-500 shadow-[0_0_0_4px_rgba(99,102,241,0.2)]' : 'bg-slate-300'}`}></div>
+                                                                    
+                                                                    <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
+                                                                        <div className="flex justify-between items-start mb-4">
+                                                                            <div>
+                                                                                <span className={`px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider ${
+                                                                                    t.department === 'Digital' ? 'bg-indigo-100 text-indigo-700' :
+                                                                                    t.department === 'Retention' ? 'bg-emerald-100 text-emerald-700' :
+                                                                                    t.department === 'Onboarding' ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-700'
+                                                                                }`}>
+                                                                                    {t.department}
+                                                                                </span>
+                                                                                <p className="text-xs font-bold text-slate-500 mt-2">
+                                                                                    {new Date(t.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} 
+                                                                                    {' → '} 
+                                                                                    {t.isCurrent ? 'Present' : new Date(t.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                                                </p>
+                                                                            </div>
+                                                                            {t.isCurrent && (
+                                                                                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 bg-indigo-50 px-2 py-1 rounded">Active</span>
+                                                                            )}
+                                                                        </div>
+                                                                        
+                                                                        <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-100">
+                                                                            <div>
+                                                                                <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Total Revenue</p>
+                                                                                <p className="text-lg font-black text-slate-900">{formatCurrency(t.totalRevenue)}</p>
+                                                                            </div>
+                                                                            <div>
+                                                                                <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Total Sales</p>
+                                                                                <p className="text-lg font-black text-slate-900">{t.totalSales}</p>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         )}
 
                     </motion.div>
