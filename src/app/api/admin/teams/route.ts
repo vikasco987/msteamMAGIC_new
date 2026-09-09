@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
-        const { targetUserId, isTeamLeader, leaderIds, currentDepartment } = await req.json();
+        const { targetUserId, isTeamLeader, hasFullKamAccess, leaderIds, currentDepartment } = await req.json();
 
         if (!targetUserId) {
             return NextResponse.json({ error: "Missing targetUserId" }, { status: 400 });
@@ -113,6 +113,7 @@ export async function POST(req: NextRequest) {
             where: { clerkId: targetUserId },
             update: {
                 isTeamLeader: isTeamLeader !== undefined ? isTeamLeader : undefined,
+                hasFullKamAccess: hasFullKamAccess !== undefined ? hasFullKamAccess : undefined,
                 leaderIds: leaderIds !== undefined ? leaderIds : undefined,
                 currentDepartment: currentDepartment !== undefined ? currentDepartment : undefined,
                 name: `${targetUser.firstName || ""} ${targetUser.lastName || ""}`.trim() || targetUser.username || "Unnamed",
@@ -122,6 +123,7 @@ export async function POST(req: NextRequest) {
             create: {
                 clerkId: targetUserId,
                 isTeamLeader: isTeamLeader || false,
+                hasFullKamAccess: hasFullKamAccess || false,
                 leaderIds: leaderIds || [],
                 currentDepartment: currentDepartment || "Digital",
                 name: `${targetUser.firstName || ""} ${targetUser.lastName || ""}`.trim() || targetUser.username || "Unnamed",

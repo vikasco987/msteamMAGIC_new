@@ -195,7 +195,7 @@ export default function PaginationControls({
   page,
   setPage,
   totalItems,
-  options = [10, 20, 50, 100],
+  options = [10, 20, 50, 100, 500, 1000, 5000, 10000],
   maxPageButtons = 5,
 }: PaginationControlsProps) {
   const totalPages = Math.ceil(totalItems / limit);

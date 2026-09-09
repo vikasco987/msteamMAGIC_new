@@ -190,6 +190,7 @@ model User {
   role    String // "ADMIN", "MASTER", "SELLER"
 
   isTeamLeader Boolean  @default(false)
+  hasFullKamAccess Boolean @default(false)
   leaderIds    String[] @default([]) // Clerk IDs of the Team Leaders
 
   currentDepartment String? @default("Digital")

@@ -72,7 +72,7 @@ export async function GET(req: Request) {
     }
 
     const isSeller = normalizedRole === "seller";
-    const isPrivileged = normalizedRole === "admin" || normalizedRole === "master";
+    const isPrivileged = normalizedRole === "admin" || normalizedRole === "master" || (dbUser as any)?.hasFullKamAccess;
 
     console.log(`[KAM API Debug] User: ${userId}, Role: ${normalizedRole}, isTL: ${isTL}, TeamCount: ${teamMemberIds.length}, isPrivileged: ${isPrivileged}`);
 

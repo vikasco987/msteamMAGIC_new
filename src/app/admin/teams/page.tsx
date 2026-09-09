@@ -26,6 +26,7 @@ interface User {
     email: string;
     role: string;
     isTeamLeader: boolean;
+    hasFullKamAccess?: boolean;
     leaderIds: string[];
     currentDepartment?: string;
     banned?: boolean;
@@ -87,6 +88,28 @@ export default function TeamManagementPage() {
             if (res.ok) {
                 toast.success(isTeamLeader ? "User set as Team Leader" : "Team Leader status removed");
                 setUsers(users.map(u => u.clerkId === targetUserId ? { ...u, isTeamLeader } : u));
+            } else {
+                toast.error("Update failed");
+            }
+        } catch (error) {
+            toast.error("An error occurred");
+        } finally {
+            setUpdatingUserId(null);
+        }
+    };
+
+    const handleUpdateKamAccess = async (targetUserId: string, hasFullKamAccess: boolean) => {
+        setUpdatingUserId(targetUserId);
+        try {
+            const res = await fetch('/api/admin/teams', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ targetUserId, hasFullKamAccess })
+            });
+
+            if (res.ok) {
+                toast.success(hasFullKamAccess ? "Full KAM Access granted" : "Full KAM Access revoked");
+                setUsers(users.map(u => u.clerkId === targetUserId ? { ...u, hasFullKamAccess } : u));
             } else {
                 toast.error("Update failed");
             }
@@ -278,6 +301,19 @@ export default function TeamManagementPage() {
                                         {updatingUserId === u.clerkId ? <Loader2 size={14} className="animate-spin" /> : (u.isTeamLeader ? "REVOKE TL" : "MAKE TL")}
                                     </button>
                                 </div>
+                                
+                                {u.isTeamLeader && (
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-[10px] font-black uppercase text-slate-400 mb-1">KAM Access</span>
+                                        <button
+                                            onClick={() => handleUpdateKamAccess(u.clerkId, !u.hasFullKamAccess)}
+                                            disabled={updatingUserId === u.clerkId}
+                                            className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${u.hasFullKamAccess ? 'bg-emerald-600 text-white shadow-lg' : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'}`}
+                                        >
+                                            {updatingUserId === u.clerkId ? <Loader2 size={14} className="animate-spin" /> : (u.hasFullKamAccess ? "REVOKE KAM" : "FULL KAM")}
+                                        </button>
+                                    </div>
+                                )}
                                 
                                 <div className="flex flex-col items-end">
                                     <span className="text-[10px] font-black uppercase text-slate-400 mb-1">Actions</span>
