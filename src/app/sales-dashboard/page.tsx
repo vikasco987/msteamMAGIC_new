@@ -160,6 +160,13 @@ export default function SalesDashboardPage() {
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <Link
+            href="/reports/sales-register"
+            className="px-4 py-2.5 text-sm font-bold text-white bg-slate-900 border border-slate-800 rounded-lg hover:bg-black shadow-sm uppercase tracking-tight flex items-center gap-2"
+          >
+            <FileSpreadsheet size={16} />
+            GST Report
+          </Link>
+          <Link
             href="/department-sales"
             className="text-sm font-black text-white bg-indigo-900 hover:bg-indigo-800 rounded-lg px-5 py-2.5 shadow-md flex items-center gap-2 transition-all uppercase tracking-wider border border-indigo-700"
           >

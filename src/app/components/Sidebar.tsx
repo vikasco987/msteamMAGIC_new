@@ -103,6 +103,19 @@ const NAVIGATION_GROUPS = [
       { label: 'POS Sign-ups', icon: Users, href: '/admin/pos-signups', roles: ['admin', 'master'] },
       { label: 'DB Backups', icon: Database, href: '/admin/backups', roles: ['master'] },
     ]
+  },
+  {
+    title: "Global Search Index",
+    hiddenGroup: true,
+    items: [
+      { label: 'Sales Register (GST)', icon: FileSpreadsheet, href: '/reports/sales-register', roles: ['admin', 'master'] },
+      { label: 'Department Sales', icon: TrendingUp, href: '/department-sales', roles: ['admin', 'master'] },
+      { label: 'Set Goals', icon: TrendingUp, href: '/goals', roles: ['admin', 'master'] },
+      { label: 'Dispatch Panel', icon: Building2, href: '/dispatch', roles: ['admin', 'master', 'seller', 'tl'] },
+      { label: 'Inventory Management', icon: Database, href: '/inventory', roles: ['admin', 'master'] },
+      { label: 'Floating Tasks', icon: ClipboardList, href: '/floating-task', roles: ['admin', 'master', 'tl'] },
+      { label: 'Today Payments', icon: HandCoins, href: '/payments-today', roles: ['admin', 'master', 'tl'] },
+    ]
   }
 ];
 
@@ -448,6 +461,10 @@ export default function Sidebar() {
           )}
 
           {NAVIGATION_GROUPS.map((group, gIdx) => {
+            
+            // Skip hidden search index groups when not searching
+            if ((group as any).hiddenGroup && searchTerm.trim() === "") return null;
+
             // Filter group items by role and dynamic permissions
             const visibleItems = group.items.filter(i => {
               const hasHardcodedRole = i.roles.includes(userRole);
