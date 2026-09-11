@@ -172,7 +172,7 @@ export default function WeekReportTable() {
                       className={`last:border-b-0 transition-colors duration-200 hover:bg-gray-100 ${rowBg}`}
                     >
                       <td className="p-4 font-bold text-gray-700">
-                        Week of {format(new Date(week.week), "d MMM yyyy")}
+                        {week.week}
                       </td>
                       <td className="p-4 font-bold text-gray-600">
                         {format(new Date(week.startDate), "d MMM yyyy")} -{" "}

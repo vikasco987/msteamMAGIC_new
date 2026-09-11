@@ -12,7 +12,8 @@ import {
   Percent, 
   Lock,
   Eye,
-  EyeOff
+  EyeOff,
+  FileSpreadsheet
 } from "lucide-react";
 
 import RevenueByAssigneeChart from "../components/charts/RevenueByAssigneeChart";
@@ -164,7 +165,7 @@ export default function SalesDashboardPage() {
             className="px-4 py-2.5 text-sm font-bold text-white bg-slate-900 border border-slate-800 rounded-lg hover:bg-black shadow-sm uppercase tracking-tight flex items-center gap-2"
           >
             <FileSpreadsheet size={16} />
-            GST Report
+            GST Report (Sales Register)
           </Link>
           <Link
             href="/department-sales"
