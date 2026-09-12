@@ -754,23 +754,28 @@ export async function GET(req: Request) {
 
       const emp = byEmployee[key];
 
-      const checkInDate = r.checkIn ? toZonedTime(new Date(r.checkIn), TIME_ZONE) : null;
-      const checkOutDate = r.checkOut ? toZonedTime(new Date(r.checkOut), TIME_ZONE) : null;
-      const recordDate = toZonedTime(new Date(r.date), TIME_ZONE);
-      const isToday = recordDate.toDateString() === nowIST.toDateString();
+      // Convert UTC to IST by shifting 5.5 hours, then always use getUTC* methods
+      const checkInDate = r.checkIn ? new Date(r.checkIn.getTime() + 5.5 * 60 * 60 * 1000) : null;
+      const checkOutDate = r.checkOut ? new Date(r.checkOut.getTime() + 5.5 * 60 * 60 * 1000) : null;
+      
+      const recordIstTime = new Date(r.date.getTime() + 5.5 * 60 * 60 * 1000);
+      const recordDateString = recordIstTime.toISOString().split("T")[0];
+      const nowIstTime = new Date(new Date().getTime() + 5.5 * 60 * 60 * 1000);
+      const nowDateString = nowIstTime.toISOString().split("T")[0];
+      const isToday = recordDateString === nowDateString;
 
       // Count as present only if checked in
       if (checkInDate) {
         emp.daysPresent += 1;
 
-        const checkInLocal = checkInDate.getHours() + checkInDate.getMinutes() / 60;
+        const checkInLocal = checkInDate.getUTCHours() + checkInDate.getUTCMinutes() / 60;
         if (checkInLocal > 10) emp.daysLate += 1;
         else emp.earlyArrival += 1;
       }
 
       // Early leave check
       if (checkOutDate) {
-        const checkOutLocal = checkOutDate.getHours() + checkOutDate.getMinutes() / 60;
+        const checkOutLocal = checkOutDate.getUTCHours() + checkOutDate.getUTCMinutes() / 60;
         if (checkOutLocal < 19) emp.earlyLeaves += 1;
       }
 
