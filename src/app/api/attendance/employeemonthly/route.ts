@@ -83,9 +83,13 @@ export async function GET(req: Request) {
       const workingHrs = checkInDate && checkOutDate ? calcWorkingHours(checkInDate, checkOutDate) : 0;
       const dayType = calcDayType(checkInDate, checkOutDate, workingHrs);
 
+      // Convert DB UTC date into local IST date string
+      const istTime = new Date(r.date.getTime() + 5.5 * 60 * 60 * 1000);
+      const dateString = istTime.toISOString().split("T")[0];
+
       return {
         serial: i + 1,
-        date: r.date.toISOString().split("T")[0],
+        date: dateString,
         employeeName: r.employeeName ?? "-",
         checkIn: checkInDate?.toISOString() ?? null,
         checkOut: checkOutDate?.toISOString() ?? null,
