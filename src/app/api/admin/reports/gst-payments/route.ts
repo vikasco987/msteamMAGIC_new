@@ -79,6 +79,7 @@ export async function GET(req: NextRequest) {
           "Address": fullAddr,
           "Total Budget": p.task!.amount || 0,
           "Transaction Amount": p.received || 0,
+          "Payment Mode": p.mode || "N/A",
           "UTR / Transaction No.": p.utr || "N/A",
           "Transaction ID": p.utr || "N/A",
           "Updated By": p.updatedBy || "System",
@@ -105,6 +106,7 @@ export async function GET(req: NextRequest) {
       { wch: 35 }, // Address
       { wch: 15 }, // Total Budget
       { wch: 18 }, // Transaction Amount
+      { wch: 15 }, // Payment Mode
       { wch: 25 }, // UTR / Transaction No.
       { wch: 20 }, // Transaction ID
       { wch: 20 }, // Updated By
