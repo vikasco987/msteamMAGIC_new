@@ -4,6 +4,7 @@ import { auth, clerkClient } from "@clerk/nextjs/server";
 
 export async function GET(req: NextRequest) {
   try {
+    const t0 = performance.now();
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -13,11 +14,15 @@ export async function GET(req: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
 
-    const client = await clerkClient();
-    const clerkUser = await client.users.getUser(userId);
     const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
+    let rawRole = dbUser?.role;
+    if (!rawRole) {
+      const client = await clerkClient();
+      const clerkUser = await client.users.getUser(userId);
+      rawRole = clerkUser.publicMetadata?.role as string || "user";
+    }
     
-    const role = String(clerkUser.publicMetadata?.role || dbUser?.role || "user").toLowerCase();
+    const role = String(rawRole).toLowerCase();
     const isTL = dbUser?.isTeamLeader || role === 'tl';
     const isPrivileged = ['admin', 'master'].includes(role);
 
@@ -46,62 +51,77 @@ export async function GET(req: NextRequest) {
         ]
       };
     }
+    const t1 = performance.now();
 
-    const tasks = await prisma.task.findMany({
-      where: filter,
-      select: {
-        createdAt: true,
-        amount: true,
-        received: true,
-      },
-    });
-
-    const dayMap: Record<
-      string,
-      {
-        totalRevenue: number;
-        amountReceived: number;
-        totalLeads: number;
-        cumulativeRevenue?: number;
-      }
-    > = {};
-
-    for (const task of tasks) {
-      const dateKey = new Date(task.createdAt).toISOString().slice(0, 10);
-      if (!dayMap[dateKey]) {
-        dayMap[dateKey] = {
-          totalRevenue: 0,
-          amountReceived: 0,
-          totalLeads: 0,
-        };
-      }
-      dayMap[dateKey].totalRevenue += task.amount || 0;
-      dayMap[dateKey].amountReceived += task.received || 0;
-      dayMap[dateKey].totalLeads += 1;
+    const matchConditions: any = {};
+    if (!isPrivileged) {
+        matchConditions.$and = [
+            { isHidden: false },
+            {
+                $or: [
+                    { createdByClerkId: { $in: userIds } },
+                    { assigneeId: { $in: userIds } },
+                    { assigneeIds: { $in: userIds } }
+                ]
+            }
+        ];
     }
 
-    // Sort newest → oldest
-    const allDates = Object.entries(dayMap)
-      .sort(([a], [b]) => b.localeCompare(a)) // ✅ recent first
-      .map(([date, stats], index, arr) => {
-        // Calculate cumulative revenue in reverse order
-        const prevCumulative =
-          index > 0 ? (arr[index - 1][1] as any).cumulativeRevenue ?? 0 : 0;
-        const currentRevenue = stats.totalRevenue;
-        const cumulativeRevenue = prevCumulative + currentRevenue;
+    const aggregatePipeline: any[] = [];
+    if (Object.keys(matchConditions).length > 0) {
+        aggregatePipeline.push({ $match: matchConditions });
+    }
+    
+    aggregatePipeline.push({
+        $group: {
+            _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+            totalRevenue: { $sum: "$amount" },
+            amountReceived: { $sum: "$received" },
+            totalLeads: { $sum: 1 }
+        }
+    });
 
-        // Store cumulative in the source array slice so next iteration can see it
-        (arr[index][1] as any).cumulativeRevenue = cumulativeRevenue;
+    let allDates: any[] = [];
 
-        return {
-          date,
-          totalLeads: stats.totalLeads,
-          totalRevenue: stats.totalRevenue,
-          amountReceived: stats.amountReceived,
-          pendingAmount: stats.totalRevenue - stats.amountReceived,
-          cumulativeRevenue,
-        };
-      });
+    try {
+        const rawAgg = await prisma.task.aggregateRaw({ pipeline: aggregatePipeline }) as any[];
+        const newDayMap: Record<string, any> = {};
+        for (const agg of rawAgg) {
+            if (!agg._id) continue;
+            newDayMap[agg._id] = {
+                totalRevenue: typeof agg.totalRevenue === 'number' ? agg.totalRevenue : 0,
+                amountReceived: typeof agg.amountReceived === 'number' ? agg.amountReceived : 0,
+                totalLeads: typeof agg.totalLeads === 'number' ? agg.totalLeads : 0
+            };
+        }
+
+        allDates = Object.entries(newDayMap)
+          .sort(([a], [b]) => b.localeCompare(a)) // recent first
+          .map(([date, stats], index, arr) => {
+            const prevCumulative =
+              index > 0 ? (arr[index - 1][1] as any).cumulativeRevenue ?? 0 : 0;
+            const currentRevenue = stats.totalRevenue;
+            const cumulativeRevenue = prevCumulative + currentRevenue;
+    
+            (arr[index][1] as any).cumulativeRevenue = cumulativeRevenue;
+    
+            return {
+              date,
+              totalLeads: stats.totalLeads,
+              totalRevenue: stats.totalRevenue,
+              amountReceived: stats.amountReceived,
+              pendingAmount: stats.totalRevenue - stats.amountReceived,
+              cumulativeRevenue,
+            };
+          });
+
+    } catch (e) {
+        console.error("[SALES_DASH_PERF] AggregateRaw failed:", e);
+    }
+
+    const t2 = performance.now();
+
+    console.log(`[SALES_DASH_PERF] day-report | Auth: ${(t1-t0).toFixed(2)}ms | DB Aggregation: ${(t2-t1).toFixed(2)}ms | Total Days: ${allDates.length}`);
 
     const total = allDates.length;
     const paginated = allDates.slice((page - 1) * limit, page * limit);

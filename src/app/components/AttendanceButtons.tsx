@@ -20,6 +20,26 @@ const STANDARD_END_HOUR = 19; // 7 PM
 const STANDARD_WORK_HOURS_MS = 9 * 60 * 60 * 1000; // 9 hours
 const GRACE_MINUTES = 0; // No grace period
 
+// --- GEOFENCING CONSTANTS ---
+const OFFICE_LOCATION = { lat: 28.532676, lng: 77.089221 };
+const GEOFENCE_RADIUS_METERS = 50;
+
+// Haversine formula to calculate distance
+function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
+    const R = 6371e3; // metres
+    const φ1 = lat1 * Math.PI/180; // φ, λ in radians
+    const φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c; // in metres
+}
+
 // Define the type for the tabs, including the new 'motivation' tab
 type TabType = "today" | "monthly" | "Marathon";
 
@@ -29,6 +49,7 @@ export default function AttendanceButtons() {
     const [reason, setReason] = useState("");
     const [remarks, setRemarks] = useState("");
     const [showReason, setShowReason] = useState(false);
+    const [exceptionContext, setExceptionContext] = useState<string>("");
     const [actionType, setActionType] = useState<"checkIn" | "checkOut" | null>(null);
     const [checkInStatus, setCheckInStatus] = useState<"notCheckedIn" | "checkedIn" | "checkedOut">("notCheckedIn");
     const [checkInTime, setCheckInTime] = useState<string | null>(null);
@@ -162,21 +183,57 @@ export default function AttendanceButtons() {
             if (!res.ok) toast.error(data.error || `Failed to ${type}`);
             else { toast.success(`Successfully ${type === "checkIn" ? "Checked In" : "Checked Out"}!`); fetchLocation(); fetchTodayAttendance(); }
         } catch { toast.error("Error marking attendance"); }
-        finally { setLoading(false); setReason(""); setRemarks(""); setShowReason(false); setActionType(null); }
+        finally { setLoading(false); setReason(""); setRemarks(""); setShowReason(false); setExceptionContext(""); setActionType(null); }
     };
 
     const checkInClick = () => {
         const now = new Date(); const startBoundary = new Date(now); startBoundary.setHours(STANDARD_START_HOUR, GRACE_MINUTES, 0, 0);
         setActionType("checkIn");
-        if (now.getTime() > startBoundary.getTime()) setShowReason(true);
-        else handleAttendance("checkIn");
+        
+        let needsReason = false;
+        let contexts = [];
+
+        if (now.getTime() > startBoundary.getTime()) {
+            contexts.push("Late Check-in");
+            needsReason = true;
+        }
+
+        if (currentLocation && getDistanceInMeters(currentLocation.lat, currentLocation.lng, OFFICE_LOCATION.lat, OFFICE_LOCATION.lng) > GEOFENCE_RADIUS_METERS) {
+            contexts.push("Outside Office Area");
+            needsReason = true;
+        }
+
+        if (needsReason) {
+            setExceptionContext(contexts.join(" & "));
+            setShowReason(true);
+        } else {
+            handleAttendance("checkIn");
+        }
     };
 
     const checkOutClick = () => {
         const now = new Date(); const endBoundary = new Date(now); endBoundary.setHours(STANDARD_END_HOUR, 0, 0, 0);
         setActionType("checkOut");
-        if (now.getTime() < endBoundary.getTime()) setShowReason(true);
-        else handleAttendance("checkOut");
+
+        let needsReason = false;
+        let contexts = [];
+
+        if (now.getTime() < endBoundary.getTime()) {
+            contexts.push("Early Check-out");
+            needsReason = true;
+        }
+
+        if (currentLocation && getDistanceInMeters(currentLocation.lat, currentLocation.lng, OFFICE_LOCATION.lat, OFFICE_LOCATION.lng) > GEOFENCE_RADIUS_METERS) {
+            contexts.push("Outside Office Area");
+            needsReason = true;
+        }
+
+        if (needsReason) {
+            setExceptionContext(contexts.join(" & "));
+            setShowReason(true);
+        } else {
+            handleAttendance("checkOut");
+        }
     };
 
     // ------------------ Render ------------------
@@ -260,13 +317,58 @@ export default function AttendanceButtons() {
 
                     {/* Reason / Remarks */}
                     {showReason && (
-                        <div className="p-6 bg-white rounded-2xl shadow-2xl border-t-8 border-yellow-500">
-                            <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2"><FaExclamationCircle className="text-yellow-500" />Policy Exception Required</h3>
-                            <p className="text-gray-600 mb-4 border-b pb-4">You are triggering an exception ({actionType === 'checkIn' ? 'Late Check-in' : 'Early Check-out'}). Please provide a reason.</p>
-                            <div className="flex flex-col gap-4">
-                                <textarea placeholder="Reason (required)" value={reason} onChange={e => setReason(e.target.value)} className="border border-gray-300 p-4 rounded-lg focus:outline-none focus:ring-4 focus:ring-yellow-200 min-h-[100px] transition duration-300 shadow-inner" />
-                                <textarea placeholder="Remarks (optional)" value={remarks} onChange={e => setRemarks(e.target.value)} className="border border-gray-300 p-4 rounded-lg focus:outline-none focus:ring-4 focus:ring-yellow-200 min-h-[80px] transition duration-300 shadow-inner" />
-                                <button onClick={() => actionType && handleAttendance(actionType)} disabled={loading || !reason || !isLocationReady} className={`py-4 rounded-xl font-bold text-white transition duration-300 shadow-lg ${loading || !reason || !isLocationReady ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 transform hover:scale-[1.01] hover:shadow-xl"}`}>{loading ? "Submitting..." : !isLocationReady ? "Location Required" : `Submit & ${actionType === 'checkIn' ? 'PUNCH IN' : 'PUNCH OUT'}`}</button>
+                        <div className="p-8 bg-white rounded-3xl shadow-2xl border-t-8 border-yellow-500 transform transition-all duration-500 animate-fade-in-up">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="p-3 bg-yellow-100 rounded-full">
+                                    <FaExclamationCircle className="text-3xl text-yellow-600" />
+                                </div>
+                                <div>
+                                    <h3 className="text-2xl font-black text-gray-900 tracking-tight">Action Required</h3>
+                                    <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mt-1">Policy Exception: {exceptionContext}</p>
+                                </div>
+                            </div>
+                            
+                            <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 mb-6 text-gray-700">
+                                {exceptionContext.includes("Outside Office Area") && (
+                                    <div className="flex items-start gap-3 text-red-600 bg-red-50 p-4 rounded-xl mb-3 border border-red-100">
+                                        <FaMapMarkerAlt className="text-xl mt-0.5 flex-shrink-0" />
+                                        <p className="font-medium text-sm leading-relaxed">
+                                            You appear to be outside the office premises. Are you currently on a field visit or working from home?
+                                        </p>
+                                    </div>
+                                )}
+                                <p className="text-sm font-medium">Please provide a valid reason below to proceed with your {actionType === 'checkIn' ? 'punch in' : 'punch out'}.</p>
+                            </div>
+
+                            <div className="flex flex-col gap-5">
+                                {/* Quick Select Options */}
+                                {exceptionContext.includes("Outside Office Area") && (
+                                    <div className="flex flex-wrap gap-2 mb-2">
+                                        <button onClick={() => setReason("Field Visit")} className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors border ${reason === 'Field Visit' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>Field Visit</button>
+                                        <button onClick={() => setReason("Work From Home")} className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors border ${reason === 'Work From Home' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>Work From Home</button>
+                                        <button onClick={() => setReason("Client Meeting")} className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors border ${reason === 'Client Meeting' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>Client Meeting</button>
+                                    </div>
+                                )}
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Reason <span className="text-red-500">*</span></label>
+                                        <textarea placeholder="e.g., Working from home due to..." value={reason} onChange={e => setReason(e.target.value)} className="w-full border border-gray-300 p-4 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 min-h-[100px] transition duration-300 shadow-sm text-gray-800 bg-gray-50 hover:bg-white" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Remarks (Optional)</label>
+                                        <textarea placeholder="Any additional comments..." value={remarks} onChange={e => setRemarks(e.target.value)} className="w-full border border-gray-300 p-4 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 min-h-[80px] transition duration-300 shadow-sm text-gray-800 bg-gray-50 hover:bg-white" />
+                                    </div>
+                                </div>
+                                
+                                <div className="flex gap-4 mt-2">
+                                    <button onClick={() => setShowReason(false)} className="flex-1 py-4 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition duration-300">
+                                        Cancel
+                                    </button>
+                                    <button onClick={() => actionType && handleAttendance(actionType)} disabled={loading || !reason || !isLocationReady} className={`flex-[2] py-4 rounded-xl font-bold text-white transition duration-300 shadow-lg ${loading || !reason || !isLocationReady ? "bg-gray-300 text-gray-500 cursor-not-allowed shadow-none" : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transform hover:-translate-y-0.5 hover:shadow-xl"}`}>
+                                        {loading ? "Submitting..." : !isLocationReady ? "Location Required" : `Confirm & ${actionType === 'checkIn' ? 'PUNCH IN' : 'PUNCH OUT'}`}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}

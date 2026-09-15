@@ -83,6 +83,10 @@ export default function SalesDashboardPage() {
   const [showGoalProgress, setShowGoalProgress] = useState(false);
   const [showCards, setShowCards] = useState(false);
 
+  // Lazy loading state flags
+  const [loadedTabs, setLoadedTabs] = useState<Record<string, boolean>>({});
+  const [isTabLoading, setIsTabLoading] = useState(false);
+
   useEffect(() => {
     setHasMounted(true);
   }, []);
@@ -95,45 +99,85 @@ export default function SalesDashboardPage() {
     }
   }, [user, router, hasMounted]);
 
-  /* ---------- Data Load ---------- */
+  /* ---------- Initial Data Load (Overview Only) ---------- */
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchOverview = async () => {
+      const startTime = performance.now();
+      console.log(`[SALES_DASH_PERF] Starting initial dashboard load`);
       try {
-        const [statsRes, monthlyRes, assigneeRes, dayRes, weekRes, monthRes] = await Promise.all([
-          fetch("/api/stats/user-performance/overview"),
-          fetch("/api/stats/user-performance/monthly"),
-          fetch("/api/stats/user-performance/by-assignee"),
-          fetch("/api/stats/user-performance/day-report?page=1&limit=1000"),
-          fetch("/api/stats/user-performance/week-report?page=1&limit=1000"),
-          fetch("/api/stats/user-performance/mom-table")
-        ]);
-
+        const statsRes = await fetch("/api/stats/user-performance/overview");
         const statsJson = await statsRes.json();
-        const monthlyJson = await monthlyRes.json();
-        const assigneeJson = await assigneeRes.json();
-        const dayJson = await dayRes.json();
-        const weekJson = await weekRes.json();
-        const monthJson = await monthRes.json();
-
         setStats(statsJson);
-        setMonthlyData(Object.entries(monthlyJson).map(([month, revenue]) => ({
-          month,
-          revenue: Number(revenue) || 0,
-        })));
-        setAssigneeData(Object.entries(assigneeJson).map(([assignee, revenue]) => ({
-          assignee,
-          revenue: Number(revenue) || 0,
-        })));
-        setDayData(dayJson.data || []);
-        setWeekData(weekJson.data || []);
-        setMonthTableData(monthJson.data || []);
+        const elapsed = performance.now() - startTime;
+        console.log(`[SALES_DASH_PERF] Overview API loaded in ${elapsed.toFixed(0)}ms`);
       } catch (err) {
-        console.error("Dashboard Fetch Error:", err);
+        console.error("Dashboard Overview Fetch Error:", err);
       }
     };
 
-    fetchData();
+    fetchOverview();
   }, []);
+
+  /* ---------- Lazy Load Tabs Data ---------- */
+  useEffect(() => {
+    const fetchTabData = async () => {
+      // Don't re-fetch if already loaded
+      if (loadedTabs[activeTab]) return;
+
+      const startTime = performance.now();
+      setIsTabLoading(true);
+      console.log(`[SALES_DASH_PERF] Triggered fetch for tab: ${activeTab}`);
+
+      try {
+        if (activeTab === "day") {
+          const res = await fetch("/api/stats/user-performance/day-report?page=1&limit=1000");
+          const json = await res.json();
+          setDayData(json.data || []);
+          console.log(`[SALES_DASH_PERF] Day API loaded in ${(performance.now() - startTime).toFixed(0)}ms`);
+        } 
+        else if (activeTab === "week") {
+          const res = await fetch("/api/stats/user-performance/week-report?page=1&limit=1000");
+          const json = await res.json();
+          setWeekData(json.data || []);
+          console.log(`[SALES_DASH_PERF] Week API loaded in ${(performance.now() - startTime).toFixed(0)}ms`);
+        } 
+        else if (activeTab === "month") {
+          const res = await fetch("/api/stats/user-performance/mom-table");
+          const json = await res.json();
+          setMonthTableData(json.data || []);
+          console.log(`[SALES_DASH_PERF] Month API loaded in ${(performance.now() - startTime).toFixed(0)}ms`);
+        } 
+        else if (activeTab === "charts") {
+          const [monthlyRes, assigneeRes, dayRes, weekRes, monthRes] = await Promise.all([
+            fetch("/api/stats/user-performance/monthly"),
+            fetch("/api/stats/user-performance/by-assignee"),
+            fetch("/api/stats/user-performance/day-report?page=1&limit=100"), // Reduced limit for charts
+            fetch("/api/stats/user-performance/week-report?page=1&limit=100"),
+            fetch("/api/stats/user-performance/mom-table")
+          ]);
+          
+          const [monthlyJson, assigneeJson, dayJson, weekJson, monthJson] = await Promise.all([
+            monthlyRes.json(), assigneeRes.json(), dayRes.json(), weekRes.json(), monthRes.json()
+          ]);
+
+          setMonthlyData(Object.entries(monthlyJson).map(([month, revenue]) => ({ month, revenue: Number(revenue) || 0 })));
+          setAssigneeData(Object.entries(assigneeJson).map(([assignee, revenue]) => ({ assignee, revenue: Number(revenue) || 0 })));
+          setDayData(dayJson.data || []);
+          setWeekData(weekJson.data || []);
+          setMonthTableData(monthJson.data || []);
+          console.log(`[SALES_DASH_PERF] Charts APIs loaded in ${(performance.now() - startTime).toFixed(0)}ms`);
+        }
+
+        setLoadedTabs(prev => ({ ...prev, [activeTab]: true }));
+      } catch (err) {
+        console.error(`Error fetching data for tab ${activeTab}:`, err);
+      } finally {
+        setIsTabLoading(false);
+      }
+    };
+
+    fetchTabData();
+  }, [activeTab, loadedTabs]);
 
   if (!hasMounted) return null; // Prevent hydration flash
 
@@ -218,49 +262,58 @@ export default function SalesDashboardPage() {
           </div>
 
           <div className="mt-4">
-            {activeTab === "all" && <AllReportsSection />}
-            {activeTab === "day" && <DayReportTable data={dayData} />}
-            {activeTab === "week" && <WeekReportTable data={weekData} />}
-            {activeTab === "month" && <MonthReportTable data={monthTableData} />}
-            {activeTab === "assigner" && (
-              <div className="space-y-8">
-                <DayReportByAssignerTable />
-                <WeekReportByAssignerTable />
-                <CategorySalesTable />
+            {isTabLoading ? (
+              <div className="flex flex-col items-center justify-center py-20">
+                <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                <p className="mt-4 text-gray-500 font-medium">Loading report data...</p>
               </div>
-            )}
-            {activeTab === "charts" && (
-              <div className="space-y-6">
-                {!showGoalProgress ? (
-                  <>
-                    <div className="flex justify-end">
-                      <button onClick={() => setShowGoalProgress(true)} className="px-4 py-2 text-white bg-indigo-600 rounded-lg shadow">
-                        View Goal Progress
-                      </button>
-                    </div>
-                    <div className="rounded-xl bg-white shadow-sm p-6 border border-gray-200">
-                      <h2 className="text-lg font-semibold mb-4 text-gray-700">Monthly Revenue Trend</h2>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={monthlyData}>
-                          <XAxis dataKey="month" stroke="#9ca3af" fontSize={12} />
-                          <YAxis stroke="#9ca3af" fontSize={12} />
-                          <Tooltip />
-                          <Line type="monotone" dataKey="revenue" stroke="#4f46e5" strokeWidth={3} dot={{ r: 4 }} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <CumulativeChartSwitcher dayData={dayData} weekData={weekData} monthData={monthTableData} />
-                    <RevenueByAssigneeChart data={assigneeData} />
-                  </>
-                ) : (
-                  <div className="space-y-4">
-                    <button onClick={() => setShowGoalProgress(false)} className="px-4 py-2 text-indigo-600 border border-indigo-600 rounded-lg hover:bg-indigo-50">
-                      ← Back to Charts
-                    </button>
-                    <GoalProgress />
+            ) : (
+              <>
+                {activeTab === "all" && <AllReportsSection />}
+                {activeTab === "day" && <DayReportTable data={dayData} />}
+                {activeTab === "week" && <WeekReportTable data={weekData} />}
+                {activeTab === "month" && <MonthReportTable data={monthTableData} />}
+                {activeTab === "assigner" && (
+                  <div className="space-y-8">
+                    <DayReportByAssignerTable />
+                    <WeekReportByAssignerTable />
+                    <CategorySalesTable />
                   </div>
                 )}
-              </div>
+                {activeTab === "charts" && (
+                  <div className="space-y-6">
+                    {!showGoalProgress ? (
+                      <>
+                        <div className="flex justify-end">
+                          <button onClick={() => setShowGoalProgress(true)} className="px-4 py-2 text-white bg-indigo-600 rounded-lg shadow">
+                            View Goal Progress
+                          </button>
+                        </div>
+                        <div className="rounded-xl bg-white shadow-sm p-6 border border-gray-200">
+                          <h2 className="text-lg font-semibold mb-4 text-gray-700">Monthly Revenue Trend</h2>
+                          <ResponsiveContainer width="100%" height={300}>
+                            <LineChart data={monthlyData}>
+                              <XAxis dataKey="month" stroke="#9ca3af" fontSize={12} />
+                              <YAxis stroke="#9ca3af" fontSize={12} />
+                              <Tooltip />
+                              <Line type="monotone" dataKey="revenue" stroke="#4f46e5" strokeWidth={3} dot={{ r: 4 }} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <CumulativeChartSwitcher dayData={dayData} weekData={weekData} monthData={monthTableData} />
+                        <RevenueByAssigneeChart data={assigneeData} />
+                      </>
+                    ) : (
+                      <div className="space-y-4">
+                        <button onClick={() => setShowGoalProgress(false)} className="px-4 py-2 text-indigo-600 border border-indigo-600 rounded-lg hover:bg-indigo-50">
+                          ← Back to Charts
+                        </button>
+                        <GoalProgress />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </>

@@ -13,6 +13,7 @@ const safeFloat = (v: any): number => {
 
 export async function GET(req: Request) {
   try {
+    const t_start = performance.now();
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -44,6 +45,8 @@ export async function GET(req: Request) {
     const role = String(clerkUser.publicMetadata?.role || dbUser?.role || "user").toLowerCase();
     const isTL = dbUser?.isTeamLeader || role === 'tl';
     const isPrivileged = ['admin', 'master'].includes(role);
+    const t_auth_end = performance.now();
+    console.log(`[SALES_DASH_PERF] by-assigner | Auth: ${(t_auth_end - t_start).toFixed(2)}ms`);
 
     let filter: any = {
       createdAt: {
@@ -52,50 +55,117 @@ export async function GET(req: Request) {
       },
     };
 
+    // ---- User IDs calculation ----
+    const t_userids_start = performance.now();
+    let userIds: string[] = [userId];
     if (!isPrivileged) {
-      let userIds = [userId];
       if (isTL) {
-          const members = await prisma.user.findMany({
-              where: { leaderIds: { has: userId } },
-              select: { clerkId: true }
-          });
-          userIds = [userId, ...members.map(m => m.clerkId)];
+        const members = await prisma.user.findMany({
+          where: { leaderIds: { has: userId } },
+          select: { clerkId: true }
+        });
+
+        userIds = [userId, ...members.map(m => m.clerkId)];
       }
-      
       filter = {
-          ...filter,
-          OR: [
-              { createdByClerkId: { in: userIds } },
-              { assigneeId: { in: userIds } },
-              { assigneeIds: { hasSome: userIds } }
-          ]
+        ...filter,
+        OR: [
+          { createdByClerkId: { in: userIds } },
+          { assigneeId: { in: userIds } },
+          { assigneeIds: { hasSome: userIds } }
+        ]
       };
     }
+    const t_userids_end = performance.now();
+    console.log(`[SALES_DASH_PERF] by-assigner | userIds calc: ${(t_userids_end - t_userids_start).toFixed(2)}ms`);
 
-    // ✅ Fetch tasks within selected month
-    const tasks = await prisma.task.findMany({
-      where: filter,
-      select: {
-        assignerName: true,
-        assignerEmail: true,
-        createdByName: true,
-        createdByEmail: true,
-        amount: true,
-        received: true,
-        customFields: true,
+        const matchConditions: any = {
+      createdAt: {
+        $gte: { $date: startDate.toISOString() },
+        $lt: { $date: endDate.toISOString() }
+      }
+    };
+    if (!isPrivileged) {
+      matchConditions.$or = [
+        { createdByClerkId: { $in: userIds } },
+        { assigneeId: { $in: userIds } },
+        { assigneeIds: { $in: userIds } }
+      ];
+    }
+
+    const aggPipeline = [
+      { $match: matchConditions },
+      {
+        $project: {
+          aName: { $ifNull: ["$assignerName", ""] },
+          cName: { $ifNull: ["$createdByName", ""] },
+          aEmail: { $ifNull: ["$assignerEmail", ""] },
+          cEmail: { $ifNull: ["$createdByEmail", ""] },
+          amount: { $ifNull: ["$amount", 0] },
+          received: { $ifNull: ["$received", 0] },
+          deliveryCharge: { $convert: { input: "$customFields.deliveryCharge", to: "double", onError: 0, onNull: 0 } },
+          costPrice: { $convert: { input: "$customFields.costPrice", to: "double", onError: 0, onNull: 0 } }
+        }
       },
-    });
+      {
+        $project: {
+          amount: 1, received: 1, deliveryCharge: 1, costPrice: 1,
+          name: {
+            $cond: {
+              if: { $ne: ["$aName", ""] }, then: "$aName",
+              else: {
+                $cond: { if: { $ne: ["$cName", ""] }, then: "$cName", else: "Unknown" }
+              }
+            }
+          },
+          email: {
+            $cond: {
+              if: { $ne: ["$aEmail", ""] }, then: "$aEmail",
+              else: {
+                $cond: { if: { $ne: ["$cEmail", ""] }, then: "$cEmail", else: "" }
+              }
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          amount: 1, received: 1, deliveryCharge: 1, costPrice: 1, name: 1, email: 1,
+          key: {
+            $cond: { if: { $ne: ["$email", ""] }, then: "$email", else: "$name" }
+          }
+        }
+      },
+      {
+        $group: {
+          _id: "$key",
+          name: { $first: "$name" },
+          email: { $first: "$email" },
+          totalRevenue: { $sum: "$amount" },
+          amountReceived: { $sum: "$received" },
+          taskDirectExpense: { $sum: { $add: ["$deliveryCharge", "$costPrice"] } },
+          totalSales: {
+            $sum: { $cond: { if: { $gt: ["$amount", 0] }, then: 1, else: 0 } }
+          }
+        }
+      }
+    ];
 
-    // ✅ Fetch employee expenses
-    const employeeExpenses = await prisma.employeeExpense.findMany({
-      where: {
-        date: {
-          gte: startDate,
-          lt: endDate,
+    // ---- Parallel DB fetch ----
+    const t_parallel_start = performance.now();
+    const [aggTasks, employeeExpenses] = await Promise.all([
+      prisma.task.aggregateRaw({ pipeline: aggPipeline }) as unknown as any[],
+      prisma.employeeExpense.findMany({
+        where: {
+          date: { gte: startDate, lt: endDate },
         },
-      },
-    });
+      }),
+    ]);
+    const t_parallel_end = performance.now();
+    console.log(`[SALES_DASH_PERF] by-assigner | Parallel DB: ${(t_parallel_end - t_parallel_start).toFixed(2)}ms`);
 
+    // ---- JS grouping/calculation ----
+    const t_js_start = performance.now();
     // ✅ Group by assigner
     const assignerMap: Record<
       string,
@@ -111,36 +181,21 @@ export async function GET(req: Request) {
       }
     > = {};
 
-    for (const task of tasks) {
-      const name = task.assignerName || task.createdByName || "Unknown";
-      const email = task.assignerEmail || task.createdByEmail || "";
+    for (const task of aggTasks) {
+      const name = task.name || "Unknown";
+      const email = task.email || "";
+      const key = task._id || email || name;
 
-      const key = email || name;
-      if (!assignerMap[key]) {
-        assignerMap[key] = {
-          name,
-          email,
-          totalRevenue: 0,
-          amountReceived: 0,
-          totalSales: 0,
-          taskDirectExpense: 0,
-          employeeManualExpense: 0,
-          totalExpense: 0,
-        };
-      }
-
-      const customFields = (task.customFields as any) || {};
-      const delivery = safeFloat(customFields.deliveryCharge);
-      const costPrice = safeFloat(customFields.costPrice);
-      const directExp = delivery + costPrice;
-
-      assignerMap[key].totalRevenue += task.amount || 0;
-      assignerMap[key].amountReceived += task.received || 0;
-      assignerMap[key].taskDirectExpense += directExp;
-      
-      if ((task.amount || 0) > 0) {
-        assignerMap[key].totalSales += 1;
-      }
+      assignerMap[key] = {
+        name,
+        email,
+        totalRevenue: task.totalRevenue || 0,
+        amountReceived: task.amountReceived || 0,
+        totalSales: task.totalSales || 0,
+        taskDirectExpense: task.taskDirectExpense || 0,
+        employeeManualExpense: 0,
+        totalExpense: 0,
+      };
     }
 
     // Process employee expenses
@@ -174,6 +229,10 @@ export async function GET(req: Request) {
       };
     });
 
+    const t_js_end = performance.now();
+    console.log(`[SALES_DASH_PERF] by-assigner | JS calculation: ${(t_js_end - t_js_start).toFixed(2)}ms`);
+    const t_total = performance.now();
+    console.log(`[SALES_DASH_PERF] by-assigner | Total API: ${(t_total - t_start).toFixed(2)}ms`);
     return NextResponse.json({ data });
   } catch (error) {
     console.error("Error in /by-assigner:", error);

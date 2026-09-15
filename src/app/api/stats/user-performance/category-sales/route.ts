@@ -144,6 +144,8 @@ export async function GET(req: Request) {
     const endDate = new Date(startDate);
     endDate.setMonth(startDate.getMonth() + 1);
 
+    const t_start = performance.now();
+
     const tasks = await prisma.task.findMany({
       where: {
         createdAt: {
@@ -157,6 +159,8 @@ export async function GET(req: Request) {
         received: true,
       },
     });
+    
+    const t_db_end = performance.now();
 
     // Initialize all categories to 0 so they always appear
     const categoryMap: Record<
@@ -185,6 +189,8 @@ export async function GET(req: Request) {
       categoryMap[matchedCat].totalRevenue += t.amount || 0;
       categoryMap[matchedCat].amountReceived += t.received || 0;
     }
+    
+    const t_js_end = performance.now();
 
     // Prepare output and calculate derived fields (Pending Amount and Percentage)
     const result = Object.entries(categoryMap)
@@ -204,6 +210,12 @@ export async function GET(req: Request) {
           pendingPercentage,
         };
       });
+      
+    const dbTime = (t_db_end - t_start).toFixed(2);
+    const jsTime = (t_js_end - t_db_end).toFixed(2);
+    const totalTime = (t_js_end - t_start).toFixed(2);
+    
+    console.log(`[SALES_DASH_PERF] category-sales | DB: ${dbTime}ms | JS: ${jsTime}ms | Total Profiled: ${totalTime}ms | Rows: ${tasks.length}`);
 
     return NextResponse.json({ data: result, month: monthParam });
   } catch (error) {

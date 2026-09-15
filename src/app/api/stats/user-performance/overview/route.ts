@@ -4,16 +4,21 @@ import { auth, clerkClient } from "@clerk/nextjs/server";
 
 export async function GET() {
   try {
+    const t_start = performance.now();
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const client = await clerkClient();
-    const clerkUser = await client.users.getUser(userId);
     const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
+    let rawRole = dbUser?.role;
+    if (!rawRole) {
+      const client = await clerkClient();
+      const clerkUser = await client.users.getUser(userId);
+      rawRole = clerkUser.publicMetadata?.role as string || "user";
+    }
     
-    const role = String(clerkUser.publicMetadata?.role || dbUser?.role || "user").toLowerCase();
+    const role = String(rawRole).toLowerCase();
     const isTL = dbUser?.isTeamLeader || role === 'tl';
     const isPrivileged = ['admin', 'master'].includes(role);
 
@@ -49,6 +54,8 @@ export async function GET() {
       };
     }
 
+    const t_auth_end = performance.now();
+
     // ✅ Fetch only current month sales
     const tasks = await prisma.task.findMany({
       where: filter,
@@ -63,6 +70,14 @@ export async function GET() {
     const amountReceived = tasks.reduce((sum, t) => sum + (t.received || 0), 0);
     const pendingAmount = totalRevenue - amountReceived;
     const totalSales = tasks.length;
+    
+    const t_db_end = performance.now();
+
+    const authTime = (t_auth_end - t_start).toFixed(2);
+    const dbTime = (t_db_end - t_auth_end).toFixed(2);
+    const totalTime = (t_db_end - t_start).toFixed(2);
+
+    console.log(`[SALES_DASH_PERF] overview | Auth: ${authTime}ms | DB & Calc: ${dbTime}ms | Total Profiled: ${totalTime}ms | Rows: ${tasks.length}`);
 
     return NextResponse.json({
       totalRevenue,

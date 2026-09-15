@@ -46,6 +46,7 @@ export async function GET(req: NextRequest) {
         : {}),
     };
 
+    const t0 = performance.now();
     let userIds: string[] = [];
     if (!isPrivileged) {
       userIds = [userId];
@@ -56,26 +57,54 @@ export async function GET(req: NextRequest) {
           });
           userIds = [userId, ...members.map(m => m.clerkId)];
       }
-      
-      baseFilter = {
-          ...baseFilter,
-          OR: [
-              { createdByClerkId: { in: userIds } },
-              { assigneeId: { in: userIds } },
-              { assigneeIds: { hasSome: userIds } }
-          ]
-      };
     }
 
-    const tasks = await prisma.task.findMany({
-      where: baseFilter,
-      select: {
-        createdAt: true,
-        amount: true,
-        received: true,
-        customFields: true,
-      },
+    const matchConditions: any[] = [];
+    if (!isPrivileged) {
+        matchConditions.push({
+            $or: [
+                { createdByClerkId: { $in: userIds } },
+                { assigneeId: { $in: userIds } },
+                { assigneeIds: { $in: userIds } }
+            ]
+        });
+    }
+    if (assigneeId) {
+        matchConditions.push({ assigneeIds: assigneeId });
+    }
+    if (yearFilter || monthFilter) {
+        matchConditions.push({
+            createdAt: {
+                $gte: { $date: new Date(`${yearFilter || "2000"}-${monthFilter || "01"}-01T00:00:00.000Z`).toISOString() },
+                $lte: { $date: new Date(`${yearFilter || "9999"}-${monthFilter || "12"}-31T23:59:59.999Z`).toISOString() }
+            }
+        });
+    }
+
+    const aggregatePipeline: any[] = [];
+    if (matchConditions.length > 0) {
+        aggregatePipeline.push({ $match: { $and: matchConditions } });
+    }
+
+    // 🚀 EXTREME OPTIMIZATION: Do the grouping, filtering, and JSON extraction purely in MongoDB!
+    aggregatePipeline.push({
+        $group: {
+            _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+            totalRevenue: { $sum: "$amount" },
+            amountReceived: { $sum: "$received" },
+            totalLeads: { $sum: 1 },
+            deliveryCharge: { $sum: { $convert: { input: "$customFields.deliveryCharge", to: "double", onError: 0, onNull: 0 } } },
+            costPrice: { $sum: { $convert: { input: "$customFields.costPrice", to: "double", onError: 0, onNull: 0 } } }
+        }
     });
+
+    const t1 = performance.now();
+    console.log(`[SALES_DASH_PERF] mom-table STEP 1: Auth & Pipeline Setup - ${(t1-t0).toFixed(2)}ms`);
+
+    const tasksAgg: any = await prisma.task.aggregateRaw({ pipeline: aggregatePipeline });
+    
+    const t2 = performance.now();
+    console.log(`[SALES_DASH_PERF] mom-table STEP 2: MongoDB Aggregation (Tasks) - ${(t2-t1).toFixed(2)}ms`);
 
     let expenseFilter = {};
     if (!isPrivileged && userIds.length > 0) {
@@ -87,46 +116,38 @@ export async function GET(req: NextRequest) {
       expenseFilter = { assignerEmail: { in: emails } };
     }
 
+    const t3 = performance.now();
     const expenses = await prisma.employeeExpense.findMany({
       where: expenseFilter
     });
+
+    const t4 = performance.now();
+    console.log(`[SALES_DASH_PERF] mom-table STEP 3: Expenses DB Fetch - ${(t4-t3).toFixed(2)}ms | Rows: ${expenses.length}`);
 
     const monthlyMap: Record<
       string,
       { totalRevenue: number; amountReceived: number; totalLeads: number; totalExpense: number }
     > = {};
 
-    for (const task of tasks) {
-      if (!task.createdAt) continue;
-      const monthKey = new Date(task.createdAt).toISOString().slice(0, 7); // "YYYY-MM"
-
-      if (!monthlyMap[monthKey]) {
-        monthlyMap[monthKey] = {
-          totalRevenue: 0,
-          amountReceived: 0,
-          totalLeads: 0,
-          totalExpense: 0,
-        };
-      }
-
-      const customFields = (task.customFields as any) || {};
-      const delivery = safeFloat(customFields.deliveryCharge);
-      const costPrice = safeFloat(customFields.costPrice);
-      monthlyMap[monthKey].totalExpense += (delivery + costPrice);
-
-      monthlyMap[monthKey].totalRevenue +=
-        typeof task.amount === "number" ? task.amount : 0;
-      monthlyMap[monthKey].amountReceived +=
-        typeof task.received === "number" ? task.received : 0;
-      monthlyMap[monthKey].totalLeads += 1;
+    // Map aggregated tasks to our monthlyMap
+    if (Array.isArray(tasksAgg)) {
+        for (const agg of tasksAgg) {
+            if (!agg._id) continue;
+            monthlyMap[agg._id] = {
+                totalRevenue: typeof agg.totalRevenue === "number" ? agg.totalRevenue : 0,
+                amountReceived: typeof agg.amountReceived === "number" ? agg.amountReceived : 0,
+                totalLeads: typeof agg.totalLeads === "number" ? agg.totalLeads : 0,
+                totalExpense: (typeof agg.deliveryCharge === "number" ? agg.deliveryCharge : 0) + 
+                              (typeof agg.costPrice === "number" ? agg.costPrice : 0)
+            };
+        }
     }
 
+    // Process expenses manually since they are separated
     for (const exp of expenses) {
       if (!exp.date) continue;
       const monthKey = new Date(exp.date).toISOString().slice(0, 7); // "YYYY-MM"
       if (!monthlyMap[monthKey]) {
-        // Only add expense to months that already have revenue data, or we could initialize it.
-        // Usually we want to see it even if there's no revenue.
         monthlyMap[monthKey] = {
           totalRevenue: 0,
           amountReceived: 0,

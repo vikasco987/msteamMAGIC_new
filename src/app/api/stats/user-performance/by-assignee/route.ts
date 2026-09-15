@@ -4,6 +4,7 @@ import { auth, clerkClient } from "@clerk/nextjs/server";
 
 export async function GET() {
   try {
+    const t_start = performance.now();
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -38,22 +39,35 @@ export async function GET() {
       };
     }
 
-    const tasks = await prisma.task.findMany({
-      where: filter,
-      select: {
-        assigneeName: true,
-        amount: true,
-      },
-    });
+    const t_auth_end = performance.now();
 
-    const grouped: Record<string, number> = {};
+    // === NEW IMPLEMENTATION (DB Aggregation) ===
+    let groupedNew: Record<string, number> = {};
+    
+    try {
+      const groupedNewRaw = await prisma.task.groupBy({
+        by: ['assigneeName'],
+        where: filter,
+        _sum: { amount: true },
+      });
 
-    for (const task of tasks) {
-      const name = task.assigneeName || "Unassigned";
-      grouped[name] = (grouped[name] || 0) + (task.amount || 0);
+      for (const group of groupedNewRaw) {
+        const name = group.assigneeName || "Unassigned";
+        groupedNew[name] = (groupedNew[name] || 0) + (group._sum.amount || 0);
+      }
+    } catch (e) {
+      console.error("[SALES_DASH_PERF] groupBy failed:", e);
+      return NextResponse.json({ error: "Aggregation failed" }, { status: 500 });
     }
+    const t_db_end = performance.now();
 
-    return NextResponse.json(grouped);
+    const authTime = (t_auth_end - t_start).toFixed(2);
+    const dbTime = (t_db_end - t_auth_end).toFixed(2);
+    const totalTime = (t_db_end - t_start).toFixed(2);
+
+    console.log(`[SALES_DASH_PERF] by-assignee | Auth: ${authTime}ms | DB GroupBy: ${dbTime}ms | Total Profiled: ${totalTime}ms`);
+
+    return NextResponse.json(groupedNew);
   } catch (error) {
     console.error("Error in by-assignee stats:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
