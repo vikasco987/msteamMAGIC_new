@@ -1266,6 +1266,8 @@ export async function GET(req: NextRequest) {
           { email: { contains: query, mode: 'insensitive' } },
           { phone: { contains: query, mode: 'insensitive' } },
           { customerName: { contains: query, mode: 'insensitive' } },
+          { dispatchLog: { awbNumber: { contains: query, mode: 'insensitive' } } },
+          { serialNumber: { number: { contains: query, mode: 'insensitive' } } }
         ];
 
         // If query looks like a valid MongoDB ObjectId (24 hex characters)

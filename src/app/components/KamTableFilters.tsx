@@ -132,6 +132,9 @@ export const TaskFilters = ({
           t.status,
           t.assignerName,
           t.customFields?.location,
+          t.customFields?.awbNumber,
+          t.customFields?.awb,
+          t.customFields?.serialNumber,
           ...(notesMap[t.id] || []).map((note) => note.content),
         ]
           .filter(Boolean)

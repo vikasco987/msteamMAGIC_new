@@ -1546,7 +1546,7 @@ export const TaskFilters = ({
         <div className="relative flex-grow">
           <input
             type="text"
-            placeholder="Search tasks..."
+            placeholder="Search tasks by text, AWB, or Printer number..."
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm"
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}

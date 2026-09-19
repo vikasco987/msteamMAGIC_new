@@ -334,6 +334,9 @@ export default function Board() {
         task.customFields?.shopName?.toString().toLowerCase().includes(lowerFilter) ||
         task.customFields?.customerName?.toString().toLowerCase().includes(lowerFilter) ||
         task.customFields?.phone?.toString().includes(lowerFilter) ||
+        task.customFields?.awbNumber?.toString().toLowerCase().includes(lowerFilter) ||
+        task.customFields?.awb?.toString().toLowerCase().includes(lowerFilter) ||
+        task.customFields?.serialNumber?.toString().toLowerCase().includes(lowerFilter) ||
         task.id?.toLowerCase().includes(lowerFilter);
 
       const taskCategory = (task.customFields?.activeTab || task.tags?.[0] || "other").toString().toLowerCase();

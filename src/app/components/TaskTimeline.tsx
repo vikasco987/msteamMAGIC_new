@@ -439,7 +439,10 @@ export default function TaskTimeline() {
       currentTasks = currentTasks.filter(task =>
         (task.name || "").toLowerCase().includes(lowerSearchTerm) ||
         (task.shop || "").toLowerCase().includes(lowerSearchTerm) ||
-        (task.customer || "").toLowerCase().includes(lowerSearchTerm)
+        (task.customer || "").toLowerCase().includes(lowerSearchTerm) ||
+        (task as any).customFields?.awbNumber?.toString().toLowerCase().includes(lowerSearchTerm) ||
+        (task as any).customFields?.awb?.toString().toLowerCase().includes(lowerSearchTerm) ||
+        (task as any).customFields?.serialNumber?.toString().toLowerCase().includes(lowerSearchTerm)
       );
     }
     if (selectedAvatar) {
