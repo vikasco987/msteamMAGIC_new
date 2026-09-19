@@ -1260,15 +1260,36 @@ export async function GET(req: NextRequest) {
       }
 
       if (query) {
+        let relatedTaskIds: string[] = [];
+        try {
+          const relatedDispatchLogs = await prisma.dispatchLog.findMany({
+            where: { awbNumber: { contains: query, mode: 'insensitive' } },
+            select: { taskId: true }
+          });
+          const relatedSerialNumbers = await prisma.serialNumber.findMany({
+            where: { number: { contains: query, mode: 'insensitive' } },
+            select: { taskId: true }
+          });
+
+          relatedTaskIds = [
+            ...relatedDispatchLogs.map((d: { taskId: string }) => d.taskId).filter(Boolean),
+            ...relatedSerialNumbers.map((s: { taskId: string | null }) => s.taskId).filter(Boolean)
+          ] as string[];
+        } catch(err) {
+          console.error("Error finding related AWB/Serial task ids:", err);
+        }
+
         const queryConditions: any[] = [
           { title: { contains: query, mode: 'insensitive' } },
           { shopName: { contains: query, mode: 'insensitive' } },
           { email: { contains: query, mode: 'insensitive' } },
           { phone: { contains: query, mode: 'insensitive' } },
-          { customerName: { contains: query, mode: 'insensitive' } },
-          { dispatchLog: { awbNumber: { contains: query, mode: 'insensitive' } } },
-          { serialNumber: { number: { contains: query, mode: 'insensitive' } } }
+          { customerName: { contains: query, mode: 'insensitive' } }
         ];
+
+        if (relatedTaskIds.length > 0) {
+          queryConditions.push({ id: { in: relatedTaskIds } });
+        }
 
         // If query looks like a valid MongoDB ObjectId (24 hex characters)
         if (/^[0-9a-fA-F]{24}$/.test(query)) {
