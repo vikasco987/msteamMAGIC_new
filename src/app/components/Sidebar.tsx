@@ -474,7 +474,7 @@ export default function Sidebar() {
               // If we have dynamic permissions, they override or restrict
               if (dynamicPermissions !== null) {
                 // Safety Lock: Master should always see Access Control & Business Setup to avoid locking out
-                if (userRole === 'master' && (i.label === 'Access Control' || i.label === 'Business Setup' || i.label === 'Payment Portal Magic Scale' || i.label === 'Onboard Magic Scale' || i.label === 'Profit & Loss')) {
+                if (userRole === 'master' && (i.label === 'Access Control' || i.label === 'Business Setup' || i.label === 'Profit & Loss')) {
                   hasPermission = true;
                 } else if (i.label === 'Agreements' || i.label === 'Setup Agreement' || i.label === 'My Details') {
                   hasPermission = hasHardcodedRole;
