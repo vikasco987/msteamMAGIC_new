@@ -223,7 +223,7 @@ const PaymentPortal = () => {
               </div>
             </div>
             <div>
-              <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter leading-none mb-1">Payment Portal</h1>
+              <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter leading-none mb-1">Onboard Magic Scale</h1>
               <div className="flex items-center gap-3">
                 <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Generate & track secure payment links via Razorpay</p>
                 {hasAnalyticsAccess && (
