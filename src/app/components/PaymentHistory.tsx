@@ -312,12 +312,16 @@ export default function PaymentHistory({ paymentHistory, taskTitle, taskDetails,
 
             <div className="flex items-center justify-between mt-4">
               <div className="flex items-center gap-2">
-                <button onClick={() => handleDownload(entry)} className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-xl hover:bg-green-100 transition-all font-black text-[10px] uppercase tracking-tight">
-                  <FaDownload size={12} /> Invoice
-                </button>
-                <button onClick={() => openEditModal(entry)} className="p-2 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-600 hover:text-white transition-all border border-amber-100" title="Customize Invoice PDF">
-                  <FaFilter size={12} />
-                </button>
+                {!businessSettings?.disableInvoiceDownload && (
+                  <>
+                    <button onClick={() => handleDownload(entry)} className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-xl hover:bg-green-100 transition-all font-black text-[10px] uppercase tracking-tight">
+                      <FaDownload size={12} /> Invoice
+                    </button>
+                    <button onClick={() => openEditModal(entry)} className="p-2 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-600 hover:text-white transition-all border border-amber-100" title="Customize Invoice PDF">
+                      <FaFilter size={12} />
+                    </button>
+                  </>
+                )}
                 {isMaster && (
                   <>
                     <button
@@ -339,10 +343,12 @@ export default function PaymentHistory({ paymentHistory, taskTitle, taskDetails,
                 )}
               </div>
               
-              <button onClick={() => handleCopyLink(entry)} disabled={copyingId === entryId} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-xl hover:bg-black transition-all font-black text-[10px] uppercase tracking-tight disabled:opacity-50">
-                {copyingId === entryId ? <span className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin"></span> : <FaCopy size={12} />}
-                Link
-              </button>
+              {!businessSettings?.disableInvoiceDownload && (
+                <button onClick={() => handleCopyLink(entry)} disabled={copyingId === entryId} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-xl hover:bg-black transition-all font-black text-[10px] uppercase tracking-tight disabled:opacity-50">
+                  {copyingId === entryId ? <span className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin"></span> : <FaCopy size={12} />}
+                  Link
+                </button>
+              )}
             </div>
           </div>
         );

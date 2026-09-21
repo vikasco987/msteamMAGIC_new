@@ -17,7 +17,8 @@ export async function POST(req: NextRequest) {
         const { 
             name, address, gstin, phone, email, website, logo,
             bankName, bankBranch, accountName, accountNumber, ifscCode, terms, signatureUrl,
-            defaultPrinterCost, syncLinksToProfitLoss, syncTasksToProfitLoss, showEmployeeSalaryHistory
+            defaultPrinterCost, syncLinksToProfitLoss, syncTasksToProfitLoss, showEmployeeSalaryHistory,
+            disableInvoiceDownload
         } = body;
 
         const existing = await prisma.businessSettings.findFirst();
@@ -30,7 +31,8 @@ export async function POST(req: NextRequest) {
                     name, address, gstin, phone, email, website, logo,
                     bankName, bankBranch, accountName, accountNumber, ifscCode, terms, signatureUrl,
                     defaultPrinterCost, syncLinksToProfitLoss, syncTasksToProfitLoss,
-                    showEmployeeSalaryHistory: showEmployeeSalaryHistory !== undefined ? showEmployeeSalaryHistory : existing.showEmployeeSalaryHistory
+                    showEmployeeSalaryHistory: showEmployeeSalaryHistory !== undefined ? showEmployeeSalaryHistory : existing.showEmployeeSalaryHistory,
+                    disableInvoiceDownload: disableInvoiceDownload !== undefined ? disableInvoiceDownload : existing.disableInvoiceDownload
                 }
             });
         } else {
@@ -39,7 +41,8 @@ export async function POST(req: NextRequest) {
                     name, address, gstin, phone, email, website, logo,
                     bankName, bankBranch, accountName, accountNumber, ifscCode, terms, signatureUrl,
                     defaultPrinterCost, syncLinksToProfitLoss, syncTasksToProfitLoss,
-                    showEmployeeSalaryHistory: showEmployeeSalaryHistory || false
+                    showEmployeeSalaryHistory: showEmployeeSalaryHistory || false,
+                    disableInvoiceDownload: disableInvoiceDownload || false
                 }
             });
         }

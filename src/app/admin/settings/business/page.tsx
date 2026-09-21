@@ -44,7 +44,8 @@ export default function BusinessSettingsPage() {
     signatureUrl: "",
     defaultPrinterCost: "",
     syncLinksToProfitLoss: false,
-    syncTasksToProfitLoss: true
+    syncTasksToProfitLoss: true,
+    disableInvoiceDownload: false
   });
 
   useEffect(() => {
@@ -73,7 +74,8 @@ export default function BusinessSettingsPage() {
           signatureUrl: data.signatureUrl || "",
           defaultPrinterCost: data.defaultPrinterCost || "",
           syncLinksToProfitLoss: data.syncLinksToProfitLoss || false,
-          syncTasksToProfitLoss: typeof data.syncTasksToProfitLoss === 'boolean' ? data.syncTasksToProfitLoss : true
+          syncTasksToProfitLoss: typeof data.syncTasksToProfitLoss === 'boolean' ? data.syncTasksToProfitLoss : true,
+          disableInvoiceDownload: data.disableInvoiceDownload || false
         });
       }
     } catch (error) {
@@ -428,6 +430,24 @@ export default function BusinessSettingsPage() {
                 <p className="mt-3 text-[9px] text-slate-400 font-bold uppercase tracking-widest ml-1">
                   These will appear at the bottom of every generated invoice.
                 </p>
+              </div>
+
+              <div className="flex items-center justify-between bg-white p-6 rounded-2xl border border-slate-100 shadow-sm mt-6">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800">Disable Invoice Download</h3>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">
+                    Turn this on to disable downloading invoices from the timeline and task details pages globally.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, disableInvoiceDownload: !formData.disableInvoiceDownload })}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.disableInvoiceDownload ? 'bg-indigo-500' : 'bg-slate-300'}`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.disableInvoiceDownload ? 'translate-x-6' : 'translate-x-1'}`}
+                  />
+                </button>
               </div>
             </div>
 
