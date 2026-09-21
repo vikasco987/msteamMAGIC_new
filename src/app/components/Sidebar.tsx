@@ -67,7 +67,8 @@ const NAVIGATION_GROUPS = [
       { label: 'Call Report', icon: PhoneCall, href: '/call-report', roles: ['admin', 'master', 'seller', 'tl'] },
       { label: 'Financial Ecosystem', icon: FileSpreadsheet, href: '/admin/reports/payments', roles: ['admin', 'master', 'tl'] },
       { label: 'Profit & Loss', icon: FileSpreadsheet, href: '/dashboard/profit-loss', roles: ['master'] },
-      { label: 'Payment Portal', icon: CreditCard, href: '/payment-portal', roles: ['admin', 'master', 'seller', 'tl', 'user', 'manager', 'intern', 'guest'] },
+      { label: 'Payment Links (Gateway 1)', icon: CreditCard, href: '/payment-portal', roles: ['admin', 'master', 'seller', 'tl', 'user', 'manager', 'intern', 'guest'] },
+      { label: 'Payment Links (Gateway 2)', icon: CreditCard, href: '/payment-portal-2', roles: ['admin', 'master', 'seller', 'tl', 'user', 'manager', 'intern', 'guest'] },
     ]
   },
   {
