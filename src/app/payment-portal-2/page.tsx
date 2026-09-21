@@ -79,14 +79,15 @@ const PaymentPortal = () => {
     }
   }, [formData.purpose, paymentType]);
 
-  const fetchHistory = async (page = 1) => {
-    setFetchingHistory(true);
+  const fetchHistory = async (page = 1, silent = false) => {
+    if (!silent) setFetchingHistory(true);
     try {
       const res = await axios.get(`${API_BASE_URL}/get-all-links`, {
         params: {
           page,
           limit: 10,
-          date: dateFilter || undefined
+          date: dateFilter || undefined,
+          status: mode === "pending" ? "pending" : undefined
         }
       });
       if (res.data.success) {
@@ -98,26 +99,36 @@ const PaymentPortal = () => {
         }
       }
     } catch (err: any) { 
-      console.error(err); 
-      toast.error(err.response?.data?.message || "Failed to fetch history");
-    } finally { setFetchingHistory(false); }
+      if (!silent) {
+        console.error(err); 
+        toast.error(err.response?.data?.message || "Failed to fetch history");
+      }
+    } finally { 
+      if (!silent) setFetchingHistory(false); 
+    }
   };
 
   useEffect(() => {
-    if (mode === "history") {
+    if (mode === "history" || mode === "pending") {
       fetchHistory(1);
     }
   }, [mode, dateFilter]);
 
-  // Auto-sync pending links when history loads
+  // Auto-sync pending links silently every 10 seconds if any are displayed
   useEffect(() => {
-    if (history.length > 0) {
-      const pendingLinks = history.filter(h => h.status?.toLowerCase() === "pending").slice(0, 5);
-      if (pendingLinks.length > 0) {
-        pendingLinks.forEach(link => handleSyncStatus(link.orderId));
-      }
+    let interval: NodeJS.Timeout;
+    const hasPending = history.some(h => h.status?.toLowerCase() === "pending");
+    
+    if (hasPending && (mode === "history" || mode === "pending")) {
+      interval = setInterval(() => {
+        fetchHistory(currentPage, true);
+      }, 10000);
     }
-  }, [history.length]);
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [history, mode, currentPage]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -201,6 +212,19 @@ const PaymentPortal = () => {
       }
     } catch (err: any) {
       console.error("Sync failed:", err);
+    }
+  };
+
+  const handleDeleteLink = async (id: string) => {
+    if (!window.confirm("Are you sure you want to permanently delete this link from history?")) return;
+    try {
+      const res = await axios.delete(`${API_BASE_URL}/delete-link?id=${id}`);
+      if (res.data.success) {
+        toast.success("Link deleted successfully");
+        fetchHistory(currentPage);
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to delete link");
     }
   };
 
@@ -584,7 +608,7 @@ const PaymentPortal = () => {
         </div>
 
         {/* Full-Width History Section */}
-        {mode === "history" && (
+        {(mode === "history" || mode === "pending") && (
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -740,6 +764,15 @@ const PaymentPortal = () => {
                               >
                                 <Copy size={16} />
                               </button>
+                              {userRole === "master" && (
+                                <button 
+                                  onClick={() => handleDeleteLink(link.id)}
+                                  className="p-3 bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-2xl transition-all shadow-sm border border-slate-100 dark:border-slate-700"
+                                  title="Delete Link"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </motion.tr>

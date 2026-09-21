@@ -417,3 +417,37 @@ export async function GET(
 
   return NextResponse.json({ error: "Invalid action" }, { status: 400 });
 }
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ action: string }> }
+) {
+  const { action } = await params;
+
+  if (action === "delete-link") {
+    try {
+      const user = await getClerkUser();
+      if (!user) return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+      
+      const role = String(user.publicMetadata?.role || "user").toLowerCase();
+      if (role !== "master") {
+        return NextResponse.json({ success: false, message: "Forbidden: Only master can delete links" }, { status: 403 });
+      }
+
+      const { searchParams } = new URL(req.url);
+      const id = searchParams.get("id");
+      
+      if (!id) return NextResponse.json({ success: false, message: "Link ID required" }, { status: 400 });
+
+      await prisma.razorpayLink.delete({
+        where: { id }
+      });
+
+      return NextResponse.json({ success: true, message: "Link deleted successfully" });
+    } catch (error: any) {
+      return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    }
+  }
+
+  return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+}
