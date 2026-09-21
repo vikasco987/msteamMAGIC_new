@@ -584,6 +584,27 @@ model CashfreeLink {
   @@index([phone])
 }
 
+model RazorpayLink {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  orderId          String   @unique
+  name             String
+  email            String
+  phone            String
+  amount           Float
+  totalAmount      Float
+  purpose          String
+  paymentLink      String
+  status           String   @default("pending") // pending, paid, failed
+  paymentSessionId String?
+  createdBy        String?
+  creatorId        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([email])
+  @@index([phone])
+}
+
 model ShortLink {
   id          String    @id @default(auto()) @map("_id") @db.ObjectId
   shortId     String    @unique
