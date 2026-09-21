@@ -159,7 +159,7 @@ export default function Sidebar() {
     };
 
     if (isLoaded && userRole) {
-      fetch(`/api/admin/sidebar/per-role?role=${userRole}`)
+      fetch(`/api/admin/sidebar/per-role?role=${userRole}`, { cache: "no-store" })
         .then(res => res.json())
         .then(data => {
           if (data.sidebarItems) setDynamicPermissions(data.sidebarItems);
