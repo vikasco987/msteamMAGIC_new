@@ -486,7 +486,9 @@ export default function Sidebar() {
               if (!hasPermission) return false;
               
               if (searchTerm.trim() !== "") {
-                return i.label.toLowerCase().includes(searchTerm.toLowerCase());
+                const searchStr = searchTerm.toLowerCase();
+                const displayLabel = (i.label === 'Payment Portal Magic Scale' || i.label === 'Onboard Magic Scale') ? 'Payment Portal' : i.label;
+                return i.label.toLowerCase().includes(searchStr) || displayLabel.toLowerCase().includes(searchStr);
               }
               
               return true;
