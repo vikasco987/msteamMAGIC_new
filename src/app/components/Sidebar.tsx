@@ -67,8 +67,8 @@ const NAVIGATION_GROUPS = [
       { label: 'Call Report', icon: PhoneCall, href: '/call-report', roles: ['admin', 'master', 'seller', 'tl'] },
       { label: 'Financial Ecosystem', icon: FileSpreadsheet, href: '/admin/reports/payments', roles: ['admin', 'master', 'tl'] },
       { label: 'Profit & Loss', icon: FileSpreadsheet, href: '/dashboard/profit-loss', roles: ['master'] },
-      { label: 'Payment Portal', icon: CreditCard, href: '/payment-portal', roles: ['admin', 'master', 'seller', 'tl', 'user', 'manager', 'intern', 'guest'] },
-      { label: 'Payment Portal', icon: CreditCard, href: '/payment-portal-2', roles: ['admin', 'master', 'seller', 'tl', 'user', 'manager', 'intern', 'guest'] },
+      { label: 'Payment Portal Magic Scale', icon: CreditCard, href: '/payment-portal', roles: ['admin', 'master', 'seller', 'tl', 'user', 'manager', 'intern', 'guest'] },
+      { label: 'Onboard Magic Scale', icon: CreditCard, href: '/payment-portal-2', roles: ['admin', 'master', 'seller', 'tl', 'user', 'manager', 'intern', 'guest'] },
     ]
   },
   {
@@ -474,12 +474,10 @@ export default function Sidebar() {
               // If we have dynamic permissions, they override or restrict
               if (dynamicPermissions !== null) {
                 // Safety Lock: Master should always see Access Control & Business Setup to avoid locking out
-                if (userRole === 'master' && (i.label === 'Access Control' || i.label === 'Business Setup' || i.label === 'Payment Portal' || i.label.startsWith('Payment Links (Gateway') || i.label === 'Profit & Loss')) {
+                if (userRole === 'master' && (i.label === 'Access Control' || i.label === 'Business Setup' || i.label === 'Payment Portal Magic Scale' || i.label === 'Onboard Magic Scale' || i.label === 'Profit & Loss')) {
                   hasPermission = true;
                 } else if (i.label === 'Agreements' || i.label === 'Setup Agreement' || i.label === 'My Details') {
                   hasPermission = hasHardcodedRole;
-                } else if (i.label.startsWith('Payment Links (Gateway')) {
-                  hasPermission = dynamicPermissions.includes('Payment Portal') || dynamicPermissions.includes(i.label);
                 } else {
                   hasPermission = dynamicPermissions.includes(i.label);
                 }
@@ -523,7 +521,7 @@ export default function Sidebar() {
                               animate={{ opacity: 1 }}
                               className="text-sm font-bold truncate"
                             >
-                              {item.label}
+                              {item.label === 'Payment Portal Magic Scale' || item.label === 'Onboard Magic Scale' ? 'Payment Portal' : item.label}
                             </motion.span>
                           )}
 
@@ -542,7 +540,7 @@ export default function Sidebar() {
                             sideOffset={15}
                             className="bg-slate-900 text-white text-[11px] font-black px-4 py-2 rounded-xl shadow-2xl border border-slate-800 z-[1000] uppercase tracking-widest"
                           >
-                            {item.label}
+                            {item.label === 'Payment Portal Magic Scale' || item.label === 'Onboard Magic Scale' ? 'Payment Portal' : item.label}
                             <Tooltip.Arrow className="fill-slate-900" />
                           </Tooltip.Content>
                         </Tooltip.Portal>

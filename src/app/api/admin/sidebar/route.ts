@@ -21,20 +21,20 @@ export async function GET(req: NextRequest) {
 
         const allItems = [
             'Dashboard', 'Team Board', 'Create Task', 'Assigned Task',
-            'Recovery Hub', 'KAM Strategy', 'Sales Matrix', 'Team Sales', 'My Growth', 'CRM Forms', 'Follow-up Board', 'Call Report', 'Financial Ecosystem', 'Payment Portal', 'Payment Analytics',
+            'Recovery Hub', 'KAM Strategy', 'Sales Matrix', 'Team Sales', 'My Growth', 'CRM Forms', 'Follow-up Board', 'Call Report', 'Financial Ecosystem', 'Payment Portal Magic Scale', 'Onboard Magic Scale', 'Payment Analytics',
             'Attendance', 'Tish Control', 'Employee Insights', 'Activity Log', 'Lifecycle Report', 'Customers',
             'Agreements', 'Setup Agreement', 'Timeline', 'Client Locator', 'Access Control', 'Employee Directory', 'Team Management', 'Payroll Management', 'DB Backups', 'POS Sign-ups', 'CRM Settings'
         ];
 
         const DEFAULT_PERMISSIONS: Record<string, string[]> = {
-            master: ['Dashboard', 'Team Board', 'Create Task', 'Assigned Task', 'Recovery Hub', 'KAM Strategy', 'Sales Matrix', 'Team Sales', 'My Growth', 'CRM Forms', 'Follow-up Board', 'Call Report', 'Financial Ecosystem', 'Payment Portal', 'Payment Analytics', 'Attendance', 'Tish Control', 'Activity Log', 'Lifecycle Report', 'Customers', 'Payroll Management', 'Agreements', 'Setup Agreement', 'Timeline', 'Client Locator', 'Employee Directory', 'DB Backups', 'POS Sign-ups', 'CRM Settings'],
-            admin: ['Dashboard', 'Team Board', 'Create Task', 'Assigned Task', 'Recovery Hub', 'KAM Strategy', 'Team Sales', 'My Growth', 'CRM Forms', 'Follow-up Board', 'Call Report', 'Financial Ecosystem', 'Payment Portal', 'Payment Analytics', 'Attendance', 'Tish Control', 'Activity Log', 'Lifecycle Report', 'Customers', 'Payroll Management', 'Agreements', 'Setup Agreement', 'Timeline', 'Client Locator', 'POS Sign-ups'],
-            tl: ['Dashboard', 'Team Board', 'Create Task', 'Assigned Task', 'Recovery Hub', 'KAM Strategy', 'Team Sales', 'My Growth', 'CRM Forms', 'Follow-up Board', 'Call Report', 'Financial Ecosystem', 'Payment Portal', 'Attendance', 'Tish Control', 'Activity Log', 'Lifecycle Report', 'Customers', 'Agreements', 'Setup Agreement', 'Timeline', 'Client Locator'],
-            seller: ['Dashboard', 'Team Board', 'Create Task', 'Assigned Task', 'Recovery Hub', 'KAM Strategy', 'My Growth', 'CRM Forms', 'Follow-up Board', 'Call Report', 'Payment Portal', 'Attendance', 'Activity Log', 'Customers', 'Agreements', 'Setup Agreement', 'Timeline', 'Client Locator'],
-            user: ['Team Board', 'Create Task', 'CRM Forms', 'Activity Log', 'Payment Portal'],
-            manager: ['CRM Forms', 'Follow-up Board', 'Payment Portal'],
-            intern: ['CRM Forms', 'Payment Portal'],
-            guest: ['CRM Forms', 'Payment Portal']
+            master: ['Dashboard', 'Team Board', 'Create Task', 'Assigned Task', 'Recovery Hub', 'KAM Strategy', 'Sales Matrix', 'Team Sales', 'My Growth', 'CRM Forms', 'Follow-up Board', 'Call Report', 'Financial Ecosystem', 'Payment Portal Magic Scale', 'Onboard Magic Scale', 'Payment Analytics', 'Attendance', 'Tish Control', 'Activity Log', 'Lifecycle Report', 'Customers', 'Payroll Management', 'Agreements', 'Setup Agreement', 'Timeline', 'Client Locator', 'Employee Directory', 'DB Backups', 'POS Sign-ups', 'CRM Settings'],
+            admin: ['Dashboard', 'Team Board', 'Create Task', 'Assigned Task', 'Recovery Hub', 'KAM Strategy', 'Team Sales', 'My Growth', 'CRM Forms', 'Follow-up Board', 'Call Report', 'Financial Ecosystem', 'Payment Portal Magic Scale', 'Onboard Magic Scale', 'Payment Analytics', 'Attendance', 'Tish Control', 'Activity Log', 'Lifecycle Report', 'Customers', 'Payroll Management', 'Agreements', 'Setup Agreement', 'Timeline', 'Client Locator', 'POS Sign-ups'],
+            tl: ['Dashboard', 'Team Board', 'Create Task', 'Assigned Task', 'Recovery Hub', 'KAM Strategy', 'Team Sales', 'My Growth', 'CRM Forms', 'Follow-up Board', 'Call Report', 'Financial Ecosystem', 'Payment Portal Magic Scale', 'Onboard Magic Scale', 'Attendance', 'Tish Control', 'Activity Log', 'Lifecycle Report', 'Customers', 'Agreements', 'Setup Agreement', 'Timeline', 'Client Locator'],
+            seller: ['Dashboard', 'Team Board', 'Create Task', 'Assigned Task', 'Recovery Hub', 'KAM Strategy', 'My Growth', 'CRM Forms', 'Follow-up Board', 'Call Report', 'Payment Portal Magic Scale', 'Onboard Magic Scale', 'Attendance', 'Activity Log', 'Customers', 'Agreements', 'Setup Agreement', 'Timeline', 'Client Locator'],
+            user: ['Team Board', 'Create Task', 'CRM Forms', 'Activity Log', 'Payment Portal Magic Scale', 'Onboard Magic Scale'],
+            manager: ['CRM Forms', 'Follow-up Board', 'Payment Portal Magic Scale', 'Onboard Magic Scale'],
+            intern: ['CRM Forms', 'Payment Portal Magic Scale', 'Onboard Magic Scale'],
+            guest: ['CRM Forms', 'Payment Portal Magic Scale', 'Onboard Magic Scale']
         };
 
         // If a role doesn't have an override in the database, return defaults
