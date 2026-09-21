@@ -25,7 +25,7 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
   const isSharedPage = pathname.startsWith('/shared/');
   const isTrackPage = pathname.startsWith('/dispatch/track');
   // Check if it's a public route so we don't accidentally block it
-  const isPublicRoute = isSharedPage || isTrackPage || pathname.startsWith('/api/cashfree/') || pathname === '/' || pathname.startsWith('/sign-in') || pathname.startsWith('/sign-up');
+  const isPublicRoute = isSharedPage || isTrackPage || pathname.startsWith('/api/cashfree/') || pathname.startsWith('/api/razorpay/') || pathname === '/' || pathname.startsWith('/sign-in') || pathname.startsWith('/sign-up');
   
   const isFullView = searchParams.get('fullview') === 'true' || searchParams.has('edit') || isSharedPage || isTrackPage;
   const [mounted, setMounted] = useState(false);
