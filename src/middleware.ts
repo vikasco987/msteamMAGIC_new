@@ -9,6 +9,7 @@ const isPublicRoute = createRouteMatcher([
     '/shared(.*)',
     '/dispatch/track(.*)',
     '/api/cashfree(.*)',
+    '/api/razorpay(.*)',
     '/api/webhook(.*)',
     '/api/public-tasks(.*)',
     '/api/dispatch/track(.*)'
