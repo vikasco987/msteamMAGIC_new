@@ -431,24 +431,6 @@ export default function BusinessSettingsPage() {
                   These will appear at the bottom of every generated invoice.
                 </p>
               </div>
-
-              <div className="flex items-center justify-between bg-white p-6 rounded-2xl border border-slate-100 shadow-sm mt-6">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-800">Disable Invoice Download</h3>
-                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">
-                    Turn this on to disable downloading invoices from the timeline and task details pages globally.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, disableInvoiceDownload: !formData.disableInvoiceDownload })}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.disableInvoiceDownload ? 'bg-indigo-500' : 'bg-slate-300'}`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.disableInvoiceDownload ? 'translate-x-6' : 'translate-x-1'}`}
-                  />
-                </button>
-              </div>
             </div>
 
             {/* ✍️ Section 4: Signature Setup */}
@@ -495,6 +477,32 @@ export default function BusinessSettingsPage() {
                     Upload a transparent PNG of your signature.<br/>This will appear on the 'Authorised Signatory' line.
                   </p>
                 </div>
+              </div>
+            </div>
+
+            {/* 🛑 Section 5: Security & Permissions */}
+            <div className="space-y-8">
+              <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+                <ShieldCheck size={18} className="text-indigo-500" />
+                <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">Security & Permissions</h2>
+              </div>
+              
+              <div className="flex items-center justify-between bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100 shadow-sm">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800">Disable Invoice Download</h3>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">
+                    Turn this on to disable downloading invoices from the timeline and task details pages globally.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, disableInvoiceDownload: !formData.disableInvoiceDownload })}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.disableInvoiceDownload ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.disableInvoiceDownload ? 'translate-x-6' : 'translate-x-1'}`}
+                  />
+                </button>
               </div>
             </div>
 
