@@ -10,8 +10,8 @@ export async function POST(
   { params }: { params: Promise<{ action: string }> }
 ) {
   const { action } = await params;
-  const appId = process.env.RAZORPAY_APP_ID?.trim();
-  const secretKey = process.env.RAZORPAY_SECRET_KEY?.trim();
+  const appId = process.env.RAZORPAY_KEY_ID?.trim() || process.env.RAZORPAY_APP_ID?.trim();
+  const secretKey = process.env.RAZORPAY_KEY_SECRET?.trim() || process.env.RAZORPAY_SECRET_KEY?.trim();
   const env = process.env.RAZORPAY_ENV?.trim()?.toUpperCase() || "PROD";
 
 
@@ -36,18 +36,34 @@ export async function POST(
         return NextResponse.json({ success: false, message: "Phone number must be exactly 10 digits" }, { status: 400 });
       }
 
-      // Call magicscale.in to generate the link and save to its database
-      const backendUrl = "https://magicscale.in/api/razorpay/create-link";
-      const msResponse = await axios.post(backendUrl, body);
-      const data = msResponse.data;
+      // Call payments.magicscale.in to generate the link like in magicscale-backend-final
+      const orderId = "LNK_" + Date.now();
+      const safeReturnUrl = `https://crm.magicscale.in/payment-success?order_id=${orderId}`;
 
-      if (!data.success) {
-        throw new Error(data.message || "Failed to generate link via MagicScale API");
-      }
+      const razorpayPayload = {
+        amount: billedAmount,
+        currency: "INR",
+        description: purpose || "Service Payment",
+        customer: {
+          name: name || "Customer",
+          email: email || "customer@example.com",
+          contact: cleanPhone || "9999999999"
+        },
+        referenceId: orderId,
+        callbackUrl: safeReturnUrl,
+        callbackMethod: "get"
+      };
 
-      const checkoutUrl = data.original_url;
-      const orderId = data.order_id;
-      const shortUrl = data.link_url;
+      const rpResponse = await axios.post(
+        "https://payments.magicscale.in/api/payments/razorpay/payment-links",
+        razorpayPayload,
+        { headers: { "Content-Type": "application/json" } }
+      );
+
+      const rpData = rpResponse.data;
+      const checkoutUrl = rpData.short_url || rpData.data?.short_url || rpData.paymentLink;
+      if (!checkoutUrl) throw new Error("Failed to get payment link from magicscale payments API");
+      const shortUrl = checkoutUrl;
 
       // Store in local DB so it appears on msteam dashboard
       // @ts-ignore - Handle possible delay in type generation
