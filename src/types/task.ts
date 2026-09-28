@@ -318,6 +318,7 @@ export interface Task {
   accountNumber?: string;
   ifscCode?: string;
   restId?: string; // Assuming restaurant ID
+  restIds?: string[]; // Array of restaurant IDs
   customerName?: string;
   outletName?: string;
   packageAmount?: string;

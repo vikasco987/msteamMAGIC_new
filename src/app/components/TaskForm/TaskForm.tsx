@@ -421,6 +421,7 @@ const initialFormState = {
   packageAmount: "",
   timeline: "",
   restId: "",
+  restIds: [] as string[],
   endDate: "",
   aadhaarFile: [] as File[],
   panFile: [] as File[],
@@ -484,6 +485,7 @@ export default function TaskForm() {
           packageAmount: parsed.packageAmount || initialFormState.packageAmount,
           timeline: parsed.timeline || initialFormState.timeline,
           restId: parsed.restId || initialFormState.restId,
+          restIds: parsed.restIds || initialFormState.restIds,
           endDate: parsed.endDate || initialFormState.endDate,
           fullAddress: parsed.fullAddress || initialFormState.fullAddress,
           city: parsed.city || initialFormState.city,
@@ -686,6 +688,7 @@ export default function TaskForm() {
           ifscCode: formData.ifscCode.trim(),
           customerName: formData.customerName.trim(),
           restId: formData.restId.trim(),
+          restIds: formData.restIds,
           startDate: formData.startDate,
           endDate: formData.endDate,
           packageAmount: formData.packageAmount.trim(),
@@ -820,6 +823,7 @@ export default function TaskForm() {
               accountNumber={formData.accountNumber}
               ifscCode={formData.ifscCode}
               restId={formData.restId}
+              restIds={formData.restIds}
               customerName={formData.customerName}
               packageAmount={formData.packageAmount}
               startDate={formData.startDate}
@@ -859,6 +863,7 @@ export default function TaskForm() {
               setAccountNumber={(val) => updateFormData("accountNumber", val)}
               setIfscCode={(val) => updateFormData("ifscCode", val)}
               setRestId={(val) => updateFormData("restId", val)}
+              setRestIds={(val) => updateFormData("restIds", val)}
               setCustomerName={(val) => updateFormData("customerName", val)}
               setPackageAmount={(val) => updateFormData("packageAmount", val)}
               setStartDate={(val) => updateFormData("startDate", val)}

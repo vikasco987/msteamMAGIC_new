@@ -240,7 +240,7 @@ export async function POST(req: NextRequest) {
     let customFieldsUpdate: any = null;
 
     for (const [f, v] of Object.entries(finalUpdates)) {
-      if (!["amount", "received", "assigneeIds", "assignerName", "assignerEmail", "assigneeId", "assigneeName", "assigneeEmail", "shopName", "phone", "email", "afe", "awbNumber", "editActiveOnly", "editPrevOnly", "previousDispatches", "gstin"].includes(f)) {
+      if (!["amount", "received", "assigneeIds", "assignerName", "assignerEmail", "assigneeId", "assigneeName", "assigneeEmail", "shopName", "phone", "email", "afe", "awbNumber", "editActiveOnly", "editPrevOnly", "previousDispatches", "gstin", "restId", "restIds"].includes(f)) {
         return NextResponse.json({ error: `Unsupported field: ${f}` }, { status: 400 });
       }
 
@@ -252,7 +252,7 @@ export async function POST(req: NextRequest) {
         if (typeof v !== 'number' && typeof v !== 'string' && v !== null) {
           return NextResponse.json({ error: `Invalid value for ${f}. Must be number/string/null.` }, { status: 400 });
         }
-      } else if (f === "assigneeIds" || f === "previousDispatches") {
+      } else if (f === "assigneeIds" || f === "previousDispatches" || f === "restIds") {
         if (!Array.isArray(v)) {
           return NextResponse.json({ error: `Invalid value for ${f}. Must be an array.` }, { status: 400 });
         }
@@ -322,7 +322,7 @@ export async function POST(req: NextRequest) {
     // 3. Sync Other Redundant Fields (Top-level <-> customFields)
     const syncableFields = [
       "phone", "email", "shopName", "location", "accountNumber", "ifscCode",
-      "restId", "customerName", "packageAmount", "startDate", "endDate", "timeline"
+      "restId", "restIds", "customerName", "packageAmount", "startDate", "endDate", "timeline"
     ];
 
     const existingCF = { ...(existingTask.customFields as any || (dataToUpdate.customFields as any) || {}) };

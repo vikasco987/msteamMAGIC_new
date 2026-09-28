@@ -121,11 +121,6 @@ export default function Board() {
   const hasFetchedInitially = useRef(false);
   const seenTaskIdsRef = useRef<Set<string>>(new Set());
 
-  const handleToggleHideUnhide = (taskId: string) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) return;
-    handleFieldUpdate(taskId, { isHidden: !task.isHidden });
-  };
 
   const [pendingChanges, setPendingChanges] = useState<Record<string, string>>({});
   const lastUpdateRef = useRef<number>(0);
@@ -491,9 +486,6 @@ export default function Board() {
                             />
 
                             <div className="flex gap-2 mt-4 pt-3 border-t border-slate-50 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={() => handleToggleHideUnhide(task.id)} className="text-[9px] font-black uppercase text-slate-400 hover:text-indigo-600">
-                                {task.isHidden ? "Show" : "Hide"}
-                              </button>
                               <button onClick={() => setEditingTask(task)} className="text-[9px] font-black uppercase text-slate-400 hover:text-indigo-600">Edit</button>
                             </div>
                           </div>

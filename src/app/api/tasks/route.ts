@@ -742,6 +742,7 @@ interface CustomFieldsInput {
   ifscCode?: string;
   customerName?: string;
   restId?: string;
+  restIds?: string[];
   packageAmount?: string;
   startDate?: string;
   endDate?: string;
@@ -811,6 +812,7 @@ export async function POST(req: NextRequest) {
       ifscCode,
       customerName,
       restId,
+      restIds = [],
       packageAmount,
       startDate,
       endDate,
@@ -917,6 +919,7 @@ export async function POST(req: NextRequest) {
           ifscCode: toNullableString(ifscCode),
           customerName: toNullableString(customerName),
           restId: toNullableString(restId),
+          restIds: Array.isArray(restIds) ? restIds : [],
           packageAmount: toNullableString(packageAmount),
           startDate: toNullableString(startDate),
           endDate: toNullableString(endDate),
@@ -974,6 +977,7 @@ export async function POST(req: NextRequest) {
         accountNumber: toNullableString(accountNumber),
         ifscCode: toNullableString(ifscCode),
         restId: toNullableString(restId),
+        restIds: Array.isArray(restIds) ? restIds : [],
         customerName: toNullableString(customerName),
         packageAmount: toNullableString(packageAmount),
         startDate: toNullableString(startDate),

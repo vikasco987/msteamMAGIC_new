@@ -52,6 +52,7 @@ model Task {
   accountNumber String?
   ifscCode      String?
   restId        String?
+  restIds       String[] @default([])
   customerName  String?
   outletName    String?
   packageAmount String?

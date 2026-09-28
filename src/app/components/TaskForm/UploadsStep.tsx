@@ -1913,6 +1913,8 @@ interface UploadsStepProps {
   setState: (value: string) => void;
   setCountry: (value: string) => void;
   setPincode: (value: string) => void;
+  restIds?: string[];
+  setRestIds?: (value: string[]) => void;
   step: number;
 }
 
@@ -1929,7 +1931,7 @@ export default function UploadsStep(props: UploadsStepProps) {
     menuCardFiles, setShopName, setPhone, setEmail, setLocation,
     setAccountNumber, setIfscCode, setAadhaarFile, setPanFile,
     setSelfieFile, setChequeFile, setMenuCardFiles,
-    restId, setRestId, customerName, setCustomerName,
+    restId, setRestId, restIds, setRestIds, customerName, setCustomerName,
     packageAmount, setPackageAmount, startDate, setStartDate,
     endDate, setEndDate, timeline, setTimeline,
     fullAddress, setFullAddress, city, setCity, state, setState,
@@ -2422,9 +2424,44 @@ export default function UploadsStep(props: UploadsStepProps) {
                 <label className={labelClass}>🏷️ Outlet Name</label>
                 <input className={inputClass} placeholder="Enter Outlet Name" value={shopName} onChange={(e) => setShopName(e.target.value)} />
               </div>
-              <div>
-                <label className={labelClass}>🆔 Restaurant ID</label>
-                <input className={inputClass} placeholder="Swiggy/Zomato ID" value={restId} onChange={(e) => setRestId(e.target.value)} />
+              <div className="md:col-span-2">
+                <label className={labelClass}>🆔 Restaurant IDs (Swiggy/Zomato)</label>
+                <CreatableSelect
+                  isMulti
+                  isClearable
+                  placeholder="Type ID and press Enter..."
+                  options={[]}
+                  value={(restIds || []).map(id => ({ label: id, value: id }))}
+                  onChange={(newValues) => {
+                    const ids = newValues ? newValues.map(v => v.value) : [];
+                    if (setRestIds) setRestIds(ids);
+                  }}
+                  formatCreateLabel={(inputValue) => `+ Add ID: "${inputValue}"`}
+                  menuPortalTarget={typeof document !== "undefined" ? document.body : null}
+                  menuPosition="fixed"
+                  styles={{
+                    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                    control: (base) => ({
+                      ...base,
+                      borderRadius: "1rem",
+                      borderColor: "#e2e8f0",
+                      padding: "0.4rem",
+                      boxShadow: "none",
+                      backgroundColor: "#f8fafc",
+                      "&:hover": { borderColor: "#c7d2fe" },
+                    }),
+                    multiValue: (base) => ({
+                      ...base,
+                      backgroundColor: "#e0e7ff",
+                      borderRadius: "0.5rem",
+                    }),
+                    multiValueLabel: (base) => ({
+                      ...base,
+                      color: "#4338ca",
+                      fontWeight: "bold",
+                    }),
+                  }}
+                />
               </div>
               <div className="md:col-span-2">
                 <label className={labelClass}>📞 Phone Number</label>
@@ -2438,6 +2475,45 @@ export default function UploadsStep(props: UploadsStepProps) {
               <div className="md:col-span-2">
                 <label className={labelClass}>🏷️ Outlet Name</label>
                 <input className={inputClass} placeholder="Brand/Outlet Name" value={shopName} onChange={e => setShopName(e.target.value)} />
+              </div>
+              <div className="md:col-span-2">
+                <label className={labelClass}>🆔 Restaurant IDs (Swiggy/Zomato)</label>
+                <CreatableSelect
+                  isMulti
+                  isClearable
+                  placeholder="Type ID and press Enter..."
+                  options={[]}
+                  value={(restIds || []).map(id => ({ label: id, value: id }))}
+                  onChange={(newValues) => {
+                    const ids = newValues ? newValues.map(v => v.value) : [];
+                    if (setRestIds) setRestIds(ids);
+                  }}
+                  formatCreateLabel={(inputValue) => `+ Add ID: "${inputValue}"`}
+                  menuPortalTarget={typeof document !== "undefined" ? document.body : null}
+                  menuPosition="fixed"
+                  styles={{
+                    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                    control: (base) => ({
+                      ...base,
+                      borderRadius: "1rem",
+                      borderColor: "#e2e8f0",
+                      padding: "0.4rem",
+                      boxShadow: "none",
+                      backgroundColor: "#f8fafc",
+                      "&:hover": { borderColor: "#c7d2fe" },
+                    }),
+                    multiValue: (base) => ({
+                      ...base,
+                      backgroundColor: "#e0e7ff",
+                      borderRadius: "0.5rem",
+                    }),
+                    multiValueLabel: (base) => ({
+                      ...base,
+                      color: "#4338ca",
+                      fontWeight: "bold",
+                    }),
+                  }}
+                />
               </div>
               <div>
                 <label className={labelClass}>📞 Phone</label>
@@ -2472,6 +2548,45 @@ export default function UploadsStep(props: UploadsStepProps) {
                 <div className="md:col-span-2">
                   <label className={labelClass}>🏪 Restaurant Name</label>
                   <input className={inputClass} placeholder="Enter Restaurant Name" value={shopName} onChange={e => setShopName(e.target.value)} />
+                </div>
+                <div className="md:col-span-2">
+                  <label className={labelClass}>🆔 Restaurant IDs (Swiggy/Zomato)</label>
+                  <CreatableSelect
+                    isMulti
+                    isClearable
+                    placeholder="Type ID and press Enter..."
+                    options={[]}
+                    value={(restIds || []).map(id => ({ label: id, value: id }))}
+                    onChange={(newValues) => {
+                      const ids = newValues ? newValues.map(v => v.value) : [];
+                      if (setRestIds) setRestIds(ids);
+                    }}
+                    formatCreateLabel={(inputValue) => `+ Add ID: "${inputValue}"`}
+                    menuPortalTarget={typeof document !== "undefined" ? document.body : null}
+                    menuPosition="fixed"
+                    styles={{
+                      menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                      control: (base) => ({
+                        ...base,
+                        borderRadius: "1rem",
+                        borderColor: "#e2e8f0",
+                        padding: "0.4rem",
+                        boxShadow: "none",
+                        backgroundColor: "#f8fafc",
+                        "&:hover": { borderColor: "#c7d2fe" },
+                      }),
+                      multiValue: (base) => ({
+                        ...base,
+                        backgroundColor: "#e0e7ff",
+                        borderRadius: "0.5rem",
+                      }),
+                      multiValueLabel: (base) => ({
+                        ...base,
+                        color: "#4338ca",
+                        fontWeight: "bold",
+                      }),
+                    }}
+                  />
                 </div>
                 <div>
                   <label className={labelClass}>📞 Phone Number</label>
