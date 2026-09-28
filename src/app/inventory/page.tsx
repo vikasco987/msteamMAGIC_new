@@ -5,7 +5,7 @@ import { Search, Printer, RotateCcw, AlertTriangle, CheckCircle, Clock, Truck, S
 import toast from "react-hot-toast";
 import ItemReportsModal from "../components/ItemReportsModal";
 import SerialHistoryModal from "../components/SerialHistoryModal";
-import TakePrinterModal from "../components/TakePrinterModal";
+import TaskPrinterManagementModal from "../components/TaskPrinterManagementModal";
 
 export default function InventoryDashboard() {
   const [items, setItems] = useState<any[]>([]);
@@ -1069,13 +1069,8 @@ export default function InventoryDashboard() {
       </div>
 
       {showTakePrinterModal && (
-        <TakePrinterModal 
+        <TaskPrinterManagementModal 
           onClose={() => setShowTakePrinterModal(false)}
-          onSuccess={() => {
-            fetchInventory();
-            if (activeDashboardTab === "tracker") fetchTrackerSerials();
-            if (activeDashboardTab === "usage_report") fetchUsageReportData();
-          }}
         />
       )}
 
