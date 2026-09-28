@@ -711,6 +711,9 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
                       })
                     }
                   </div>
+                </div>
+              )}
+
               {/* TAB: DISCUSSION & DOCS */}
               {activeTab === 'discussion' && (
                 <div className="flex flex-col h-full animate-in fade-in slide-in-from-bottom-2 duration-300">
