@@ -7,15 +7,16 @@ import toast from "react-hot-toast";
 interface TakePrinterModalProps {
   onClose: () => void;
   onSuccess: () => void;
+  prefilledTaskId?: string;
 }
 
-export default function TakePrinterModal({ onClose, onSuccess }: TakePrinterModalProps) {
+export default function TakePrinterModal({ onClose, onSuccess, prefilledTaskId }: TakePrinterModalProps) {
   const [printers, setPrinters] = useState<any[]>([]);
   const [loadingPrinters, setLoadingPrinters] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   
   const [selectedPrinter, setSelectedPrinter] = useState("");
-  const [taskId, setTaskId] = useState("");
+  const [taskId, setTaskId] = useState(prefilledTaskId || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -28,7 +29,6 @@ export default function TakePrinterModal({ onClose, onSuccess }: TakePrinterModa
       const res = await fetch("/api/inventory/serial-numbers?itemName=Printer");
       const data = await res.json();
       if (data.serialNumbers) {
-        // Only show printers that are available or not already assigned (based on your logic)
         setPrinters(data.serialNumbers.filter((s: any) => s.status === "Available" || s.status === "Returned"));
       }
     } catch (e) {
@@ -87,7 +87,6 @@ export default function TakePrinterModal({ onClose, onSuccess }: TakePrinterModa
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-5">
-          {/* Printer Selection with Search */}
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Select Printer Number</label>
             <div className="relative">
@@ -135,7 +134,8 @@ export default function TakePrinterModal({ onClose, onSuccess }: TakePrinterModa
               placeholder="e.g. TASK-1234"
               value={taskId}
               onChange={(e) => setTaskId(e.target.value)}
-              className="w-full p-2.5 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500/20"
+              disabled={!!prefilledTaskId}
+              className="w-full p-2.5 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:bg-slate-100 disabled:text-slate-500"
             />
           </div>
 

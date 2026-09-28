@@ -41,7 +41,7 @@ model Task {
 
   paymentHistory Json[] @default([]) // keep for transaction logs
   customFields   Json?
-  
+
   departmentAtSale String?
   saleType         String? @default("New Sale")
 
@@ -75,8 +75,9 @@ model Task {
   dispatchLog    DispatchLog?
   serialNumbers  SerialNumber[]
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime?
+  printerIssueRecords PrinterIssueRecord[]
 }
 
 model Subtask {
@@ -190,11 +191,11 @@ model User {
   name    String?
   role    String // "ADMIN", "MASTER", "SELLER"
 
-  isTeamLeader Boolean  @default(false)
-  hasFullKamAccess Boolean @default(false)
-  leaderIds    String[] @default([]) // Clerk IDs of the Team Leaders
+  isTeamLeader     Boolean  @default(false)
+  hasFullKamAccess Boolean  @default(false)
+  leaderIds        String[] @default([]) // Clerk IDs of the Team Leaders
 
-  currentDepartment String? @default("Digital")
+  currentDepartment String?                @default("Digital")
   historyLogs       DepartmentHistoryLog[]
 
   createdAt DateTime @default(now())
@@ -682,11 +683,12 @@ model SerialNumber {
   deliveryCount Int           @default(0)
   dispatches    DispatchLog[]
 
-  remarks        String?
-  createdByName  String?
-  createdByEmail String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  remarks             String?
+  createdByName       String?
+  createdByEmail      String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  printerIssueRecords PrinterIssueRecord[]
 }
 
 // 💰 Model for Employee Advances (Loans/Salary Advance)
@@ -864,8 +866,37 @@ model DepartmentHistoryLog {
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   previousDepartment String?
   newDepartment      String
-  changedBy          String?    // Clerk ID of admin
+  changedBy          String? // Clerk ID of admin
   createdAt          DateTime @default(now())
 
   @@index([userId])
+}
+
+// 🖨️ Model for tracking printer issue/handover records per task
+model PrinterIssueRecord {
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  taskId String @db.ObjectId
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  serialNumberId  String?       @db.ObjectId
+  serialNumber    SerialNumber? @relation(fields: [serialNumberId], references: [id])
+  serialNumberStr String // store as string in case relation is deleted
+
+  printerName String? // Name/Model of the printer
+
+  takenBy   String // Name of the person who took it
+  takenById String? // Clerk User ID if available
+
+  issueDate DateTime @default(now())
+  status    String   @default("Issued") // Issued, Returned, Cancelled
+  remarks   String?
+
+  submittedBy   String? // Name of the person who submitted
+  submittedById String? // Clerk ID of the submitter
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([taskId])
+  @@index([serialNumberId])
 }

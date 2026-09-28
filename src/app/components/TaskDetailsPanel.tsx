@@ -11,6 +11,7 @@ import {
 import { format } from "date-fns";
 import toast from "react-hot-toast";
 import PaymentHistory from "./PaymentHistory";
+import TaskPrinterManagement from "./TaskPrinterManagement";
 
 interface TaskDetailsPanelProps {
   taskId: string | null;
@@ -447,6 +448,7 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
               {hasCustomFields && (
                 <button onClick={() => setActiveTab('custom')} className={`pb-3 text-sm font-bold uppercase tracking-wide border-b-2 transition-colors whitespace-nowrap ${activeTab === 'custom' ? 'border-purple-500 text-purple-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>Custom Data</button>
               )}
+              <button onClick={() => setActiveTab('printers')} className={`pb-3 text-sm font-bold uppercase tracking-wide border-b-2 transition-colors whitespace-nowrap ${activeTab === 'printers' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>Printers</button>
               <button onClick={() => setActiveTab('discussion')} className={`pb-3 text-sm font-bold uppercase tracking-wide border-b-2 transition-colors whitespace-nowrap ${activeTab === 'discussion' ? 'border-cyan-500 text-cyan-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>Discussion & Docs</button>
             </div>
           )}
@@ -711,6 +713,13 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
                       })
                     }
                   </div>
+                </div>
+              )}
+
+              {/* TAB: PRINTERS */}
+              {activeTab === 'printers' && (
+                <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <TaskPrinterManagement taskId={taskId} />
                 </div>
               )}
 
