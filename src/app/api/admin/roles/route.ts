@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { clerkClient } from "@clerk/nextjs/server";
 import { auth } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
+import { getUserDetails } from "@/lib/auth-utils";
 
 export async function GET(req: NextRequest) {
     try {
@@ -12,7 +13,7 @@ export async function GET(req: NextRequest) {
 
         // Check if requester is MASTER
         const client = await clerkClient();
-        const requester = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
+        const requester = (await getUserDetails(userId));
         const requesterRole = String(requester.publicMetadata?.role || "user").toLowerCase();
 
         if (requesterRole !== "master") {
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest) {
         }
 
         const client = await clerkClient();
-        const requester = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
+        const requester = (await getUserDetails(userId));
         const requesterRole = String(requester.publicMetadata?.role || "user").toLowerCase();
 
         if (requesterRole !== "master") {
@@ -108,7 +109,7 @@ export async function POST(req: NextRequest) {
         });
 
         // Sync with Prisma
-        const targetUser = (String(targetUserId).startsWith('custom_') ? { id: targetUserId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(targetUserId));
+        const targetUser = (await getUserDetails(targetUserId));
         await prisma.user.upsert({
             where: { clerkId: targetUserId },
             update: {

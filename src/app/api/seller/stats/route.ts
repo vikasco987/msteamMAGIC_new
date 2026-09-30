@@ -93,6 +93,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth-utils";
+import { getUserDetails } from "@/lib/auth-utils";
 
 const safeFloat = (v: any): number => {
   if (v == null || v === "") return 0;
@@ -127,7 +128,7 @@ export async function GET(req: Request) {
     const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
     const { clerkClient } = await import("@clerk/nextjs/server");
     const client = await clerkClient();
-    const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
+    const clerkUser = (await getUserDetails(userId));
     const metadataRole = (clerkUser.publicMetadata as any)?.role || (clerkUser.privateMetadata as any)?.role;
     const normalizedRole = String(metadataRole || dbUser?.role || "user").toLowerCase();
 

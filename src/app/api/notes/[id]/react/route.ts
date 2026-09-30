@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth-utils";
 import { clerkClient } from "@clerk/nextjs/server";
+import { getUserDetails } from "@/lib/auth-utils";
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
     // Get user details
     const client = await clerkClient();
-    const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
+    const user = (await getUserDetails(userId));
     const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.emailAddresses[0]?.emailAddress || "Unknown";
 
     // Get the note

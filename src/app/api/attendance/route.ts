@@ -56,7 +56,7 @@
 
 //     let employeeName = "Unknown";
 //     try {
-//       const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+//       const clerkUser = (await getUserDetails(userId));
 //       employeeName =
 //         `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //         clerkUser.username ||
@@ -220,7 +220,7 @@
 
 //     let employeeName = "Unknown";
 //     try {
-//       const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+//       const clerkUser = (await getUserDetails(userId));
 //       employeeName =
 //         `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //         clerkUser.username ||
@@ -387,7 +387,7 @@
 
 //     let employeeName = "Unknown";
 //     try {
-//       const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+//       const clerkUser = (await getUserDetails(userId));
 //       employeeName =
 //         `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //         clerkUser.username ||
@@ -543,7 +543,7 @@
 
 //     let employeeName = "Unknown";
 //     try {
-//       const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+//       const clerkUser = (await getUserDetails(userId));
 //       employeeName =
 //         `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //         clerkUser.username ||
@@ -702,7 +702,7 @@
 
 //     let employeeName = "Unknown";
 //     try {
-//       const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+//       const clerkUser = (await getUserDetails(userId));
 //       employeeName =
 //         `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //         clerkUser.username ||
@@ -863,7 +863,7 @@
 
 //     let employeeName = "Unknown";
 //     try {
-//       const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+//       const clerkUser = (await getUserDetails(userId));
 //       employeeName =
 //         `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //         clerkUser.username ||
@@ -1017,7 +1017,7 @@
 
 //     let employeeName = "Unknown";
 //     try {
-//       const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+//       const clerkUser = (await getUserDetails(userId));
 //       employeeName =
 //         `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //         clerkUser.username ||
@@ -1130,6 +1130,7 @@ import { prisma } from "@/lib/prisma";
 import { getUnifiedUserId } from "@/lib/auth-utils";
 import { users } from "@clerk/clerk-sdk-node";
 import moment from "moment-timezone";
+import { getUserDetails } from "@/lib/auth-utils";
 
 const TISH_LAT = 28.5163558;
 const TISH_LNG = 77.1035919;
@@ -1178,7 +1179,7 @@ export async function POST(req: Request) {
 
     let employeeName = "Unknown";
     try {
-      const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+      const clerkUser = (await getUserDetails(userId));
       employeeName =
         `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
         clerkUser.username ||

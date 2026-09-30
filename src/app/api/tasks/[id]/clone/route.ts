@@ -17,7 +17,7 @@
 
 //   try {
 //     // 🔹 Get the cloner's details from Clerk
-//     const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await clerkClient.users.getUser(userId));
+//     const user = (await getUserDetails(userId));
 //     const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
 //     const userEmail = user.emailAddresses?.[0]?.emailAddress || null;
 
@@ -151,7 +151,7 @@
 
 //   try {
 //     // ✅ Fetch cloner's details from Clerk
-//     const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await clerkClient.users.getUser(userId));
+//     const user = (await getUserDetails(userId));
 //     const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
 //     const userEmail = user.emailAddresses?.[0]?.emailAddress || null;
 
@@ -262,7 +262,7 @@
 //   try {
 //     const { title } = await req.json();
 
-//     const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await clerkClient.users.getUser(userId));
+//     const user = (await getUserDetails(userId));
 //     const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
 //     const userEmail = user.emailAddresses?.[0]?.emailAddress || null;
 
@@ -383,7 +383,7 @@
 //   try {
 //     const { title } = await req.json();
 
-//     const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await clerkClient.users.getUser(userId));
+//     const user = (await getUserDetails(userId));
 //     const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
 //     const userEmail = user.emailAddresses?.[0]?.emailAddress || null;
 
@@ -477,6 +477,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth-utils";
 import { clerkClient } from "@clerk/clerk-sdk-node";
+import { getUserDetails } from "@/lib/auth-utils";
 
 export async function POST(
   req: NextRequest,
@@ -492,7 +493,7 @@ export async function POST(
   try {
     const { title } = await req.json();
 
-    const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await clerkClient.users.getUser(userId));
+    const user = (await getUserDetails(userId));
     const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
     const userEmail = user.emailAddresses?.[0]?.emailAddress || null;
 

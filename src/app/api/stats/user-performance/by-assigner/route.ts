@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { clerkClient } from "@clerk/nextjs/server";
 import { auth } from "@/lib/auth-utils";
+import { getUserDetails } from "@/lib/auth-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +41,7 @@ export async function GET(req: Request) {
 
     // Role and Team check
     const client = await clerkClient();
-    const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
+    const clerkUser = (await getUserDetails(userId));
     const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
     
     const role = String(clerkUser.publicMetadata?.role || dbUser?.role || "user").toLowerCase();

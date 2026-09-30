@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { users } from "@clerk/clerk-sdk-node";
+import { getUserDetails } from "@/lib/auth-utils";
 
 export async function GET(req: Request) {
   try {
@@ -41,7 +42,7 @@ export async function GET(req: Request) {
     const userMap = new Map<string, string>();
     for (const id of userIds) {
       try {
-        const user = (id.startsWith('custom_') ? { id: id, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(id));
+        const user = (await getUserDetails(id));
         userMap.set(
           id,
           `${user.firstName || ""} ${user.lastName || ""}`.trim() ||

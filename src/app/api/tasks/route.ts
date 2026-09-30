@@ -46,7 +46,7 @@
 //       );
 //     }
 
-//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+//     const clerkUser = (await getUserDetails(userId));
 //     const assignerEmail = clerkUser.emailAddresses?.[0]?.emailAddress || "unknown";
 //     const assignerName = clerkUser.firstName || clerkUser.username || "Unknown";
 
@@ -171,7 +171,7 @@
 // // getUserRole function is correctly defined and used.
 // async function getUserRole(userId: string): Promise<string | null> {
 //   try {
-//     const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+//     const user = (await getUserDetails(userId));
 //     // ✅ Fix: Cast publicMetadata and privateMetadata to the defined interfaces
 //     return (
 //       (user.publicMetadata as UserPublicMetadata)?.role ||
@@ -375,7 +375,7 @@
 //       );
 //     }
 
-//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+//     const clerkUser = (await getUserDetails(userId));
 //     const assignerEmail = clerkUser.emailAddresses?.[0]?.emailAddress || "unknown";
 //     const assignerName = clerkUser.firstName || clerkUser.username || "Unknown";
 
@@ -515,7 +515,7 @@
 // // getUserRole function is correctly defined and used.
 // async function getUserRole(userId: string): Promise<string | null> {
 //   try {
-//     const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+//     const user = (await getUserDetails(userId));
 //     // ✅ Fix: Cast publicMetadata and privateMetadata to the defined interfaces
 //     return (
 //       (user.publicMetadata as UserPublicMetadata)?.role ||
@@ -710,6 +710,7 @@ import { users } from "@clerk/clerk-sdk-node";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity";
 import { getUnifiedUserId } from "@/lib/auth-utils";
+import { getUserDetails } from "@/lib/auth-utils";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -799,7 +800,7 @@ export async function POST(req: NextRequest) {
 
     if (!userId.startsWith("custom_")) {
         try {
-            const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+            const clerkUser = (await getUserDetails(userId));
             assignerEmail = clerkUser.emailAddresses?.[0]?.emailAddress || assignerEmail;
             assignerName = clerkUser.firstName || clerkUser.username || assignerName;
         } catch (e) {
@@ -885,7 +886,7 @@ export async function POST(req: NextRequest) {
     let assigneeEmail = assignerEmail;
     if (body.assigneeId && body.assigneeId !== userId) {
       try {
-        const u = (String(body.assigneeId).startsWith('custom_') ? { id: body.assigneeId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(body.assigneeId));
+        const u = (await getUserDetails(body.assigneeId));
         if (u) {
           assigneeName = `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.username || "Unknown";
           assigneeEmail = u.emailAddresses?.[0]?.emailAddress || "Unknown";
@@ -1146,7 +1147,7 @@ export async function POST(req: NextRequest) {
 // getUserRole function is correctly defined and used.
 async function getUserRole(userId: string): Promise<string | null> {
   try {
-    const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+    const user = (await getUserDetails(userId));
     // ✅ Fix: Cast publicMetadata and privateMetadata to the defined interfaces
     return (
       (user.publicMetadata as UserPublicMetadata)?.role ||
@@ -1173,7 +1174,7 @@ export async function GET(req: NextRequest) {
     let metadataRole = dbUser?.role;
     if (!userId.startsWith("custom_")) {
         try {
-            const clerkUserForRole = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
+            const clerkUserForRole = (await getUserDetails(userId));
             metadataRole = (clerkUserForRole.publicMetadata as any)?.role || (clerkUserForRole.privateMetadata as any)?.role || metadataRole;
         } catch (e) {}
     }

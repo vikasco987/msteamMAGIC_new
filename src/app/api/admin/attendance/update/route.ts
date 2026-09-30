@@ -16,7 +16,7 @@
 //     }
 
 //     // 🔎 Fetch Clerk user to check role
-//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await clerkClient.users.getUser(userId));
+//     const clerkUser = (await getUserDetails(userId));
 //     const role = clerkUser.publicMetadata?.role;
 
 //     // 🛑 Admin guard
@@ -120,7 +120,7 @@
 //     }
 
 //     // 🔎 Fetch admin from Clerk
-//     const adminUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+//     const adminUser = (await getUserDetails(userId));
 //     const role = adminUser.publicMetadata?.role;
 
 //     // 🛑 Admin guard
@@ -325,6 +325,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth-utils";
+import { getUserDetails } from "@/lib/auth-utils";
 
 export async function POST(req: NextRequest) {
   try {

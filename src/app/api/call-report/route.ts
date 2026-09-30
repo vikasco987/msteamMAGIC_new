@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth-utils";
 import { startOfDay, endOfDay, parseISO } from "date-fns";
+import { getUserDetails } from "@/lib/auth-utils";
 
 export async function GET(req: Request) {
     try {
@@ -11,7 +12,7 @@ export async function GET(req: Request) {
         const dbUser = await prisma.user.findUnique({ where: { clerkId: authUserId } });
         const { clerkClient } = await import("@clerk/nextjs/server");
         const client = await clerkClient();
-        const clerkUserForRole = (String(authUserId).startsWith('custom_') ? { id: authUserId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(authUserId));
+        const clerkUserForRole = (await getUserDetails(authUserId));
         const metadataRole = (clerkUserForRole.publicMetadata as any)?.role || (clerkUserForRole.privateMetadata as any)?.role;
         const userRole = String(metadataRole || dbUser?.role || "USER").toUpperCase();
 

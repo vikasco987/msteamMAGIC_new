@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { users } from "@clerk/clerk-sdk-node";
+import { getUserDetails } from "@/lib/auth-utils";
 
 export async function POST(req: NextRequest) {
   try {
@@ -7,7 +8,7 @@ export async function POST(req: NextRequest) {
 
     const promises = ids.map(async (id: string) => {
       try {
-        const user = (id.startsWith('custom_') ? { id: id, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(id));
+        const user = (await getUserDetails(id));
         return {
           id: user.id,
           name: user.firstName || user.username || "Unnamed",

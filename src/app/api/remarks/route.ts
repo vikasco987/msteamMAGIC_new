@@ -184,7 +184,7 @@
 //     }
 
 //     // ✅ Fetch user details from Clerk safely
-//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+//     const clerkUser = (await getUserDetails(userId));
 
 //     const authorName =
 //       `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
@@ -332,7 +332,7 @@
 //     }
 
 //     // ✅ Fetch user details from Clerk
-//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+//     const clerkUser = (await getUserDetails(userId));
 //     const authorName =
 //       `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //       clerkUser.username ||
@@ -490,7 +490,7 @@
 //     }
 
 //     // Clerk user info
-//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+//     const clerkUser = (await getUserDetails(userId));
 //     const authorName = `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() || clerkUser.username || "Unknown";
 //     const authorEmail = clerkUser.emailAddresses?.[0]?.emailAddress || "Unknown";
 
@@ -637,7 +637,7 @@
 //     }
 
 //     // Clerk user info
-//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+//     const clerkUser = (await getUserDetails(userId));
 //     const authorName =
 //       `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //       clerkUser.username ||
@@ -808,7 +808,7 @@
 //     }
 
 //     // Clerk user info
-//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+//     const clerkUser = (await getUserDetails(userId));
 //     const authorName =
 //       `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //       clerkUser.username ||
@@ -955,7 +955,7 @@
 //       return NextResponse.json({ error: "Remark text and taskId are required" }, { status: 400 });
 
 //     // Clerk user info
-//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+//     const clerkUser = (await getUserDetails(userId));
 //     const authorName =
 //       `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //       clerkUser.username ||
@@ -1101,7 +1101,7 @@
 //       return NextResponse.json({ error: "Remark text and taskId required" }, { status: 400 });
 
 //     // Fetch Clerk user
-//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+//     const clerkUser = (await getUserDetails(userId));
 //     const authorName =
 //       `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //       clerkUser.username ||
@@ -1252,7 +1252,7 @@
 //       );
 
 //     // Fetch Clerk user
-//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+//     const clerkUser = (await getUserDetails(userId));
 //     const authorName =
 //       `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //       clerkUser.username ||
@@ -1402,7 +1402,7 @@
 //       );
 
 //     // Fetch Clerk user details
-//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+//     const clerkUser = (await getUserDetails(userId));
 //     const authorName =
 //       `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //       clerkUser.username ||
@@ -1567,7 +1567,7 @@
 //     if (!remark || !taskId)
 //       return NextResponse.json({ error: "Remark text and taskId required" }, { status: 400 });
 
-//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+//     const clerkUser = (await getUserDetails(userId));
 //     const authorName =
 //       `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //       clerkUser.username ||
@@ -1649,6 +1649,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth-utils";
 import { users } from "@clerk/clerk-sdk-node";
+import { getUserDetails } from "@/lib/auth-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -1765,7 +1766,7 @@ export async function POST(req: NextRequest) {
     if (!remark || !taskId)
       return NextResponse.json({ error: "Remark text and taskId required" }, { status: 400 });
 
-    const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+    const clerkUser = (await getUserDetails(userId));
     const authorName =
       `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
       clerkUser.username ||

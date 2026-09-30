@@ -36,3 +36,42 @@ export async function auth() {
     const userId = await getUnifiedUserId();
     return { userId };
 }
+
+import { prisma } from "@/lib/prisma";
+
+export async function getUserDetails(userId: string | null | undefined) {
+    if (!userId) return null;
+    
+    if (userId.startsWith('custom_')) {
+        try {
+            const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
+            if (!dbUser) return null;
+            
+            const nameParts = (dbUser.name || "Custom User").trim().split(" ");
+            const firstName = nameParts[0];
+            const lastName = nameParts.slice(1).join(" ");
+            
+            return {
+                id: userId,
+                emailAddresses: dbUser.email ? [{ emailAddress: dbUser.email }] : [],
+                firstName,
+                lastName,
+                username: null,
+                publicMetadata: { role: dbUser.role || "GUEST" },
+                privateMetadata: {}
+            };
+        } catch (e) {
+            console.error("Error fetching custom user:", e);
+            return null;
+        }
+    }
+    
+    try {
+        const { clerkClient } = await import("@clerk/nextjs/server");
+        const clerk = await clerkClient();
+        return await clerk.users.getUser(userId);
+    } catch (e) {
+        console.error("Error fetching clerk user:", e);
+        return null;
+    }
+}

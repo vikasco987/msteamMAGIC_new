@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth-utils";
+import { getUserDetails } from "@/lib/auth-utils";
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest) {
     const dbUser = await prisma.user.findUnique({ where: { clerkId: currentUserId } });
     const { clerkClient } = await import("@clerk/nextjs/server");
     const client = await clerkClient();
-    const clerkUser = (String(currentUserId).startsWith('custom_') ? { id: currentUserId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(currentUserId));
+    const clerkUser = (await getUserDetails(currentUserId));
     const metadataRole = (clerkUser.publicMetadata as any)?.role || (clerkUser.privateMetadata as any)?.role;
     const role = String(metadataRole || dbUser?.role || "").toUpperCase();
 
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest) {
     let finalEmployeeName = employeeName;
     if (!finalEmployeeName) {
       try {
-        const u = (String(targetUserId).startsWith('custom_') ? { id: targetUserId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(targetUserId));
+        const u = (await getUserDetails(targetUserId));
         finalEmployeeName = `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.username || "Employee";
       } catch {
         finalEmployeeName = "Employee";

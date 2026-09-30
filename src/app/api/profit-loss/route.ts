@@ -3,6 +3,7 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { auth } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 import { syncPendingPaymentLinks } from "@/lib/sync-payment-links";
+import { getUserDetails } from "@/lib/auth-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ interface UserPrivateMetadata {
 async function getUserRole(userId: string): Promise<string | null> {
   try {
     const client = await clerkClient();
-    const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
+    const user = (await getUserDetails(userId));
     return (
       (user.publicMetadata as UserPublicMetadata)?.role ||
       (user.privateMetadata as UserPrivateMetadata)?.role ||

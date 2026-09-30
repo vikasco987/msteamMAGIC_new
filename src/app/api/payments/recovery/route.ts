@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth-utils";
 import { users } from "@clerk/clerk-sdk-node";
+import { getUserDetails } from "@/lib/auth-utils";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -9,7 +10,7 @@ export const revalidate = 0;
 // Match TaskTableView role logic exactly
 async function getUserRole(userId: string): Promise<string | null> {
     try {
-        const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+        const user = (await getUserDetails(userId));
         return (
             (user.publicMetadata as { role?: string })?.role ||
             (user.privateMetadata as { role?: string })?.role ||
@@ -105,7 +106,7 @@ export async function GET(req: NextRequest) {
         const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
         const { clerkClient: clerkClientRecovery } = await import("@clerk/nextjs/server");
         const clientRecovery = await clerkClientRecovery();
-        const clerkUserRecovery = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await clientRecovery.users.getUser(userId));
+        const clerkUserRecovery = (await getUserDetails(userId));
         const metadataRoleRecovery = (clerkUserRecovery.publicMetadata as any)?.role || (clerkUserRecovery.privateMetadata as any)?.role;
         const normalizedRoleRecovery = String(metadataRoleRecovery || dbUser?.role || "user").toLowerCase();
 

@@ -3,6 +3,7 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { auth } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 import { getUnifiedUserId } from "@/lib/auth-utils";
+import { getUserDetails } from "@/lib/auth-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
     } else {
         // Fetch from Clerk
         const client = await clerkClient();
-        const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
+        const user = (await getUserDetails(userId));
         userEmail = user.emailAddresses?.[0]?.emailAddress || "";
         userName = user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.username || userEmail.split('@')[0];
         userImageUrl = user.imageUrl || "";
@@ -88,7 +89,7 @@ export async function PUT(req: NextRequest) {
         userName = customUser.name || customUser.email.split('@')[0];
     } else {
         const client = await clerkClient();
-        const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
+        const user = (await getUserDetails(userId));
         userEmail = user.emailAddresses?.[0]?.emailAddress || "";
         userName = user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.username || userEmail.split('@')[0];
     }

@@ -53,7 +53,7 @@
 // // ✅ Get User Role
 // async function getUserRole(userId: string): Promise<string | null> {
 //   try {
-//     const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+//     const user = (await getUserDetails(userId));
 //     return (
 //       (user.publicMetadata as UserPublicMetadata)?.role ||
 //       (user.privateMetadata as UserPrivateMetadata)?.role ||
@@ -76,7 +76,7 @@
 //     if (!body.title || !body.assigneeId)
 //       return NextResponse.json({ error: "Missing title or assigneeId" }, { status: 400 });
 
-//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+//     const clerkUser = (await getUserDetails(userId));
 //     const assignerEmail = clerkUser.emailAddresses?.[0]?.emailAddress || "unknown";
 //     const assignerName = clerkUser.firstName || clerkUser.username || "Unknown";
 //     const status = "todo" as const;
@@ -329,6 +329,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth-utils";
 import { users } from "@clerk/clerk-sdk-node";
 import { prisma } from "@/lib/prisma";
+import { getUserDetails } from "@/lib/auth-utils";
 
 // ========== HELPERS ==========
 interface UserPublicMetadata { role?: string }
@@ -336,7 +337,7 @@ interface UserPrivateMetadata { role?: string }
 
 async function getUserRole(userId: string): Promise<string | null> {
   try {
-    const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+    const user = (await getUserDetails(userId));
     return (
       (user.publicMetadata as UserPublicMetadata)?.role ||
       (user.privateMetadata as UserPrivateMetadata)?.role ||
@@ -357,7 +358,7 @@ export async function POST(req: NextRequest) {
     if (!body.title || !body.assigneeId)
       return NextResponse.json({ error: "Missing title or assigneeId" }, { status: 400 });
 
-    const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
+    const clerkUser = (await getUserDetails(userId));
     const assignerEmail = clerkUser.emailAddresses?.[0]?.emailAddress || "unknown";
     const assignerName = clerkUser.firstName || clerkUser.username || "Unknown";
 
@@ -366,7 +367,7 @@ export async function POST(req: NextRequest) {
     let assigneeEmail = assignerEmail;
     if (body.assigneeId && body.assigneeId !== userId) {
       try {
-        const u = (body.assigneeId.startsWith('custom_') ? { id: body.assigneeId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(body.assigneeId));
+        const u = (await getUserDetails(body.assigneeId));
         if (u) {
           assigneeName = `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.username || "Unknown";
           assigneeEmail = u.emailAddresses?.[0]?.emailAddress || "Unknown";
@@ -420,7 +421,7 @@ export async function GET(req: NextRequest) {
     let metadataRole = dbUser?.role;
     if (!userId.startsWith("custom_")) {
         try {
-            const clerkUserForRole = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
+            const clerkUserForRole = (await getUserDetails(userId));
             metadataRole = (clerkUserForRole.publicMetadata as any)?.role || (clerkUserForRole.privateMetadata as any)?.role || metadataRole;
         } catch (e) {}
     }

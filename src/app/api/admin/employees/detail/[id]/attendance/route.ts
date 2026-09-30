@@ -3,6 +3,7 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { auth } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 import { startOfMonth, endOfMonth, format } from "date-fns";
+import { getUserDetails } from "@/lib/auth-utils";
 
 const calcWorkingHours = (checkIn: Date, checkOut: Date) => {
   let ms = checkOut.getTime() - checkIn.getTime();
@@ -42,7 +43,7 @@ export async function GET(
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const client = await clerkClient();
-    const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
+    const user = (await getUserDetails(userId));
     const role = (user.publicMetadata?.role as string)?.toLowerCase() || "user";
 
     if (!["master", "admin"].includes(role)) {
