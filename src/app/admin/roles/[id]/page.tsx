@@ -52,7 +52,7 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
     const fetchUserDetails = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/admin/users/${id}`);
+            const res = await fetch(`/api/admin/users/manage/${id}`);
             if (res.ok) {
                 const data = await res.json();
                 setUserData(data.user);
@@ -85,7 +85,7 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                 ...(password ? { password } : {})
             };
 
-            const res = await fetch(`/api/admin/users/${id}`, {
+            const res = await fetch(`/api/admin/users/manage/${id}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
