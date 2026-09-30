@@ -172,13 +172,23 @@ export function AgreementSheet({ initialClient, initialAgreement, initialPayment
                 <DateSelector date={agreement.start} onChange={(date) => setAgreement({ ...agreement, start: date })} />
 
                 <span className="text-sm text-muted-foreground mt-2">End Date</span>
-                <div className="flex flex-col sm:flex-row flex-wrap gap-2">
-                  {[1, 2, 3].map((m) => (
-                    <Button key={m} variant="secondary" className="flex-1" onClick={() => extendEndDate(m)}>
-                      +{m} Month{m > 1 && "s"}
-                    </Button>
-                  ))}
-                  <DateSelector date={agreement.end} onChange={(date) => setAgreement({ ...agreement, end: date })} />
+                <div className="flex flex-col sm:flex-row flex-wrap gap-2 items-center">
+                  <div className="flex items-center gap-2">
+                    <Input 
+                      type="number" 
+                      min="1"
+                      placeholder="Months" 
+                      className="w-24 h-9" 
+                      onChange={(e) => {
+                        const m = parseInt(e.target.value);
+                        if (!isNaN(m)) extendEndDate(m);
+                      }} 
+                    />
+                    <span className="text-sm text-muted-foreground">Months</span>
+                  </div>
+                  <div className="flex-1">
+                    <DateSelector date={agreement.end} onChange={(date) => setAgreement({ ...agreement, end: date })} />
+                  </div>
                 </div>
 
                 <p className="text-xs text-muted-foreground mt-1">
@@ -229,7 +239,15 @@ export function AgreementSheet({ initialClient, initialAgreement, initialPayment
             )}
 
             <div className="flex flex-col sm:flex-row gap-4">
-              <SelectField label="Duration Label" value={agreement.duration} onValueChange={(value) => setAgreement({ ...agreement, duration: value })} options={durationOptions} className="sm:w-1/2" />
+              <div className="mt-6 flex flex-col space-y-1.5 sm:w-1/2">
+                <Label>Duration Label (Months)</Label>
+                <Input 
+                  type="number" 
+                  min="1"
+                  value={agreement.duration} 
+                  onChange={(e) => setAgreement({ ...agreement, duration: e.target.value })} 
+                />
+              </div>
               <SelectField label="Services" value={agreement.services} onValueChange={(value) => setAgreement({ ...agreement, services: value })} options={serviceOptions} className="sm:w-1/2" />
             </div>
 

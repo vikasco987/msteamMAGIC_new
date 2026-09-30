@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 import { startOfMonth, endOfMonth, format, startOfWeek, endOfWeek, parseISO, startOfDay, getISOWeek, getYear } from "date-fns";
 
 export async function GET(req: Request) {

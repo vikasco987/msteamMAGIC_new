@@ -1,6 +1,7 @@
 // import { NextResponse } from "next/server";
 // import { prisma } from "@/lib/prisma";
-// import { auth, clerkClient } from "@clerk/nextjs/server";
+// import { clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 
 // export async function POST(req: Request) {
 //   try {
@@ -15,7 +16,7 @@
 //     }
 
 //     // 🔎 Fetch Clerk user to check role
-//     const clerkUser = await clerkClient.users.getUser(userId);
+//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await clerkClient.users.getUser(userId));
 //     const role = clerkUser.publicMetadata?.role;
 
 //     // 🛑 Admin guard
@@ -103,7 +104,7 @@
 
 // import { NextRequest, NextResponse } from "next/server";
 // import { prisma } from "@/lib/prisma";
-// import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@/lib/auth-utils";
 // import { users } from "@clerk/clerk-sdk-node";
 
 // export async function POST(req: NextRequest) {
@@ -119,7 +120,7 @@
 //     }
 
 //     // 🔎 Fetch admin from Clerk
-//     const adminUser = await users.getUser(userId);
+//     const adminUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
 //     const role = adminUser.publicMetadata?.role;
 
 //     // 🛑 Admin guard
@@ -213,7 +214,7 @@
 // // app/api/admin/attendance/update/route.ts
 // import { NextRequest, NextResponse } from "next/server";
 // import { prisma } from "@/lib/prisma";
-// import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@/lib/auth-utils";
 // import { users } from "@clerk/clerk-sdk-node";
 
 // export async function POST(req: NextRequest) {
@@ -323,7 +324,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 
 export async function POST(req: NextRequest) {
   try {

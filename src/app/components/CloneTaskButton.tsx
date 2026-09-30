@@ -1,3 +1,4 @@
+"use client";
 // "use client";
 
 // import { Copy } from "lucide-react";
@@ -137,7 +138,6 @@
 
 
 
-"use client";
 
 import { Copy } from "lucide-react";
 import React, { useState } from "react";

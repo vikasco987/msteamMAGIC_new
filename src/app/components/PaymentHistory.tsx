@@ -1,10 +1,11 @@
 "use client";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 import React from "react";
 import { FaDownload, FaCopy, FaFileInvoice, FaEye, FaFilter, FaXmark, FaUser, FaMapPin, FaPhone, FaBuilding, FaStore, FaIndianRupeeSign, FaCalendarDay, FaPencil, FaTrashCan } from "react-icons/fa6";
 import { generateInvoicePDF } from "@/lib/invoice-utils";
 import toast from "react-hot-toast";
 import { format, parseISO } from "date-fns";
-import { useUser } from "@clerk/nextjs";
+
 
 interface PaymentEntry {
   id?: string;

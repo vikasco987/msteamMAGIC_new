@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
@@ -11,7 +12,7 @@ export async function GET(req: NextRequest) {
 
         // Check if requester is MASTER
         const client = await clerkClient();
-        const requester = await client.users.getUser(userId);
+        const requester = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
         const requesterRole = String(requester.publicMetadata?.role || "user").toLowerCase();
 
         if (requesterRole !== "master") {
@@ -36,11 +37,30 @@ export async function GET(req: NextRequest) {
                 email: u.emailAddresses[0]?.emailAddress || "N/A",
                 role: (u.publicMetadata?.role as string) || "user",
                 synced: !!dbUser,
-                banned: !!u.banned
+                banned: !!dbUser?.isDisabled,
+                // Only consider them unverified if they have a custom password but are explicitly marked as not verified
+                isVerified: dbUser ? (dbUser.password ? dbUser.isVerified : true) : true,
+                isCustom: false
             };
         });
 
-        return NextResponse.json({ users: formattedUsers });
+        const customUsers = users
+            .filter(du => du.clerkId.startsWith("custom_"))
+            .map(du => ({
+                id: du.clerkId,
+                clerkId: du.clerkId,
+                name: du.name || "Unknown",
+                email: du.email,
+                role: du.role,
+                synced: true,
+                banned: !!du.isDisabled,
+                isVerified: du.isVerified,
+                isCustom: true
+            }));
+
+        const allUsers = [...formattedUsers, ...customUsers];
+
+        return NextResponse.json({ users: allUsers });
     } catch (error) {
         console.error("GET /api/admin/roles error:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
@@ -55,7 +75,7 @@ export async function POST(req: NextRequest) {
         }
 
         const client = await clerkClient();
-        const requester = await client.users.getUser(userId);
+        const requester = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
         const requesterRole = String(requester.publicMetadata?.role || "user").toLowerCase();
 
         if (requesterRole !== "master") {
@@ -68,7 +88,19 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
 
-        // Update Clerk Metadata
+        if (targetUserId.startsWith("custom_")) {
+            // It's a custom user, update in Prisma only
+            await prisma.user.update({
+                where: { clerkId: targetUserId },
+                data: {
+                    role: newRole.toUpperCase(),
+                    isVerified: true // Assigning a role verifies them
+                }
+            });
+            return NextResponse.json({ success: true, role: newRole });
+        }
+
+        // Update Clerk Metadata for Clerk users
         await client.users.updateUserMetadata(targetUserId, {
             publicMetadata: {
                 role: newRole.toLowerCase()
@@ -76,19 +108,21 @@ export async function POST(req: NextRequest) {
         });
 
         // Sync with Prisma
-        const targetUser = await client.users.getUser(targetUserId);
+        const targetUser = (String(targetUserId).startsWith('custom_') ? { id: targetUserId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(targetUserId));
         await prisma.user.upsert({
             where: { clerkId: targetUserId },
             update: {
                 role: newRole.toUpperCase(),
                 email: targetUser.emailAddresses[0].emailAddress,
                 name: `${targetUser.firstName || ""} ${targetUser.lastName || ""}`.trim() || "Unnamed",
+                isVerified: true
             },
             create: {
                 clerkId: targetUserId,
                 role: newRole.toUpperCase(),
                 email: targetUser.emailAddresses[0].emailAddress,
                 name: `${targetUser.firstName || ""} ${targetUser.lastName || ""}`.trim() || "Unnamed",
+                isVerified: true
             }
         });
 

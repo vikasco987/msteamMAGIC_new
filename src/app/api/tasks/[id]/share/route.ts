@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import jwt from "jsonwebtoken";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 
 export const dynamic = "force-dynamic";
 

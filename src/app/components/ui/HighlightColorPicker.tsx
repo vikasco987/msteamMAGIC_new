@@ -1,5 +1,5 @@
-// components/ui/HighlightColorPicker.tsx
 "use client";
+// components/ui/HighlightColorPicker.tsx
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Paintbrush } from "lucide-react";

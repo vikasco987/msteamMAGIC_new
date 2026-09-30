@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 import { startOfDay, endOfDay, parseISO } from "date-fns";
 
 export async function GET(req: Request) {

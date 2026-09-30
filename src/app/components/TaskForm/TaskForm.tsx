@@ -1,3 +1,4 @@
+"use client";
 
 
 
@@ -371,7 +372,6 @@
 
 
 // src/app/components/TaskForm/TaskForm.tsx
-"use client";
 
 import React, { useEffect, useState } from "react";
 import BasicInfoStep from "./BasicInfoStep";

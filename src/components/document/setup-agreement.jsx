@@ -67,7 +67,7 @@ export default function SetupAgreementPDF({ company, client, agreement, customHt
 
           
           <Text style={styles.paragraph}>
-            This Setup Agreement is made and entered into between <Text style={styles.blueBold}>{company.name}</Text>, a Proprietorship hereinafter referred to as <Text style={styles.blackBold}>“Consultant”</Text>, and <Text style={styles.blueBold}>{client.name?.toUpperCase()}</Text>, a Proprietorship hereinafter referred to as <Text style={styles.blackBold}>“Client”</Text>, represented by <Text style={styles.blackBold}>{client.representative}</Text>.
+            This Setup Agreement is made and entered into between <Text style={styles.blueBold}>{company.name}</Text>, a Private Limited Company hereinafter referred to as <Text style={styles.blackBold}>“Consultant”</Text>, and <Text style={styles.blueBold}>{client.name?.toUpperCase()}</Text>, a Proprietorship hereinafter referred to as <Text style={styles.blackBold}>“Client”</Text>, represented by <Text style={styles.blackBold}>{client.representative}</Text>.
           </Text>
 
           <Text style={styles.sectionHeading}>1. Scope of Services</Text>

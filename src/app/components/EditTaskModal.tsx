@@ -1,3 +1,4 @@
+"use client";
 // "use client";
 
 // import React, { useState } from "react";
@@ -360,7 +361,6 @@
 
 
 
-"use client";
 
 import React, { useEffect, useState, ChangeEvent } from "react";
 import { FaTimes } from "react-icons/fa";

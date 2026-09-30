@@ -1,6 +1,6 @@
 // // /app/api/attendance/check-out/route.ts
 // import { NextRequest, NextResponse } from "next/server";
-// import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@/lib/auth-utils";
 // import { prisma } from "@/lib/prisma";
 
 // export async function POST(req: NextRequest) {
@@ -51,11 +51,11 @@
 // /app/api/attendance/check-out/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server"; // 👈 use `auth` instead of getAuth
+import { auth } from "@/lib/auth-utils"; // 👈 use `auth` instead of getAuth
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = auth(); // 👈 works reliably in App Router
+    const { userId } = await auth(); // 👈 works reliably in App Router
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

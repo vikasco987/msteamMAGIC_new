@@ -1,3 +1,4 @@
+"use client";
 // "use client";
 
 // import React from "react";
@@ -77,7 +78,6 @@
 
 
 // src/app/dashboard/PaymentDrawer.tsx
-"use client";
 
 import React from "react";
 import { Dialog } from "@headlessui/react"; // Assuming @headlessui/react for this Dialog

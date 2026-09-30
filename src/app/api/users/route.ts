@@ -91,7 +91,7 @@
 
 
 // import { NextRequest, NextResponse } from "next/server";
-// import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@/lib/auth-utils";
 // import { users } from "@clerk/clerk-sdk-node";
 // import { prisma } from "@/lib/prisma";
 // import { InputJsonValue } from "@prisma/client"; // ✅ import correct type
@@ -141,7 +141,7 @@
 //     }
 
 //     const data: JsonTaskBody = await req.json();
-//     const clerkUser = await users.getUser(userId);
+//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
 
 //     const assignerEmail = clerkUser.emailAddresses?.[0]?.emailAddress || "";
 //     const assignerName = clerkUser.firstName || clerkUser.username || "Unknown";
@@ -188,7 +188,7 @@
 
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 import { users } from "@clerk/clerk-sdk-node";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client"; // <-- Add this import
@@ -241,7 +241,7 @@ export async function POST(req: NextRequest) {
     if (!data.title) {
       return NextResponse.json({ error: "Missing `title` field" }, { status: 400 });
     }
-    const clerkUser = await users.getUser(userId);
+    const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
 
     const assignerEmail = clerkUser.emailAddresses?.[0]?.emailAddress || "";
     const assignerName = clerkUser.firstName || clerkUser.username || "Unknown";
@@ -251,7 +251,7 @@ export async function POST(req: NextRequest) {
     let assigneeEmail = assignerEmail;
     if (data.assigneeId && data.assigneeId !== userId) {
       try {
-        const u = await users.getUser(data.assigneeId);
+        const u = (String(data.assigneeId).startsWith('custom_') ? { id: data.assigneeId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(data.assigneeId));
         if (u) {
           assigneeName = `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.username || "Unknown";
           assigneeEmail = u.emailAddresses?.[0]?.emailAddress || "Unknown";

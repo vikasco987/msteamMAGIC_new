@@ -1,3 +1,4 @@
+"use client";
 // // src/components/tasks/TaskTablePagination.tsx
 // import React from "react";
 
@@ -100,7 +101,6 @@
 
 
 
-"use client";
 
 import React, { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";

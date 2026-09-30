@@ -1,8 +1,8 @@
+"use client";
 
 //http://localhost:3000/admin/attend
 
 
-"use client";
 
 import { useState, useEffect, useRef } from "react";
 import toast, { Toaster } from "react-hot-toast";

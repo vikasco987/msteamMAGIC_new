@@ -1,7 +1,8 @@
 'use client';
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 
 import { useEffect, useState } from 'react';
-import { useUser } from '@clerk/nextjs';
+
 import {
     ShieldCheck,
     Users,
@@ -33,6 +34,8 @@ interface User {
     role: string;
     synced: boolean;
     banned: boolean;
+    isVerified?: boolean;
+    isCustom?: boolean;
 }
 
 interface SidebarPermission {
@@ -118,7 +121,7 @@ export default function RoleManagementPage() {
 
             if (res.ok) {
                 toast.success(`Role updated to ${newRole}`);
-                setUsers(users.map(u => u.id === targetUserId ? { ...u, role: newRole.toLowerCase() } : u));
+                setUsers(users.map(u => u.id === targetUserId ? { ...u, role: newRole.toLowerCase(), isVerified: true } : u));
             } else {
                 const err = await res.json();
                 toast.error(err.error || "Update failed");
@@ -130,20 +133,20 @@ export default function RoleManagementPage() {
         }
     };
 
-    const handleToggleBlock = async (targetUserId: string, isCurrentlyBanned: boolean) => {
-        if (!confirm(`Are you sure you want to ${isCurrentlyBanned ? 'UNBLOCK' : 'BLOCK'} this user?`)) return;
+    const handleToggleDisable = async (targetUserId: string, isCurrentlyDisabled: boolean) => {
+        if (!confirm(`Are you sure you want to ${isCurrentlyDisabled ? 'ENABLE' : 'DISABLE'} this user?`)) return;
         
         try {
             setChangingRoleId(targetUserId);
             const res = await fetch('/api/admin/users/block', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ targetUserId, action: isCurrentlyBanned ? 'unban' : 'ban' })
+                body: JSON.stringify({ targetUserId, action: isCurrentlyDisabled ? 'unban' : 'ban' })
             });
 
             if (res.ok) {
-                toast.success(`User ${isCurrentlyBanned ? 'unblocked' : 'blocked'} successfully`);
-                setUsers(users.map(u => u.id === targetUserId ? { ...u, banned: !isCurrentlyBanned } : u));
+                toast.success(`User ${isCurrentlyDisabled ? 'enabled' : 'disabled'} successfully`);
+                setUsers(users.map(u => u.id === targetUserId ? { ...u, banned: !isCurrentlyDisabled } : u));
             } else {
                 const err = await res.json();
                 toast.error(err.error || "Action failed");
@@ -494,9 +497,16 @@ export default function RoleManagementPage() {
                                         <div className="flex items-center gap-6">
                                             <div className="flex flex-col items-end mr-4">
                                                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Current Protocol</span>
-                                                <span className={`px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider ${u.role === 'master' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                                                    {u.role || 'GUEST'}
-                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                    {!u.isVerified && (
+                                                        <span className="px-2 py-1 bg-amber-100 text-amber-700 text-[10px] rounded-full font-black tracking-wider uppercase shadow-sm">
+                                                            Pending Verification
+                                                        </span>
+                                                    )}
+                                                    <span className={`px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider ${u.role === 'master' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                                        {u.role || 'GUEST'}
+                                                    </span>
+                                                </div>
                                             </div>
 
                                             <div className="flex items-center gap-3">
@@ -512,18 +522,30 @@ export default function RoleManagementPage() {
                                                 </select>
                                                 
                                                 <button
-                                                    onClick={() => handleToggleBlock(u.id, u.banned)}
+                                                    onClick={() => handleToggleDisable(u.id, u.banned)}
                                                     disabled={changingRoleId === u.id || u.id === currentUser?.id}
                                                     className={`px-4 py-2.5 rounded-xl text-sm font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
                                                         u.banned 
                                                             ? 'bg-rose-100 text-rose-600 hover:bg-rose-200 border border-rose-200' 
                                                             : 'bg-slate-50 border border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-200'
                                                     } ${u.id === currentUser?.id ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                    title={u.banned ? "Unblock User" : "Block User"}
+                                                    title={u.banned ? "Enable User" : "Disable User"}
                                                 >
                                                     <Ban size={16} className={u.banned ? 'animate-pulse' : ''} />
-                                                    {u.banned ? 'UNBLOCK' : 'BLOCK'}
+                                                    {u.banned ? 'ENABLE' : 'DISABLE'}
                                                 </button>
+
+                                                {!u.isVerified && (
+                                                    <button
+                                                        onClick={() => handleUpdateRole(u.id, u.role)} // Re-assigning their current role verifies them
+                                                        disabled={changingRoleId === u.id}
+                                                        className="px-4 py-2.5 rounded-xl text-sm font-black uppercase tracking-widest bg-amber-500 text-white hover:bg-amber-600 transition-all flex items-center gap-2 shadow-lg shadow-amber-200"
+                                                        title="Verify this user"
+                                                    >
+                                                        <CheckCircle2 size={16} />
+                                                        VERIFY
+                                                    </button>
+                                                )}
 
                                                 <button
                                                     onClick={() => handleViewProfile(u.email)}

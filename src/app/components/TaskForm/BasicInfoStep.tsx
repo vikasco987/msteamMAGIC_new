@@ -1,7 +1,8 @@
 "use client";
+import { useAuth } from "@/lib/useUnifiedAuth";
 
 import React, { useEffect, useState } from "react";
-import { useAuth } from "@clerk/nextjs";
+
 import dynamic from "next/dynamic";
 import { Briefcase, Users, Edit3, Mic } from "lucide-react";
 

@@ -1,3 +1,4 @@
+"use client";
 // import FileDropzone from "./FileDropzone";
 
 // interface UploadsStepProps {
@@ -1844,7 +1845,6 @@
 
 
 // src/app/components/TaskForm/UploadsStep.tsx
-"use client";
 
 import React, { useState, useEffect, useRef } from "react";
 import FileDropzone from "./FileDropzone";

@@ -24,7 +24,7 @@ interface PrismaSelectedTask {
   customFields: Prisma.JsonValue | null; // Prisma returns JSON fields as JsonValue
 }
 
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 
 export async function GET(req: Request) {
   try {
@@ -57,7 +57,7 @@ export async function GET(req: Request) {
     // Use Clerk metadata for role if possible, fallback to DB role
     const { clerkClient } = await import("@clerk/nextjs/server");
     const client = await clerkClient();
-    const clerkUser = await client.users.getUser(userId);
+    const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
     const roleFromClerk = (clerkUser.publicMetadata as any)?.role || (clerkUser.privateMetadata as any)?.role;
     const normalizedRole = String(roleFromClerk || dbUser?.role || 'user').toLowerCase();
     

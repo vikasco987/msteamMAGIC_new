@@ -1,4 +1,5 @@
 "use client";
+import { useUnifiedAuth as useUser, useAuth } from "@/lib/useUnifiedAuth";
 
 import Link from "next/link";
 
@@ -9,7 +10,8 @@ import { format, differenceInCalendarDays, addDays, isToday, parseISO, startOfMo
 import Image from "next/image";
 import * as Dialog from "@radix-ui/react-dialog";
 import { uploadToCloudinary } from "@/app/components/TaskForm/utils";
-import { useUser, useAuth } from "@clerk/nextjs";
+
+
 import { FaRegCircle, FaCheckCircle, FaPlus, FaFileImage, FaFilePdf, FaImage, FaFileAlt, FaVideo, FaTrashAlt, FaRedoAlt, FaHistory, FaUserEdit, FaCrown } from "react-icons/fa";
 import ReassignTaskModal from "./ReassignTaskModal";
 import TaskActivityFeed from "./TaskActivityFeed";

@@ -1,7 +1,8 @@
 "use client";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 
 import React, { useEffect, useState } from "react";
-import { useUser } from "@clerk/nextjs";
+
 import Link from "next/link";
 import { ArrowLeft, UserCircle2, Calendar, FileText, Activity, CreditCard, Banknote, History, Wallet, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import toast from "react-hot-toast";

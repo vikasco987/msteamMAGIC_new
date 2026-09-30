@@ -1,7 +1,8 @@
 "use client";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 
 import React, { useState, useEffect } from 'react';
-import { useUser } from '@clerk/nextjs';
+
 import { 
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
     PieChart, Pie, Cell, LineChart, Line

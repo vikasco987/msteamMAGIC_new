@@ -1,7 +1,8 @@
 "use client";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 
 import { useState, useEffect, Suspense } from "react";
-import { useUser } from "@clerk/nextjs";
+
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { format } from "date-fns";

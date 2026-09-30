@@ -1,22 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
+import { getUnifiedUserId } from "@/lib/auth-utils";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const userId = await getUnifiedUserId(req);
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const client = await clerkClient();
-    const user = await client.users.getUser(userId);
-    const userEmail = user.emailAddresses?.[0]?.emailAddress;
+    let userEmail = "";
+    let userName = "";
+    let userImageUrl = "";
+
+    if (userId.startsWith("custom_")) {
+        // Fetch from Prisma for custom user
+        const customUser = await prisma.user.findUnique({ where: { clerkId: userId } });
+        if (!customUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+        userEmail = customUser.email;
+        userName = customUser.name || customUser.email.split('@')[0];
+        userImageUrl = "";
+    } else {
+        // Fetch from Clerk
+        const client = await clerkClient();
+        const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
+        userEmail = user.emailAddresses?.[0]?.emailAddress || "";
+        userName = user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.username || userEmail.split('@')[0];
+        userImageUrl = user.imageUrl || "";
+    }
 
     if (!userEmail) {
-      return NextResponse.json({ error: "No email associated with Clerk user" }, { status: 400 });
+      return NextResponse.json({ error: "No email associated with user" }, { status: 400 });
     }
 
     const profile = await prisma.employeeProfile.findUnique({
@@ -31,13 +49,19 @@ export async function GET(req: NextRequest) {
       orderBy: { date: 'desc' }
     });
 
+    const dbUser = await prisma.user.findUnique({
+      where: { clerkId: userId }
+    });
+
     const userInfo = {
       clerkId: userId,
       email: userEmail,
-      fullName: user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.username || userEmail.split('@')[0],
-      imageUrl: user.imageUrl,
+      fullName: userName,
+      imageUrl: userImageUrl,
+      role: dbUser?.role || "user",
       profile: profile || null,
-      salaryHistory
+      salaryHistory,
+      isDisabled: dbUser?.isDisabled || false
     };
 
     return NextResponse.json({ user: userInfo });
@@ -49,17 +73,28 @@ export async function GET(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const userId = await getUnifiedUserId(req);
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const client = await clerkClient();
-    const user = await client.users.getUser(userId);
-    const userEmail = user.emailAddresses?.[0]?.emailAddress;
+    let userEmail = "";
+    let userName = "";
+
+    if (userId.startsWith("custom_")) {
+        const customUser = await prisma.user.findUnique({ where: { clerkId: userId } });
+        if (!customUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+        userEmail = customUser.email;
+        userName = customUser.name || customUser.email.split('@')[0];
+    } else {
+        const client = await clerkClient();
+        const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
+        userEmail = user.emailAddresses?.[0]?.emailAddress || "";
+        userName = user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.username || userEmail.split('@')[0];
+    }
 
     if (!userEmail) {
-      return NextResponse.json({ error: "No email associated with Clerk user" }, { status: 400 });
+      return NextResponse.json({ error: "No email associated with user" }, { status: 400 });
     }
 
     const body = await req.json();
@@ -136,7 +171,7 @@ export async function PUT(req: NextRequest) {
       },
       create: {
         email: emailKey,
-        name: name ? String(name).trim() : user.firstName || emailKey.split('@')[0],
+        name: name ? String(name).trim() : userName,
         phone: phone ? String(phone).trim() : null,
         department: department ? String(department).trim() : "Sales",
         designation: designation ? String(designation).trim() : null,

@@ -1,7 +1,8 @@
 "use client";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 
 import React, { useState, useEffect } from "react";
-import { useUser } from "@clerk/nextjs";
+
 import Link from "next/link";
 import { format } from "date-fns";
 import { Calendar, Users, TrendingUp, AlertCircle, Loader2, BarChart3, Search, Download, FileText, X, MessageCircle, CheckSquare } from "lucide-react";

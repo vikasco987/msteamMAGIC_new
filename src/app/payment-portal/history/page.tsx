@@ -1,4 +1,5 @@
 "use client";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 
 import { useState, useEffect } from "react";
 import axios from "axios";
@@ -11,7 +12,7 @@ import { toast } from "react-hot-toast";
 import { format } from "date-fns";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { useUser } from "@clerk/nextjs";
+
 
 const API_BASE_URL = "/api/cashfree";
 

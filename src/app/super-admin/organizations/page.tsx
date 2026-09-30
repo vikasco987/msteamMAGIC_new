@@ -1,7 +1,9 @@
 "use client";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 
 import React, { useEffect, useState } from "react";
-import { useUser, useClerk } from "@clerk/nextjs";
+import { useClerk } from "@clerk/nextjs";
+
 import { 
     Building2, 
     ArrowRightCircle, 

@@ -1,11 +1,12 @@
 "use client";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 
 import React, { useState } from "react";
 import { FaRegClipboard, FaTimes, FaUserEdit, FaCrown, FaEllipsisV, FaRegStickyNote, FaTrashAlt } from "react-icons/fa";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { MoreVertical, Copy, History, DollarSign, Pin, Trash2, Layers, Share2 } from "lucide-react";
 import toast from "react-hot-toast";
-import { useUser } from "@clerk/nextjs";
+
 import type { Task } from "../../types/task";
 import { Note } from "../../../types/note";
 import Image from "next/image";

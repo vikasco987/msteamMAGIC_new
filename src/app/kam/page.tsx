@@ -1,9 +1,11 @@
+"use client";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 // // src/app/kam/page.tsx
 // "use client";
 
 // import React from "react"; // Removed useEffect and useState
 // import KamTableView from "../components/KamTable";
-// import { useUser } from "@clerk/nextjs";
+// 
 
 // export default function KamPage() {
 //   const { user, isLoaded } = useUser();
@@ -48,11 +50,10 @@
 
 
 
-"use client";
 
 import React from "react";
 import KamTableView from "../components/KamTable";
-import { useUser } from "@clerk/nextjs";
+
 
 export default function KamPage() {
   const { user, isLoaded } = useUser();
@@ -92,7 +93,7 @@ export default function KamPage() {
 // "use client";
 
 // import React from "react";
-// import { useUser } from "@clerk/nextjs";
+// 
 // import KamTableView from "../components/KamTable";
 // import SecondaryNavbar from "../components/SecondaryNavbar";
 

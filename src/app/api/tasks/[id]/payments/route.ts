@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
+import { clerkClient, currentUser } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 import cloudinary from "cloudinary";
 import { Readable } from "stream";
 import { logActivity } from "@/lib/activity";

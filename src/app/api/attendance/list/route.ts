@@ -20,7 +20,8 @@
 
 // import { NextResponse } from "next/server";
 // import { prisma } from "@/lib/prisma";
-// import { auth, clerkClient } from "@clerk/nextjs/server";
+// import { clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 
 // export async function GET(req: Request) {
 //   try {
@@ -91,7 +92,7 @@
 //     // ✅ Fetch each user individually instead of getUserList
 //     for (const id of uniqueIds) {
 //       try {
-//         const user = await clerkClient.users.getUser(id);
+//         const user = (id.startsWith('custom_') ? { id: id, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await clerkClient.users.getUser(id));
 //         const fullName =
 //           `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
 //           user.username ||
@@ -151,7 +152,7 @@
 
 //     for (const id of uniqueIds) {
 //       try {
-//         const user = await clerkClient.users.getUser(id);
+//         const user = (id.startsWith('custom_') ? { id: id, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await clerkClient.users.getUser(id));
 
 //         const fullName =
 //           `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
@@ -244,7 +245,7 @@
 
 //     for (const id of uniqueIds) {
 //       try {
-//         const user = await clerkClient.users.getUser(id);
+//         const user = (id.startsWith('custom_') ? { id: id, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await clerkClient.users.getUser(id));
 
 //         const fullName =
 //           `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
@@ -331,7 +332,7 @@
 
 //     for (const id of uniqueIds) {
 //       try {
-//         const user = await clerkClient.users.getUser(id);
+//         const user = (id.startsWith('custom_') ? { id: id, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await clerkClient.users.getUser(id));
 //         const fullName =
 //           `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
 //           user.username ||
@@ -374,7 +375,7 @@
 // src/app/api/attendance/list/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 import { clerkClient } from "@clerk/clerk-sdk-node";
 
 function calculateHours(checkIn?: Date | null, checkOut?: Date | null) {
@@ -398,7 +399,7 @@ export async function GET(req: Request) {
     const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
     const { clerkClient } = await import("@clerk/nextjs/server");
     const client = await clerkClient();
-    const clerkUser = await client.users.getUser(userId);
+    const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
     const metadataRole = (clerkUser.publicMetadata as any)?.role || (clerkUser.privateMetadata as any)?.role;
     const userRole = String(metadataRole || dbUser?.role || "USER").toUpperCase();
     
@@ -480,7 +481,7 @@ export async function GET(req: Request) {
 
     for (const id of uniqueIds) {
       try {
-        const user = await client.users.getUser(id);
+        const user = (id.startsWith('custom_') ? { id: id, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(id));
         const fullName =
           `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
           user.username ||

@@ -1,5 +1,5 @@
 // import { NextResponse } from "next/server";
-// import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@/lib/auth-utils";
 // import { clerkClient } from "@clerk/clerk-sdk-node";
 
 // export async function GET(req: Request) {
@@ -31,7 +31,7 @@
 
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 import { users } from "@clerk/clerk-sdk-node";
 
 export async function GET(req: NextRequest) {

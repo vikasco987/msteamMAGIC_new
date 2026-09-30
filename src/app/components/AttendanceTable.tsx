@@ -1,8 +1,9 @@
 "use client";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+
 import { motion, AnimatePresence } from "framer-motion";
 import MonthlyAttendanceTable from "./MonthlyAttendanceTable";
 import AttendanceAnalyticsTable from "./AttendanceAnalyticsTable";

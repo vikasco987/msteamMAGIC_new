@@ -12,7 +12,8 @@ const isPublicRoute = createRouteMatcher([
     '/api/razorpay(.*)',
     '/api/webhook(.*)',
     '/api/public-tasks(.*)',
-    '/api/dispatch/track(.*)'
+    '/api/dispatch/track(.*)',
+    '/api/auth/custom(.*)'
 ]);
 
 // ✅ Attach middleware logic
@@ -31,7 +32,18 @@ const middleware = clerkMiddleware(async (auth, req) => {
 
     // ✅ Protect all non-public routes
     if (!isPublicRoute(req)) {
-        await auth.protect();
+        // If they have a custom auth token, let them through
+        const hasCustomToken = req.cookies.has("custom_auth_token");
+        if (!hasCustomToken) {
+            if (url.pathname.startsWith('/api/')) {
+                const { userId } = await auth();
+                if (!userId) {
+                    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+                }
+            } else {
+                await auth.protect();
+            }
+        }
     }
 
     return NextResponse.next();

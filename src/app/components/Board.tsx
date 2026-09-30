@@ -1,7 +1,9 @@
 "use client";
+import { useUnifiedAuth as useUser, useAuth } from "@/lib/useUnifiedAuth";
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { useUser, useAuth } from "@clerk/nextjs";
+
+
 import {
   DragDropContext,
   Droppable,

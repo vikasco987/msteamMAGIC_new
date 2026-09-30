@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
+import { clerkClient, currentUser } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 
 import { Prisma } from "@prisma/client";
 import { logActivity } from "@/lib/activity";
@@ -350,7 +351,7 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
   // ✅ 1. Role Check: ONLY MASTER can delete
   const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
   const clerkClient = await import("@clerk/nextjs/server").then(m => m.clerkClient());
-  const clerkUser = await clerkClient.users.getUser(userId);
+  const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await clerkClient.users.getUser(userId));
   const metadataRole = (clerkUser.publicMetadata as any)?.role || (clerkUser.privateMetadata as any)?.role;
   const userRole = String(metadataRole || dbUser?.role || "USER").toUpperCase();
 

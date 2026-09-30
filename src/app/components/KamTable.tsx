@@ -1,8 +1,9 @@
 "use client";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { format, differenceInDays, isToday, subDays, startOfMonth } from "date-fns";
-import { useUser } from "@clerk/nextjs";
+
 import toast, { Toaster } from "react-hot-toast";
 import * as XLSX from "xlsx";
 import { FileText } from "lucide-react"; // Note icon

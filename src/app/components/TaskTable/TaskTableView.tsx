@@ -1,10 +1,13 @@
+"use client";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 // // components/TaskTableView.tsx
 // "use client";
 
 // import React, { useState, useEffect, useMemo } from "react";
 // import { Task } from "../../../types/task";
 // import { Note } from "../../../../types/note";
-// import { useUser, UserResource } from "@clerk/nextjs";
+// import { UserResource } from "@clerk/nextjs";
+
 // import { format, isToday, subDays, startOfMonth } from "date-fns";
 // import { FaSpinner, FaArrowUp, FaArrowDown } from "react-icons/fa"; // Only import what's needed here
 // import * as XLSX from "xlsx";
@@ -447,12 +450,12 @@
 
 
 // components/TaskTableView.tsx
-"use client";
 
 import React, { useState, useEffect, useMemo } from "react";
 import { Task } from "../../../types/task";
 import { Note } from "../../../../types/note";
-import { useUser, UserResource } from "@clerk/nextjs";
+import { UserResource } from "@clerk/nextjs";
+
 import { format, isToday, subDays, startOfMonth, subMonths, endOfMonth } from "date-fns";
 import { FaEye, FaEyeSlash, FaArrowUp, FaArrowDown } from "react-icons/fa";
 import * as XLSX from "xlsx";

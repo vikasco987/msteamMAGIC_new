@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 
 export async function GET(req: NextRequest) {
     const { userId, sessionClaims } = await auth();
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
     let finalRole = role;
     if (role === "user") {
         const client = await clerkClient();
-        const user = await client.users.getUser(userId);
+        const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
         finalRole = (user.publicMetadata?.role as string) || "user";
     }
 

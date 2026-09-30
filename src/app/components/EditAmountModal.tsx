@@ -1,5 +1,5 @@
-// components/EditAmountModal.tsx
 "use client";
+// components/EditAmountModal.tsx
 
 import React, { useState } from "react";
 

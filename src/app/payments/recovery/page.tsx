@@ -1,4 +1,5 @@
 "use client";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { format, differenceInDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
@@ -10,7 +11,7 @@ import {
     Trophy, Target
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useUser } from "@clerk/nextjs";
+
 import PaymentRemarkModal from "@/app/components/PaymentRemarkModal";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";

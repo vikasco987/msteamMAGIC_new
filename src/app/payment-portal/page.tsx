@@ -1,4 +1,5 @@
 "use client";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 
 import React, { useState, useEffect } from "react";
 import axios from "axios";
@@ -13,7 +14,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ALL_SERVICES } from "@/constants/services";
 import { toast } from "react-hot-toast";
-import { useUser } from "@clerk/nextjs";
+
 import { format } from "date-fns";
 import { QRCodeCanvas } from "qrcode.react";
 

@@ -550,7 +550,7 @@
 // src/app/api/attendance/today/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuth } from "@clerk/nextjs/server";
+import { getUnifiedUserId } from "@/lib/auth-utils";
 import moment from "moment-timezone";
 
 // 🔹 Helper: Get today's IST start & end, and current UTC timestamp
@@ -570,7 +570,7 @@ function getISTDayRange() {
 // ✅ Fetch today's attendance (if needed)
 export async function GET(req: Request) {
   try {
-    const { userId } = getAuth(req as any);
+    const userId = await getUnifiedUserId(req as any);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { startUTC, endUTC } = getISTDayRange();
@@ -606,7 +606,7 @@ export async function GET(req: Request) {
 // ✅ Mark attendance (Check-in / Check-out)
 export async function POST(req: Request) {
   try {
-    const { userId } = getAuth(req as any);
+    const userId = await getUnifiedUserId(req as any);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const nowIST = moment().tz("Asia/Kolkata");

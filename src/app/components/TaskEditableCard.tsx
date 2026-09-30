@@ -1,3 +1,4 @@
+"use client";
 
 
 
@@ -714,7 +715,6 @@
 
 
 // components/TaskEditableCard.tsx
-"use client";
 
 import React, { useState, ChangeEvent } from "react";
 import { FaCalendarAlt, FaFire, FaUser, FaEnvelope, FaSave } from "react-icons/fa";

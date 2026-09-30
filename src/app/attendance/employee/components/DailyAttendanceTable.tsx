@@ -1,18 +1,20 @@
-
-
-
-
-
-
-
-
-
-
-
 "use client";
 
+
+
+
+
+
+
+
+
+
+
+import { useUnifiedAuth as useUser, useAuth } from "@/lib/useUnifiedAuth";
+
 import { useEffect, useState, useMemo } from "react";
-import { useUser, useAuth } from "@clerk/nextjs";
+
+
 
 interface AttendanceRecord {
   date: string | Date;

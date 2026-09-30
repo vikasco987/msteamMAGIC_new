@@ -1,4 +1,5 @@
 "use client";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 
 import { useEffect, useState } from "react";
 import { 
@@ -21,7 +22,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { format } from "date-fns";
-import { useUser } from "@clerk/nextjs";
+
 import { 
   ResponsiveContainer, 
   ComposedChart, 

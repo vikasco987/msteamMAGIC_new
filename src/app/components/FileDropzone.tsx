@@ -1,10 +1,10 @@
+"use client";
 
 
 
 
 
 // components/FileDropzone.tsx
-'use client';
 
 import { useDropzone } from 'react-dropzone';
 

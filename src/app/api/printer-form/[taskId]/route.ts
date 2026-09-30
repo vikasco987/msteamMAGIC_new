@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 
 export async function POST(req: NextRequest, context: { params: Promise<{ taskId: string }> }) {
   const { taskId } = await context.params;

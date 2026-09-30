@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 import { ObjectId } from "mongodb";
 
 export async function POST(req: NextRequest) {
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
     }
 
     const client = await clerkClient();
-    const currentUser = await client.users.getUser(userId);
+    const currentUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
     const userEmail =
       currentUser.emailAddresses?.[0]?.emailAddress ||
       currentUser.primaryEmailAddress?.emailAddress ||

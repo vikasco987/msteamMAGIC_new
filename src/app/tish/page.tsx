@@ -1,5 +1,5 @@
-// /app/tish/page.tsx
 "use client";
+// /app/tish/page.tsx
 
 import React from "react";
 import PaymentHistory from "../components/PaymentHistory";

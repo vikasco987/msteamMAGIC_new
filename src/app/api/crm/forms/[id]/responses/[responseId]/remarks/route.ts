@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 import { processRemarkAutomation } from "@/lib/automation";
 import { emitMatrixUpdate } from "@/lib/socket-server";
 

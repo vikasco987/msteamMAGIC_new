@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
@@ -10,7 +11,7 @@ export async function POST(req: NextRequest) {
         }
 
         const client = await clerkClient();
-        const requester = await client.users.getUser(userId);
+        const requester = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
         const requesterRole = String(requester.publicMetadata?.role || "user").toLowerCase();
 
         if (requesterRole !== "master") {
@@ -24,10 +25,15 @@ export async function POST(req: NextRequest) {
         }
 
         if (action === "ban") {
-            await client.users.banUser(targetUserId);
-            // Optionally clear access in Prisma or retain them as just banned inactive
+            await prisma.user.update({
+                where: { clerkId: targetUserId },
+                data: { isDisabled: true }
+            });
         } else if (action === "unban") {
-            await client.users.unbanUser(targetUserId);
+            await prisma.user.update({
+                where: { clerkId: targetUserId },
+                data: { isDisabled: false }
+            });
         } else {
             return NextResponse.json({ error: "Invalid action" }, { status: 400 });
         }

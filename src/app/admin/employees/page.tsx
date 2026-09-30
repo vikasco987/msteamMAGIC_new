@@ -1,7 +1,8 @@
 "use client";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 
 import React, { useEffect, useState } from "react";
-import { useUser } from "@clerk/nextjs";
+
 import { Users, Search, Lock, Unlock, ShieldCheck, XCircle, CheckCircle2, FileEdit, Banknote, Eye, DollarSign, Archive, Filter } from "lucide-react";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";

@@ -5,7 +5,7 @@
 
 // // use server';
 // import { NextRequest, NextResponse } from "next/server";
-// import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@/lib/auth-utils";
 // import { users } from "@clerk/clerk-sdk-node";
 // import { prisma } from "@/lib/prisma";
 
@@ -53,7 +53,7 @@
 // // ✅ Get User Role
 // async function getUserRole(userId: string): Promise<string | null> {
 //   try {
-//     const user = await users.getUser(userId);
+//     const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
 //     return (
 //       (user.publicMetadata as UserPublicMetadata)?.role ||
 //       (user.privateMetadata as UserPrivateMetadata)?.role ||
@@ -76,7 +76,7 @@
 //     if (!body.title || !body.assigneeId)
 //       return NextResponse.json({ error: "Missing title or assigneeId" }, { status: 400 });
 
-//     const clerkUser = await users.getUser(userId);
+//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
 //     const assignerEmail = clerkUser.emailAddresses?.[0]?.emailAddress || "unknown";
 //     const assignerName = clerkUser.firstName || clerkUser.username || "Unknown";
 //     const status = "todo" as const;
@@ -326,7 +326,7 @@
 "use server";
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 import { users } from "@clerk/clerk-sdk-node";
 import { prisma } from "@/lib/prisma";
 
@@ -336,7 +336,7 @@ interface UserPrivateMetadata { role?: string }
 
 async function getUserRole(userId: string): Promise<string | null> {
   try {
-    const user = await users.getUser(userId);
+    const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
     return (
       (user.publicMetadata as UserPublicMetadata)?.role ||
       (user.privateMetadata as UserPrivateMetadata)?.role ||
@@ -357,7 +357,7 @@ export async function POST(req: NextRequest) {
     if (!body.title || !body.assigneeId)
       return NextResponse.json({ error: "Missing title or assigneeId" }, { status: 400 });
 
-    const clerkUser = await users.getUser(userId);
+    const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
     const assignerEmail = clerkUser.emailAddresses?.[0]?.emailAddress || "unknown";
     const assignerName = clerkUser.firstName || clerkUser.username || "Unknown";
 
@@ -366,7 +366,7 @@ export async function POST(req: NextRequest) {
     let assigneeEmail = assignerEmail;
     if (body.assigneeId && body.assigneeId !== userId) {
       try {
-        const u = await users.getUser(body.assigneeId);
+        const u = (body.assigneeId.startsWith('custom_') ? { id: body.assigneeId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(body.assigneeId));
         if (u) {
           assigneeName = `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.username || "Unknown";
           assigneeEmail = u.emailAddresses?.[0]?.emailAddress || "Unknown";
@@ -417,8 +417,13 @@ export async function GET(req: NextRequest) {
     const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
     const { clerkClient } = await import("@clerk/nextjs/server");
     const client = await clerkClient();
-    const clerkUserForRole = await client.users.getUser(userId);
-    const metadataRole = (clerkUserForRole.publicMetadata as any)?.role || (clerkUserForRole.privateMetadata as any)?.role;
+    let metadataRole = dbUser?.role;
+    if (!userId.startsWith("custom_")) {
+        try {
+            const clerkUserForRole = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
+            metadataRole = (clerkUserForRole.publicMetadata as any)?.role || (clerkUserForRole.privateMetadata as any)?.role || metadataRole;
+        } catch (e) {}
+    }
     const normalizedRole = String(metadataRole || dbUser?.role || "user").toLowerCase();
 
     const isTL = (dbUser as any)?.isTeamLeader || normalizedRole === 'tl';

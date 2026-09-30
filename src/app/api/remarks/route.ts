@@ -1,7 +1,7 @@
 // // File: src/app/api/remarks/route.ts
 // import { NextRequest, NextResponse } from "next/server";
 // import { prisma } from "@/lib/prisma";
-// import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@/lib/auth-utils";
 
 // export const dynamic = "force-dynamic";
 
@@ -120,7 +120,7 @@
 
 // import { NextRequest, NextResponse } from "next/server";
 // import { prisma } from "@/lib/prisma";
-// import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@/lib/auth-utils";
 // import { users } from "@clerk/clerk-sdk-node"; // ✅ import Clerk users helper
 
 // export const dynamic = "force-dynamic";
@@ -184,7 +184,7 @@
 //     }
 
 //     // ✅ Fetch user details from Clerk safely
-//     const clerkUser = await users.getUser(userId);
+//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
 
 //     const authorName =
 //       `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
@@ -252,7 +252,7 @@
 
 // import { NextRequest, NextResponse } from "next/server";
 // import { prisma } from "@/lib/prisma";
-// import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@/lib/auth-utils";
 // import { users } from "@clerk/clerk-sdk-node";
 
 // export const dynamic = "force-dynamic";
@@ -332,7 +332,7 @@
 //     }
 
 //     // ✅ Fetch user details from Clerk
-//     const clerkUser = await users.getUser(userId);
+//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
 //     const authorName =
 //       `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //       clerkUser.username ||
@@ -415,7 +415,7 @@
 
 // import { NextRequest, NextResponse } from "next/server";
 // import { prisma } from "@/lib/prisma";
-// import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@/lib/auth-utils";
 // import { users } from "@clerk/clerk-sdk-node";
 
 // export const dynamic = "force-dynamic";
@@ -490,7 +490,7 @@
 //     }
 
 //     // Clerk user info
-//     const clerkUser = await users.getUser(userId);
+//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
 //     const authorName = `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() || clerkUser.username || "Unknown";
 //     const authorEmail = clerkUser.emailAddresses?.[0]?.emailAddress || "Unknown";
 
@@ -532,7 +532,7 @@
 
 // import { NextRequest, NextResponse } from "next/server";
 // import { prisma } from "@/lib/prisma";
-// import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@/lib/auth-utils";
 // import { users } from "@clerk/clerk-sdk-node";
 
 // export const dynamic = "force-dynamic";
@@ -637,7 +637,7 @@
 //     }
 
 //     // Clerk user info
-//     const clerkUser = await users.getUser(userId);
+//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
 //     const authorName =
 //       `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //       clerkUser.username ||
@@ -692,7 +692,7 @@
 
 // import { NextRequest, NextResponse } from "next/server";
 // import { prisma } from "@/lib/prisma";
-// import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@/lib/auth-utils";
 // import { users } from "@clerk/clerk-sdk-node";
 
 // export const dynamic = "force-dynamic";
@@ -808,7 +808,7 @@
 //     }
 
 //     // Clerk user info
-//     const clerkUser = await users.getUser(userId);
+//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
 //     const authorName =
 //       `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //       clerkUser.username ||
@@ -861,7 +861,7 @@
 
 // import { NextRequest, NextResponse } from "next/server";
 // import { prisma } from "@/lib/prisma";
-// import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@/lib/auth-utils";
 // import { users } from "@clerk/clerk-sdk-node";
 
 // export const dynamic = "force-dynamic";
@@ -955,7 +955,7 @@
 //       return NextResponse.json({ error: "Remark text and taskId are required" }, { status: 400 });
 
 //     // Clerk user info
-//     const clerkUser = await users.getUser(userId);
+//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
 //     const authorName =
 //       `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //       clerkUser.username ||
@@ -1003,7 +1003,7 @@
 
 // import { NextRequest, NextResponse } from "next/server";
 // import { prisma } from "@/lib/prisma";
-// import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@/lib/auth-utils";
 // import { users } from "@clerk/clerk-sdk-node";
 
 // export const dynamic = "force-dynamic";
@@ -1101,7 +1101,7 @@
 //       return NextResponse.json({ error: "Remark text and taskId required" }, { status: 400 });
 
 //     // Fetch Clerk user
-//     const clerkUser = await users.getUser(userId);
+//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
 //     const authorName =
 //       `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //       clerkUser.username ||
@@ -1145,7 +1145,7 @@
 
 // import { NextRequest, NextResponse } from "next/server";
 // import { prisma } from "@/lib/prisma";
-// import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@/lib/auth-utils";
 // import { users } from "@clerk/clerk-sdk-node";
 
 // export const dynamic = "force-dynamic";
@@ -1252,7 +1252,7 @@
 //       );
 
 //     // Fetch Clerk user
-//     const clerkUser = await users.getUser(userId);
+//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
 //     const authorName =
 //       `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //       clerkUser.username ||
@@ -1296,7 +1296,7 @@
 
 // import { NextRequest, NextResponse } from "next/server";
 // import { prisma } from "@/lib/prisma";
-// import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@/lib/auth-utils";
 // import { users } from "@clerk/clerk-sdk-node";
 
 // export const dynamic = "force-dynamic";
@@ -1402,7 +1402,7 @@
 //       );
 
 //     // Fetch Clerk user details
-//     const clerkUser = await users.getUser(userId);
+//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
 //     const authorName =
 //       `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //       clerkUser.username ||
@@ -1452,7 +1452,7 @@
 
 // import { NextRequest, NextResponse } from "next/server";
 // import { prisma } from "@/lib/prisma";
-// import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@/lib/auth-utils";
 // import { users } from "@clerk/clerk-sdk-node";
 
 // export const dynamic = "force-dynamic";
@@ -1567,7 +1567,7 @@
 //     if (!remark || !taskId)
 //       return NextResponse.json({ error: "Remark text and taskId required" }, { status: 400 });
 
-//     const clerkUser = await users.getUser(userId);
+//     const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
 //     const authorName =
 //       `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //       clerkUser.username ||
@@ -1647,7 +1647,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 import { users } from "@clerk/clerk-sdk-node";
 
 export const dynamic = "force-dynamic";
@@ -1765,7 +1765,7 @@ export async function POST(req: NextRequest) {
     if (!remark || !taskId)
       return NextResponse.json({ error: "Remark text and taskId required" }, { status: 400 });
 
-    const clerkUser = await users.getUser(userId);
+    const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
     const authorName =
       `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
       clerkUser.username ||

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 
 // Global cache for clerk users to avoid extremely slow API load times
@@ -72,7 +73,7 @@ export async function POST(req: NextRequest) {
         }
 
         const client = await clerkClient();
-        const requester = await client.users.getUser(userId);
+        const requester = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
         const requesterRole = String(requester.publicMetadata?.role || "user").toLowerCase();
 
         if (requesterRole !== "master") {
@@ -89,7 +90,7 @@ export async function POST(req: NextRequest) {
         const previousDepartment = existingDbUser?.currentDepartment || "Digital";
 
         // Get target user from Clerk to ensure they exist and get details
-        const targetUser = await client.users.getUser(targetUserId);
+        const targetUser = (String(targetUserId).startsWith('custom_') ? { id: targetUserId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(targetUserId));
 
         // Determine the role string
         let newRole = (targetUser.publicMetadata?.role as string) || "user";

@@ -1,5 +1,5 @@
-// components/CopyIcon.tsx
 "use client";
+// components/CopyIcon.tsx
 
 import { ClipboardCopy } from "lucide-react";
 import { useState } from "react";

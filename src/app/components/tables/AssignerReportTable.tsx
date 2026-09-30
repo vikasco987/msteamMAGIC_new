@@ -1,3 +1,4 @@
+"use client";
 // // src/app/components/tables/AssignerReportTable.tsx
 // "use client";
 
@@ -168,7 +169,6 @@
 
 
 
-"use client";
 
 import React, { useEffect, useState, useMemo } from "react";
 import { 

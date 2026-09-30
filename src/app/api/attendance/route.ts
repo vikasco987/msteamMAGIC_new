@@ -56,7 +56,7 @@
 
 //     let employeeName = "Unknown";
 //     try {
-//       const clerkUser = await users.getUser(userId);
+//       const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
 //       employeeName =
 //         `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //         clerkUser.username ||
@@ -220,7 +220,7 @@
 
 //     let employeeName = "Unknown";
 //     try {
-//       const clerkUser = await users.getUser(userId);
+//       const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
 //       employeeName =
 //         `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //         clerkUser.username ||
@@ -387,7 +387,7 @@
 
 //     let employeeName = "Unknown";
 //     try {
-//       const clerkUser = await users.getUser(userId);
+//       const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
 //       employeeName =
 //         `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //         clerkUser.username ||
@@ -543,7 +543,7 @@
 
 //     let employeeName = "Unknown";
 //     try {
-//       const clerkUser = await users.getUser(userId);
+//       const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
 //       employeeName =
 //         `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //         clerkUser.username ||
@@ -702,7 +702,7 @@
 
 //     let employeeName = "Unknown";
 //     try {
-//       const clerkUser = await users.getUser(userId);
+//       const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
 //       employeeName =
 //         `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //         clerkUser.username ||
@@ -863,7 +863,7 @@
 
 //     let employeeName = "Unknown";
 //     try {
-//       const clerkUser = await users.getUser(userId);
+//       const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
 //       employeeName =
 //         `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //         clerkUser.username ||
@@ -1017,7 +1017,7 @@
 
 //     let employeeName = "Unknown";
 //     try {
-//       const clerkUser = await users.getUser(userId);
+//       const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
 //       employeeName =
 //         `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
 //         clerkUser.username ||
@@ -1127,7 +1127,7 @@
 // src/app/api/attendance/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuth } from "@clerk/nextjs/server";
+import { getUnifiedUserId } from "@/lib/auth-utils";
 import { users } from "@clerk/clerk-sdk-node";
 import moment from "moment-timezone";
 
@@ -1167,7 +1167,7 @@ function getISTDayRange() {
 
 export async function POST(req: Request) {
   try {
-    const { userId } = getAuth(req as any);
+    const userId = await getUnifiedUserId(req as any);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { type, reason, remarks, lat, lng } = await req.json();
@@ -1178,7 +1178,7 @@ export async function POST(req: Request) {
 
     let employeeName = "Unknown";
     try {
-      const clerkUser = await users.getUser(userId);
+      const clerkUser = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(userId));
       employeeName =
         `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
         clerkUser.username ||

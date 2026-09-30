@@ -21,9 +21,9 @@ const PDFPreviewer = dynamic(
 // Let's check PDFPreviewer again.
 
 const COMPANY = {
-  name: "Magicscale Restaurant Consultancy Services",
+  name: "Magic Scale Consultant Private Limited",
   logo: "/assets/logo.png",
-  address: "Near Air Force Camp, Rajokari, 110038",
+  address: "3rd Floor, Plot in Mustatil No-14, Killa NO - 12/2, 19/1, 20, Village Samalka, New Delhi 110037",
   phone: "+91 8826073117",
   website: "https://magicscale.in",
   representative: "Akash Verma",

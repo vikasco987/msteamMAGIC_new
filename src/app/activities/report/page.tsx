@@ -1,4 +1,5 @@
 "use client";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 
 import React, { useEffect, useState, useMemo } from "react";
 import {
@@ -34,7 +35,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { format, formatDistanceToNow, isValid } from "date-fns";
 import toast from "react-hot-toast";
-import { useUser } from "@clerk/nextjs";
+
 import EditTaskModal from "../../components/EditTaskModal";
 import { Task } from "@/types/task";
 

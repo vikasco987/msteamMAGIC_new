@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
 
     const promises = ids.map(async (id: string) => {
       try {
-        const user = await users.getUser(id);
+        const user = (id.startsWith('custom_') ? { id: id, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(id));
         return {
           id: user.id,
           name: user.firstName || user.username || "Unnamed",

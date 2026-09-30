@@ -67,7 +67,7 @@ export default function MagicScaleAgreementPDF({ company, client, agreement, pay
                 This Agreement is made and entered into on this between <Text style={styles.blueBold}>{agreement.start} – {agreement.end}</Text>
               </Text>
           <Text style={styles.paragraph}>
-            <Text style={styles.blueBold}>{company.name}</Text>, a Proprietorship having its registered office at <Text style={styles.blackBold}>{company.address}</Text> hereinafter referred to as <Text style={styles.blackBold}>“Consultant”</Text>, represented by {company.representative} as {company.designation}.
+            <Text style={styles.blueBold}>{company.name}</Text>, a Private Limited Company having its registered office at <Text style={styles.blackBold}>{company.address}</Text> hereinafter referred to as <Text style={styles.blackBold}>“Consultant”</Text>, represented by {company.representative} as {company.designation}.
           </Text>
           <Text style={[styles.paragraph, { marginTop: 10 }]}>AND</Text>
           <Text style={styles.paragraph}>

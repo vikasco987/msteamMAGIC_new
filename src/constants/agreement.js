@@ -29,8 +29,11 @@ export const paymentTerms = [
 ];
 
 export const getDurationLabel = (duration) => {
-  const option = durationOptions.find((opt) => opt.value === duration);
-  return option ? option.label : "";
+  const option = durationOptions.find((opt) => opt.value === String(duration));
+  if (option) return option.label;
+  const num = parseInt(duration, 10);
+  if (!isNaN(num)) return `${num} Month${num > 1 ? 's' : ''}`;
+  return duration;
 };
 
 export const getAmount = (amount) => {

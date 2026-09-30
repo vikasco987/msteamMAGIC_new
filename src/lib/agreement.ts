@@ -74,14 +74,14 @@ export async function generateAgreementPDF(data: {
             doc.image(logoPath, margin, 30, { width: 90, height: logoHeight });
         }
 
-        const rightX = doc.page.width - doc.page.margins.right - 200;
+        const rightX = doc.page.width - doc.page.margins.right - 250;
         doc.font("Arial-Bold").fontSize(12).fillColor("#0B3D91")
-            .text("Magic Scale", rightX, 40, { align: "right", width: 200 });
+            .text("Magic Scale Consultant Private Limited", rightX, 40, { align: "right", width: 250 });
         doc.font("Arial").fontSize(10).fillColor("black")
-            .text("Near Air Force Camp, Rajokari, 110038", rightX, 60, { align: "right" });
-        doc.text("+91 8826073117", rightX, 75, { align: "right" });
+            .text("3rd Floor, Plot in Mustatil No-14, Killa NO - 12/2, 19/1, 20, Village Samalka, New Delhi 110037", rightX, doc.y + 2, { align: "right", width: 250 });
+        doc.text("+91 8826073117", rightX, doc.y + 2, { align: "right", width: 250 });
         doc.fillColor("blue")
-            .text("https://magicscale.in", rightX, 90, { align: "right" });
+            .text("https://magicscale.in", rightX, doc.y + 2, { align: "right", width: 250 });
 
         doc.moveTo(margin, 140).lineTo(doc.page.width - margin, 140).lineWidth(2).stroke("#0B3D91");
 
@@ -143,9 +143,9 @@ export async function generateAgreementPDF(data: {
     doc.font("Arial-Bold").fillColor("#0B3D91").text("Between:", { underline: true, width: contentWidth });
     doc.moveDown(0.3);
 
-    doc.font("Arial-Bold").fillColor("#0B3D91").text("Magic Scale Restaurant Consultant");
+    doc.font("Arial-Bold").fillColor("#0B3D91").text("Magic Scale Consultant Private Limited");
     doc.font("Arial").fillColor("black").text(
-        "A Proprietorship having its registered office at Near Air Force Camp, Rajokari, 110038. Represented by Akash Verma as Sales Manager.",
+        "A Private Limited Company having its registered office at 3rd Floor, Plot in Mustatil No-14, Killa NO - 12/2, 19/1, 20, Village Samalka, New Delhi 110037. Represented by Akash Verma as Sales Manager.",
         { indent: 20, lineGap: 2 }
     );
     doc.moveDown(0.5);
@@ -175,7 +175,7 @@ export async function generateAgreementPDF(data: {
     addClauseWithIcon(clauseExists[5] ? clauseIcons[5] : "", "6. Entire Agreement:", `This Agreement constitutes the entire understanding between the parties and supersedes all prior negotiations and agreements.`);
 
     doc.moveDown(2);
-    doc.font("Arial-Bold").text("Magic Scale Restaurant Consultant");
+    doc.font("Arial-Bold").text("Magic Scale Consultant Private Limited");
     doc.font("Arial").text("By: Akash Verma, Manager");
     doc.moveDown(2);
     doc.font("Arial-Bold").text(clientName);

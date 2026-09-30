@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 import { startOfMonth, endOfMonth, parseISO, getDaysInMonth, isValid } from "date-fns";
 
@@ -36,7 +37,7 @@ export async function GET(req: Request) {
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const client = await clerkClient();
-    const user = await client.users.getUser(userId);
+    const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
     const role = (user.publicMetadata?.role as string)?.toLowerCase() || "user";
 
     // Only allow master or admin (if you choose)
@@ -201,7 +202,7 @@ export async function POST(req: Request) {
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const client = await clerkClient();
-    const user = await client.users.getUser(userId);
+    const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
     const role = (user.publicMetadata?.role as string)?.toLowerCase() || "user";
 
     if (!["master", "admin"].includes(role)) {

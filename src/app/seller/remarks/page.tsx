@@ -1,3 +1,4 @@
+"use client";
 // // src/app/seller-remarks/page.tsx
 // "use client";
 
@@ -516,7 +517,6 @@
 
 
 // src/app/seller-remarks/page.tsx
-"use client";
 
 import React, { useEffect, useState } from "react";
 import PaymentRemarks, { Remark } from "../../components/PaymentRemarks";

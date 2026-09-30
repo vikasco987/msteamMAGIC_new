@@ -1,3 +1,5 @@
+"use client";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 //         </AnimatePresence>
 
 //         {/* Data Table with animation */}
@@ -2651,13 +2653,12 @@
 
 
 
-"use client";
 
 import { useEffect, useState } from "react";
 import { format, subMonths } from "date-fns";
 import { Search, Loader2, ArrowUp, ArrowDown, Eye, EyeOff, Download, MoreVertical } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useUser } from "@clerk/nextjs";
+
 import TaskDetailsPanel from "./TaskDetailsPanel";
 
 interface ReportEntry {

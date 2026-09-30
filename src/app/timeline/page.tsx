@@ -1,6 +1,7 @@
 "use client";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 
-import { useUser } from "@clerk/nextjs";
+
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import TaskTimeline from "../components/TaskTimeline";

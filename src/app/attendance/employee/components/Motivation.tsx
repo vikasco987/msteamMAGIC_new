@@ -1,7 +1,10 @@
+"use client";
+import { useUnifiedAuth as useUser, useAuth } from "@/lib/useUnifiedAuth";
 // "use client";
 
 // import { useEffect, useMemo, useState } from "react";
-// import { useUser, useAuth } from "@clerk/nextjs";
+// 
+
 
 // interface RankedEmployee {
 //   userId?: string;
@@ -253,7 +256,8 @@
 // "use client";
 
 // import { useEffect, useMemo, useState } from "react";
-// import { useUser, useAuth } from "@clerk/nextjs";
+// 
+
 
 // interface RankedEmployee {
 //   userId?: string;
@@ -539,7 +543,8 @@
 // "use client";
 
 // import { useEffect, useMemo, useState } from "react";
-// import { useUser, useAuth } from "@clerk/nextjs";
+// 
+
 
 // interface RankedEmployee {
 //   userId?: string;
@@ -820,7 +825,8 @@
 // "use client";
 
 // import { useEffect, useMemo, useState } from "react";
-// import { useUser, useAuth } from "@clerk/nextjs";
+// 
+
 
 // interface RankedEmployee {
 //   userId?: string;
@@ -1104,7 +1110,8 @@
 // "use client";
 
 // import { useEffect, useMemo, useState } from "react";
-// import { useUser, useAuth } from "@clerk/nextjs";
+// 
+
 
 // interface RankedEmployee {
 //   userId?: string;
@@ -1367,10 +1374,10 @@
 
 
 
-"use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useUser, useAuth } from "@clerk/nextjs";
+
+
 
 interface RankedEmployee {
   userId?: string;

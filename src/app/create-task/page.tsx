@@ -1,5 +1,5 @@
+"use client";
 // src/app/create-task/page.tsx
-'use client';
 
 import TaskForm from '../components/TaskForm/TaskForm';
 

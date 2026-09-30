@@ -1,7 +1,7 @@
 // // src/app/api/tasks/[id]/clone/route.ts
 // import { NextRequest, NextResponse } from "next/server";
 // import {prisma} from "@/lib/prisma"; // Make sure this matches your actual prisma import
-// import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@/lib/auth-utils";
 // import { clerkClient } from "@clerk/nextjs/server"; // To fetch user details
 
 // export async function POST(
@@ -17,7 +17,7 @@
 
 //   try {
 //     // 🔹 Get the cloner's details from Clerk
-//     const user = await clerkClient.users.getUser(userId);
+//     const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await clerkClient.users.getUser(userId));
 //     const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
 //     const userEmail = user.emailAddresses?.[0]?.emailAddress || null;
 
@@ -132,7 +132,7 @@
 // // src/app/api/tasks/[id]/clone/route.ts
 // import { NextRequest, NextResponse } from "next/server";
 // import {prisma} from "@/lib/prisma"; 
-// import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@/lib/auth-utils";
 // import { clerkClient } from "@clerk/clerk-sdk-node"; // ✅ FIXED
 
 // export async function POST(
@@ -151,7 +151,7 @@
 
 //   try {
 //     // ✅ Fetch cloner's details from Clerk
-//     const user = await clerkClient.users.getUser(userId);
+//     const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await clerkClient.users.getUser(userId));
 //     const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
 //     const userEmail = user.emailAddresses?.[0]?.emailAddress || null;
 
@@ -245,7 +245,7 @@
 
 // import { NextRequest, NextResponse } from "next/server";
 // import { prisma } from "@/lib/prisma";
-// import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@/lib/auth-utils";
 // import { clerkClient } from "@clerk/clerk-sdk-node";
 
 // export async function POST(
@@ -262,7 +262,7 @@
 //   try {
 //     const { title } = await req.json();
 
-//     const user = await clerkClient.users.getUser(userId);
+//     const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await clerkClient.users.getUser(userId));
 //     const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
 //     const userEmail = user.emailAddresses?.[0]?.emailAddress || null;
 
@@ -366,7 +366,7 @@
 
 // import { NextRequest, NextResponse } from "next/server";
 // import { prisma } from "@/lib/prisma";
-// import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@/lib/auth-utils";
 // import { clerkClient } from "@clerk/clerk-sdk-node";
 
 // export async function POST(
@@ -383,7 +383,7 @@
 //   try {
 //     const { title } = await req.json();
 
-//     const user = await clerkClient.users.getUser(userId);
+//     const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await clerkClient.users.getUser(userId));
 //     const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
 //     const userEmail = user.emailAddresses?.[0]?.emailAddress || null;
 
@@ -475,7 +475,7 @@
 // src/app/api/tasks/[id]/clone/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 import { clerkClient } from "@clerk/clerk-sdk-node";
 
 export async function POST(
@@ -492,7 +492,7 @@ export async function POST(
   try {
     const { title } = await req.json();
 
-    const user = await clerkClient.users.getUser(userId);
+    const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await clerkClient.users.getUser(userId));
     const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
     const userEmail = user.emailAddresses?.[0]?.emailAddress || null;
 

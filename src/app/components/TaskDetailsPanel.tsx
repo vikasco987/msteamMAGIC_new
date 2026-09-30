@@ -1,7 +1,8 @@
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 import React, { useState, useEffect, useRef } from "react";
 import { Task } from "../../types/task";
 import { Note } from "../../../types/note";
-import { useUser } from "@clerk/nextjs";
+
 import { 
   FaTimes, FaSpinner, FaUser, FaPhone, FaEnvelope, FaMapMarkerAlt, 
   FaFileAlt, FaMoneyBillWave, FaClock, FaCheckCircle, FaExclamationTriangle, 

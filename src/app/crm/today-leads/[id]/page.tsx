@@ -1,4 +1,5 @@
 "use client";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
@@ -90,7 +91,7 @@ import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
 import { useChat } from "@ai-sdk/react";
-import { useUser } from "@clerk/nextjs";
+
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 const CALL_STATUS_OPTIONS = [

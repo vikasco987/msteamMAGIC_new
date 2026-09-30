@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,7 @@ interface UserPrivateMetadata {
 async function getIsPrivileged(userId: string): Promise<boolean> {
   try {
     const client = await clerkClient();
-    const user = await client.users.getUser(userId);
+    const user = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
     const role = (
       (user.publicMetadata as UserPublicMetadata)?.role ||
       (user.privateMetadata as UserPrivateMetadata)?.role ||

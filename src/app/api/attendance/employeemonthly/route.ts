@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 
 // Helper: calculate working hours excluding lunch 2–3 PM
 const calcWorkingHours = (checkIn: Date, checkOut: Date) => {

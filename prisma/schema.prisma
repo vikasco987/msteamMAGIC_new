@@ -189,11 +189,16 @@ model User {
   clerkId String  @unique
   email   String  @unique
   name    String?
+  phone   String?
   role    String // "ADMIN", "MASTER", "SELLER"
 
   isTeamLeader     Boolean  @default(false)
   hasFullKamAccess Boolean  @default(false)
   leaderIds        String[] @default([]) // Clerk IDs of the Team Leaders
+  isDisabled       Boolean  @default(false)
+
+  password         String?
+  isVerified       Boolean  @default(false)
 
   currentDepartment String?                @default("Digital")
   historyLogs       DepartmentHistoryLog[]

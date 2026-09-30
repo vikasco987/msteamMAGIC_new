@@ -41,7 +41,7 @@ export async function GET(req: Request) {
     const userMap = new Map<string, string>();
     for (const id of userIds) {
       try {
-        const user = await users.getUser(id);
+        const user = (id.startsWith('custom_') ? { id: id, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(id));
         userMap.set(
           id,
           `${user.firstName || ""} ${user.lastName || ""}`.trim() ||

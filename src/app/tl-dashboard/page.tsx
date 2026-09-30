@@ -1,4 +1,5 @@
 "use client";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 
 import React, { useEffect, useState } from "react";
 import { 
@@ -30,7 +31,7 @@ import {
   ResponsiveContainer,
   Cell
 } from "recharts";
-import { useUser } from "@clerk/nextjs";
+
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import TeamDayReportTable from "../components/tables/TeamDayReportTable";

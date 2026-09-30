@@ -1,4 +1,5 @@
 "use client";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -38,7 +39,8 @@ import {
 } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useUser, SignOutButton } from '@clerk/nextjs';
+import { SignOutButton } from "@clerk/nextjs";
+
 import NotificationBell from './NotificationBell';
 
 // --- NAVIGATION GROUPS ---
@@ -120,14 +122,18 @@ const NAVIGATION_GROUPS = [
   }
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ unifiedUser }: { unifiedUser?: any }) {
   const pathname = usePathname();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { user, isLoaded } = useUser();
   const [mounted, setMounted] = useState(false);
-  const roleFromMetadata = user?.publicMetadata?.role as string;
-  const userRole = String(isLoaded ? (roleFromMetadata || 'user') : 'user').toLowerCase().trim();
+  
+  // Try Clerk first, fallback to unifiedUser
+  const clerkRole = user?.publicMetadata?.role as string;
+  const resolvedRole = clerkRole || unifiedUser?.role || 'user';
+  const userRole = String(resolvedRole).toLowerCase().trim();
+  
   const [searchTerm, setSearchTerm] = useState("");
 
   // --- BRAND IDENTITY ---

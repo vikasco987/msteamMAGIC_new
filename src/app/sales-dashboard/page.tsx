@@ -1,8 +1,9 @@
 "use client";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { useUser } from "@clerk/nextjs";
+
 import { useRouter } from "next/navigation";
 import { 
   IndianRupee, 

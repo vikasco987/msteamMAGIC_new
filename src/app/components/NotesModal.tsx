@@ -1,8 +1,10 @@
+"use client";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 // "use client";
 
 // import React, { useEffect, useState, useCallback } from "react";
 // import { FaTimes, FaStickyNote, FaUserCircle } from "react-icons/fa";
-// import { useUser } from "@clerk/nextjs";
+// 
 // import axios from "axios";
 // import { Note } from "../../../types/note";
 
@@ -137,11 +139,10 @@
 
 
 
-"use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { FaTimes, FaStickyNote, FaUserCircle, FaTrashAlt, FaPaperclip, FaSpinner, FaSmile, FaMicrophone, FaCopy } from "react-icons/fa";
-import { useUser } from "@clerk/nextjs";
+
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";

@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { currentUser } from "@clerk/nextjs/server";
+import { getUnifiedUserId } from "@/lib/auth-utils";
 
 export async function GET(req: Request) {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return new NextResponse("Unauthorized", { status: 401 });
+    const userId = await getUnifiedUserId(req as any);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(req.url);
@@ -66,6 +66,6 @@ export async function GET(req: Request) {
     return NextResponse.json(Array.from(uniqueCustomers.values()));
   } catch (error) {
     console.error("[CUSTOMER_SUGGESTIONS]", error);
-    return new NextResponse("Internal Error", { status: 500 });
+    return NextResponse.json({ error: "Internal Error" }, { status: 500 });
   }
 }

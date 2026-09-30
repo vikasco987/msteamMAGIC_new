@@ -297,7 +297,7 @@ export async function POST(req: NextRequest) {
         try {
           const { clerkClient } = await import("@clerk/nextjs/server");
           const client = await clerkClient();
-          const leadUser = await client.users.getUser(ids[0]);
+          const leadUser = (String(ids[0]).startsWith('custom_') ? { id: ids[0], emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(ids[0]));
           dataToUpdate.assigneeId = leadUser.id;
           dataToUpdate.assigneeName = `${leadUser.firstName || ""} ${leadUser.lastName || ""}`.trim() || leadUser.username || "Unknown";
           dataToUpdate.assigneeEmail = leadUser.emailAddresses[0]?.emailAddress || "Unknown";

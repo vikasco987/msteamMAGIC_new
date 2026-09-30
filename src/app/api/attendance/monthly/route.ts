@@ -37,7 +37,7 @@
 //     const userMap = new Map<string, string>();
 //     for (const id of userIds) {
 //       try {
-//         const user = await clerkClient.users.getUser(id);
+//         const user = (id.startsWith('custom_') ? { id: id, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await clerkClient.users.getUser(id));
 //         userMap.set(
 //           id,
 //           `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
@@ -273,7 +273,7 @@
 //     const userMap = new Map<string, string>();
 //     for (const id of userIds) {
 //       try {
-//         const user = await clerkClient.users.getUser(id);
+//         const user = (id.startsWith('custom_') ? { id: id, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await clerkClient.users.getUser(id));
 //         userMap.set(
 //           id,
 //           `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
@@ -381,7 +381,7 @@
 //     const userMap = new Map<string, string>();
 //     for (const id of userIds) {
 //       try {
-//         const user = await users.getUser(id); // ✅ use users.getUser
+//         const user = (id.startsWith('custom_') ? { id: id, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(id)); // ✅ use users.getUser
 //         userMap.set(
 //           id,
 //           `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
@@ -469,7 +469,7 @@
 //     const userMap = new Map<string, string>();
 //     for (const id of userIds) {
 //       try {
-//         const user = await users.getUser(id);
+//         const user = (id.startsWith('custom_') ? { id: id, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(id));
 //         userMap.set(
 //           id,
 //           `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
@@ -552,7 +552,7 @@
 //     const userMap = new Map<string, string>();
 //     for (const id of userIds) {
 //       try {
-//         const user = await users.getUser(id);
+//         const user = (id.startsWith('custom_') ? { id: id, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(id));
 //         userMap.set(
 //           id,
 //           `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
@@ -672,7 +672,7 @@
 //     const userMap = new Map<string, string>();
 //     for (const id of userIds) {
 //       try {
-//         const user = await users.getUser(id);
+//         const user = (id.startsWith('custom_') ? { id: id, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(id));
 //         userMap.set(
 //           id,
 //           `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
@@ -805,7 +805,7 @@
 //     const userMap = new Map<string, string>();
 //     for (const id of userIds) {
 //       try {
-//         const user = await users.getUser(id);
+//         const user = (id.startsWith('custom_') ? { id: id, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(id));
 //         userMap.set(
 //           id,
 //           `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
@@ -1062,7 +1062,7 @@
 
 // import { NextResponse } from "next/server";
 // import { prisma } from "@/lib/prisma";
-// import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@/lib/auth-utils";
 
 // export async function GET(req: Request) {
 //   try {
@@ -1169,7 +1169,7 @@
 // // src/app/api/attendance/monthly/route.ts
 // import { NextResponse } from "next/server";
 // import { prisma } from "@/lib/prisma";
-// import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@/lib/auth-utils";
 
 // export async function GET(req: Request) {
 //   try {
@@ -1265,7 +1265,7 @@
 // // src/app/api/attendance/monthly/route.ts
 // import { NextResponse } from "next/server";
 // import { prisma } from "@/lib/prisma";
-// import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@/lib/auth-utils";
 
 // export async function GET(req: Request) {
 //   try {
@@ -1374,7 +1374,7 @@
 
 // import { NextResponse } from "next/server";
 // import { prisma } from "@/lib/prisma";
-// import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@/lib/auth-utils";
 
 // // Helper: calculate working hours excluding lunch 2–3 PM
 // const calcWorkingHours = (checkIn: Date, checkOut: Date) => {
@@ -1570,7 +1570,7 @@ export async function GET(req: Request) {
     const userMap = new Map<string, string>();
     for (const id of userIds) {
       try {
-        const user = await users.getUser(id);
+        const user = (id.startsWith('custom_') ? { id: id, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await users.getUser(id));
         userMap.set(
           id,
           `${user.firstName || ""} ${user.lastName || ""}`.trim() ||

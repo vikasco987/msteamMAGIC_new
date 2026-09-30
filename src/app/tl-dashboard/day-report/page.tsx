@@ -1,4 +1,5 @@
 "use client";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 
 import React, { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -13,7 +14,7 @@ import {
   Search,
   X
 } from "lucide-react";
-import { useUser } from "@clerk/nextjs";
+
 import TeamDayReportTable from "../../components/tables/TeamDayReportTable";
 import {
   AreaChart,

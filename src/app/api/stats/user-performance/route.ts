@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma as db } from "@/lib/prisma"; 
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth-utils";
 
 // Fixed path
 
