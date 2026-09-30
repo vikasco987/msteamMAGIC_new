@@ -548,12 +548,11 @@ export default function RoleManagementPage() {
                                                 )}
 
                                                 <button
-                                                    onClick={() => handleViewProfile(u.email)}
-                                                    disabled={profileLoading}
-                                                    className="px-4 py-2.5 rounded-xl text-sm font-black uppercase tracking-widest bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 transition-all flex items-center gap-2"
-                                                    title="View Profile Details"
+                                                    onClick={() => window.location.href = `/admin/roles/${u.id}`}
+                                                    className="px-4 py-2.5 rounded-xl text-sm font-black uppercase tracking-widest bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 transition-all flex items-center gap-2 cursor-pointer"
+                                                    title="View Advanced Details"
                                                 >
-                                                    <FileText size={16} />
+                                                    <Settings2 size={16} />
                                                     DETAILS
                                                 </button>
 

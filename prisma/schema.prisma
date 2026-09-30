@@ -774,6 +774,7 @@ model EmployeeProfile {
   dob                   DateTime?
   bloodGroup            String?
   alternatePhone        String?
+  alternateEmail        String?
   permanentAddress      String?
   maritalStatus         String?
   gender                String?
