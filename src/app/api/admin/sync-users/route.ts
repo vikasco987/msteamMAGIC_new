@@ -1,52 +1,72 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { clerkClient } from "@clerk/nextjs/server";
 import { auth } from "@/lib/auth-utils";
+import { prisma } from "@/lib/prisma";
 
-export async function GET(req: NextRequest) {
+export async function POST(req: NextRequest) {
     try {
         const { userId } = await auth();
-        if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        if (!userId) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
 
-        console.log("🚀 Starting Bulk MongoDB Sync...");
         const client = await clerkClient();
-        const clerkUsers = await client.users.getUserList({ limit: 100 });
+        
+        // Ensure requester is Master
+        const requester = (userId.startsWith('custom_') ? { id: userId, emailAddresses: [], firstName: 'Custom', lastName: 'User', publicMetadata: {}, privateMetadata: {} } as any : await client.users.getUser(userId));
+        const requesterRole = String(requester.publicMetadata?.role || "user").toLowerCase();
+        
+        // Actually, we can allow ADMIN to do this too, or just MASTER
+        if (requesterRole !== "master" && requesterRole !== "admin") {
+            return NextResponse.json({ error: "Forbidden: Only MASTER or ADMIN can sync users" }, { status: 403 });
+        }
+
+        // Fetch all Clerk Users
+        const clerkUsersResponse = await client.users.getUserList({ limit: 500 });
+        const clerkUsers = clerkUsersResponse.data;
 
         let syncedCount = 0;
 
-        for (const user of clerkUsers.data) {
-            const role = (
-                (user.publicMetadata?.role as string) ||
-                (user.privateMetadata?.role as string) ||
-                ""
-            ).toUpperCase();
+        for (const u of clerkUsers) {
+            const email = u.emailAddresses?.[0]?.emailAddress || "N/A";
+            const name = `${u.firstName || ""} ${u.lastName || ""}`.trim() || "Unknown";
+            const role = (u.publicMetadata?.role as string)?.toUpperCase() || "USER";
 
-            // Sirf Admin ya Master ko sync karenge bulk me
-            if (role === "ADMIN" || role === "MASTER") {
-                await prisma.user.upsert({
-                    where: { clerkId: user.id },
-                    update: {
-                        role: role,
-                        email: user.emailAddresses[0]?.emailAddress,
-                        name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Admin"
-                    },
-                    create: {
-                        clerkId: user.id,
-                        email: user.emailAddresses[0]?.emailAddress || "",
-                        role: role,
-                        name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Admin"
-                    }
-                });
-                syncedCount++;
-            }
+            await prisma.user.upsert({
+                where: { clerkId: u.id },
+                update: {
+                    email,
+                    name,
+                    role,
+                },
+                create: {
+                    clerkId: u.id,
+                    email,
+                    name,
+                    role,
+                    isVerified: true
+                }
+            });
+
+            // Ensure Employee Profile exists
+            await prisma.employeeProfile.upsert({
+                where: { email },
+                update: {
+                    name,
+                },
+                create: {
+                    email,
+                    name,
+                }
+            });
+
+            syncedCount++;
         }
 
-        return NextResponse.json({
-            success: true,
-            syncedCount,
-            message: "✅ MongoDB collection 'User' is now synced with Clerk admins!"
-        });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ success: true, message: `Successfully synced ${syncedCount} users from Clerk to Database.` });
+
+    } catch (error) {
+        console.error("Sync users error:", error);
+        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

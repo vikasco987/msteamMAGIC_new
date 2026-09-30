@@ -110,6 +110,25 @@ export default function RoleManagementPage() {
         }
     };
 
+    const handleSyncUsers = async () => {
+        setLoading(true);
+        const loadingToast = toast.loading("Syncing users from Clerk...");
+        try {
+            const res = await fetch('/api/admin/sync-users', { method: 'POST' });
+            if (res.ok) {
+                const data = await res.json();
+                toast.success(data.message, { id: loadingToast });
+                fetchData(); // Refresh the data
+            } else {
+                toast.error("Failed to sync users", { id: loadingToast });
+            }
+        } catch (error) {
+            toast.error("An error occurred during sync", { id: loadingToast });
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleUpdateRole = async (targetUserId: string, newRole: string) => {
         try {
             setChangingRoleId(targetUserId);
@@ -454,6 +473,16 @@ export default function RoleManagementPage() {
                         Interface
                     </button>
                 </div>
+            </div>
+
+            <div className="flex justify-end mb-4">
+                <button
+                    onClick={handleSyncUsers}
+                    className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-xl hover:bg-indigo-100 font-black text-sm uppercase tracking-widest transition-all shadow-sm"
+                >
+                    <Cloud size={16} />
+                    Sync Clerk Users to Database
+                </button>
             </div>
 
             <AnimatePresence mode="wait">

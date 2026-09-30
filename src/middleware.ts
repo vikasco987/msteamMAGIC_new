@@ -41,7 +41,8 @@ const middleware = clerkMiddleware(async (auth, req) => {
                     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
                 }
             } else {
-                await auth.protect();
+                const authObj = await auth();
+                authObj.protect();
             }
         }
     }
