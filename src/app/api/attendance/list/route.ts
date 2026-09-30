@@ -21,7 +21,7 @@
 // import { NextResponse } from "next/server";
 // import { prisma } from "@/lib/prisma";
 // import { clerkClient } from "@clerk/nextjs/server";
-import { auth } from "@/lib/auth-utils";
+
 
 // export async function GET(req: Request) {
 //   try {
