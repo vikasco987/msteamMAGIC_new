@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { currentUser } from "@clerk/nextjs/server";
 import { emitMatrixUpdate } from "@/lib/socket-server";
 
-export const maxDuration = 300; // Allow 5 minutes for large bulk imports
+export const maxDuration = 60; // Max allowed for Vercel Hobby Plan
 
 export async function POST(
     req: NextRequest,
