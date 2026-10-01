@@ -40,8 +40,15 @@ export async function POST(
       const orderId = "LNK_" + Date.now();
       const safeReturnUrl = `https://crm.magicscale.in/payment-success?order_id=${orderId}`;
 
+      console.log("RAZORPAY KEYS CHECK:", {
+        appId: appId ? `${appId.substring(0, 4)}***` : undefined,
+        hasSecret: !!secretKey
+      });
+
+      const auth = Buffer.from(`${appId}:${secretKey}`).toString("base64");
+      
       const razorpayPayload = {
-        amount: billedAmount,
+        amount: Math.round(billedAmount * 100), // Razorpay takes paise
         currency: "INR",
         description: purpose || "Service Payment",
         customer: {
@@ -49,20 +56,26 @@ export async function POST(
           email: email || "customer@example.com",
           contact: cleanPhone || "9999999999"
         },
-        referenceId: orderId,
-        callbackUrl: safeReturnUrl,
-        callbackMethod: "get"
+        reference_id: orderId,
+        callback_url: safeReturnUrl,
+        callback_method: "get"
       };
 
       const rpResponse = await axios.post(
-        "https://payments.magicscale.in/api/payments/razorpay/payment-links",
+        "https://api.razorpay.com/v1/payment_links",
         razorpayPayload,
-        { headers: { "Content-Type": "application/json" } }
+        { 
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Basic ${auth}`
+          } 
+        }
       );
 
       const rpData = rpResponse.data;
-      const checkoutUrl = rpData.short_url || rpData.data?.short_url || rpData.paymentLink;
-      if (!checkoutUrl) throw new Error("Failed to get payment link from magicscale payments API");
+      const checkoutUrl = rpData.short_url;
+      const rpLinkId = rpData.id;
+      if (!checkoutUrl) throw new Error("Failed to get payment link from Razorpay");
       const shortUrl = checkoutUrl;
 
       // Store in local DB so it appears on msteam dashboard
@@ -77,7 +90,7 @@ export async function POST(
           totalAmount: finalTotalAmount,
           purpose: purpose || "Service Payment",
           paymentLink: checkoutUrl,
-          paymentSessionId: "PROXIED",
+          paymentSessionId: rpLinkId || "PROXIED",
           createdBy: createdBy || "Unknown",
           creatorId: creatorId || null,
           status: "pending"
@@ -86,7 +99,7 @@ export async function POST(
 
       return NextResponse.json({
         success: true,
-        link_url: shortUrl, // Returns the magicscale.in short URL
+        link_url: shortUrl, // Returns the short URL
         order_id: orderId,
         original_url: checkoutUrl
       });
@@ -97,7 +110,7 @@ export async function POST(
       
       return NextResponse.json({ 
         success: false, 
-        message: typeof cfError === 'object' ? (cfError.message || "Razorpay API Error") : cfError
+        message: typeof cfError === 'object' ? (cfError.message || cfError.error?.description || "Razorpay API Error") : cfError
       }, { status: 500 });
     }
   }
@@ -388,16 +401,24 @@ export async function GET(
     if (!orderId) return NextResponse.json({ success: false, message: "Order ID required" }, { status: 400 });
 
     try {
-      // Proxy status check to magicscale.in backend to handle actual status tracking (whether Razorpay or Razorpay)
-      const backendUrl = `https://magicscale.in/api/razorpay/check-status?order_id=${orderId}`;
-      const msResponse = await axios.get(backendUrl);
-      const data = msResponse.data;
+      const razorpayLink = await prisma.razorpayLink.findUnique({ where: { orderId } });
+      if (!razorpayLink) throw new Error("Link not found in database");
 
-      if (!data.success) {
-        throw new Error(data.message || "Failed to check status via MagicScale API");
+      let finalStatus = razorpayLink.status;
+
+      if (razorpayLink.paymentSessionId && razorpayLink.paymentSessionId !== "PROXIED") {
+        const appId = process.env.RAZORPAY_KEY_ID?.trim() || process.env.RAZORPAY_APP_ID?.trim();
+        const secretKey = process.env.RAZORPAY_KEY_SECRET?.trim() || process.env.RAZORPAY_SECRET_KEY?.trim();
+        const auth = Buffer.from(`${appId}:${secretKey}`).toString("base64");
+
+        const statusRes = await axios.get(`https://api.razorpay.com/v1/payment_links/${razorpayLink.paymentSessionId}`, {
+          headers: { "Authorization": `Basic ${auth}` }
+        });
+        
+        const rpStatus = statusRes.data.status; // created, partially_paid, paid, cancelled, expired
+        if (rpStatus === "paid") finalStatus = "paid";
+        else if (rpStatus === "cancelled" || rpStatus === "expired") finalStatus = "failed";
       }
-
-      const finalStatus = data.status || "pending";
 
       // Update local DB
       await prisma.razorpayLink.update({

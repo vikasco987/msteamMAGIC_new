@@ -93,6 +93,46 @@ export async function syncPendingPaymentLinks() {
         }
       })
     );
+    // 2. Sync Razorpay Links
+    const pendingRazorpayLinks = await prisma.razorpayLink.findMany({
+      where: {
+        status: { in: ["pending", "created"] }
+      },
+      take: 25,
+      orderBy: { createdAt: "desc" }
+    });
+
+    if (pendingRazorpayLinks.length > 0) {
+      const appId = process.env.RAZORPAY_KEY_ID?.trim() || process.env.RAZORPAY_APP_ID?.trim();
+      const secretKey = process.env.RAZORPAY_KEY_SECRET?.trim() || process.env.RAZORPAY_SECRET_KEY?.trim();
+      const auth = Buffer.from(`${appId}:${secretKey}`).toString("base64");
+
+      await Promise.allSettled(
+        pendingRazorpayLinks.map(async (link) => {
+          if (!link.paymentSessionId || link.paymentSessionId === "PROXIED") return;
+
+          try {
+            const statusRes = await axios.get(`https://api.razorpay.com/v1/payment_links/${link.paymentSessionId}`, {
+              headers: { "Authorization": `Basic ${auth}` },
+              timeout: 3000
+            });
+            const rpStatus = statusRes.data.status;
+            
+            let finalStatus = link.status;
+            if (rpStatus === "paid") finalStatus = "paid";
+            else if (rpStatus === "cancelled" || rpStatus === "expired") finalStatus = "failed";
+
+            if (finalStatus !== link.status) {
+              await prisma.razorpayLink.update({
+                where: { id: link.id },
+                data: { status: finalStatus }
+              });
+              console.log(`[AutoSyncPaymentLink] Updated Razorpay link ${link.orderId} to ${finalStatus}`);
+            }
+          } catch (err) {}
+        })
+      );
+    }
   } catch (error) {
     console.error("❌ syncPendingPaymentLinks error:", error);
   }
