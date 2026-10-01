@@ -360,6 +360,26 @@ export default function Sidebar({ unifiedUser }: { unifiedUser?: any }) {
             </div>
           )}
 
+          {/* Mini Background Video (Moved to Top for visibility) - HIDDEN FOR NOW */}
+          {/* {!isCollapsed && (
+            <div className="px-4 pb-2 shrink-0">
+              <div className="rounded-[16px] overflow-hidden relative border border-slate-700/50 shadow-2xl bg-black opacity-90 hover:opacity-100 transition-all duration-300 group">
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent z-10 pointer-events-none" />
+                <div className="absolute bottom-2 left-3 z-20 pointer-events-none">
+                  <span className="text-[10px] font-black text-white/80 uppercase tracking-widest drop-shadow-md">Enterprise</span>
+                </div>
+                <video 
+                  src="/videos/backgroundc.mp4" 
+                  autoPlay 
+                  loop 
+                  muted 
+                  playsInline
+                  className="w-full h-28 object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+              </div>
+            </div>
+          )} */}
+
           {pinnedForms.length > 0 && (
             <div className="space-y-2">
               {!isCollapsed && (

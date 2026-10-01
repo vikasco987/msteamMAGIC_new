@@ -8,6 +8,7 @@ import toast, { Toaster } from "react-hot-toast";
 import * as XLSX from "xlsx";
 import { FileText } from "lucide-react"; // Note icon
 import NotesModal from "../components/NotesModal";
+import TaskDetailsPanel from "../components/TaskDetailsPanel";
 import { FaStickyNote } from "react-icons/fa";
 
 import { saveAs } from "file-saver";
@@ -56,6 +57,7 @@ interface Task {
   highlightColor?: string;
   status?: "todo" | "inprogress" | "done" | "Archived";
   notes?: any; // Changed from string to any to handle Note[] objects from API
+  accountType?: string;
 }
 
 function stripEmojis(str: string): string {
@@ -80,6 +82,7 @@ export default function KamTableView() {
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const [editedValues, setEditedValues] = useState<{
     [key: string]: number;
@@ -1017,6 +1020,11 @@ export default function KamTableView() {
               >
                 Highlight
               </th>
+              <th
+                className="px-4 py-3 text-xs font-bold text-gray-600 uppercase tracking-wider text-center border-b border-gray-200"
+              >
+                Actions
+              </th>
 
 
             </tr>
@@ -1064,7 +1072,14 @@ export default function KamTableView() {
                   <td
                     className="px-4 py-3 whitespace-nowrap text-left font-medium text-gray-900 border-r border-b"
                   >
-                    {t.title}
+                    <div className="flex items-center gap-2">
+                      <span>{t.title}</span>
+                      {t.accountType === "PREMIUM" ? (
+                        <span className="px-2 py-0.5 text-[10px] font-bold bg-purple-100 text-purple-800 rounded border border-purple-200">PREMIUM</span>
+                      ) : (
+                        <span className="px-2 py-0.5 text-[10px] font-bold bg-slate-100 text-slate-800 rounded border border-slate-200">BASIC</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-left text-gray-700 border-r border-b">
                     {editMode ? (
@@ -1373,6 +1388,14 @@ export default function KamTableView() {
                       }}
                     />
                   </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-center border-b">
+                    <button
+                      onClick={() => setSelectedTaskId(t.id)}
+                      className="px-3 py-1.5 text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg transition-colors border border-indigo-200"
+                    >
+                      View Detail
+                    </button>
+                  </td>
                 </tr>
               );
             })}
@@ -1395,6 +1418,13 @@ export default function KamTableView() {
             }
             setSelectedTask(null);
           }}
+        />
+      )}
+
+      {selectedTaskId && (
+        <TaskDetailsPanel
+          taskId={selectedTaskId}
+          onClose={() => setSelectedTaskId(null)}
         />
       )}
 

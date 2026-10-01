@@ -408,6 +408,7 @@ const TASK_CATEGORIES = [
 const initialFormState = {
   activeTab: "" as TabType | "",
   title: "",
+  accountType: "BASIC",
   assigneeId: "",
   customFields: [] as CustomField[],
   phone: "",
@@ -472,6 +473,7 @@ export default function TaskForm() {
           ...initialFormState,
           activeTab: parsed.activeTab || initialFormState.activeTab,
           title: parsed.title || initialFormState.title,
+          accountType: parsed.accountType || initialFormState.accountType,
           assigneeId: parsed.assigneeId || initialFormState.assigneeId,
           customFields: parsed.customFields || initialFormState.customFields,
           phone: parsed.phone || initialFormState.phone,
@@ -676,6 +678,7 @@ export default function TaskForm() {
         assigneeId: formData.assigneeId,
         assigneeEmail: formData.email.trim(),
         activeTab: formData.activeTab,
+        accountType: formData.accountType,
         attachments,
         tags: [],
         initialNote: formData.initialNote.trim(),
@@ -804,6 +807,8 @@ export default function TaskForm() {
                   title: (val === "other" || val === "escalation") ? "" : (matchedCategory?.label || ""),
                 }));
               }}
+              accountType={formData.accountType}
+              setAccountType={(val) => updateFormData("accountType", val)}
             />
           )}
 

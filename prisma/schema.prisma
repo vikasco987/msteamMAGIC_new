@@ -8,6 +8,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum AccountType {
+  BASIC
+  PREMIUM
+}
+
 model Task {
   id             String   @id @default(auto()) @map("_id") @db.ObjectId
   title          String
@@ -20,6 +25,7 @@ model Task {
   priority  String?
   projectId String?
   isHidden  Boolean   @default(false)
+  accountType AccountType @default(BASIC)
 
   assignerEmail String?
   assigneeEmail String?

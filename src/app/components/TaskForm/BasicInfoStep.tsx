@@ -40,6 +40,8 @@ interface Props {
   setInitialNote: (val: string) => void;
   setSupportGroupUrl: (val: string) => void;
   setActiveTab: (val: TabType | "") => void;
+  accountType: string;
+  setAccountType: (val: string) => void;
 }
 
 export default function BasicInfoStep({
@@ -53,6 +55,8 @@ export default function BasicInfoStep({
   setInitialNote,
   setSupportGroupUrl,
   setActiveTab,
+  accountType,
+  setAccountType,
 }: Props) {
   const { getToken } = useAuth();
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -175,6 +179,21 @@ export default function BasicInfoStep({
               ))}
             </select>
           </div>
+
+          {activeTab === "account" && (
+            <div className="animate-in zoom-in-95 duration-300">
+              <label className={labelClass}>🏢 Account Plan Type</label>
+              <select
+                value={accountType}
+                onChange={(e) => setAccountType(e.target.value)}
+                className={inputClass}
+                required
+              >
+                <option value="BASIC">Basic</option>
+                <option value="PREMIUM">Premium</option>
+              </select>
+            </div>
+          )}
 
           {isCustom && (
             <div className="animate-in zoom-in-95 duration-300">

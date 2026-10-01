@@ -916,6 +916,8 @@ export async function POST(req: NextRequest) {
         createdAt: new Date(),
         updatedAt: new Date(),
         
+        accountType: body.accountType || "BASIC",
+
         departmentAtSale: currentDepartment,
         saleType: body.saleType || "New Sale",
 

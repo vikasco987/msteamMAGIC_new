@@ -75,6 +75,7 @@ export const TaskFilters = ({
 }: TaskFiltersProps) => {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [accountTypeFilter, setAccountTypeFilter] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState<string | null>(null);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
   const [columns, setColumns] = useState<string[]>(ALL_COLUMNS);
@@ -159,6 +160,13 @@ export const TaskFilters = ({
       currentFilteredTasks = currentFilteredTasks.filter(
         (t) => t.title && selectedCategories.includes(stripEmojis(t.title))
       );
+    }
+
+    if (accountTypeFilter) {
+      currentFilteredTasks = currentFilteredTasks.filter((t) => {
+        const taskAccountType = t.accountType || "BASIC";
+        return taskAccountType === accountTypeFilter;
+      });
     }
 
     if (dateFilter) {
@@ -249,6 +257,7 @@ export const TaskFilters = ({
     debouncedQuery, // Use debounced query here
     sortConfig,
     statusFilter,
+    accountTypeFilter,
     selectedAssignees,
     selectedCategories,
     dateFilter,
@@ -392,6 +401,17 @@ export const TaskFilters = ({
           {statusOptions.map(status => (
             <option key={status} value={status}>{status}</option>
           ))}
+        </select>
+
+        {/* Account Type Filter */}
+        <select
+          value={accountTypeFilter || ""}
+          onChange={(e) => setAccountTypeFilter(e.target.value || null)}
+          className="p-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+        >
+          <option value="">All Accounts</option>
+          <option value="BASIC">Basic</option>
+          <option value="PREMIUM">Premium</option>
         </select>
 
         {/* Custom Assignee Filter Dropdown with Checkboxes */}

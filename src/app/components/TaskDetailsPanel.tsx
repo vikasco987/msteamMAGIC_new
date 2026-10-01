@@ -164,7 +164,7 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
   const [lightbox, setLightbox] = useState<LightboxState>(null);
   
   const userRole = String(user?.publicMetadata?.role || user?.unsafeMetadata?.role || "USER").trim().toUpperCase();
-  const isMaster = ["MASTER", "ADMIN"].includes(userRole);
+  const isMaster = userRole === "MASTER";
   const [isEditing, setIsEditing] = useState(false);
   const [editedTask, setEditedTask] = useState<any>({});
   const [savingTask, setSavingTask] = useState(false);
@@ -518,6 +518,7 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <InfoField label="Shop Name" value={(isEditing ? editedTask.customFields?.shopName : (task.shopName || task.customFields?.shopName))} editable={isEditing} onChange={(val) => handleEditChange('shopName', val, true)} isMaster={isMaster} onInlineEditSave={async (val) => await handleInlineSave('shopName', val, true)} type="text"  icon={<FaUser />} copyable />
                     <InfoField label="Customer Name" value={(isEditing ? editedTask.customerName : (task.customerName))} editable={isEditing} onChange={(val) => handleEditChange('customerName', val, false)} isMaster={isMaster} onInlineEditSave={async (val) => await handleInlineSave('customerName', val, false)} type="text"  icon={<FaUser />} copyable />
+                    <InfoField label="Account Type" value={(isEditing ? editedTask.accountType : (task.accountType || "BASIC"))} editable={isEditing} onChange={(val) => handleEditChange('accountType', val, false)} isMaster={isMaster} onInlineEditSave={async (val) => await handleInlineSave('accountType', val, false)} type="select" options={["BASIC", "PREMIUM"]} icon={<FaClipboardList />} />
                     <InfoField label="Phone Number" value={(isEditing ? editedTask.customFields?.phone : (task.phone || task.customFields?.phone))} editable={isEditing} onChange={(val) => handleEditChange('phone', val, true)} isMaster={isMaster} onInlineEditSave={async (val) => await handleInlineSave('phone', val, true)} type="text"  icon={<FaPhone />} copyable />
                     <InfoField label="Email" value={(isEditing ? editedTask.customFields?.email : (task.email || task.customFields?.email))} editable={isEditing} onChange={(val) => handleEditChange('email', val, true)} isMaster={isMaster} onInlineEditSave={async (val) => await handleInlineSave('email', val, true)} type="text"  icon={<FaEnvelope />} copyable />
                     <div className="sm:col-span-2">
