@@ -100,7 +100,17 @@ const getTaskBgColor = (task: TaskType) => {
 export default function Board() {
   const { user } = useUser();
   const { getToken } = useAuth();
-  const [tasks, setTasks] = useState<TaskType[]>([]);
+  
+  // Independent Column State
+  const [columnsData, setColumnsData] = useState<Record<string, { tasks: TaskType[], page: number, hasMore: boolean, loading: boolean }>>({
+    todo: { tasks: [], page: 1, hasMore: true, loading: false },
+    inprogress: { tasks: [], page: 1, hasMore: true, loading: false },
+    done: { tasks: [], page: 1, hasMore: true, loading: false },
+  });
+
+  const [counts, setCounts] = useState<Record<string, number>>({ todo: 0, inprogress: 0, done: 0 });
+  const [totalActiveTasks, setTotalActiveTasks] = useState(0);
+
   const [editingTask, setEditingTask] = useState<TaskType | null>(null);
   const [floatingTask, setFloatingTask] = useState<TaskType | null>(null);
 
@@ -113,9 +123,12 @@ export default function Board() {
   const [selectedAssigners, setSelectedAssigners] = useState<string[]>([]);
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
 
+  const [allAssignees, setAllAssignees] = useState<string[]>([]);
+  const [allAssigners, setAllAssigners] = useState<string[]>([]);
+  const [allStatuses, setAllStatuses] = useState<string[]>([]);
+
   const audioRef = useRef<HTMLAudioElement>(null);
   const [userRole, setUserRole] = useState<string>("");
-  const previousTaskCountRef = useRef<number>(0);
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [showAllTasksMode, setShowAllTasksMode] = useState(false);
@@ -123,110 +136,192 @@ export default function Board() {
   const hasFetchedInitially = useRef(false);
   const seenTaskIdsRef = useRef<Set<string>>(new Set());
 
-
   const [pendingChanges, setPendingChanges] = useState<Record<string, string>>({});
   const lastUpdateRef = useRef<number>(0);
 
-  const fetchTasks = useCallback(async (isInitial = false) => {
-    if (!user) {
-      setLoading(false);
-      return;
+  const buildQueryParams = (colId: string, page: number, limit: number = 20) => {
+    const params = new URLSearchParams();
+    params.set('status', colId);
+    params.set('page', page.toString());
+    params.set('limit', limit.toString());
+    params.set('sortKey', sortBy);
+    params.set('sortDir', sortDirection);
+    if (filterText) params.set('search', filterText);
+    if (selectedCategories.length) params.set('categories', selectedCategories.join(','));
+    if (selectedAssignees.length) params.set('assignees', selectedAssignees.join(','));
+    if (selectedAssigners.length) params.set('assigners', selectedAssigners.join(','));
+    if (selectedDates.length) params.set('dateFilter', selectedDates.join(','));
+    return params.toString();
+  };
+
+  const fetchOptions = useCallback(async () => {
+    try {
+      const res = await fetch('/api/board/options');
+      if (res.ok) {
+        const json = await res.json();
+        setAllAssignees(json.allAssignees || []);
+        setAllAssigners(json.allAssigners || []);
+        setAllStatuses(json.allStatuses || []);
+      }
+    } catch (e) {}
+  }, []);
+
+  const fetchCounts = useCallback(async () => {
+    try {
+      const params = buildQueryParams('', 1, 1);
+      const res = await fetch('/api/board/counts?' + params);
+      if (res.ok) {
+        const json = await res.json();
+        setCounts(json.counts || { todo: 0, inprogress: 0, done: 0 });
+        const total = (json.counts?.todo || 0) + (json.counts?.inprogress || 0) + (json.counts?.done || 0);
+        setTotalActiveTasks(total);
+      }
+    } catch (err) {}
+  }, [filterText, selectedCategories, selectedAssignees, selectedAssigners, selectedDates]);
+
+  const fetchColumnTasks = useCallback(async (colId: string, page: number, isInitial: boolean = false, isAutoRefresh: boolean = false) => {
+    if (!isAutoRefresh) {
+      setColumnsData(prev => ({
+        ...prev,
+        [colId]: { ...prev[colId], loading: true }
+      }));
     }
 
-    // Skip auto-refresh if we just did an update (3s cooldown)
-    if (!isInitial && Date.now() - lastUpdateRef.current < 3000) return;
-
-    if (isInitial) setLoading(true);
-
-    const role = (user.publicMetadata?.role as string || user.unsafeMetadata?.role as string || "").toLowerCase();
-    const userId = user.id;
-    setUserRole(role);
-
     try {
-      const res = await fetch("/api/tasks?limit=200");
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        console.error("Fetch failed:", res.status, errorData);
-        throw new Error(`Fetch failed: ${res.status} ${errorData.error || ""}`);
-      }
-      const json: { tasks: TaskType[] } = await res.json();
-      const taskArray: TaskType[] = Array.isArray(json.tasks) ? json.tasks : [];
-
-      if (!isInitial && taskArray.length === 0 && tasks.length > 5) {
-         // 🛡️ Safeguard: If we had tasks but now got 0, it's likely a transient error or sync issue
-         // Skip update to prevent "Invisible Tasks"
-         console.warn("Fetch returned 0 tasks while state had data. Skipping wipe-out.");
-         return;
-      }
-
-      const isAdminOrMaster = role === "admin" || role === "master";
-
-      const relevantTasks = taskArray;
-
-      const seenTaskIds = seenTaskIdsRef.current;
-      const newTasks = relevantTasks.filter(task => !seenTaskIds.has(task.id));
-
-      if (newTasks.length > 0 && !isInitial) {
-        try {
-          if (audioRef.current) {
-            audioRef.current.volume = 1;
-            await audioRef.current.play();
-          }
-          toast.success(`🎉 ${newTasks.length} new task(s)!`);
-        } catch (err) {
-          console.warn("Audio blocked", err);
-        }
-      }
-
-      relevantTasks.forEach(task => seenTaskIds.add(task.id));
+      const q = buildQueryParams(colId, page, 20);
+      const res = await fetch("/api/board/paginated?" + q);
+      if (!res.ok) throw new Error("Fetch failed");
+      const json = await res.json();
       
-      // Update tasks while preserving pending changes
-      setTasks(currentTasks => {
-        // Build a map of incoming tasks for faster lookup
-        const incomingTaskMap = new Map(relevantTasks.map(t => [t.id, t]));
+      const newTasks: TaskType[] = json.tasks || [];
+      const hasMore = json.hasMore;
+
+      // New tasks notification logic (only on auto-refresh or initial)
+      const seenTaskIds = seenTaskIdsRef.current;
+      const trulyNewTasks = newTasks.filter(task => !seenTaskIds.has(task.id));
+      if (trulyNewTasks.length > 0 && !isInitial && page === 1) {
+        try {
+          if (audioRef.current) { audioRef.current.volume = 1; audioRef.current.play(); }
+          toast.success(`🎉 ${trulyNewTasks.length} new task(s)!`);
+        } catch (err) {}
+      }
+      newTasks.forEach(t => seenTaskIds.add(t.id));
+
+      setColumnsData(prev => {
+        // If it's page 1 AND not an auto-refresh, we are applying a filter or initial load, so reset tasks.
+        // If it's auto-refresh, we keep existing tasks and merge new ones to avoid resetting scroll/pagination.
+        const existingTasks = (page === 1 && !isAutoRefresh) ? [] : prev[colId].tasks;
         
-        // Merge strategy: update existing, add new
-        // For simplicity here, we'll replace with relevantTasks but respect pendingChanges
-        return relevantTasks.map(incomingTask => {
+        // Merge strategy: preserve pending changes
+        const mergedTasks = [...newTasks, ...existingTasks].map(incomingTask => {
           if (pendingChanges[incomingTask.id]) {
             return { ...incomingTask, status: pendingChanges[incomingTask.id] };
           }
           return incomingTask;
         });
+
+        // Unique by ID to avoid duplicates if items shifted
+        const uniqueTasks = Array.from(new Map(mergedTasks.map(item => [item.id, item])).values());
+
+        return {
+          ...prev,
+          [colId]: { tasks: uniqueTasks, page: isAutoRefresh ? prev[colId].page : page, hasMore: isAutoRefresh ? prev[colId].hasMore : hasMore, loading: false }
+        };
       });
     } catch (err) {
-      console.error("Fetch tasks error:", err);
-    } finally {
-      if (isInitial) setLoading(false);
+      console.error("Fetch tasks error for column", colId, err);
+      setColumnsData(prev => ({
+        ...prev,
+        [colId]: { ...prev[colId], loading: false }
+      }));
     }
-  }, [user, showAllTasksMode, pendingChanges, tasks.length]); // Added tasks.length to dependency for the safeguard check
+  }, [filterText, sortBy, sortDirection, selectedCategories, selectedAssignees, selectedAssigners, selectedDates, pendingChanges]);
+
+  // Load all columns for page 1
+  const loadAllColumns = useCallback(async (isInitial = false, isAutoRefresh = false) => {
+    if (!user) return;
+    if (isInitial) setLoading(true);
+    
+    const role = (user.publicMetadata?.role as string || user.unsafeMetadata?.role as string || "").toLowerCase();
+    setUserRole(role);
+
+    await Promise.all([
+      fetchColumnTasks("todo", 1, isInitial, isAutoRefresh),
+      fetchColumnTasks("inprogress", 1, isInitial, isAutoRefresh),
+      fetchColumnTasks("done", 1, isInitial, isAutoRefresh),
+      fetchCounts()
+    ]);
+
+    if (isInitial) setLoading(false);
+  }, [user, fetchColumnTasks, fetchCounts]);
 
   useEffect(() => {
     if (!user?.id) return;
     if (!hasFetchedInitially.current) {
-      fetchTasks(true);
+      loadAllColumns(true);
+      fetchOptions();
       hasFetchedInitially.current = true;
+    } else {
+      // If any dependency changed (like search), reset pages and reload
+      loadAllColumns(false);
     }
 
     let intervalId: NodeJS.Timeout;
     if (autoRefresh) {
-      intervalId = setInterval(() => fetchTasks(false), 10000);
+      intervalId = setInterval(() => {
+        // Only run auto-refresh if we haven't manually updated in the last 3s
+        if (Date.now() - lastUpdateRef.current >= 3000) {
+          loadAllColumns(false, true);
+        }
+      }, 10000);
     }
     return () => clearInterval(intervalId);
-  }, [user?.id, fetchTasks, autoRefresh]);
+  }, [user?.id, loadAllColumns, fetchOptions, autoRefresh]);
+
+  // Infinite Scroll Observer
+  const observer = useRef<IntersectionObserver | null>(null);
+  const lastTaskElementRef = useCallback((node: HTMLDivElement | null, colId: string) => {
+    if (columnsData[colId].loading) return;
+    if (observer.current) observer.current.disconnect();
+
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && columnsData[colId].hasMore) {
+        fetchColumnTasks(colId, columnsData[colId].page + 1, false);
+      }
+    });
+
+    if (node) observer.current.observe(node);
+  }, [columnsData, fetchColumnTasks]);
+
 
   const onDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId } = result;
     if (!destination || (destination.droppableId === source.droppableId && destination.index === source.index)) return;
 
-    const newStatus = destination.droppableId;
-    lastUpdateRef.current = Date.now();
+    const sourceCol = source.droppableId;
+    const destCol = destination.droppableId;
+    const newStatus = destCol;
 
-    // 1. Update pending changes to prevent rubber-banding
+    lastUpdateRef.current = Date.now();
     setPendingChanges(prev => ({ ...prev, [draggableId]: newStatus }));
 
-    // 2. Optimistically update local state
-    setTasks(prev => prev.map(t => t.id === draggableId ? { ...t, status: newStatus } : t));
+    // Optimistic Update across columns
+    setColumnsData(prev => {
+      const next = { ...prev };
+      const taskIndex = next[sourceCol].tasks.findIndex(t => t.id === draggableId);
+      if (taskIndex > -1) {
+        const [task] = next[sourceCol].tasks.splice(taskIndex, 1);
+        task.status = newStatus;
+        next[destCol].tasks.splice(destination.index, 0, task);
+      }
+      return next;
+    });
+
+    setCounts(prev => ({
+      ...prev,
+      [sourceCol]: Math.max(0, (prev[sourceCol] || 0) - 1),
+      [destCol]: (prev[destCol] || 0) + 1
+    }));
 
     try {
       const res = await fetch(`/api/tasks/${draggableId}`, {
@@ -234,17 +329,13 @@ export default function Board() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || "Update failed");
-      }
+      if (!res.ok) throw new Error("Update failed");
       toast.success(`Task moved to ${newStatus}`);
+      fetchCounts(); // Update counts since task moved
     } catch (err: any) {
-      console.error("onDragEnd Error:", err);
       toast.error(err.message || "Failed to update task. Reverting...");
-      fetchTasks(false);
+      loadAllColumns(false); // Refetch everything to revert
     } finally {
-      // Small delay before clearing pending status to allow server state to propagate to GET requests
       setTimeout(() => {
         setPendingChanges(prev => {
           const next = { ...prev };
@@ -258,14 +349,19 @@ export default function Board() {
   const handleFieldUpdate = async (taskId: string, updatedFields: Partial<TaskType>) => {
     lastUpdateRef.current = Date.now();
     
-    // If updating status, track it as pending
     if (updatedFields.status) {
       setPendingChanges(prev => ({ ...prev, [taskId]: updatedFields.status! }));
     }
 
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updatedFields } : t));
+    // Apply update to the task in whichever column it is
+    setColumnsData(prev => {
+      const next = { ...prev };
+      for (const col of Object.keys(next)) {
+        next[col].tasks = next[col].tasks.map(t => t.id === taskId ? { ...t, ...updatedFields } : t);
+      }
+      return next;
+    });
     
-    // Provide instant feedback for reassignments
     if (updatedFields.assigneeId || updatedFields.assigneeIds) {
       toast.success("Assignment updated!");
     }
@@ -276,17 +372,13 @@ export default function Board() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedFields),
       });
-      if (!res.ok) {
-         const errorData = await res.json();
-         throw new Error(errorData.error || "Update failed");
-      }
+      if (!res.ok) throw new Error("Update failed");
       if (!updatedFields.status && !updatedFields.assigneeId) {
         toast.success("Changes saved");
       }
     } catch (err: any) {
-      console.error("Field update error:", err);
       toast.error(err.message || "Failed to sync changes. Reverting...");
-      fetchTasks(false);
+      loadAllColumns(false);
     } finally {
       if (updatedFields.status) {
         setTimeout(() => {
@@ -301,9 +393,14 @@ export default function Board() {
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    // 🗑️ Optimistic UI Delete
-    const originalTasks = [...tasks];
-    setTasks(prev => prev.filter(t => t.id !== taskId));
+    // Optimistic Delete
+    setColumnsData(prev => {
+      const next = { ...prev };
+      for (const col of Object.keys(next)) {
+        next[col].tasks = next[col].tasks.filter(t => t.id !== taskId);
+      }
+      return next;
+    });
     toast.success("Task deleted");
 
     try {
@@ -312,63 +409,23 @@ export default function Board() {
         headers: { "Content-Type": "application/json" },
       });
       if (!res.ok) throw new Error("Delete failed");
+      fetchCounts();
     } catch (err) {
-      console.error("Delete failed:", err);
       toast.error("Failed to delete from server. Reverting...");
-      setTasks(originalTasks);
+      loadAllColumns(false);
     }
   };
-
-  const filteredTasks = useMemo(() => {
-    return tasks.filter(task => {
-      const lowerFilter = filterText.toLowerCase();
-      const matchesSearch = 
-        task.title?.toLowerCase().includes(lowerFilter) ||
-        task.shopName?.toLowerCase().includes(lowerFilter) ||
-        task.customerName?.toLowerCase().includes(lowerFilter) ||
-        task.phone?.includes(lowerFilter) ||
-        task.email?.toLowerCase().includes(lowerFilter) ||
-        task.customFields?.shopName?.toString().toLowerCase().includes(lowerFilter) ||
-        task.customFields?.customerName?.toString().toLowerCase().includes(lowerFilter) ||
-        task.customFields?.phone?.toString().includes(lowerFilter) ||
-        task.customFields?.awbNumber?.toString().toLowerCase().includes(lowerFilter) ||
-        task.customFields?.awb?.toString().toLowerCase().includes(lowerFilter) ||
-        task.customFields?.serialNumber?.toString().toLowerCase().includes(lowerFilter) ||
-        task.id?.toLowerCase().includes(lowerFilter);
-
-      const taskCategory = (task.customFields?.activeTab || task.tags?.[0] || "other").toString().toLowerCase();
-      const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(taskCategory);
-
-      const matchesDate = selectedDates.length === 0 || (() => {
-        const d = new Date(task.createdAt);
-        if (selectedDates.includes("Today") && isToday(d)) return true;
-        if (selectedDates.includes("Last 7 Days") && d >= subDays(new Date(), 7)) return true;
-        if (selectedDates.includes("This Month") && d >= startOfMonth(new Date())) return true;
-        return false;
-      })();
-
-      const matchesStatus = selectedStatuses.length === 0 ||
-        selectedStatuses.includes((task.status || "").toLowerCase()) ||
-        !!pendingChanges[task.id]; // Always show if we just moved it locally
-
-      const matchesAssignee = selectedAssignees.length === 0 ||
-        (task.assigneeName && selectedAssignees.includes(task.assigneeName)) ||
-        (task.assignees && task.assignees.some((a: any) => a.name && selectedAssignees.includes(a.name)));
-
-      const matchesAssigner = selectedAssigners.length === 0 ||
-        (task as any).assignerName && selectedAssigners.includes((task as any).assignerName);
-
-      const isHidden = !showAllTasksMode && task.isHidden;
-
-      return matchesSearch && matchesCategory && matchesDate && matchesStatus && matchesAssignee && matchesAssigner && !isHidden;
-    });
-  }, [tasks, filterText, selectedCategories, selectedDates, selectedStatuses, selectedAssignees, selectedAssigners, sortBy, sortDirection, showAllTasksMode, pendingChanges]);
 
   const exportToExcel = async () => {
     try {
       const xlsx = await import("xlsx");
+      // Fetch all for export without pagination limit using the paginated endpoint
+      const q = buildQueryParams("", 1, 5000);
+      const res = await fetch(`/api/board/paginated?${q}`);
+      const json = await res.json();
+      const allTasks: TaskType[] = json.tasks || [];
       
-      const exportData = filteredTasks.map(t => ({
+      const exportData = allTasks.map(t => ({
         "Task ID": t.id || "-",
         "Title": t.title ? String(t.title).trim() : "-",
         "Status": t.status || "-",
@@ -394,24 +451,6 @@ export default function Board() {
       toast.error("Failed to export Excel.");
     }
   };
-
-  const allStatuses = useMemo(() => Array.from(new Set(tasks.map(t => t.status))), [tasks]);
-  const allAssignees = useMemo(() => {
-    const assignees = new Set<string>();
-    tasks.forEach(t => {
-      if (t.assigneeName) assignees.add(t.assigneeName);
-      t.assignees?.forEach(a => { if (a.name) assignees.add(a.name); });
-    });
-    return Array.from(assignees);
-  }, [tasks]);
-
-  const allAssigners = useMemo(() => {
-    const assigners = new Set<string>();
-    tasks.forEach(t => {
-      if ((t as any).assignerName) assigners.add((t as any).assignerName);
-    });
-    return Array.from(assigners);
-  }, [tasks]);
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[400px]">
@@ -447,78 +486,93 @@ export default function Board() {
         showAllTasksMode={showAllTasksMode}
         setShowAllTasksMode={setShowAllTasksMode}
         exportToExcel={exportToExcel}
-        activeTasksCount={filteredTasks.length}
+        activeTasksCount={totalActiveTasks}
       />
 
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-          {columns.map(col => (
-            <div key={col.id} className="flex flex-col gap-4">
-              <div className={`flex items-center justify-between p-4 rounded-2xl border-l-4 ${col.color} bg-white shadow-sm font-black text-slate-700 uppercase tracking-widest text-xs`}>
-                <span>{col.title}</span>
-                <span className="bg-slate-100 px-2 py-0.5 rounded-lg text-[10px]">{filteredTasks.filter(t => (t.status || "").toLowerCase() === col.id.toLowerCase()).length}</span>
+          {columns.map(col => {
+            const colData = columnsData[col.id] || { tasks: [], loading: false, hasMore: false };
+            const count = counts[col.id] || colData.tasks.length;
+
+            // Only display tasks if they match the selected status (if any are selected in global filter)
+            // But since the API already filters it, we just map over the API returned ones.
+            return (
+              <div key={col.id} className="flex flex-col gap-4">
+                <div className={`flex items-center justify-between p-4 rounded-2xl border-l-4 ${col.color} bg-white shadow-sm font-black text-slate-700 uppercase tracking-widest text-xs`}>
+                  <span>{col.title}</span>
+                  <span className="bg-slate-100 px-2 py-0.5 rounded-lg text-[10px]">{count}</span>
+                </div>
+
+                <Droppable droppableId={col.id}>
+                  {(provided) => (
+                    <div {...provided.droppableProps} ref={provided.innerRef} className="max-h-[75vh] overflow-y-auto pr-2 flex flex-col gap-4 custom-scrollbar">
+                      {colData.tasks.map((task, index) => {
+                        const isLastItem = index === colData.tasks.length - 1;
+                        return (
+                          <Draggable key={task.id} draggableId={task.id} index={index}>
+                            {(provided) => (
+                              <div
+                                ref={(el) => {
+                                  provided.innerRef(el);
+                                  if (isLastItem) lastTaskElementRef(el, col.id);
+                                }}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                className={`${getTaskBgColor(task)} p-4 rounded-3xl shadow-sm border hover:shadow-md transition-shadow group relative`}
+                                style={{
+                                  ...provided.draggableProps.style,
+                                  borderLeft: task.highlightColor ? `4px solid ${task.highlightColor}` : undefined
+                                }}
+                              >
+                                <TaskDetailsCard
+                                  task={task}
+                                  isAdmin={userRole === "master"}
+                                  isTL={userRole === "tl"}
+                                  onDelete={handleDeleteTask}
+                                  onUpdateTask={handleFieldUpdate}
+                                  onFloatRequest={setFloatingTask}
+                                />
+                                <div className="flex gap-2 mt-4 pt-3 border-t border-slate-50 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button onClick={() => setEditingTask(task)} className="text-[9px] font-black uppercase text-slate-400 hover:text-indigo-600">Edit</button>
+                                </div>
+                              </div>
+                            )}
+                          </Draggable>
+                        );
+                      })}
+                      {colData.loading && (
+                        <div className="flex justify-center p-4">
+                          <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      )}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
               </div>
-
-              <Droppable droppableId={col.id}>
-                {(provided) => (
-                  <div {...provided.droppableProps} ref={provided.innerRef} className="max-h-[75vh] overflow-y-auto pr-2 flex flex-col gap-4 custom-scrollbar">
-                    {filteredTasks
-                      .filter(t => (t.status || "").toLowerCase() === col.id.toLowerCase())
-                        // No custom sorting – keep tasks in their original order
-                      .map((task, index) => (
-                        <Draggable key={task.id} draggableId={task.id} index={index}>
-                        {(provided) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                            className={`${getTaskBgColor(task)} p-4 rounded-3xl shadow-sm border hover:shadow-md transition-shadow group relative`}
-                            style={{
-                              ...provided.draggableProps.style,
-                              borderLeft: task.highlightColor ? `4px solid ${task.highlightColor}` : undefined
-                            }}
-                          >
-                            <TaskDetailsCard
-                              task={task}
-                              isAdmin={userRole === "master"}
-                              isTL={userRole === "tl"}
-                              onDelete={handleDeleteTask}
-                              onUpdateTask={handleFieldUpdate}
-                              onFloatRequest={setFloatingTask}
-                            />
-
-                            <div className="flex gap-2 mt-4 pt-3 border-t border-slate-50 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={() => setEditingTask(task)} className="text-[9px] font-black uppercase text-slate-400 hover:text-indigo-600">Edit</button>
-                            </div>
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </DragDropContext>
 
       {editingTask && (
-        <EditTaskModal
-          task={editingTask}
-          onClose={() => setEditingTask(null)}
-          onSave={() => fetchTasks(false)}
-          onDelete={handleDeleteTask}
+        <EditTaskModal 
+          taskId={editingTask.id} 
+          isOpen={!!editingTask} 
+          onClose={(updatedFields) => {
+            if (updatedFields) handleFieldUpdate(editingTask.id, updatedFields);
+            setEditingTask(null);
+          }} 
         />
       )}
 
       {floatingTask && (
         <FloatingTaskCard
           task={floatingTask}
-          isAdmin={userRole === "master" || userRole === "admin"}
-          onDelete={handleDeleteTask}
-          onUpdateTask={handleFieldUpdate}
           onClose={() => setFloatingTask(null)}
+          onUpdate={handleFieldUpdate}
+          onDelete={handleDeleteTask}
         />
       )}
     </div>

@@ -1,0 +1,1586 @@
+// 'use server';
+// import { NextRequest, NextResponse } from "next/server";
+// import { auth } from "@/lib/auth-utils";
+// import { users } from "@clerk/clerk-sdk-node";
+// import { prisma } from "@/lib/prisma";
+
+// // Define an interface for the metadata that contains the role
+// interface UserPublicMetadata {
+//   role?: string; // Role can be a string or undefined
+//   // Add other properties if they exist in your public metadata
+// }
+
+// interface UserPrivateMetadata {
+//   role?: string; // Role can be a string or undefined
+//   // Add other properties if they exist in your private metadata
+// }
+
+// // Define the interface for the 'Field' object within customFields
+// interface Field {
+//   label?: string;
+//   value?: string;
+//   files?: unknown[]; // Use unknown[] as the files array can contain anything before filtering
+// }
+
+// // ✅ Add this helper function below imports
+// function toNullableString(val: unknown): string | null {
+//   return typeof val === "string" && val.trim() !== "" ? val.trim() : null;
+// }
+
+// export async function POST(req: NextRequest) {
+//   try {
+//     const { userId } = await auth();
+//     if (!userId) {
+//       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+//     }
+
+//     const body = await req.json();
+
+//     console.log("📦 Raw request body:", JSON.stringify(body, null, 2));
+
+
+//     if (!body.title || !body.assigneeId) {
+//       return NextResponse.json(
+//         { error: "Missing title or assigneeId" },
+//         { status: 400 }
+//       );
+//     }
+
+//     const clerkUser = (await getUserDetails(userId));
+//     const assignerEmail = clerkUser.emailAddresses?.[0]?.emailAddress || "unknown";
+//     const assignerName = clerkUser.firstName || clerkUser.username || "Unknown";
+
+//     const status = "todo" as const;
+
+
+//     const {
+//       phone,
+//       email,
+//       shopName,
+//       outletName,
+//       location,
+//       accountNumber,
+//       ifscCode,
+//       customerName,
+//       restId,
+//       packageAmount,
+//       startDate,
+//       endDate,
+//       timeline,
+//       fields = [], // This 'fields' array needs proper typing
+//     } = body.customFields ?? {};
+
+//     const {
+//       aadhaarUrl,
+//       panUrl,
+//       selfieUrl,
+//       chequeUrl,
+//       menuCardUrls,
+//     } = body.customFields ?? {};
+
+
+//     const safeAttachments = body.attachments ?? [];
+
+
+//     // ✅ Fix: Replace 'any' with 'Field' and add type guard for 'url'
+//     const safeFields = Array.isArray(fields)
+//       ? (fields as Field[]).map((f) => ({ // Cast 'fields' to 'Field[]'
+//         label: f.label || "",
+//         value: f.value || "",
+//         files: Array.isArray(f.files)
+//           ? f.files.filter((url): url is string => typeof url === "string") // Use type guard for 'url'
+//           : [],
+//       }))
+//       : [];
+
+
+//     const task = await prisma.task.create({
+//       data: {
+//         title: body.title,
+//         status,
+//         assigneeIds: Array.isArray(body.assigneeIds)
+//           ? body.assigneeIds
+//           : [body.assigneeId], // fallback for backward compatibility
+
+//         assignerEmail,
+//         assignerName,
+//         createdByClerkId: userId,
+//         createdAt: new Date(),
+//         updatedAt: new Date(),
+
+//         customFields: {
+//           phone: toNullableString(phone),
+//           email: toNullableString(email),
+//           shopName: toNullableString(shopName),
+//           outletName: toNullableString(outletName),
+//           location: toNullableString(location),
+//           accountNumber: toNullableString(accountNumber),
+//           ifscCode: toNullableString(ifscCode),
+//           customerName: toNullableString(customerName),
+//           restId: toNullableString(restId),
+//           packageAmount: toNullableString(packageAmount),
+//           startDate: toNullableString(startDate),
+//           endDate: toNullableString(endDate),
+//           timeline: toNullableString(timeline),
+//           fields: safeFields,
+//         },
+
+//         attachments: safeAttachments,
+//         tags: Array.isArray(body.tags) ? body.tags : [],
+//         priority: body.priority ?? null,
+//         dueDate: body.dueDate ? new Date(body.dueDate) : null,
+
+//         phone: toNullableString(phone),
+//         email: toNullableString(email),
+//         shopName: toNullableString(shopName),
+//         location: toNullableString(location),
+//         accountNumber: toNullableString(accountNumber),
+//         ifscCode: toNullableString(ifscCode),
+//         restId: toNullableString(restId),
+//         customerName: toNullableString(customerName),
+//         packageAmount: toNullableString(packageAmount),
+//         startDate: toNullableString(startDate),
+//         endDate: toNullableString(endDate),
+//         timeline: toNullableString(timeline),
+
+//         aadhaarUrl: toNullableString(aadhaarUrl),
+//         panUrl: toNullableString(panUrl),
+//         selfieUrl: toNullableString(selfieUrl),
+//         chequeUrl: toNullableString(chequeUrl),
+//         menuCardUrls: Array.isArray(menuCardUrls)
+//           ? menuCardUrls.filter((url) => typeof url === "string" && url.trim() !== "")
+//           : [],
+//       },
+//     });
+
+
+//     console.log("✅ Task created:", task.id);
+//     return NextResponse.json({ success: true, task }, { status: 201 });
+
+//   } catch (err: unknown) {
+//     const error = err instanceof Error ? err.message : "Unknown error";
+//     console.error("❌ POST /api/tasks error:", err);
+//     return NextResponse.json(
+//       { error: "Server error", details: error },
+//       { status: 500 }
+//     );
+//   }
+// }
+
+
+// // getUserRole function is correctly defined and used.
+// async function getUserRole(userId: string): Promise<string | null> {
+//   try {
+//     const user = (await getUserDetails(userId));
+//     // ✅ Fix: Cast publicMetadata and privateMetadata to the defined interfaces
+//     return (
+//       (user.publicMetadata as UserPublicMetadata)?.role ||
+//       (user.privateMetadata as UserPrivateMetadata)?.role ||
+//       null
+//     );
+//   } catch {
+//     return null;
+//   }
+// }
+
+
+// export async function GET(req: NextRequest) {
+//   try {
+//     const { userId } = await auth();
+//     if (!userId) {
+//       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+//     }
+
+//     const role = await getUserRole(userId);
+
+//     const userIsPrivileged = role === "admin" || role === "master";
+
+//     const tasks = await prisma.task.findMany({
+//       where: userIsPrivileged
+//         ? {}
+//         : {
+//           OR: [
+//             { createdByClerkId: userId },
+//             { assigneeIds: { has: userId } },
+//           ],
+//         },
+//       orderBy: { createdAt: "desc" },
+//     });
+
+
+//     // ✅ Collect all unique user identifiers
+//     const userIdentifiers = new Set<string>();
+//     for (const task of tasks) {
+//       if (task.assignerEmail) userIdentifiers.add(task.assignerEmail);
+//       if (Array.isArray(task.assigneeIds)) {
+//         task.assigneeIds.forEach((id) => userIdentifiers.add(id));
+//       }
+//     }
+
+//     // ✅ Batch Clerk lookups (email vs ID)
+//     const userLookups = await Promise.all(
+//       Array.from(userIdentifiers).map((val) =>
+//         val.includes("@")
+//           ? users.getUserList({ emailAddress: [val] }).then((res) => res[0]).catch(() => null)
+//           : users.getUser(val).catch(() => null)
+//       )
+//     );
+
+//     // ✅ Build user map by ID and email
+//     const userMap: Record<string, { id: string; name: string; email: string }> = {};
+//     userLookups.forEach((u) => {
+//       if (u) {
+//         const email = u.emailAddresses?.[0]?.emailAddress || "";
+//         const name = `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.username || "Unnamed";
+//         userMap[u.id] = { id: u.id, name, email };
+//         if (email) userMap[email] = { id: u.id, name, email };
+//       }
+//     });
+
+//     // ✅ Enrich tasks with assigner + assignees
+
+
+//     const enrichedTasks = tasks.map((task) => {
+//       const assigner = userMap[task.assignerEmail ?? ""] || {
+//         id: "",
+//         name: task.assignerName || "—",
+//         email: task.assignerEmail || "",
+//       };
+
+//       const assignees = Array.isArray(task.assigneeIds)
+//         ? task.assigneeIds.map((id) => {
+//           const u = userMap[id];
+//           return {
+//             id,
+//             name: u?.name || "—",
+//             email: u?.email || "",
+//           };
+//         })
+//         : [];
+
+//       return {
+//         ...task,
+//         assignerName: assigner.name,
+//         assignees,
+//       };
+//     });
+
+//     console.log(
+//       `📄 GET /api/tasks – Role: ${role || "unknown"} – fetched ${enrichedTasks.length} tasks`
+//     );
+
+//     return NextResponse.json({ tasks: enrichedTasks }, { status: 200 });
+
+//   } catch (err: unknown) {
+//     const error = err instanceof Error ? err.message : "Unknown error";
+//     console.error("❌ GET /api/tasks error:", err);
+//     return NextResponse.json(
+//       { error: "Failed to fetch tasks", details: error },
+//       { status: 500 }
+//     );
+//   }
+// }
+
+
+// export async function OPTIONS() {
+//   return NextResponse.json({ ok: true });
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// // use server';
+// import { NextRequest, NextResponse } from "next/server";
+// import { auth } from "@/lib/auth-utils";
+// import { users } from "@clerk/clerk-sdk-node";
+// import { prisma } from "@/lib/prisma";
+
+// // Define an interface for the metadata that contains the role
+// interface UserPublicMetadata {
+//   role?: string; // Role can be a string or undefined
+//   // Add other properties if they exist in your public metadata
+// }
+
+// interface UserPrivateMetadata {
+//   role?: string; // Role can be a string or undefined
+//   // Add other properties if they exist in your private metadata
+// }
+
+// // Define the interface for the 'Field' object within customFields
+// interface Field {
+//   label?: string;
+//   value?: string;
+//   files?: unknown[]; // Use unknown[] as the files array can contain anything before filtering
+// }
+
+// // ✅ New: Define CustomFieldsInput interface for type safety
+// interface CustomFieldsInput {
+//   phone?: string;
+//   email?: string;
+//   shopName?: string;
+//   outletName?: string;
+//   location?: string;
+//   accountNumber?: string;
+//   ifscCode?: string;
+//   customerName?: string;
+//   restId?: string;
+//   packageAmount?: string;
+//   startDate?: string;
+//   endDate?: string;
+//   timeline?: string;
+//   amount?: string; // ✅ Added
+//   amountReceived?: string; // ✅ Added
+//   fields?: Field[];
+//   // Also include file URLs if they are part of customFields in the body
+//   aadhaarUrl?: string;
+//   panUrl?: string;
+//   selfieUrl?: string;
+//   chequeUrl?: string;
+//   menuCardUrls?: string[];
+// }
+
+// // ✅ Add this helper function below imports
+// function toNullableString(val: unknown): string | null {
+//   return typeof val === "string" && val.trim() !== "" ? val.trim() : null;
+// }
+
+// export async function POST(req: NextRequest) {
+//   try {
+//     const { userId } = await auth();
+//     if (!userId) {
+//       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+//     }
+
+//     const body = await req.json();
+
+//     console.log("📦 Raw request body:", JSON.stringify(body, null, 2));
+
+//     if (!body.title || !body.assigneeId) {
+//       return NextResponse.json(
+//         { error: "Missing title or assigneeId" },
+//         { status: 400 }
+//       );
+//     }
+
+//     const clerkUser = (await getUserDetails(userId));
+//     const assignerEmail = clerkUser.emailAddresses?.[0]?.emailAddress || "unknown";
+//     const assignerName = clerkUser.firstName || clerkUser.username || "Unknown";
+
+//     const status = "todo" as const;
+
+//     // ✅ SOLUTION: Update the destructuring to include amount and amountReceived
+//     const {
+//       phone,
+//       email,
+//       shopName,
+//       outletName,
+//       location,
+//       accountNumber,
+//       ifscCode,
+//       customerName,
+//       restId,
+//       packageAmount,
+//       startDate,
+//       endDate,
+//       timeline,
+//       amount, // ✅ ADDED HERE
+//       amountReceived, // ✅ ADDED HERE
+//       fields = [],
+//       aadhaarUrl,
+//       panUrl,
+//       selfieUrl,
+//       chequeUrl,
+//       menuCardUrls,
+//     } = body.customFields as CustomFieldsInput ?? {}; // ✅ Added type assertion for better type safety
+
+
+//     const safeAttachments = body.attachments ?? [];
+
+//     // ✅ Fix: Replace 'any' with 'Field' and add type guard for 'url'
+//     const safeFields = Array.isArray(fields)
+//       ? (fields as Field[]).map((f) => ({ // Cast 'fields' to 'Field[]'
+//         label: f.label || "",
+//         value: f.value || "",
+//         files: Array.isArray(f.files)
+//           ? f.files.filter((url): url is string => typeof url === "string") // Use type guard for 'url'
+//           : [],
+//       }))
+//       : [];
+
+
+//     const task = await prisma.task.create({
+//       data: {
+//         title: body.title,
+//         status,
+//         assigneeIds: Array.isArray(body.assigneeIds)
+//           ? body.assigneeIds
+//           : [body.assigneeId], // fallback for backward compatibility
+
+//         assignerEmail,
+//         assignerName,
+//         createdByClerkId: userId,
+//         createdAt: new Date(),
+//         updatedAt: new Date(),
+
+//         customFields: {
+//           phone: toNullableString(phone),
+//           email: toNullableString(email),
+//           shopName: toNullableString(shopName),
+//           outletName: toNullableString(outletName),
+//           location: toNullableString(location),
+//           accountNumber: toNullableString(accountNumber),
+//           ifscCode: toNullableString(ifscCode),
+//           customerName: toNullableString(customerName),
+//           restId: toNullableString(restId),
+//           packageAmount: toNullableString(packageAmount),
+//           startDate: toNullableString(startDate),
+//           endDate: toNullableString(endDate),
+//           timeline: toNullableString(timeline),
+//           amount: toNullableString(amount), // ✅ ADDED HERE
+//           amountReceived: toNullableString(amountReceived), // ✅ ADDED HERE
+//           fields: safeFields,
+//           // If aadhaarUrl etc are directly inside customFields, add them here too.
+//           // Based on your original code, they were extracted from customFields but not explicitly placed back into the customFields object when saving.
+//           // If your Prisma schema for customFields expects these, uncomment them:
+//           aadhaarUrl: toNullableString(aadhaarUrl),
+//           panUrl: toNullableString(panUrl),
+//           selfieUrl: toNullableString(selfieUrl),
+//           chequeUrl: toNullableString(chequeUrl),
+//           menuCardUrls: Array.isArray(menuCardUrls)
+//             ? menuCardUrls.filter((url) => typeof url === "string" && url.trim() !== "")
+//             : [],
+//         },
+
+//         attachments: safeAttachments,
+//         tags: Array.isArray(body.tags) ? body.tags : [],
+//         priority: body.priority ?? null,
+//         dueDate: body.dueDate ? new Date(body.dueDate) : null,
+
+//         // These fields are redundant if they are also in customFields
+//         // and your frontend only relies on customFields for these values.
+//         // If your database schema has these as top-level fields AND customFields,
+//         // then keeping them here is fine. If not, they might be duplicative.
+//         phone: toNullableString(phone),
+//         email: toNullableString(email),
+//         shopName: toNullableString(shopName),
+//         location: toNullableString(location),
+//         accountNumber: toNullableString(accountNumber),
+//         ifscCode: toNullableString(ifscCode),
+//         restId: toNullableString(restId),
+//         customerName: toNullableString(customerName),
+//         packageAmount: toNullableString(packageAmount),
+//         startDate: toNullableString(startDate),
+//         endDate: toNullableString(endDate),
+//         timeline: toNullableString(timeline),
+
+//         // Similarly for these URLs if they are top-level in your schema
+//         aadhaarUrl: toNullableString(aadhaarUrl),
+//         panUrl: toNullableString(panUrl),
+//         selfieUrl: toNullableString(selfieUrl),
+//         chequeUrl: toNullableString(chequeUrl),
+//         menuCardUrls: Array.isArray(menuCardUrls)
+//           ? menuCardUrls.filter((url) => typeof url === "string" && url.trim() !== "")
+//           : [],
+//       },
+//     });
+
+
+//     console.log("✅ Task created:", task.id);
+//     return NextResponse.json({ success: true, task }, { status: 201 });
+
+//   } catch (err: unknown) {
+//     const error = err instanceof Error ? err.message : "Unknown error";
+//     console.error("❌ POST /api/tasks error:", err);
+//     return NextResponse.json(
+//       { error: "Server error", details: error },
+//       { status: 500 }
+//     );
+//   }
+// }
+
+
+// // getUserRole function is correctly defined and used.
+// async function getUserRole(userId: string): Promise<string | null> {
+//   try {
+//     const user = (await getUserDetails(userId));
+//     // ✅ Fix: Cast publicMetadata and privateMetadata to the defined interfaces
+//     return (
+//       (user.publicMetadata as UserPublicMetadata)?.role ||
+//       (user.privateMetadata as UserPrivateMetadata)?.role ||
+//       null
+//     );
+//   } catch {
+//     return null;
+//   }
+// }
+
+
+// export async function GET(req: NextRequest) {
+//   try {
+//     const { userId } = await auth();
+//     if (!userId) {
+//       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+//     }
+
+//     const role = await getUserRole(userId);
+
+//     const userIsPrivileged = role === "admin" || role === "master";
+
+//     const url = new URL(req.url);
+//     const taskId = url.searchParams.get('id'); // Get the optional task ID from query params
+
+//     let tasks;
+
+//     if (taskId) {
+//       const task = await prisma.task.findUnique({
+//         where: { id: taskId },
+//         include: {
+//           subtasks: true,
+//           notes: true,
+
+//         },
+//       });
+
+
+//       tasks = task ? [task] : [];
+//     } else {
+//       const fetchedTasks = await prisma.task.findMany({
+//         where: userIsPrivileged
+//           ? {}
+//           : {
+//             OR: [
+//               { createdByClerkId: userId },
+//               { assigneeIds: { has: userId } },
+//             ],
+//           },
+//         orderBy: { createdAt: "desc" },
+//         include: {
+//           subtasks: true,
+//           notes: true,
+
+//         },
+//       });
+
+
+//       tasks = fetchedTasks; // Use fetchedTasks directly if paymentHistory isn't being sorted here
+//     }
+
+//     // ✅ Collect all unique user identifiers
+//     const userIdentifiers = new Set<string>();
+//     for (const task of tasks) {
+//       if (task.assignerEmail) userIdentifiers.add(task.assignerEmail);
+//       if (Array.isArray(task.assigneeIds)) {
+//         task.assigneeIds.forEach((id) => userIdentifiers.add(id));
+//       }
+//     }
+
+//     // ✅ Batch Clerk lookups (email vs ID)
+//     const userLookups = await Promise.all(
+//       Array.from(userIdentifiers).map((val) =>
+//         val.includes("@")
+//           ? users.getUserList({ emailAddress: [val] }).then((res) => res[0]).catch(() => null)
+//           : users.getUser(val).catch(() => null)
+//       )
+//     );
+
+//     // ✅ Build user map by ID and email
+//     const userMap: Record<string, { id: string; name: string; email: string }> = {};
+//     userLookups.forEach((u) => {
+//       if (u) {
+//         const email = u.emailAddresses?.[0]?.emailAddress || "";
+//         const name = `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.username || "Unnamed";
+//         userMap[u.id] = { id: u.id, name, email };
+//         if (email) userMap[email] = { id: u.id, name, email };
+//       }
+//     });
+
+//     // ✅ Enrich tasks with assigner + assignees
+//     const enrichedTasks = tasks.map((task) => {
+//       const assigner = userMap[task.assignerEmail ?? ""] || {
+//         id: "",
+//         name: task.assignerName || "—",
+//         email: task.assignerEmail || "",
+//       };
+
+//       const assignees = Array.isArray(task.assigneeIds)
+//         ? task.assigneeIds.map((id) => {
+//           const u = userMap[id];
+//           return {
+//             id,
+//             name: u?.name || "—",
+//             email: u?.email || "",
+//           };
+//         })
+//         : [];
+
+//       return {
+//         ...task,
+//         assignerName: assigner.name,
+//         assignees,
+//       };
+//     });
+
+//     console.log(
+//       `📄 GET /api/tasks – Role: ${role || "unknown"} – fetched ${enrichedTasks.length} tasks`
+//     );
+
+//     return NextResponse.json({ tasks: enrichedTasks }, { status: 200 });
+
+//   } catch (err: unknown) {
+//     const error = err instanceof Error ? err.message : "Unknown error";
+//     console.error("❌ GET /api/tasks error:", err);
+//     return NextResponse.json(
+//       { error: "Failed to fetch tasks", details: error },
+//       { status: 500 }
+//     );
+//   }
+// }
+
+
+// export async function OPTIONS() {
+//   return NextResponse.json({ ok: true });
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// use server';
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth-utils";
+import { users } from "@clerk/clerk-sdk-node";
+import { prisma } from "@/lib/prisma";
+import { logActivity } from "@/lib/activity";
+import { getUnifiedUserId } from "@/lib/auth-utils";
+import { getUserDetails } from "@/lib/auth-utils";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+// Define an interface for the metadata that contains the role
+interface UserPublicMetadata {
+  role?: string; // Role can be a string or undefined
+  // Add other properties if they exist in your public metadata
+}
+
+interface UserPrivateMetadata {
+  role?: string; // Role can be a string or undefined
+  // Add other properties if they exist in your private metadata
+}
+
+// Define the interface for the 'Field' object within customFields
+interface Field {
+  label?: string;
+  value?: string;
+  files?: unknown[]; // Use unknown[] as the files array can contain anything before filtering
+}
+
+// ✅ New: Define CustomFieldsInput interface for type safety
+interface CustomFieldsInput {
+  phone?: string;
+  email?: string;
+  shopName?: string;
+  outletName?: string;
+  location?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  customerName?: string;
+  restId?: string;
+  restIds?: string[];
+  packageAmount?: string;
+  startDate?: string;
+  endDate?: string;
+  timeline?: string;
+  amount?: string; // ✅ Added
+  amountReceived?: string; // ✅ Added
+  fullAddress?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pincode?: string;
+  awbNumber?: string;
+  softwareDuration?: string;
+  deliveryCharge?: string;
+  costPrice?: string;
+  fields?: Field[];
+  // Also include file URLs if they are part of customFields in the body
+  aadhaarUrl?: string;
+  panUrl?: string;
+  selfieUrl?: string;
+  chequeUrl?: string;
+  menuCardUrls?: string[];
+  serialNumber?: string;
+  supportGroupUrl?: string; // ✅ Added
+}
+
+// ✅ Add this helper function below imports
+function toNullableString(val: unknown): string | null {
+  return typeof val === "string" && val.trim() !== "" ? val.trim() : null;
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const userId = await getUnifiedUserId(req);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await req.json();
+
+    console.log("📦 Raw request body:", JSON.stringify(body, null, 2));
+
+    if (!body.title || !body.assigneeId) {
+      return NextResponse.json(
+        { error: "Missing title or assigneeId" },
+        { status: 400 }
+      );
+    }
+
+    const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
+    let assignerEmail = dbUser?.email || "unknown";
+    let assignerName = dbUser?.name || "Unknown";
+
+    if (!userId.startsWith("custom_")) {
+        try {
+            const clerkUser = (await getUserDetails(userId));
+            assignerEmail = clerkUser.emailAddresses?.[0]?.emailAddress || assignerEmail;
+            assignerName = clerkUser.firstName || clerkUser.username || assignerName;
+        } catch (e) {
+            console.warn("Clerk user lookup failed for:", userId);
+        }
+    }
+    
+    const currentDepartment = dbUser?.currentDepartment || "Digital";
+
+    const status = "todo" as const;
+
+    // ✅ SOLUTION: Update the destructuring to include amount and amountReceived
+    const {
+      phone,
+      email,
+      shopName,
+      outletName,
+      location,
+      accountNumber,
+      ifscCode,
+      customerName,
+      restId,
+      restIds = [],
+      packageAmount,
+      startDate,
+      endDate,
+      timeline,
+      amount, // ✅ ADDED HERE
+      amountReceived, // ✅ ADDED HERE
+      fullAddress,
+      city,
+      state,
+      country,
+      pincode,
+      awbNumber,
+      softwareDuration,
+      deliveryCharge,
+      costPrice,
+      serialNumber,
+      rtoReason,
+      supportGroupUrl, // ✅ Added
+      fields = [],
+      aadhaarUrl,
+      panUrl,
+      selfieUrl,
+      chequeUrl,
+      menuCardUrls,
+    } = body.customFields as CustomFieldsInput ?? {}; // ✅ Added type assertion for better type safety
+
+
+    const activeTabVal = body.activeTab || (body.customFields as any)?.activeTab;
+    const isRTO = activeTabVal === "rto_printer";
+
+    if (serialNumber) {
+      const cleanSerial = serialNumber.trim();
+      const existing = await prisma.serialNumber.findUnique({
+        where: { number: cleanSerial }
+      });
+      if (existing && existing.status !== "Available" && existing.status !== "Returned" && !isRTO) {
+        return NextResponse.json(
+          { error: `⚠️ Serial number ${cleanSerial} is already shipped or registered in inventory!` },
+          { status: 400 }
+        );
+      }
+    }
+
+    const safeAttachments = body.attachments ?? [];
+
+    // ✅ Fix: Replace 'any' with 'Field' and add type guard for 'url'
+    const safeFields = Array.isArray(fields)
+      ? (fields as Field[]).map((f) => ({ // Cast 'fields' to 'Field[]'
+        label: f.label || "",
+        value: f.value || "",
+        files: Array.isArray(f.files)
+          ? f.files.filter((url): url is string => typeof url === "string") // Use type guard for 'url'
+          : [],
+      }))
+      : [];
+
+
+    // Rule: Creator (current user) is the Assigner. Assignee is the one picked.
+    let assigneeName = assignerName;
+    let assigneeEmail = assignerEmail;
+    if (body.assigneeId && body.assigneeId !== userId) {
+      try {
+        const u = (await getUserDetails(body.assigneeId));
+        if (u) {
+          assigneeName = `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.username || "Unknown";
+          assigneeEmail = u.emailAddresses?.[0]?.emailAddress || "Unknown";
+        }
+      } catch (err) {
+        console.error("Failed to fetch assignee details:", err);
+      }
+    }
+
+    const task = await prisma.task.create({
+      data: {
+        title: body.title,
+        status,
+        assigneeIds: Array.isArray(body.assigneeIds)
+          ? body.assigneeIds
+          : [body.assigneeId],
+        assigneeId: body.assigneeId,
+        assigneeName,
+        assigneeEmail,
+
+        assignerEmail: assignerEmail,
+        assignerName: assignerName,
+        assignerId: userId,
+        createdByClerkId: userId,
+        createdByName: assignerName,
+        createdByEmail: assignerEmail,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        
+        departmentAtSale: currentDepartment,
+        saleType: body.saleType || "New Sale",
+
+        customFields: {
+          activeTab: toNullableString(body.activeTab || (body.customFields as any)?.activeTab),
+          phone: toNullableString(phone),
+          email: toNullableString(email),
+          shopName: toNullableString(shopName),
+          outletName: toNullableString(outletName),
+          location: toNullableString(location),
+          accountNumber: toNullableString(accountNumber),
+          ifscCode: toNullableString(ifscCode),
+          customerName: toNullableString(customerName),
+          restId: toNullableString(restId),
+          restIds: Array.isArray(restIds) ? restIds : [],
+          packageAmount: toNullableString(packageAmount),
+          startDate: toNullableString(startDate),
+          endDate: toNullableString(endDate),
+          timeline: toNullableString(timeline),
+          amount: toNullableString(amount), // ✅ ADDED HERE
+          amountReceived: toNullableString(amountReceived), // ✅ ADDED HERE
+          fullAddress: toNullableString(fullAddress),
+          city: toNullableString(city),
+          state: toNullableString(state),
+          country: toNullableString(country),
+          pincode: toNullableString(pincode),
+          awbNumber: toNullableString(awbNumber),
+          softwareDuration: toNullableString(softwareDuration),
+          deliveryCharge: toNullableString(deliveryCharge),
+          costPrice: toNullableString(costPrice),
+          serialNumber: toNullableString(serialNumber),
+          rtoReason: toNullableString(rtoReason),
+          supportGroupUrl: toNullableString(supportGroupUrl), // ✅ Added
+          assignerId: userId,
+          assignerName: assignerName,
+          assignerEmail: assignerEmail,
+          fields: safeFields,
+          // If aadhaarUrl etc are directly inside customFields, add them here too.
+          // Based on your original code, they were extracted from customFields but not explicitly placed back into the customFields object when saving.
+          // If your Prisma schema for customFields expects these, uncomment them:
+          aadhaarUrl: toNullableString(aadhaarUrl),
+          panUrl: toNullableString(panUrl),
+          selfieUrl: toNullableString(selfieUrl),
+          chequeUrl: toNullableString(chequeUrl),
+          menuCardUrls: Array.isArray(menuCardUrls)
+            ? menuCardUrls.filter((url) => typeof url === "string" && url.trim() !== "")
+            : [],
+        },
+
+        attachments: safeAttachments,
+        tags: Array.isArray(body.tags) ? body.tags : [],
+        priority: body.priority ?? null,
+        dueDate: body.dueDate ? new Date(body.dueDate) : null,
+        notes: body.initialNote ? {
+          create: {
+            content: body.initialNote,
+            authorName: assignerName,
+            authorEmail: assignerEmail,
+          }
+        } : undefined,
+
+        // These fields are redundant if they are also in customFields
+        // and your frontend only relies on customFields for these values.
+        // If your database schema has these as top-level fields AND customFields,
+        // then keeping them here is fine. If not, they might be duplicative.
+        phone: toNullableString(phone),
+        email: toNullableString(email),
+        shopName: toNullableString(shopName),
+        location: toNullableString(location),
+        accountNumber: toNullableString(accountNumber),
+        ifscCode: toNullableString(ifscCode),
+        restId: toNullableString(restId),
+        restIds: Array.isArray(restIds) ? restIds : [],
+        customerName: toNullableString(customerName),
+        packageAmount: toNullableString(packageAmount),
+        startDate: toNullableString(startDate),
+        endDate: toNullableString(endDate),
+        timeline: toNullableString(timeline),
+        
+        // Ensure top-level amount and received are populated for the report dashboard
+        amount: isRTO ? 0 : ((amount && !isNaN(parseFloat(amount))) ? parseFloat(amount) : ((packageAmount && !isNaN(parseFloat(packageAmount))) ? parseFloat(packageAmount) : null)),
+        received: isRTO ? 0 : ((amountReceived && !isNaN(parseFloat(amountReceived))) ? parseFloat(amountReceived) : null),
+
+        // Similarly for these URLs if they are top-level in your schema
+        aadhaarUrl: toNullableString(aadhaarUrl),
+        panUrl: toNullableString(panUrl),
+        selfieUrl: toNullableString(selfieUrl),
+        chequeUrl: toNullableString(chequeUrl),
+        menuCardUrls: Array.isArray(menuCardUrls)
+          ? menuCardUrls.filter((url) => typeof url === "string" && url.trim() !== "")
+          : [],
+      },
+    });
+
+
+    console.log("✅ Task created:", task.id);
+
+    // 📦 Auto-dispatch logic for Printers
+    if (body.activeTab === "printer" || body.activeTab === "printer_software") {
+      const validAwb = toNullableString(awbNumber);
+      const cleanSerial = toNullableString(serialNumber);
+
+      if (validAwb || cleanSerial) {
+        try {
+          // Try to find the "Printer" inventory item
+          let printerItem = await prisma.inventoryItem.findUnique({ where: { name: "Printer" } });
+          
+          // If not exists, create a default one with 0 stock
+          if (!printerItem) {
+            printerItem = await prisma.inventoryItem.create({
+              data: { name: "Printer", type: "HARDWARE", quantity: 0 }
+            });
+          }
+
+          let isSerialNumberAvailable = false;
+          let serialNumberId = null;
+          let cycleNumber = 1;
+
+          if (cleanSerial) {
+            const existingSerial = await prisma.serialNumber.findUnique({
+              where: { number: cleanSerial }
+            });
+
+            if (existingSerial) {
+              if (existingSerial.status === "Available" || existingSerial.status === "Returned") {
+                isSerialNumberAvailable = true;
+              }
+              // Mark as Shipped
+              const updatedSerial = await prisma.serialNumber.update({
+                where: { id: existingSerial.id },
+                data: { status: "Shipped", taskId: task.id, dispatchCount: { increment: 1 } }
+              });
+              serialNumberId = updatedSerial.id;
+              cycleNumber = updatedSerial.dispatchCount;
+            } else {
+              // Create new shipped serial (inline creation)
+              const newSerial = await prisma.serialNumber.create({
+                data: {
+                  number: cleanSerial,
+                  status: "Shipped",
+                  inventoryItemId: printerItem.id,
+                  taskId: task.id,
+                  dispatchCount: 1
+                }
+              });
+              serialNumberId = newSerial.id;
+            }
+          }
+
+          if (validAwb) {
+            // Create the dispatch log
+            await prisma.dispatchLog.create({
+              data: {
+                awbNumber: validAwb,
+                inventoryItemId: printerItem.id,
+                taskId: task.id,
+                trackingStatus: "Pending",
+                dispatchDate: new Date(),
+                serialNumberId,
+                cycleNumber
+              }
+            });
+          }
+
+          // Deduct 1 from inventory quantity ONLY if we shipped an existing Available serial
+          // OR if no serial number was specified but they created the dispatch log
+          if (isSerialNumberAvailable || (!cleanSerial && validAwb)) {
+            await prisma.inventoryItem.update({
+              where: { id: printerItem.id },
+              data: { quantity: { decrement: 1 } }
+            });
+          }
+
+          console.log(`📦 Auto-dispatch processing complete for task ${task.id}`);
+        } catch (e) {
+          console.error("❌ Failed to auto-dispatch:", e);
+        }
+      }
+    }
+
+    // Log creation activity
+    const creatorName = assignerName || "Unknown";
+    await logActivity({
+      taskId: task.id,
+      type: "TASK_CREATED",
+      content: `Task created and assigned to ${body.assigneeId}`,
+      author: creatorName,
+      authorId: userId
+    });
+
+    // 🚀 NEW: Notify the Assignees
+    const assigneeIds = Array.isArray(body.assigneeIds) ? body.assigneeIds : [body.assigneeId];
+    await Promise.all(assigneeIds.map(async (recipientId: string) => {
+      if (recipientId && recipientId !== userId) {
+        await prisma.notification.create({
+          data: {
+            userId: recipientId,
+            type: "MENTION", // Using MENTION or could add TASK_ASSIGNED
+            title: "📌 New Task Assigned",
+            content: `You have been assigned a new task: "${task.title}" by ${creatorName}.`,
+            taskId: task.id
+          } as any
+        }).catch(err => console.error("Assignment notification error:", err));
+      }
+    }));
+
+    // 🚀 THE FINALE: BROADCAST TO MATRIX ⚡⚡⚡
+    try {
+      console.log("🔥 API HIT HOI");
+      const { emitMatrixUpdate } = await import("@/lib/socket-server");
+      await emitMatrixUpdate();
+    } catch (e) {
+      console.error("❌ Matrix Sync Failed:", e);
+    }
+
+    return NextResponse.json({ success: true, task }, { status: 201 });
+
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err.message : "Unknown error";
+    console.error("❌ POST /api/tasks error:", err);
+    return NextResponse.json(
+      { error: "Server error", details: error },
+      { status: 500 }
+    );
+  }
+}
+
+
+// getUserRole function is correctly defined and used.
+async function getUserRole(userId: string): Promise<string | null> {
+  try {
+    const user = (await getUserDetails(userId));
+    // ✅ Fix: Cast publicMetadata and privateMetadata to the defined interfaces
+    return (
+      (user.publicMetadata as UserPublicMetadata)?.role ||
+      (user.privateMetadata as UserPrivateMetadata)?.role ||
+      null
+    );
+  } catch {
+    return null;
+  }
+}
+
+
+export async function GET(req: NextRequest) {
+  try {
+    const userId = await getUnifiedUserId(req);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { clerkClient } = await import("@clerk/nextjs/server");
+    const client = await clerkClient();
+    const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
+    
+    let metadataRole = dbUser?.role;
+    if (!userId.startsWith("custom_")) {
+        try {
+            const clerkUserForRole = (await getUserDetails(userId));
+            metadataRole = (clerkUserForRole.publicMetadata as any)?.role || (clerkUserForRole.privateMetadata as any)?.role || metadataRole;
+        } catch (e) {}
+    }
+    
+    const normalizedRole = String(metadataRole || "user").toLowerCase();
+    const userIsPrivilegedFixed = normalizedRole === "admin" || normalizedRole === "master";
+
+    const url = new URL(req.url);
+    const taskId = url.searchParams.get('id'); // Get the optional task ID from query params
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const limit = parseInt(url.searchParams.get('limit') || '100');
+    const listView = url.searchParams.get('listView') === 'true';
+    const skip = (page - 1) * limit;
+
+    // ✅ BULK CLERK LOOKUP: Fetch all users once for efficiency and filtering
+    const clerkResponse = await client.users.getUserList({ limit: 500 });
+    const allClerkUsers = clerkResponse.data;
+
+    // Build user map by ID and email, and also a reverse map for name-to-ID resolution
+    const userMap: Record<string, { id: string; name: string; email: string }> = {};
+    const nameToIdMap: Record<string, string[]> = {};
+    
+    allClerkUsers.forEach((u) => {
+      const email = u.emailAddresses?.[0]?.emailAddress || "";
+      const name = `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.username || "Unnamed User";
+      const userData = { id: u.id, name, email };
+      userMap[u.id] = userData;
+      if (email) userMap[email] = userData;
+      
+      const lowerName = name.toLowerCase();
+      if (!nameToIdMap[lowerName]) nameToIdMap[lowerName] = [];
+      nameToIdMap[lowerName].push(u.id);
+    });
+
+    // Extract filters and sorting from searchParams
+    const query = url.searchParams.get('query')?.toLowerCase();
+    const status = url.searchParams.get('status');
+    const categories = url.searchParams.get('categories')?.split(',').filter(Boolean);
+    const assignees = url.searchParams.get('assignees')?.split(',').filter(Boolean);
+    const assigners = url.searchParams.get('assigners')?.split(',').filter(Boolean);
+    const dateFilter = url.searchParams.get('dateFilter');
+    const salesFilter = url.searchParams.get('salesFilter'); // all, withSales, noSales
+    const pendingSalesFilter = url.searchParams.get('pendingSalesFilter'); // all, withPendingSales, fullyPaidSales, zeroAmountAndPaid
+
+    const sortKey = url.searchParams.get('sortKey') || 'createdAt';
+    const sortDir = (url.searchParams.get('sortDir') || 'desc') as 'asc' | 'desc';
+
+    let tasks;
+    let totalCount = 0;
+
+    if (taskId) {
+      const task = await prisma.task.findUnique({
+        where: { id: taskId },
+        include: {
+          subtasks: true,
+          notes: true,
+          dispatchLog: true,
+        },
+      });
+
+      tasks = task ? [task] : [];
+      totalCount = task ? 1 : 0;
+    } else {
+      // Build where clause
+      // Team Leader Logic: If user is TL, they can see their team's tasks
+      const isTL = (dbUser as any)?.isTeamLeader || normalizedRole === 'tl';
+
+      let teamMemberIds: string[] = [];
+      if (isTL) {
+        const members = await prisma.user.findMany({
+          where: { leaderIds: { has: userId } } as any,
+          select: { clerkId: true }
+        });
+        teamMemberIds = members.map(m => m.clerkId);
+      }
+
+      console.log(`[Tasks API Debug] User: ${userId}, Role: ${normalizedRole}, isTL: ${isTL}, TeamCount: ${teamMemberIds.length}, Privileged: ${userIsPrivilegedFixed}`);
+
+      const userFilter = userIsPrivilegedFixed
+        ? {}
+        : {
+          OR: [
+            { createdByClerkId: userId },
+            { assigneeId: userId },
+            { assigneeIds: { has: userId } },
+            ...(isTL && teamMemberIds.length > 0 ? [
+              { createdByClerkId: { in: teamMemberIds } },
+              { assigneeId: { in: teamMemberIds } },
+              { assigneeIds: { hasSome: teamMemberIds } }
+            ] : [])
+          ],
+        };
+
+      console.log(`[Tasks API Debug] Filter Applied: ${JSON.stringify(userFilter)}`);
+
+      const where: any = {
+        AND: [
+          userFilter,
+        ]
+      };
+
+      // 🛡️ UNIVERSAL HIDE PROTOCOL: Only Master/Admin see hidden tasks
+      if (!userIsPrivilegedFixed) {
+        where.AND.push({ isHidden: false });
+      }
+
+      if (query) {
+        let relatedTaskIds: string[] = [];
+        try {
+          const relatedDispatchLogs = await prisma.dispatchLog.findMany({
+            where: { awbNumber: { contains: query, mode: 'insensitive' } },
+            select: { taskId: true }
+          });
+          const relatedSerialNumbers = await prisma.serialNumber.findMany({
+            where: { number: { contains: query, mode: 'insensitive' } },
+            select: { taskId: true }
+          });
+
+          relatedTaskIds = [
+            ...relatedDispatchLogs.map((d: { taskId: string }) => d.taskId).filter(Boolean),
+            ...relatedSerialNumbers.map((s: { taskId: string | null }) => s.taskId).filter(Boolean)
+          ] as string[];
+        } catch(err) {
+          console.error("Error finding related AWB/Serial task ids:", err);
+        }
+
+        const queryConditions: any[] = [
+          { title: { contains: query, mode: 'insensitive' } },
+          { shopName: { contains: query, mode: 'insensitive' } },
+          { email: { contains: query, mode: 'insensitive' } },
+          { phone: { contains: query, mode: 'insensitive' } },
+          { customerName: { contains: query, mode: 'insensitive' } }
+        ];
+
+        if (relatedTaskIds.length > 0) {
+          queryConditions.push({ id: { in: relatedTaskIds } });
+        }
+
+        // If query looks like a valid MongoDB ObjectId (24 hex characters)
+        if (/^[0-9a-fA-F]{24}$/.test(query)) {
+          queryConditions.push({ id: query });
+        }
+
+        where.AND.push({
+          OR: queryConditions
+        });
+      }
+
+      if (status) {
+        where.AND.push({ status });
+      }
+
+      if (categories && categories.length > 0) {
+        where.AND.push({
+          OR: categories.map(cat => ({
+            title: { contains: cat, mode: 'insensitive' }
+          }))
+        });
+      }
+
+      if (assignees && assignees.length > 0) {
+        // Resolve names/emails to Clerk IDs for broad matching
+        const resolvedAssigneeIds = assignees.flatMap(a => {
+          const lower = a.toLowerCase();
+          const ids = nameToIdMap[lower] || [];
+          const directMatch = userMap[a]?.id;
+          return [...ids, ...(directMatch ? [directMatch] : [])];
+        });
+
+        where.AND.push({
+          OR: [
+            { assigneeName: { in: assignees } },
+            { assigneeEmail: { in: assignees } },
+            { assigneeId: { in: resolvedAssigneeIds } },
+            { assigneeIds: { hasSome: [...assignees, ...resolvedAssigneeIds] } }
+          ]
+        });
+      }
+
+      if (assigners && assigners.length > 0) {
+        // Resolve names/emails to Clerk IDs
+        const resolvedAssignerIds = assigners.flatMap(a => {
+          const lower = a.toLowerCase();
+          const ids = nameToIdMap[lower] || [];
+          const directMatch = userMap[a]?.id;
+          return [...ids, ...(directMatch ? [directMatch] : [])];
+        });
+
+        where.AND.push({
+          OR: [
+            { assignerName: { in: assigners } },
+            { assignerEmail: { in: assigners } },
+            { createdByName: { in: assigners } },
+            { createdByClerkId: { in: [...assigners, ...resolvedAssignerIds] } },
+            { assignerId: { in: [...assigners, ...resolvedAssignerIds] } }
+          ]
+        });
+      }
+
+      if (dateFilter) {
+        const now = new Date();
+        let startDate: Date | null = null;
+        let endDate: Date | null = new Date(); // Use a fresh copy
+
+        switch (dateFilter) {
+          case "today":
+            startDate = new Date(now);
+            startDate.setHours(0, 0, 0, 0);
+            endDate.setHours(23, 59, 59, 999);
+            break;
+          case "yesterday":
+            startDate = new Date(now);
+            startDate.setDate(startDate.getDate() - 1);
+            startDate.setHours(0, 0, 0, 0);
+            endDate = new Date(startDate);
+            endDate.setHours(23, 59, 59, 999);
+            break;
+          case "last_7_days":
+            startDate = new Date(now);
+            startDate.setDate(startDate.getDate() - 7);
+            startDate.setHours(0, 0, 0, 0);
+            endDate.setHours(23, 59, 59, 999);
+            break;
+          case "this_month":
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+            endDate.setHours(23, 59, 59, 999);
+            break;
+          case "last_month":
+            startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+            endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+            break;
+          case "this_year":
+            startDate = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+            endDate.setHours(23, 59, 59, 999);
+            break;
+        }
+
+        console.log(`[Tasks API Debug] Date Filter: ${dateFilter}, Range: ${startDate?.toISOString()} to ${endDate?.toISOString()}`);
+
+        if (startDate) {
+          where.AND.push({
+            createdAt: {
+              gte: startDate,
+              lte: endDate
+            }
+          });
+        }
+      }
+
+      if (salesFilter === "withSales") {
+        where.AND.push({ amount: { gt: 0 } });
+      } else if (salesFilter === "noSales") {
+        where.AND.push({
+          OR: [
+            { amount: 0 },
+            { amount: null }
+          ]
+        });
+      }
+
+      // Build orderBy
+      const orderBy: any = {};
+      if (sortKey === 'pendingAmount') {
+        orderBy['createdAt'] = 'desc';
+      } else {
+        orderBy[sortKey] = sortDir;
+      }
+
+      const needsInMemoryFiltering = pendingSalesFilter && pendingSalesFilter !== "all";
+      let fetchedTasks;
+      let count;
+
+      if (needsInMemoryFiltering) {
+        // Fetch all matching tasks without pagination for manual filtering
+        fetchedTasks = await prisma.task.findMany({
+          where,
+          orderBy,
+          include: {
+            ...(!listView ? { subtasks: true, notes: true } : {}),
+            dispatchLog: true,
+          },
+        });
+
+        // Apply complex in-memory filters
+        if (pendingSalesFilter === "withPendingSales") {
+          fetchedTasks = fetchedTasks.filter(t => (t.amount || 0) > (t.received || 0));
+        } else if (pendingSalesFilter === "fullyPaidSales") {
+          fetchedTasks = fetchedTasks.filter(t => (t.amount || 0) > 0 && (t.amount || 0) === (t.received || 0));
+        } else if (pendingSalesFilter === "zeroAmountAndPaid") {
+          fetchedTasks = fetchedTasks.filter(t => (t.amount || 0) === 0 && (t.received || 0) === 0);
+        }
+
+        count = fetchedTasks.length;
+        // Manual pagination
+        fetchedTasks = fetchedTasks.slice(skip, skip + limit);
+      } else {
+        // Standard server-side pagination
+        const [resTasks, resCount] = await Promise.all([
+          prisma.task.findMany({
+            where,
+            orderBy,
+            skip,
+            take: limit,
+            include: {
+              ...(!listView ? { subtasks: true, notes: true } : {}),
+              dispatchLog: true,
+            },
+          }),
+          prisma.task.count({ where })
+        ]);
+        fetchedTasks = resTasks;
+        count = resCount;
+      }
+
+      tasks = fetchedTasks;
+      totalCount = count;
+    }
+
+    // ✅ Get unique statuses from the whole DB for filtering (optional but good)
+    // For now, let's use a standard list + any found in current result set to be safe
+    // Ideally we'd aggregate from DB, but that's expensive.
+    const standardStatuses = ["todo", "in-progress", "done", "revision", "cancelled"];
+    
+    // Convert Clerk users to a clean list for the frontend
+    const allUsersList = allClerkUsers.map(u => ({
+      id: u.id,
+      name: `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.username || "Unnamed User",
+      email: u.emailAddresses?.[0]?.emailAddress || ""
+    }));
+
+    // ✅ Enrich tasks with assigner + assignees using the map
+    const enrichedTasks = tasks.map((task) => {
+      const assigner = userMap[task.assignerEmail ?? ""] || {
+        id: "",
+        name: task.assignerName || "—",
+        email: task.assignerEmail || "",
+      };
+
+      const assignees = Array.isArray(task.assigneeIds) && task.assigneeIds.length > 0
+        ? task.assigneeIds.map((id) => {
+          const u = userMap[id];
+          return {
+            id,
+            name: u?.name || "—",
+            email: u?.email || "",
+          };
+        })
+        : (task.assigneeId ? [{ id: task.assigneeId, name: task.assigneeName || "—", email: task.assigneeEmail || "" }] : []);
+
+      return {
+        ...task,
+        assignerName: assigner.name,
+        assignees,
+      };
+    });
+
+    console.log(
+      `📄 GET /api/tasks – Role: ${normalizedRole || "unknown"} – fetched ${enrichedTasks.length} tasks`
+    );
+
+    // 🛰️ REAL-TIME SHARD (NO REFRESH ARCHITECTURE)
+    try {
+      const { emitMatrixUpdate } = await import("@/lib/socket-server");
+      await emitMatrixUpdate();
+    } catch (e) {
+      console.error("❌ Matrix Sync Failed:", e);
+    }
+
+    return NextResponse.json({
+      tasks: enrichedTasks,
+      totalCount,
+      page,
+      limit,
+      totalPages: Math.ceil(totalCount / limit),
+      filterOptions: {
+        statuses: standardStatuses,
+        users: allUsersList
+      }
+    }, { status: 200 });
+
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err.message : "Unknown error";
+    console.error("❌ GET /api/tasks error:", err);
+    return NextResponse.json(
+      { error: "Failed to fetch tasks", details: error },
+      { status: 500 }
+    );
+  }
+}
+
+
+export async function OPTIONS() {
+  return NextResponse.json({ ok: true });
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
