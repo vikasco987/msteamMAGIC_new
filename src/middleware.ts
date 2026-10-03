@@ -13,7 +13,9 @@ const isPublicRoute = createRouteMatcher([
     '/api/webhook(.*)',
     '/api/public-tasks(.*)',
     '/api/dispatch/track(.*)',
-    '/api/auth/custom(.*)'
+    '/api/auth/custom(.*)',
+    '/f(.*)',
+    '/api/crm/forms(.*)'
 ]);
 
 // ✅ Attach middleware logic

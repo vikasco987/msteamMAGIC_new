@@ -1416,10 +1416,13 @@ export default function CRMSpreadsheetPage() {
             { id: "__assigned", label: "Assigned To", isPublic: false, type: "user", options: teamOptions }
         ];
 
-        if (!deletedSystemCols.includes("__followup")) baseCols.push({ id: "__followup", label: "Follow-ups", isPublic: false, type: "static" });
-        if (!deletedSystemCols.includes("__recentRemark")) baseCols.push({ id: "__recentRemark", label: "Recent Remark", isPublic: false, type: "static" });
-        if (!deletedSystemCols.includes("__nextFollowUpDate")) baseCols.push({ id: "__nextFollowUpDate", label: "Next Follow-up Date", isPublic: false, type: "date" });
-        if (!deletedSystemCols.includes("__followUpStatus")) baseCols.push({ id: "__followUpStatus", label: "Calling Status", isPublic: false, type: "static" });
+        const hasRemarksHub = (data?.internalColumns || []).some((c: any) => c.label === "Recent Remark" || c.label === "Next Follow-up Date");
+        if (hasRemarksHub) {
+            if (!deletedSystemCols.includes("__followup")) baseCols.push({ id: "__followup", label: "Follow-ups", isPublic: false, type: "static" });
+            if (!deletedSystemCols.includes("__recentRemark")) baseCols.push({ id: "__recentRemark", label: "Recent Remark", isPublic: false, type: "static" });
+            if (!deletedSystemCols.includes("__nextFollowUpDate")) baseCols.push({ id: "__nextFollowUpDate", label: "Next Follow-up Date", isPublic: false, type: "date" });
+            if (!deletedSystemCols.includes("__followUpStatus")) baseCols.push({ id: "__followUpStatus", label: "Calling Status", isPublic: false, type: "static" });
+        }
 
         const hasSalesHub = (data?.internalColumns || []).some((c: any) => c.label === "Amount");
         if (!deletedSystemCols.includes("__payment") && hasSalesHub) {
@@ -1500,10 +1503,13 @@ export default function CRMSpreadsheetPage() {
             { id: "__assigned", label: "Assigned To", isPublic: false, type: "user", options: teamOptions }
         ];
 
-        if (!deletedSystemCols.includes("__followup")) baseCols.push({ id: "__followup", label: "Follow-ups", isPublic: false, type: "static" });
-        if (!deletedSystemCols.includes("__recentRemark")) baseCols.push({ id: "__recentRemark", label: "Recent Remark", isPublic: false, type: "static" });
-        if (!deletedSystemCols.includes("__nextFollowUpDate")) baseCols.push({ id: "__nextFollowUpDate", label: "Next Follow-up Date", isPublic: false, type: "date" });
-        if (!deletedSystemCols.includes("__followUpStatus")) baseCols.push({ id: "__followUpStatus", label: "Calling Status", isPublic: false, type: "static" });
+        const hasRemarksHub = (data?.internalColumns || []).some((c: any) => c.label === "Recent Remark" || c.label === "Next Follow-up Date");
+        if (hasRemarksHub) {
+            if (!deletedSystemCols.includes("__followup")) baseCols.push({ id: "__followup", label: "Follow-ups", isPublic: false, type: "static" });
+            if (!deletedSystemCols.includes("__recentRemark")) baseCols.push({ id: "__recentRemark", label: "Recent Remark", isPublic: false, type: "static" });
+            if (!deletedSystemCols.includes("__nextFollowUpDate")) baseCols.push({ id: "__nextFollowUpDate", label: "Next Follow-up Date", isPublic: false, type: "date" });
+            if (!deletedSystemCols.includes("__followUpStatus")) baseCols.push({ id: "__followUpStatus", label: "Calling Status", isPublic: false, type: "static" });
+        }
 
         const hasSalesHub = (data?.internalColumns || []).some((c: any) => c.label === "Amount");
         if (!deletedSystemCols.includes("__payment") && hasSalesHub) {
