@@ -34,9 +34,9 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
   
   const isSharedPage = pathname.startsWith('/shared/');
   const isTrackPage = pathname.startsWith('/dispatch/track');
-  const isPublicRoute = isSharedPage || isTrackPage || pathname.startsWith('/api/cashfree/') || pathname.startsWith('/api/razorpay/') || pathname === '/' || pathname.startsWith('/sign-in') || pathname.startsWith('/sign-up');
+  const isPublicRoute = isSharedPage || isTrackPage || pathname.startsWith('/api/cashfree/') || pathname.startsWith('/api/razorpay/') || pathname === '/' || pathname.startsWith('/sign-in') || pathname.startsWith('/sign-up') || pathname.startsWith('/f/');
   
-  const isFullView = searchParams.get('fullview') === 'true' || searchParams.has('edit') || isSharedPage || isTrackPage || pathname.startsWith('/sign-in') || pathname.startsWith('/sign-up');
+  const isFullView = searchParams.get('fullview') === 'true' || searchParams.has('edit') || isSharedPage || isTrackPage || pathname.startsWith('/sign-in') || pathname.startsWith('/sign-up') || pathname.startsWith('/f/');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
