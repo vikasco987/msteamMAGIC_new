@@ -25,6 +25,7 @@ interface PatchRequestBody {
   assigneeIds?: string[] | string | null;
   isHidden?: boolean;
   accountType?: string;
+  [key: string]: any;
 }
 
 // --- GET Task ---
@@ -131,7 +132,10 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       "title", "status", "amount", "received", "description",
       "highlightColor", "assignerEmail", "assigneeEmail",
       "assignerName", "assigneeName", "assigneeId", "assigneeIds", "assignerId",
-      "isHidden", "aadhaarUrl", "panUrl", "selfieUrl", "chequeUrl", "attachments", "menuCardUrls", "accountType"
+      "isHidden", "aadhaarUrl", "panUrl", "selfieUrl", "chequeUrl", "attachments", "menuCardUrls", "accountType",
+      "phone", "email", "shopName", "location", "accountNumber", "ifscCode", 
+      "restId", "customerName", "packageAmount", "startDate", "endDate", "timeline",
+      "outletName", "priority", "dueDate"
     ];
 
     const logs: string[] = [];
