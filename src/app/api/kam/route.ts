@@ -133,6 +133,17 @@ export async function GET(req: Request) {
           received: true,
           highlightColor: true,
           customFields: true,
+          notes: {
+            select: {
+              content: true,
+              authorName: true,
+              createdAt: true,
+            },
+            orderBy: {
+              createdAt: "desc",
+            },
+            take: 1,
+          },
         },
         orderBy: {
           [sortKey]: sortDir,
@@ -189,6 +200,7 @@ export async function GET(req: Request) {
         ...task,
         assigneeName: enrichedAssigneeName,
         assignees: assignees.length > 0 ? assignees : undefined,
+        recentNote: task.notes && task.notes.length > 0 ? task.notes[0] : null,
       };
     });
 

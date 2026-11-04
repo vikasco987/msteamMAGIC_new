@@ -121,7 +121,9 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     }
 
     // 🛡️ Global Security: If non-power user is NOT involved AND NOT a TL for this task, block all updates
-    if (!isPowerUser && !isSelfInvolved && !isTeamInvolved) {
+    // For KAM Account Handling tasks, sellers and TLs with KAM access should be permitted to update accountStatus
+    const isKamSellerOrTL = (userRole === "SELLER" || isTL) && currentTask.title === "📂 Account Handling";
+    if (!isPowerUser && !isSelfInvolved && !isTeamInvolved && !isKamSellerOrTL) {
       return NextResponse.json({ 
         error: "Access denied. You are not involved in this task.",
         details: `Your ID: ${userId}, Role: ${userRole}, Involved: ${isSelfInvolved}, TL: ${isTL}`
