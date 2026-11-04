@@ -6,26 +6,31 @@ import jwt from "jsonwebtoken";
 const JWT_SECRET = process.env.JWT_SECRET || "default_super_secret_key_12345";
 
 export async function getUnifiedUserId(req?: NextRequest): Promise<string | null> {
-    // 1. Check Clerk Auth first
+    // 1. Check Custom JWT Cookie first (or if req is provided)
+    try {
+        let token = req?.cookies?.get?.("custom_auth_token")?.value;
+        if (!token) {
+            const cookieStore = await cookies();
+            token = cookieStore.get("custom_auth_token")?.value;
+        }
+        if (token) {
+            const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+            if (decoded && decoded.userId) {
+                return decoded.userId;
+            }
+        }
+    } catch {
+        // Proceed to Clerk auth if custom auth fails or token not present
+    }
+
+    // 2. Fallback to Clerk Auth
     try {
         const clerkAuth = await clerkAuthFn();
         if (clerkAuth && clerkAuth.userId) {
             return clerkAuth.userId;
         }
-    } catch (error) {
-        // Ignore Clerk auth errors and proceed to custom auth
-    }
-
-    // 2. Fallback to Custom JWT Cookie
-    try {
-        const cookieStore = await cookies();
-        const token = cookieStore.get("custom_auth_token")?.value;
-        if (token) {
-            const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-            return decoded.userId;
-        }
-    } catch (error) {
-        console.error("Custom Auth check failed:", error);
+    } catch {
+        // Ignore Clerk auth errors
     }
     
     return null;

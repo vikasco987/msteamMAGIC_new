@@ -912,3 +912,44 @@ model PrinterIssueRecord {
   @@index([taskId])
   @@index([serialNumberId])
 }
+
+// ==========================================
+// 🛡️ SECURE MINIMAL BIOMETRIC ATTENDANCE MODELS
+// ==========================================
+
+model EmployeeFaceProfile {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String    @unique // Canonical Clerk ID / Custom Auth User ID
+  
+  // 128-dimensional normalized facial embedding vector
+  embedding         Float[]
+  
+  status            String    @default("REGISTERED") // REGISTERED, SUSPENDED
+  isLocked          Boolean   @default(true) // Employee cannot modify or delete
+  
+  // Explicit Consent Tracking
+  consentObtained   Boolean   @default(false)
+  consentTimestamp  DateTime?
+  consentRecordedBy String?   // Admin ID who recorded and witnessed consent
+  
+  enrolledByAdminId String    // Admin ID who performed enrollment
+  enrolledAt        DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([status])
+}
+
+model FaceAuditLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   // Target employee canonical ID
+  actorId   String   // Admin or system actor performing action
+  action    String   // ENROLLED, RESET, PURGED, SUSPENDED, VERIFY_SUCCESS, VERIFY_FAILED
+  reason    String?  // Mandatory reason for admin changes
+  status    String   // SUCCESS, FAILED, REJECTED
+  metadata  Json?    // Safe metrics: IP, distance, match score (NO raw images/embeddings)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([actorId])
+  @@index([createdAt])
+}

@@ -3,10 +3,11 @@ import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 
 import React, { useEffect, useState } from "react";
 
-import { Users, Search, Lock, Unlock, ShieldCheck, XCircle, CheckCircle2, FileEdit, Banknote, Eye, DollarSign, Archive, Filter } from "lucide-react";
+import { Users, Search, Lock, Unlock, ShieldCheck, XCircle, CheckCircle2, FileEdit, Banknote, Eye, DollarSign, Archive, Filter, ScanFace } from "lucide-react";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import AdminFaceEnrollmentModal from "./components/AdminFaceEnrollmentModal";
 
 export default function EmployeeDirectoryPage() {
     const { user: currentUser, isLoaded } = useUser();
@@ -18,6 +19,7 @@ export default function EmployeeDirectoryPage() {
     // Modal states
     const [editingEmployee, setEditingEmployee] = useState<any>(null);
     const [viewingEmployee, setViewingEmployee] = useState<any>(null);
+    const [faceEmployee, setFaceEmployee] = useState<any>(null);
     const [editForm, setEditForm] = useState<any>({});
     const [saving, setSaving] = useState(false);
 
@@ -441,6 +443,19 @@ export default function EmployeeDirectoryPage() {
                                                 <Eye size={20} />
                                             </Link>
                                             <button 
+                                                onClick={() => {
+                                                    if (!emp.userId) {
+                                                        toast.error("Employee does not have an active login account (clerkId) linked.");
+                                                        return;
+                                                    }
+                                                    setFaceEmployee(emp);
+                                                }}
+                                                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                                                title="Manage Face ID & Biometrics"
+                                            >
+                                                <ScanFace size={20} />
+                                            </button>
+                                            <button 
                                                 onClick={() => handleEditClick(emp)}
                                                 className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
                                                 title="Edit Employee Details"
@@ -462,6 +477,22 @@ export default function EmployeeDirectoryPage() {
                     </table>
                 </div>
             </div>
+
+            {/* Admin Face Biometric Modal */}
+            {faceEmployee && (
+                <AdminFaceEnrollmentModal
+                    isOpen={!!faceEmployee}
+                    onClose={() => setFaceEmployee(null)}
+                    employee={{
+                        userId: faceEmployee.userId,
+                        name: faceEmployee.name || "Employee",
+                        email: faceEmployee.email,
+                    }}
+                    onSuccess={() => {
+                        fetchEmployees();
+                    }}
+                />
+            )}
         </div>
     );
 }

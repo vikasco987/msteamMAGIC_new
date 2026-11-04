@@ -10,9 +10,11 @@ import {
     FaPlayCircle, FaStopCircle, FaHourglassHalf, FaCalendarCheck, 
     FaBolt, FaExclamationCircle, FaMapMarkerAlt, FaSyncAlt, FaHeart 
 } from "react-icons/fa";
+import { ScanFace } from "lucide-react";
 import DailyAttendanceTable from "../attendance/employee/components/DailyAttendanceTable";
 // 1. IMPORT THE NEW COMPONENT
 import Motivation from "../attendance/employee/components/Motivation";
+import FaceVerificationModal from "./FaceVerificationModal";
 
 // --- ATTENDANCE POLICY CONSTANTS ---
 const STANDARD_START_HOUR = 10; // 10 AM
@@ -63,6 +65,8 @@ export default function AttendanceButtons() {
     const [showTab, setShowTab] = useState<TabType>("today"); 
     const [currentLocation, setCurrentLocation] = useState<{ lat: number, lng: number } | null>(null);
     const [locationError, setLocationError] = useState<string | null>(null);
+    const [faceModalOpen, setFaceModalOpen] = useState(false);
+    const [faceActionType, setFaceActionType] = useState<"checkIn" | "checkOut">("checkIn");
 
     // ------------------ Refs ------------------
     const checkInDateRef = useRef<Date | null>(null);
@@ -375,11 +379,65 @@ export default function AttendanceButtons() {
 
                     {/* Check-in / Check-out Buttons */}
                     {!showReason && (
-                        <div className="flex flex-col sm:flex-row gap-6 mt-4">
-                            <button onClick={checkInClick} disabled={loading || checkInStatus !== "notCheckedIn" || !isLocationReady} className={`flex-1 flex flex-col items-center justify-center gap-2 p-8 rounded-2xl font-black text-2xl transition duration-500 shadow-2xl border-b-8 ${checkInStatus !== "notCheckedIn" || !isLocationReady ? "bg-gray-300 text-gray-600 cursor-not-allowed border-gray-500" : "bg-gradient-to-r from-green-500 to-teal-600 text-white hover:from-green-600 hover:to-teal-700 transform hover:scale-[1.03] border-green-800"}`}><FaPlayCircle className="text-4xl mb-1" />{checkInStatus !== "notCheckedIn" ? "Checked In/Out Today" : !isLocationReady ? "Location Required" : "PUNCH IN"}</button>
-                            <button onClick={checkOutClick} disabled={loading || checkInStatus !== "checkedIn" || !isLocationReady} className={`flex-1 flex flex-col items-center justify-center gap-2 p-8 rounded-2xl font-black text-2xl transition duration-500 shadow-2xl border-b-8 ${checkInStatus !== "checkedIn" || !isLocationReady ? "bg-gray-300 text-gray-600 cursor-not-allowed border-gray-500" : "bg-gradient-to-r from-red-500 to-pink-600 text-white hover:from-red-600 hover:to-pink-700 transform hover:scale-[1.03] border-red-800"}`}><FaStopCircle className="text-4xl mb-1" />{!isLocationReady ? "Location Required" : "PUNCH OUT"}</button>
+                        <div className="space-y-4 mt-4">
+                            {/* Biometric Face Attendance Actions */}
+                            <div className="flex flex-col sm:flex-row gap-4">
+                                <button
+                                    onClick={() => {
+                                        setFaceActionType("checkIn");
+                                        setFaceModalOpen(true);
+                                    }}
+                                    disabled={loading || checkInStatus !== "notCheckedIn" || !isLocationReady}
+                                    className={`flex-1 flex items-center justify-center gap-3 p-6 rounded-2xl font-black text-xl transition-all duration-300 shadow-xl border-b-4 ${
+                                        checkInStatus !== "notCheckedIn" || !isLocationReady
+                                            ? "bg-gray-200 text-gray-500 cursor-not-allowed border-gray-400"
+                                            : "bg-gradient-to-r from-teal-500 to-emerald-600 text-white hover:from-teal-600 hover:to-emerald-700 hover:shadow-2xl border-emerald-800 transform hover:-translate-y-0.5"
+                                    }`}
+                                >
+                                    <ScanFace className="w-8 h-8" />
+                                    <span>Face Check-in</span>
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setFaceActionType("checkOut");
+                                        setFaceModalOpen(true);
+                                    }}
+                                    disabled={loading || checkInStatus !== "checkedIn" || !isLocationReady}
+                                    className={`flex-1 flex items-center justify-center gap-3 p-6 rounded-2xl font-black text-xl transition-all duration-300 shadow-xl border-b-4 ${
+                                        checkInStatus !== "checkedIn" || !isLocationReady
+                                            ? "bg-gray-200 text-gray-500 cursor-not-allowed border-gray-400"
+                                            : "bg-gradient-to-r from-rose-500 to-pink-600 text-white hover:from-rose-600 hover:to-pink-700 hover:shadow-2xl border-rose-800 transform hover:-translate-y-0.5"
+                                    }`}
+                                >
+                                    <ScanFace className="w-8 h-8" />
+                                    <span>Face Check-out</span>
+                                </button>
+                            </div>
+
+                            {/* Standard 1-Click Fallback Punch Buttons */}
+                            <div className="pt-2 border-t border-gray-200">
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 text-center">Alternative Manual Punch</p>
+                                <div className="flex flex-col sm:flex-row gap-4">
+                                    <button onClick={checkInClick} disabled={loading || checkInStatus !== "notCheckedIn" || !isLocationReady} className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl font-bold text-sm transition shadow border-b-2 ${checkInStatus !== "notCheckedIn" || !isLocationReady ? "bg-gray-100 text-gray-400 cursor-not-allowed border-gray-300" : "bg-gray-50 text-gray-700 hover:bg-gray-100 border-gray-300"}`}><FaPlayCircle className="text-lg" />{checkInStatus !== "notCheckedIn" ? "Checked In Today" : !isLocationReady ? "Location Required" : "Standard Punch In"}</button>
+                                    <button onClick={checkOutClick} disabled={loading || checkInStatus !== "checkedIn" || !isLocationReady} className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl font-bold text-sm transition shadow border-b-2 ${checkInStatus !== "checkedIn" || !isLocationReady ? "bg-gray-100 text-gray-400 cursor-not-allowed border-gray-300" : "bg-gray-50 text-gray-700 hover:bg-gray-100 border-gray-300"}`}><FaStopCircle className="text-lg" />{!isLocationReady ? "Location Required" : "Standard Punch Out"}</button>
+                                </div>
+                            </div>
                         </div>
                     )}
+
+                    {/* Face Verification Modal */}
+                    <FaceVerificationModal
+                        isOpen={faceModalOpen}
+                        onClose={() => setFaceModalOpen(false)}
+                        actionType={faceActionType}
+                        currentLocation={currentLocation}
+                        reason={reason}
+                        remarks={remarks}
+                        onSuccess={() => {
+                            fetchTodayAttendance();
+                            fetchLocation();
+                        }}
+                    />
                 </div>
             )}
 

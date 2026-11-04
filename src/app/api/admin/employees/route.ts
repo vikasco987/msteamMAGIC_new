@@ -23,7 +23,20 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json({ profiles });
+    // Resolve corresponding canonical user account (clerkId) for each profile
+    const emails = profiles.map(p => p.email.toLowerCase().trim());
+    const users = await prisma.user.findMany({
+      where: { email: { in: emails } },
+      select: { clerkId: true, email: true },
+    });
+    const emailToUserId = new Map(users.map(u => [u.email.toLowerCase().trim(), u.clerkId]));
+
+    const enrichedProfiles = profiles.map(p => ({
+      ...p,
+      userId: emailToUserId.get(p.email.toLowerCase().trim()) || null,
+    }));
+
+    return NextResponse.json({ profiles: enrichedProfiles });
   } catch (error: any) {
     console.error("❌ GET Admin Employees Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

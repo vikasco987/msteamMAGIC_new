@@ -7,7 +7,10 @@ import Link from "next/link";
 import { ArrowLeft, UserCircle2, Calendar, FileText, Activity, CreditCard, Banknote, History, Wallet, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
-export default function EmployeeFinancialProfile({ params }: { params: { id: string } }) {
+export default function EmployeeFinancialProfile({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = React.use(params);
+  const employeeId = resolvedParams.id;
+
   const { user: currentUser, isLoaded } = useUser();
   const [profile, setProfile] = useState<any>(null);
   const [attendance, setAttendance] = useState<any[]>([]);
@@ -25,18 +28,18 @@ export default function EmployeeFinancialProfile({ params }: { params: { id: str
     if (isLoaded && currentUserRole === 'master') {
       fetchData();
     }
-  }, [isLoaded, currentUserRole, params.id, ledgerFilter]);
+  }, [isLoaded, currentUserRole, employeeId, ledgerFilter]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const [profileRes, attRes, payRes, timeRes, ledRes, advRes] = await Promise.all([
-        fetch(`/api/admin/employees/detail/${params.id}`),
-        fetch(`/api/admin/employees/detail/${params.id}/attendance`),
-        fetch(`/api/admin/employees/detail/${params.id}/payroll`),
-        fetch(`/api/admin/employees/detail/${params.id}/timeline`),
-        fetch(`/api/admin/employees/detail/${params.id}/ledger?filter=${ledgerFilter}`),
-        fetch(`/api/admin/employees/detail/${params.id}/advances`)
+        fetch(`/api/admin/employees/detail/${employeeId}`),
+        fetch(`/api/admin/employees/detail/${employeeId}/attendance`),
+        fetch(`/api/admin/employees/detail/${employeeId}/payroll`),
+        fetch(`/api/admin/employees/detail/${employeeId}/timeline`),
+        fetch(`/api/admin/employees/detail/${employeeId}/ledger?filter=${ledgerFilter}`),
+        fetch(`/api/admin/employees/detail/${employeeId}/advances`)
       ]);
 
       const [profileData, attData, payData, timeData, ledData, advData] = await Promise.all([
