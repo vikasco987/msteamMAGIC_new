@@ -54,22 +54,39 @@ export async function GET(req: Request) {
       retentionUsers.map((u) => (u.name || "").trim().toLowerCase()).filter(Boolean)
     );
 
-    // 1. Table 1: Assign_2.0 Summary (Grouped by assignerName or customFields.assignerName)
-    // Columns: Name, Total Customer, Active Customer, Waiting For renewal
+    // 1. Table 1: Assign_2.0 Summary Canonical Members
+    const canonicalAssigners = [
+      "Vivek",
+      "shravan mandal",
+      "Prince Singh",
+      "Priyanshu Kushwaha",
+      "Yogesh",
+      "kapil morya",
+      "Henu",
+      "Left",
+    ];
+
     const assign2Map: Record<
       string,
       { totalCustomer: number; activeCustomer: number; waitingRenewal: number }
     > = {};
 
+    canonicalAssigners.forEach((name) => {
+      assign2Map[name] = { totalCustomer: 0, activeCustomer: 0, waitingRenewal: 0 };
+    });
+
     // 2. Table 2: Retention Team Summary
-    // Columns: Retention Member, Total Cx, Active
+    const canonicalRetention = ["Rishav kumar", "Chahat"];
     const retentionSummaryMap: Record<
       string,
       { totalCx: number; active: number }
     > = {};
 
+    canonicalRetention.forEach((name) => {
+      retentionSummaryMap[name] = { totalCx: 0, active: 0 };
+    });
+
     // 3. Table 3: Retention Status Breakdown
-    // Columns: Retention Team, Growing...., Need To Focus, Conflict For week, Ask_For_Renewal, cretical_outlet, Customer_not response, Outlet Currently off
     const retentionBreakdownMap: Record<
       string,
       {
@@ -83,25 +100,61 @@ export async function GET(req: Request) {
       }
     > = {};
 
+    canonicalRetention.forEach((name) => {
+      retentionBreakdownMap[name] = {
+        growing: 0,
+        needToFocus: 0,
+        conflictForWeek: 0,
+        askForRenewal: 0,
+        creticalOutlet: 0,
+        customerNotResponse: 0,
+        outletCurrentlyOff: 0,
+      };
+    });
+
+    const now = new Date();
+
+    function normalizeAssigner(t: any, cf: any): string {
+      const raw = (t.assignerName || cf.assignerName || "").trim().toLowerCase();
+      if (raw.includes("vivek")) return "Vivek";
+      if (raw.includes("shravan")) return "shravan mandal";
+      if (raw.includes("prince")) return "Prince Singh";
+      if (raw.includes("priyanshu")) return "Priyanshu Kushwaha";
+      if (raw.includes("yogesh")) return "Yogesh";
+      if (raw.includes("kapil")) return "kapil morya";
+      if (raw.includes("henu")) return "Henu";
+      return "Left";
+    }
+
     tasks.forEach((task) => {
       const cf = (task.customFields as any) || {};
-      const assigner = (
-        task.assignerName ||
-        cf.assignerName ||
-        "Unassigned"
-      ).trim();
-      const assignee = (
-        task.assigneeName ||
-        cf.assigneeName ||
-        "Unassigned"
-      ).trim();
+      const assigner = normalizeAssigner(task, cf);
 
       const customerStatus = (cf.customerStatus || "").trim().toLowerCase();
       const accountStatus = (cf.accountStatus || "").trim().toLowerCase();
 
-      const isActive = customerStatus === "active";
-      const isWaitingRenewal =
-        customerStatus.includes("waiting") || customerStatus.includes("renewal");
+      // Check dates
+      const endStr = cf.endDate || cf.subscriptionEndDate;
+      const end = endStr ? new Date(endStr) : null;
+      const isValidEnd = end && !isNaN(end.getTime());
+
+      let isActive = false;
+      let isWaitingRenewal = false;
+
+      if (customerStatus === "active") {
+        isActive = true;
+      } else if (customerStatus.includes("renewal") || customerStatus.includes("waiting")) {
+        isWaitingRenewal = true;
+      } else if (isValidEnd) {
+        if (end >= now) {
+          isActive = true;
+        } else {
+          const diffDays = Math.round((now.getTime() - end.getTime()) / (1000 * 60 * 60 * 24));
+          if (diffDays <= 30) {
+            isWaitingRenewal = true;
+          }
+        }
+      }
 
       // Aggregate Table 1: Assign_2.0
       if (!assign2Map[assigner]) {
@@ -115,45 +168,27 @@ export async function GET(req: Request) {
       if (isActive) assign2Map[assigner].activeCustomer += 1;
       if (isWaitingRenewal) assign2Map[assigner].waitingRenewal += 1;
 
-      // Check if assigner or assignee is in Retention Team
-      const isAssignerRetention = retentionNames.has(assigner.toLowerCase());
-      const isAssigneeRetention = retentionNames.has(assignee.toLowerCase());
+      // Retention Team Detection:
+      const fullText = `${task.assignerName || ""} ${task.assigneeName || ""} ${cf.assignerName || ""} ${cf.assigneeName || ""} ${cf.retentionMember || ""}`.toLowerCase();
+      let matchedRetention: string | null = null;
+      if (fullText.includes("rishav")) {
+        matchedRetention = "Rishav kumar";
+      } else if (fullText.includes("chahat")) {
+        matchedRetention = "Chahat";
+      }
 
-      const retentionMember = isAssignerRetention
-        ? assigner
-        : isAssigneeRetention
-        ? assignee
-        : null;
+      if (matchedRetention) {
+        retentionSummaryMap[matchedRetention].totalCx += 1;
+        if (isActive) retentionSummaryMap[matchedRetention].active += 1;
 
-      if (retentionMember) {
-        // Table 2 aggregation
-        if (!retentionSummaryMap[retentionMember]) {
-          retentionSummaryMap[retentionMember] = { totalCx: 0, active: 0 };
-        }
-        retentionSummaryMap[retentionMember].totalCx += 1;
-        if (isActive) retentionSummaryMap[retentionMember].active += 1;
-
-        // Table 3 aggregation
-        if (!retentionBreakdownMap[retentionMember]) {
-          retentionBreakdownMap[retentionMember] = {
-            growing: 0,
-            needToFocus: 0,
-            conflictForWeek: 0,
-            askForRenewal: 0,
-            creticalOutlet: 0,
-            customerNotResponse: 0,
-            outletCurrentlyOff: 0,
-          };
-        }
-
-        const b = retentionBreakdownMap[retentionMember];
+        const b = retentionBreakdownMap[matchedRetention];
         if (accountStatus.includes("growing") && !accountStatus.includes("not")) {
           b.growing += 1;
         } else if (accountStatus.includes("need to focus")) {
           b.needToFocus += 1;
         } else if (accountStatus.includes("conflict")) {
           b.conflictForWeek += 1;
-        } else if (accountStatus.includes("renewal")) {
+        } else if (accountStatus.includes("renewal") || accountStatus.includes("ask_for_renewal")) {
           b.askForRenewal += 1;
         } else if (accountStatus.includes("cretical") || accountStatus.includes("critical")) {
           b.creticalOutlet += 1;

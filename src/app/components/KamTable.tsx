@@ -170,9 +170,15 @@ export default function KamTableView() {
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
   const [isAssigneeDropdownOpen, setIsAssigneeDropdownOpen] = useState(false);
+  const [selectedAssigners, setSelectedAssigners] = useState<string[]>([]);
+  const [isAssignerDropdownOpen, setIsAssignerDropdownOpen] = useState(false);
+  const [accountStatusFilter, setAccountStatusFilter] = useState<string | null>(null);
+  const [customerStatusFilter, setCustomerStatusFilter] = useState<string | null>(null);
+  const [followUpDateFilter, setFollowUpDateFilter] = useState<string | null>(null);
 
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const assigneeDropdownRef = useRef<HTMLDivElement>(null);
+  const assignerDropdownRef = useRef<HTMLDivElement>(null);
   const accountStatusDropdownRef = useRef<HTMLDivElement>(null);
   const customerStatusDropdownRef = useRef<HTMLDivElement>(null);
   const columnManagerRef = useRef<HTMLDivElement>(null);
@@ -290,6 +296,12 @@ export default function KamTableView() {
         setIsAssigneeDropdownOpen(false);
       }
       if (
+        assignerDropdownRef.current &&
+        !assignerDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsAssignerDropdownOpen(false);
+      }
+      if (
         accountStatusDropdownRef.current &&
         !accountStatusDropdownRef.current.contains(event.target as Node)
       ) {
@@ -402,6 +414,61 @@ export default function KamTableView() {
       );
     }
 
+    if (selectedAssigners.length > 0) {
+      currentTasks = currentTasks.filter((t) => {
+        const assigner = t.assignerName || (t.customFields as any)?.assignerName || '';
+        return selectedAssigners.includes(assigner);
+      });
+    }
+
+    if (accountStatusFilter) {
+      currentTasks = currentTasks.filter((t) => {
+        const accStatus = t.accountStatus || (t.customFields as any)?.accountStatus || '';
+        return accStatus.toLowerCase() === accountStatusFilter.toLowerCase();
+      });
+    }
+
+    if (customerStatusFilter) {
+      currentTasks = currentTasks.filter((t) => {
+        const custStatus = t.customerStatus || (t.customFields as any)?.customerStatus || '';
+        return custStatus.toLowerCase() === customerStatusFilter.toLowerCase();
+      });
+    }
+
+    if (followUpDateFilter) {
+      currentTasks = currentTasks.filter((t) => {
+        const followUpDateStr = t.nextFollowUpDate || (t.customFields as any)?.nextFollowUpDate;
+        if (!followUpDateStr) {
+          return followUpDateFilter === "no_date";
+        }
+        const fDate = new Date(followUpDateStr);
+        if (isNaN(fDate.getTime())) return followUpDateFilter === "no_date";
+
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const fDateStart = new Date(fDate.getFullYear(), fDate.getMonth(), fDate.getDate());
+
+        switch (followUpDateFilter) {
+          case "today":
+            return isToday(fDate);
+          case "overdue":
+            return fDateStart < todayStart;
+          case "next_7_days": {
+            const next7 = new Date(todayStart);
+            next7.setDate(next7.getDate() + 7);
+            return fDateStart >= todayStart && fDateStart <= next7;
+          }
+          case "this_month": {
+            const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            return fDateStart >= todayStart && fDateStart <= endOfMonth;
+          }
+          case "has_date":
+            return true;
+          default:
+            return true;
+        }
+      });
+    }
+
     if (dateFilter) {
       currentTasks = currentTasks.filter((t) => {
         const taskDate = new Date(t.createdAt);
@@ -490,7 +557,7 @@ export default function KamTableView() {
     }
 
     return currentTasks;
-  }, [allRawTasks, query, statusFilter, selectedCategories, selectedAssignees, dateFilter, sortConfig]);
+  }, [allRawTasks, query, statusFilter, selectedCategories, selectedAssignees, selectedAssigners, accountStatusFilter, customerStatusFilter, followUpDateFilter, dateFilter, sortConfig]);
 
   useEffect(() => {
     // Since API already handles pagination, we don't slice here anymore
@@ -1043,6 +1110,17 @@ export default function KamTableView() {
     return Array.from(names).sort();
   }, [allRawTasks]);
 
+  const uniqueAssignerNames = useMemo(() => {
+    const names = new Set<string>();
+    allRawTasks.forEach(task => {
+      const a = (task.assignerName || (task.customFields as any)?.assignerName || "").trim();
+      if (a) {
+        names.add(a);
+      }
+    });
+    return Array.from(names).sort();
+  }, [allRawTasks]);
+
   const getCategoryDropdownDisplayText = () => {
     if (selectedCategories.length === 0) {
       return "All Categories";
@@ -1064,6 +1142,18 @@ export default function KamTableView() {
       return selectedAssignees[0];
     } else {
       return `${selectedAssignees.length} Assignees Selected`;
+    }
+  };
+
+  const getAssignerDropdownDisplayText = () => {
+    if (selectedAssigners.length === 0) {
+      return "All Assigners";
+    } else if (selectedAssigners.length === uniqueAssignerNames.length) {
+      return "All Assigners Selected";
+    } else if (selectedAssigners.length === 1) {
+      return selectedAssigners[0];
+    } else {
+      return `${selectedAssigners.length} Assigners Selected`;
     }
   };
 
@@ -1262,6 +1352,91 @@ export default function KamTableView() {
             </div>
           )}
         </div>
+
+        {/* Assigner Filter */}
+        <div className="relative" ref={assignerDropdownRef}>
+          <button
+            type="button"
+            className="p-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between min-w-[150px]"
+            onClick={() => setIsAssignerDropdownOpen((prev) => !prev)}
+          >
+            <span>{getAssignerDropdownDisplayText()}</span>
+            {isAssignerDropdownOpen ? <FaCaretUp className="ml-2" /> : <FaCaretDown className="ml-2" />}
+          </button>
+          {isAssignerDropdownOpen && (
+            <div className="absolute z-20 mt-1 w-56 max-h-60 overflow-y-auto rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+              <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
+                {uniqueAssignerNames.length > 0 ? (
+                  uniqueAssignerNames.map((assigner) => (
+                    <label
+                      key={assigner}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                      role="menuitem"
+                    >
+                      <input
+                        type="checkbox"
+                        className="accent-blue-600"
+                        checked={selectedAssigners.includes(assigner)}
+                        onChange={(e) => {
+                          const isChecked = e.target.checked;
+                          setSelectedAssigners((prev) =>
+                            isChecked ? [...prev, assigner] : prev.filter((v) => v !== assigner)
+                          );
+                        }}
+                      />
+                      {assigner}
+                    </label>
+                  ))
+                ) : (
+                  <div className="px-4 py-2 text-sm text-gray-500">No assigners found.</div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Account Status Filter */}
+        <select
+          value={accountStatusFilter || ""}
+          onChange={(e) => setAccountStatusFilter(e.target.value || null)}
+          className="p-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+        >
+          <option value="">All Account Statuses</option>
+          {ACCOUNT_STATUS_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+
+        {/* Customer Status Filter */}
+        <select
+          value={customerStatusFilter || ""}
+          onChange={(e) => setCustomerStatusFilter(e.target.value || null)}
+          className="p-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+        >
+          <option value="">All Customer Statuses</option>
+          {CUSTOMER_STATUS_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+
+        {/* Next Follow Up Date Filter */}
+        <select
+          value={followUpDateFilter || ""}
+          onChange={(e) => setFollowUpDateFilter(e.target.value || null)}
+          className="p-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+        >
+          <option value="">All Follow-up Dates</option>
+          <option value="today">Follow-up Today</option>
+          <option value="overdue">Overdue Follow-up</option>
+          <option value="next_7_days">Next 7 Days Follow-up</option>
+          <option value="this_month">This Month Follow-up</option>
+          <option value="has_date">Has Scheduled Follow-up</option>
+          <option value="no_date">No Follow-up Scheduled</option>
+        </select>
 
         <select
           value={dateFilter || ""}
