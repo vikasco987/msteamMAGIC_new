@@ -350,6 +350,19 @@ export default function KamTableView() {
         sortDir: sortConfig?.direction === "ascending" ? "asc" : "desc",
       });
 
+      if (followUpDateFilter) {
+        params.set("followUpDate", followUpDateFilter);
+      }
+      if (accountStatusFilter) {
+        params.set("accountStatus", accountStatusFilter);
+      }
+      if (customerStatusFilter) {
+        params.set("customerStatus", customerStatusFilter);
+      }
+      if (selectedAssigners.length > 0) {
+        params.set("assigners", selectedAssigners.join(","));
+      }
+
       const res = await fetch(`/api/kam?${params.toString()}`);
       const data = await res.json();
 
@@ -364,7 +377,7 @@ export default function KamTableView() {
       setLoading(false);
       setIsFirstLoad(false);
     }
-  }, [user, isLoaded, page, limit, debouncedQuery, statusFilter, sortConfig]);
+  }, [user, isLoaded, page, limit, debouncedQuery, statusFilter, followUpDateFilter, accountStatusFilter, customerStatusFilter, selectedAssigners, sortConfig]);
 
   useEffect(() => {
     fetchAllTasks();
@@ -569,7 +582,7 @@ export default function KamTableView() {
     if (isLoaded) {
       setPage(1);
     }
-  }, [debouncedQuery, statusFilter, selectedCategories, selectedAssignees, dateFilter]);
+  }, [debouncedQuery, statusFilter, selectedCategories, selectedAssignees, selectedAssigners, accountStatusFilter, customerStatusFilter, followUpDateFilter, dateFilter]);
 
   const handleInputChange = (
     taskId: string,
@@ -1427,13 +1440,17 @@ export default function KamTableView() {
         <select
           value={followUpDateFilter || ""}
           onChange={(e) => setFollowUpDateFilter(e.target.value || null)}
-          className="p-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+          className="p-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 font-medium text-gray-700 bg-white"
         >
           <option value="">All Follow-up Dates</option>
           <option value="today">Follow-up Today</option>
+          <option value="tomorrow">Follow-up Tomorrow</option>
+          <option value="yesterday">Yesterday's Follow-up</option>
           <option value="overdue">Overdue Follow-up</option>
-          <option value="next_7_days">Next 7 Days Follow-up</option>
-          <option value="this_month">This Month Follow-up</option>
+          <option value="next_7_days">Next 7 Days</option>
+          <option value="next_15_days">Next 15 Days</option>
+          <option value="next_30_days">Next 30 Days</option>
+          <option value="this_month">This Month</option>
           <option value="has_date">Has Scheduled Follow-up</option>
           <option value="no_date">No Follow-up Scheduled</option>
         </select>

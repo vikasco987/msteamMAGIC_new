@@ -41,6 +41,11 @@ export async function GET(req: Request) {
 
     const query = searchParams.get("query");
     const status = searchParams.get("status");
+    const followUpDateFilter = searchParams.get("followUpDate");
+    const accountStatusFilter = searchParams.get("accountStatus");
+    const customerStatusFilter = searchParams.get("customerStatus");
+    const assignersParam = searchParams.get("assigners");
+    const assigneesParam = searchParams.get("assignees");
     const sortKeyParam = searchParams.get("sortKey") || "createdAt";
     const sortDir = (searchParams.get("sortDir") || "desc") as "asc" | "desc";
 
@@ -101,58 +106,248 @@ export async function GET(req: Request) {
       where.status = status;
     }
 
-    if (query) {
-      where.OR = [
-        ...(where.OR || []),
-        { shopName: { contains: query, mode: "insensitive" } },
-        { customerName: { contains: query, mode: "insensitive" } },
-        { assigneeName: { contains: query, mode: "insensitive" } },
-        { assignerName: { contains: query, mode: "insensitive" } },
-      ];
-    }
+    // Has custom field / raw Mongo filters
+    const needsMongoRawFilter = Boolean(
+      followUpDateFilter ||
+      accountStatusFilter ||
+      customerStatusFilter ||
+      assignersParam
+    );
 
-    // Fetch tasks
-    const [tasks, totalCount] = await Promise.all([
-      prisma.task.findMany({
-        where,
-        select: {
-          id: true,
-          title: true,
-          status: true,
-          shopName: true,
-          customerName: true,
-          packageAmount: true,
-          startDate: true,
-          endDate: true,
-          timeline: true,
-          assignerName: true,
-          assigneeName: true,
-          assigneeIds: true,
-          createdAt: true,
-          amount: true,
-          received: true,
-          highlightColor: true,
-          customFields: true,
-          notes: {
-            select: {
-              content: true,
-              authorName: true,
-              createdAt: true,
+    let tasks: any[] = [];
+    let totalCount = 0;
+
+    if (needsMongoRawFilter) {
+      const rawFilter: any = {
+        title: "📂 Account Handling",
+      };
+
+      if (status) {
+        rawFilter.status = status;
+      }
+
+      if (query) {
+        rawFilter.$or = [
+          { shopName: { $regex: query, $options: "i" } },
+          { customerName: { $regex: query, $options: "i" } },
+          { assigneeName: { $regex: query, $options: "i" } },
+          { assignerName: { $regex: query, $options: "i" } },
+        ];
+      }
+
+      // Role conditions in rawFilter
+      if (!isPrivileged && (isSeller || normalizedRole === "tl" || isTL)) {
+        const orClauses: any[] = [
+          { createdByClerkId: userId },
+          { assigneeIds: userId },
+          { assigneeId: userId },
+        ];
+        if (isTL && teamMemberIds.length > 0) {
+          orClauses.push({ createdByClerkId: { $in: teamMemberIds } });
+          orClauses.push({ assigneeIds: { $in: teamMemberIds } });
+        }
+        if (rawFilter.$or) {
+          rawFilter.$and = [{ $or: rawFilter.$or }, { $or: orClauses }];
+          delete rawFilter.$or;
+        } else {
+          rawFilter.$or = orClauses;
+        }
+      }
+
+      const now = new Date();
+      const todayStr = now.toISOString().split("T")[0];
+
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = tomorrow.toISOString().split("T")[0];
+
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split("T")[0];
+
+      const next7 = new Date(now);
+      next7.setDate(next7.getDate() + 7);
+      const next7DaysStr = next7.toISOString().split("T")[0];
+
+      const next15 = new Date(now);
+      next15.setDate(next15.getDate() + 15);
+      const next15DaysStr = next15.toISOString().split("T")[0];
+
+      const next30 = new Date(now);
+      next30.setDate(next30.getDate() + 30);
+      const next30DaysStr = next30.toISOString().split("T")[0];
+
+      const startOfMonthStr = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+      const endOfMonthStr = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
+
+      if (followUpDateFilter) {
+        if (followUpDateFilter === "no_date") {
+          const noDateConditions = [
+            { "customFields.nextFollowUpDate": { $exists: false } },
+            { "customFields.nextFollowUpDate": null },
+            { "customFields.nextFollowUpDate": "" },
+          ];
+          if (rawFilter.$and) {
+            rawFilter.$and.push({ $or: noDateConditions });
+          } else if (rawFilter.$or) {
+            rawFilter.$and = [{ $or: rawFilter.$or }, { $or: noDateConditions }];
+            delete rawFilter.$or;
+          } else {
+            rawFilter.$or = noDateConditions;
+          }
+        } else if (followUpDateFilter === "has_date") {
+          rawFilter["customFields.nextFollowUpDate"] = { $exists: true, $nin: [null, ""] };
+        } else if (followUpDateFilter === "today") {
+          rawFilter["customFields.nextFollowUpDate"] = todayStr;
+        } else if (followUpDateFilter === "tomorrow") {
+          rawFilter["customFields.nextFollowUpDate"] = tomorrowStr;
+        } else if (followUpDateFilter === "yesterday") {
+          rawFilter["customFields.nextFollowUpDate"] = yesterdayStr;
+        } else if (followUpDateFilter === "overdue") {
+          rawFilter["customFields.nextFollowUpDate"] = { $exists: true, $nin: [null, ""], $lt: todayStr };
+        } else if (followUpDateFilter === "next_7_days") {
+          rawFilter["customFields.nextFollowUpDate"] = { $gte: todayStr, $lte: next7DaysStr };
+        } else if (followUpDateFilter === "next_15_days") {
+          rawFilter["customFields.nextFollowUpDate"] = { $gte: todayStr, $lte: next15DaysStr };
+        } else if (followUpDateFilter === "next_30_days") {
+          rawFilter["customFields.nextFollowUpDate"] = { $gte: todayStr, $lte: next30DaysStr };
+        } else if (followUpDateFilter === "this_month") {
+          rawFilter["customFields.nextFollowUpDate"] = { $gte: startOfMonthStr, $lte: endOfMonthStr };
+        }
+      }
+
+      if (accountStatusFilter) {
+        rawFilter["customFields.accountStatus"] = accountStatusFilter;
+      }
+
+      if (customerStatusFilter) {
+        rawFilter["customFields.customerStatus"] = customerStatusFilter;
+      }
+
+      if (assignersParam) {
+        const assignerList = assignersParam.split(",").map(a => a.trim()).filter(Boolean);
+        if (assignerList.length > 0) {
+          rawFilter.$and = rawFilter.$and || [];
+          rawFilter.$and.push({
+            $or: [
+              { assignerName: { $in: assignerList } },
+              { "customFields.assignerName": { $in: assignerList } }
+            ]
+          });
+        }
+      }
+
+      // Execute findRaw with count
+      const allMatchingRaw: any = await prisma.task.findRaw({
+        filter: rawFilter,
+        options: {
+          sort: { [sortKey]: sortDir === "asc" ? 1 : -1 },
+          skip,
+          limit,
+          projection: { _id: 1 }
+        }
+      });
+
+      const totalCountRaw: any = await prisma.task.aggregateRaw({
+        pipeline: [
+          { $match: rawFilter },
+          { $count: "count" }
+        ]
+      });
+
+      totalCount = Array.isArray(totalCountRaw) && totalCountRaw.length > 0 ? totalCountRaw[0].count : 0;
+
+      const pageIds = (allMatchingRaw || []).map((doc: any) => {
+        return doc._id?.$oid || String(doc._id);
+      });
+
+      if (pageIds.length > 0) {
+        const fetchedTasks = await prisma.task.findMany({
+          where: { id: { in: pageIds } },
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            shopName: true,
+            customerName: true,
+            packageAmount: true,
+            startDate: true,
+            endDate: true,
+            timeline: true,
+            assignerName: true,
+            assigneeName: true,
+            assigneeIds: true,
+            createdAt: true,
+            amount: true,
+            received: true,
+            highlightColor: true,
+            customFields: true,
+            notes: {
+              select: {
+                content: true,
+                authorName: true,
+                createdAt: true,
+              },
+              orderBy: {
+                createdAt: "desc",
+              },
+              take: 1,
             },
-            orderBy: {
-              createdAt: "desc",
-            },
-            take: 1,
           },
-        },
-        orderBy: {
-          [sortKey]: sortDir,
-        },
-        skip,
-        take: limit,
-      }),
-      prisma.task.count({ where }),
-    ]);
+        });
+
+        // Preserve order from findRaw
+        const taskMap = new Map(fetchedTasks.map(t => [t.id, t]));
+        tasks = pageIds.map((id: string) => taskMap.get(id)).filter(Boolean);
+      } else {
+        tasks = [];
+      }
+    } else {
+      // Standard Prisma query
+      const [fetchedTasks, count] = await Promise.all([
+        prisma.task.findMany({
+          where,
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            shopName: true,
+            customerName: true,
+            packageAmount: true,
+            startDate: true,
+            endDate: true,
+            timeline: true,
+            assignerName: true,
+            assigneeName: true,
+            assigneeIds: true,
+            createdAt: true,
+            amount: true,
+            received: true,
+            highlightColor: true,
+            customFields: true,
+            notes: {
+              select: {
+                content: true,
+                authorName: true,
+                createdAt: true,
+              },
+              orderBy: {
+                createdAt: "desc",
+              },
+              take: 1,
+            },
+          },
+          orderBy: {
+            [sortKey]: sortDir,
+          },
+          skip,
+          take: limit,
+        }),
+        prisma.task.count({ where }),
+      ]);
+      tasks = fetchedTasks;
+      totalCount = count;
+    }
 
     // ✅ ENRICH ASSIGNEE NAMES
     const allUserIds = new Set<string>();
