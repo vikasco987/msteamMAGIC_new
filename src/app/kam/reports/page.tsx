@@ -11,6 +11,11 @@ import {
   FaUsers,
   FaUserCheck,
   FaChartPie,
+  FaUserCog,
+  FaPlus,
+  FaTrash,
+  FaCheck,
+  FaTimes,
 } from "react-icons/fa";
 
 interface Assign2Row {
@@ -18,6 +23,28 @@ interface Assign2Row {
   totalCustomer: number;
   activeCustomer: number;
   waitingRenewal: number;
+}
+
+interface TeamMemberMetric {
+  name: string;
+  totalCustomer: number;
+  activeCustomer: number;
+  waitingRenewal: number;
+}
+
+interface TeamGroupData {
+  teamName: string;
+  tlName: string;
+  members: TeamMemberMetric[];
+  totalCustomer: number;
+  activeCustomer: number;
+  waitingRenewal: number;
+}
+
+interface TeamConfig {
+  teamName: string;
+  tlName: string;
+  members: string[];
 }
 
 interface RetentionSummaryRow {
@@ -54,7 +81,18 @@ export default function KamReportsPage() {
   const [retentionSummary, setRetentionSummary] = useState<RetentionSummaryRow[]>([]);
   const [retentionBreakdown, setRetentionBreakdown] = useState<RetentionBreakdownRow[]>([]);
   const [overallStatusTotals, setOverallStatusTotals] = useState<OverallStatusTotals | null>(null);
+  const [teamGroups, setTeamGroups] = useState<TeamGroupData[]>([]);
   const [totalCount, setTotalCount] = useState(0);
+
+  // Active Tab: "teams" (Onboarding & Digital) or "assign2" (Legacy Assign_2.0)
+  const [activeTab, setActiveTab] = useState<"teams" | "assign2">("teams");
+
+  // Manage Teams Modal State
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+  const [editableTeams, setEditableTeams] = useState<TeamConfig[]>([]);
+  const [allAvailableUsers, setAllAvailableUsers] = useState<{ id: string; name: string }[]>([]);
+  const [isSavingTeams, setIsSavingTeams] = useState(false);
+  const [selectedUserToAdd, setSelectedUserToAdd] = useState<{ [teamIdx: number]: string }>({});
 
   const fetchReport = async () => {
     setLoading(true);
@@ -63,6 +101,7 @@ export default function KamReportsPage() {
       const data = await res.json();
       if (res.ok) {
         setAssign2Data(data.assign2Data || []);
+        setTeamGroups(data.teamGroups || []);
         setRetentionSummary(data.retentionSummary || []);
         setRetentionBreakdown(data.retentionBreakdown || []);
         setOverallStatusTotals(data.overallStatusTotals || null);
@@ -73,6 +112,65 @@ export default function KamReportsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const openTeamManager = async () => {
+    setIsTeamModalOpen(true);
+    try {
+      const res = await fetch("/api/kam/reports/teams");
+      const data = await res.json();
+      if (res.ok && data.teams) {
+        setEditableTeams(data.teams);
+      }
+      if (res.ok && data.allUsers) {
+        setAllAvailableUsers(data.allUsers);
+      }
+    } catch (err) {
+      console.error("Failed to load team configs", err);
+    }
+  };
+
+  const handleSaveTeams = async () => {
+    setIsSavingTeams(true);
+    try {
+      const res = await fetch("/api/kam/reports/teams", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teams: editableTeams }),
+      });
+      if (!res.ok) throw new Error("Failed to save team assignments");
+      setIsTeamModalOpen(false);
+      await fetchReport();
+    } catch (err: any) {
+      alert(err.message || "Error saving team assignments");
+    } finally {
+      setIsSavingTeams(false);
+    }
+  };
+
+  const handleAddMemberToTeam = (teamIdx: number) => {
+    const memberName = selectedUserToAdd[teamIdx];
+    if (!memberName) return;
+    setEditableTeams((prev) => {
+      const copy = [...prev];
+      if (!copy[teamIdx].members.includes(memberName)) {
+        copy[teamIdx] = {
+          ...copy[teamIdx],
+          members: [...copy[teamIdx].members, memberName],
+        };
+      }
+      return copy;
+    });
+    setSelectedUserToAdd((prev) => ({ ...prev, [teamIdx]: "" }));
+  };
+
+  const handleRemoveMemberFromTeam = (teamIdx: number, memberIdx: number) => {
+    setEditableTeams((prev) => {
+      const copy = [...prev];
+      const updatedMembers = copy[teamIdx].members.filter((_, idx) => idx !== memberIdx);
+      copy[teamIdx] = { ...copy[teamIdx], members: updatedMembers };
+      return copy;
+    });
   };
 
   useEffect(() => {
@@ -121,13 +219,21 @@ export default function KamReportsPage() {
               </p>
             </div>
           </div>
-          <button
-            onClick={fetchReport}
-            disabled={loading}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow transition-all active:scale-95 disabled:opacity-50"
-          >
-            <FaSync className={loading ? "animate-spin" : ""} /> Refresh Data
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={openTeamManager}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-sm font-bold shadow-xs transition-all active:scale-95"
+            >
+              <FaUserCog /> Onboarding & Digital Members Setup
+            </button>
+            <button
+              onClick={fetchReport}
+              disabled={loading}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow transition-all active:scale-95 disabled:opacity-50"
+            >
+              <FaSync className={loading ? "animate-spin" : ""} /> Refresh Data
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -210,47 +316,168 @@ export default function KamReportsPage() {
               </div>
             </div>
 
-            {/* Top Row: Two Side-by-Side Tables */}
+            {/* Top Row: Two Side-by-Side Tables with Tabs */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              {/* Table 1: Assign_2.0 Summary */}
-              <div className="lg:col-span-7 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-center border-collapse">
-                    <thead>
-                      <tr className="bg-[#8b79b6] text-white font-bold text-xs">
-                        <th className="px-4 py-3 text-left border-r border-[#9d8cc5]">Assign_2.0</th>
-                        <th className="px-4 py-3 border-r border-[#9d8cc5]">Total Customer</th>
-                        <th className="px-4 py-3 border-r border-[#9d8cc5]">Active Customer</th>
-                        <th className="px-4 py-3">Waiting For renewal</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 text-gray-800">
-                      {assign2Data.map((row, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50/80 transition-colors">
-                          <td className="px-4 py-2.5 text-left font-semibold text-gray-900 border-r border-gray-200">
-                            {row.name}
+              {/* Table 1: Team Distribution (Onboarding & Digital) OR Legacy Assign_2.0 */}
+              <div className="lg:col-span-7 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
+                {/* Tabs bar */}
+                <div className="px-5 py-3.5 bg-slate-50 border-b border-gray-200 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setActiveTab("teams")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        activeTab === "teams"
+                          ? "bg-purple-600 text-white shadow-xs"
+                          : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+                      }`}
+                    >
+                      Onboarding & Digital Teams
+                    </button>
+                    <button
+                      onClick={() => setActiveTab("assign2")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        activeTab === "assign2"
+                          ? "bg-[#8b79b6] text-white shadow-xs"
+                          : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+                      }`}
+                    >
+                      Assign_2.0 View
+                    </button>
+                  </div>
+                  <button
+                    onClick={openTeamManager}
+                    className="text-xs text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1.5"
+                  >
+                    <FaPlus size={10} /> Edit / Add Members
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto flex-1">
+                  {activeTab === "teams" ? (
+                    <table className="w-full text-sm text-center border-collapse">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-purple-700 to-indigo-700 text-white font-bold text-xs">
+                          <th className="px-4 py-3 text-left border-r border-purple-500/40">Team Name</th>
+                          <th className="px-4 py-3 text-left border-r border-purple-500/40">TL Name</th>
+                          <th className="px-4 py-3 text-left border-r border-purple-500/40">Member Name</th>
+                          <th className="px-3 py-3 border-r border-purple-500/40">CRM Dept</th>
+                          <th className="px-3 py-3 border-r border-purple-500/40">Total Cx</th>
+                          <th className="px-3 py-3 border-r border-purple-500/40">Active</th>
+                          <th className="px-3 py-3">Renewal</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 text-gray-800">
+                        {teamGroups.map((group, gIdx) => (
+                          <React.Fragment key={gIdx}>
+                            {group.members.map((member, mIdx) => (
+                              <tr key={`${gIdx}-${mIdx}`} className="hover:bg-purple-50/30 transition-colors">
+                                {mIdx === 0 && (
+                                  <td
+                                    rowSpan={group.members.length}
+                                    className="px-4 py-2.5 text-left font-black text-purple-950 bg-purple-50/50 border-r border-gray-200 align-top"
+                                  >
+                                    <div className="font-extrabold text-sm">{group.teamName}</div>
+                                    <div className="text-[10px] text-purple-600 font-bold mt-1 uppercase tracking-wider">
+                                      Total Cx: {group.totalCustomer}
+                                    </div>
+                                  </td>
+                                )}
+                                {mIdx === 0 && (
+                                  <td
+                                    rowSpan={group.members.length}
+                                    className="px-4 py-2.5 text-left font-bold text-gray-800 bg-gray-50/30 border-r border-gray-200 align-top"
+                                  >
+                                    {group.tlName}
+                                  </td>
+                                )}
+                                <td className="px-4 py-2 text-left font-semibold text-gray-900 border-r border-gray-200">
+                                  {member.name}
+                                </td>
+                                <td className="px-3 py-2 text-xs font-bold text-gray-600 border-r border-gray-200">
+                                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-black ${
+                                    group.teamName.toLowerCase().includes("onb")
+                                      ? "bg-amber-100 text-amber-800"
+                                      : "bg-indigo-100 text-indigo-800"
+                                  }`}>
+                                    {group.teamName.toLowerCase().includes("onb") ? "Onb" : "Digital"}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-2 font-bold border-r border-gray-200">
+                                  {member.totalCustomer}
+                                </td>
+                                <td className="px-3 py-2 font-bold text-emerald-700 bg-emerald-50/30 border-r border-gray-200">
+                                  {member.activeCustomer}
+                                </td>
+                                <td className="px-3 py-2 font-semibold text-blue-700">
+                                  {member.waitingRenewal}
+                                </td>
+                              </tr>
+                            ))}
+                            {/* Team Subtotal Row */}
+                            <tr className="bg-purple-50/60 font-black text-purple-950 text-xs border-b-2 border-purple-200">
+                              <td colSpan={4} className="px-4 py-2 text-left uppercase tracking-wider">
+                                {group.teamName} Subtotal
+                              </td>
+                              <td className="px-3 py-2 border-r border-purple-200">{group.totalCustomer}</td>
+                              <td className="px-3 py-2 text-emerald-800 border-r border-purple-200">{group.activeCustomer}</td>
+                              <td className="px-3 py-2 text-blue-800">{group.waitingRenewal}</td>
+                            </tr>
+                          </React.Fragment>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-slate-100 font-extrabold text-gray-900 border-t-2 border-gray-300">
+                          <td colSpan={4} className="px-4 py-3 text-left">Grand Total</td>
+                          <td className="px-3 py-3 border-r border-gray-200">
+                            {teamGroups.reduce((acc, g) => acc + g.totalCustomer, 0)}
                           </td>
-                          <td className="px-4 py-2.5 font-bold border-r border-gray-200">
-                            {row.totalCustomer}
+                          <td className="px-3 py-3 text-emerald-800 border-r border-gray-200">
+                            {teamGroups.reduce((acc, g) => acc + g.activeCustomer, 0)}
                           </td>
-                          <td className="px-4 py-2.5 font-bold text-emerald-700 bg-emerald-50/50 border-r border-gray-200">
-                            {row.activeCustomer}
-                          </td>
-                          <td className="px-4 py-2.5 font-semibold text-blue-700">
-                            {row.waitingRenewal}
+                          <td className="px-3 py-3 text-blue-800">
+                            {teamGroups.reduce((acc, g) => acc + g.waitingRenewal, 0)}
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="bg-gray-100 font-extrabold text-gray-900 border-t-2 border-gray-300">
-                        <td className="px-4 py-3 text-left">Total</td>
-                        <td className="px-4 py-3 border-r border-gray-200">{assign2TotalCustomers}</td>
-                        <td className="px-4 py-3 text-emerald-800 border-r border-gray-200">{assign2TotalActive}</td>
-                        <td className="px-4 py-3 text-blue-800">{assign2TotalWaiting}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
+                      </tfoot>
+                    </table>
+                  ) : (
+                    <table className="w-full text-sm text-center border-collapse">
+                      <thead>
+                        <tr className="bg-[#8b79b6] text-white font-bold text-xs">
+                          <th className="px-4 py-3 text-left border-r border-[#9d8cc5]">Assign_2.0</th>
+                          <th className="px-4 py-3 border-r border-[#9d8cc5]">Total Customer</th>
+                          <th className="px-4 py-3 border-r border-[#9d8cc5]">Active Customer</th>
+                          <th className="px-4 py-3">Waiting For renewal</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 text-gray-800">
+                        {assign2Data.map((row, idx) => (
+                          <tr key={idx} className="hover:bg-gray-50/80 transition-colors">
+                            <td className="px-4 py-2.5 text-left font-semibold text-gray-900 border-r border-gray-200">
+                              {row.name}
+                            </td>
+                            <td className="px-4 py-2.5 font-bold border-r border-gray-200">
+                              {row.totalCustomer}
+                            </td>
+                            <td className="px-4 py-2.5 font-bold text-emerald-700 bg-emerald-50/50 border-r border-gray-200">
+                              {row.activeCustomer}
+                            </td>
+                            <td className="px-4 py-2.5 font-semibold text-blue-700">
+                              {row.waitingRenewal}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-gray-100 font-extrabold text-gray-900 border-t-2 border-gray-300">
+                          <td className="px-4 py-3 text-left">Total</td>
+                          <td className="px-4 py-3 border-r border-gray-200">{assign2TotalCustomers}</td>
+                          <td className="px-4 py-3 text-emerald-800 border-r border-gray-200">{assign2TotalActive}</td>
+                          <td className="px-4 py-3 text-blue-800">{assign2TotalWaiting}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  )}
                 </div>
               </div>
 
@@ -372,6 +599,130 @@ export default function KamReportsPage() {
           </div>
         )}
       </div>
+
+      {/* Modal: Manage Onboarding & Digital Members */}
+      {isTeamModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full border border-gray-200 overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="px-6 py-4 bg-gradient-to-r from-purple-700 to-indigo-700 text-white flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-black tracking-tight flex items-center gap-2">
+                  <FaUserCog /> Onboarding & Digital Team Setup
+                </h3>
+                <p className="text-xs text-purple-200 mt-0.5">
+                  Bando ko Onboarding aur Digital team me assign karein
+                </p>
+              </div>
+              <button
+                onClick={() => setIsTeamModalOpen(false)}
+                className="p-2 hover:bg-white/10 rounded-full transition-colors text-white/80 hover:text-white"
+              >
+                <FaTimes size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              {editableTeams.map((team, tIdx) => (
+                <div
+                  key={tIdx}
+                  className="bg-slate-50 p-4 rounded-2xl border border-gray-200 space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-black uppercase tracking-wider text-purple-900 bg-purple-100 px-2.5 py-0.5 rounded-full">
+                        {team.teamName} Team
+                      </span>
+                      <span className="text-xs font-bold text-gray-500 ml-2">
+                        TL: {team.tlName}
+                      </span>
+                    </div>
+                    <span className="text-xs font-bold text-gray-500">
+                      {team.members.length} Members
+                    </span>
+                  </div>
+
+                  {/* Member Tags */}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {team.members.map((m, mIdx) => (
+                      <span
+                        key={mIdx}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-800 shadow-2xs group"
+                      >
+                        {m}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMemberFromTeam(tIdx, mIdx)}
+                          className="text-gray-400 hover:text-red-500 transition-colors p-0.5"
+                          title="Remove member"
+                        >
+                          <FaTimes size={10} />
+                        </button>
+                      </span>
+                    ))}
+                    {team.members.length === 0 && (
+                      <span className="text-xs text-gray-400 italic">No members assigned.</span>
+                    )}
+                  </div>
+
+                  {/* Add Member Dropdown & Input */}
+                  <div className="flex items-center gap-2 pt-2">
+                    <select
+                      value={selectedUserToAdd[tIdx] || ""}
+                      onChange={(e) =>
+                        setSelectedUserToAdd((prev) => ({
+                          ...prev,
+                          [tIdx]: e.target.value,
+                        }))
+                      }
+                      className="flex-1 bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="">— Select Member from CRM —</option>
+                      {allAvailableUsers
+                        .filter((u) => !team.members.includes(u.name))
+                        .map((u) => (
+                          <option key={u.id} value={u.name}>
+                            {u.name}
+                          </option>
+                        ))}
+                    </select>
+
+                    <button
+                      type="button"
+                      onClick={() => handleAddMemberToTeam(tIdx)}
+                      disabled={!selectedUserToAdd[tIdx]}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold disabled:opacity-40 transition-colors shadow-2xs"
+                    >
+                      <FaPlus size={10} /> Add
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsTeamModalOpen(false)}
+                className="px-4 py-2 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-xl text-xs font-bold transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveTeams}
+                disabled={isSavingTeams}
+                className="inline-flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-md transition-all disabled:opacity-50"
+              >
+                {isSavingTeams ? <FaSpinner className="animate-spin" /> : <FaCheck />}
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

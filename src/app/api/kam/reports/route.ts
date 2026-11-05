@@ -1,6 +1,31 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth, getUserDetails } from "@/lib/auth-utils";
+import { MongoClient } from "mongodb";
+
+let cachedClient: MongoClient | null = null;
+async function getMongoClient() {
+  if (cachedClient) return cachedClient;
+  const uri = process.env.DATABASE_URL;
+  if (!uri) throw new Error("DATABASE_URL is not defined");
+  const client = new MongoClient(uri);
+  await client.connect();
+  cachedClient = client;
+  return client;
+}
+
+const DEFAULT_KAM_TEAMS = [
+  {
+    teamName: "Onboarding",
+    tlName: "Himanshu Sharma",
+    members: ["Mahek", "Preeti", "Sakshi", "Akansh", "Rishab"],
+  },
+  {
+    teamName: "Digital",
+    tlName: "Vishal Sood",
+    members: ["Yogesh", "Sharvan", "Priyanshu", "Kapil", "Prince"],
+  },
+];
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +78,53 @@ export async function GET(req: Request) {
     const retentionNames = new Set(
       retentionUsers.map((u) => (u.name || "").trim().toLowerCase()).filter(Boolean)
     );
+
+    // Fetch active team configurations from SystemSettings or default
+    let kamTeams = DEFAULT_KAM_TEAMS;
+    try {
+      const client = await getMongoClient();
+      const db = client.db();
+      const settingsDoc = await db.collection("SystemSettings").findOne({ key: "kam_report_teams" });
+      if (settingsDoc && Array.isArray(settingsDoc.teams) && settingsDoc.teams.length > 0) {
+        kamTeams = settingsDoc.teams;
+      }
+    } catch (e) {
+      console.warn("Could not load dynamic kam_report_teams, using default", e);
+    }
+
+    // 0. Build Team Groups (Onboarding, Digital, etc.)
+    const teamGroupsMap: Record<
+      string,
+      {
+        teamName: string;
+        tlName: string;
+        members: {
+          name: string;
+          totalCustomer: number;
+          activeCustomer: number;
+          waitingRenewal: number;
+        }[];
+        totalCustomer: number;
+        activeCustomer: number;
+        waitingRenewal: number;
+      }
+    > = {};
+
+    kamTeams.forEach((t) => {
+      teamGroupsMap[t.teamName] = {
+        teamName: t.teamName,
+        tlName: t.tlName,
+        members: (t.members || []).map((m: string) => ({
+          name: m,
+          totalCustomer: 0,
+          activeCustomer: 0,
+          waitingRenewal: 0,
+        })),
+        totalCustomer: 0,
+        activeCustomer: 0,
+        waitingRenewal: 0,
+      };
+    });
 
     // 1. Table 1: Assign_2.0 Summary Canonical Members
     const canonicalAssigners = [
@@ -213,6 +285,38 @@ export async function GET(req: Request) {
       if (isActive) assign2Map[assigner].activeCustomer += 1;
       if (isWaitingRenewal) assign2Map[assigner].waitingRenewal += 1;
 
+      // Aggregate Team Groups (Onboarding, Digital, etc.)
+      const rawAssignerStr = (task.assignerName || cf.assignerName || "").trim().toLowerCase();
+      kamTeams.forEach((t) => {
+        const group = teamGroupsMap[t.teamName];
+        if (!group) return;
+
+        (t.members || []).forEach((memberName: string) => {
+          const mLower = memberName.trim().toLowerCase();
+          // Match logic for member
+          let matched = false;
+          if (mLower === "sharvan" || mLower === "shravan") {
+            matched = rawAssignerStr.includes("shravan") || rawAssignerStr.includes("sharvan");
+          } else if (mLower === "rishab" || mLower === "rishav") {
+            matched = rawAssignerStr.includes("rishab") || rawAssignerStr.includes("rishav");
+          } else if (rawAssignerStr.includes(mLower)) {
+            matched = true;
+          }
+
+          if (matched) {
+            const memberObj = group.members.find((m) => m.name === memberName);
+            if (memberObj) {
+              memberObj.totalCustomer += 1;
+              if (isActive) memberObj.activeCustomer += 1;
+              if (isWaitingRenewal) memberObj.waitingRenewal += 1;
+            }
+            group.totalCustomer += 1;
+            if (isActive) group.activeCustomer += 1;
+            if (isWaitingRenewal) group.waitingRenewal += 1;
+          }
+        });
+      });
+
       // Team Member Detection:
       const matchedMember = canonicalTeamMember(task, cf);
 
@@ -240,6 +344,7 @@ export async function GET(req: Request) {
     });
 
     return NextResponse.json({
+      teamGroups: Object.values(teamGroupsMap),
       assign2Data: Object.entries(assign2Map).map(([name, data]) => ({
         name,
         ...data,
