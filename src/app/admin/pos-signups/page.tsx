@@ -21,6 +21,9 @@ interface POSUser {
   billsCount?: number;
   itemsCount?: number;
   clerkId?: string;
+  assignedToId?: string | null;
+  assignedToName?: string | null;
+  assignedAt?: string | null;
   createdAt: string;
   businessName?: string;
   premium?: {
@@ -70,6 +73,17 @@ export default function POSSignupsPage() {
   const [detailsTotalPages, setDetailsTotalPages] = useState(1);
   const [detailsTotalItems, setDetailsTotalItems] = useState(0);
 
+  // Filter States
+  const [roleFilter, setRoleFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [accountStatusFilter, setAccountStatusFilter] = useState<string>("");
+  const [pipelineFilter, setPipelineFilter] = useState<string>("");
+  const [assignedToFilter, setAssignedToFilter] = useState<string>("");
+
+  // Team Members for Assignee Selection
+  const [teamMembers, setTeamMembers] = useState<{ id: string; name: string; email: string }[]>([]);
+  const [assigningUserId, setAssigningUserId] = useState<string | null>(null);
+
   const fetchDetailsData = async (u: POSUser, type: "bills" | "items", pageNum = 1) => {
     setDetailsLoading(true);
     try {
@@ -103,6 +117,24 @@ export default function POSSignupsPage() {
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
+  // Load team members for assignee dropdown
+  useEffect(() => {
+    const fetchTeam = async () => {
+      try {
+        const res = await fetch("/api/team-members");
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setTeamMembers(data);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load team members", e);
+      }
+    };
+    fetchTeam();
+  }, []);
+
   const fetchData = async (filterDate?: string, pageNum = 1, search = "") => {
     setLoading(true);
     setError("");
@@ -110,6 +142,11 @@ export default function POSSignupsPage() {
       let url = `/api/pos-signups?page=${pageNum}`;
       if (filterDate) url += `&date=${filterDate}`;
       if (search) url += `&search=${encodeURIComponent(search)}`;
+      if (roleFilter) url += `&role=${encodeURIComponent(roleFilter)}`;
+      if (statusFilter) url += `&status=${encodeURIComponent(statusFilter)}`;
+      if (accountStatusFilter) url += `&accountStatus=${encodeURIComponent(accountStatusFilter)}`;
+      if (pipelineFilter) url += `&pipeline=${encodeURIComponent(pipelineFilter)}`;
+      if (assignedToFilter) url += `&assignedTo=${encodeURIComponent(assignedToFilter)}`;
       
       const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to fetch signups data");
@@ -128,10 +165,10 @@ export default function POSSignupsPage() {
     }
   };
 
-  // Fetch initial data
+  // Fetch data on page, search, or filter changes
   useEffect(() => {
     fetchData(date, page, debouncedSearch);
-  }, [page, debouncedSearch]);
+  }, [page, debouncedSearch, roleFilter, statusFilter, accountStatusFilter, pipelineFilter, assignedToFilter]);
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -205,11 +242,38 @@ export default function POSSignupsPage() {
     }
   };
 
+  const handleAssignChange = async (userId: string, assignedToId: string, assignedToName: string) => {
+    setAssigningUserId(userId);
+    try {
+      const res = await fetch("/api/pos-signups/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, assignedToId, assignedToName }),
+      });
+      if (!res.ok) throw new Error("Failed to update assigned team member");
+
+      setUsers(users.map(u => u.id === userId ? {
+        ...u,
+        assignedToId: assignedToId || null,
+        assignedToName: assignedToName || null,
+      } : u));
+    } catch (err) {
+      alert("Error updating assigned member");
+    } finally {
+      setAssigningUserId(null);
+    }
+  };
+
   const handleExport = async () => {
     try {
       let url = `/api/pos-signups?export=true`;
       if (date) url += `&date=${date}`;
       if (debouncedSearch) url += `&search=${encodeURIComponent(debouncedSearch)}`;
+      if (roleFilter) url += `&role=${encodeURIComponent(roleFilter)}`;
+      if (statusFilter) url += `&status=${encodeURIComponent(statusFilter)}`;
+      if (accountStatusFilter) url += `&accountStatus=${encodeURIComponent(accountStatusFilter)}`;
+      if (pipelineFilter) url += `&pipeline=${encodeURIComponent(pipelineFilter)}`;
+      if (assignedToFilter) url += `&assignedTo=${encodeURIComponent(assignedToFilter)}`;
       
       const res = await fetch(url);
       const data = await res.json();
@@ -220,7 +284,7 @@ export default function POSSignupsPage() {
         exportUsers = exportUsers.filter((u: any) => selectedUserIds.includes(u.id));
       }
       
-      const csvHeader = "Name,Phone,Email,Role,Status,Account Status,Pipeline,Bills,Items,Notes,Joined At\n";
+      const csvHeader = "Name,Phone,Email,Role,Status,Account Status,Assigned To,Pipeline,Bills,Items,Notes,Joined At\n";
       const csvRows = exportUsers.map((u: any) => {
         const name = `"${(u.name || "").replace(/"/g, '""')}"`;
         const phone = `"${u.phone || ""}"`;
@@ -228,12 +292,13 @@ export default function POSSignupsPage() {
         const role = `"${u.role || "USER"}"`;
         const status = u.isVerified ? "Verified" : "Unverified";
         const accStatus = u.isDisabled ? "Deactivated" : "Active";
+        const assignedTo = `"${(u.assignedToName || "Unassigned").replace(/"/g, '""')}"`;
         const pipeline = `"${u.leadStatus || "New Lead"}"`;
         const bills = u.billsCount || 0;
         const items = u.itemsCount || 0;
         const notes = `"${(u.posNotes || "").replace(/"/g, '""')}"`;
         const joined = `"${u.createdAt ? format(new Date(u.createdAt), "PPp") : ""}"`;
-        return [name, phone, email, role, status, accStatus, pipeline, bills, items, notes, joined].join(",");
+        return [name, phone, email, role, status, accStatus, assignedTo, pipeline, bills, items, notes, joined].join(",");
       });
       
       const blob = new Blob([csvHeader + csvRows.join("\n")], { type: 'text/csv' });
@@ -275,21 +340,21 @@ export default function POSSignupsPage() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="p-4 sm:p-6 w-full space-y-6">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-800">POS Sign-ups Monitor</h1>
           <p className="text-sm text-slate-500">Live sign-up tracking from Billgsoftware POS database</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3 mt-4 md:mt-0">
-          <div className="relative">
+        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+          <div className="relative flex-1 sm:flex-initial">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input
               type="text"
               placeholder="Search by name, phone, email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none w-64 shadow-sm"
+              className="pl-9 pr-4 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none w-full sm:w-64 shadow-sm"
             />
           </div>
           <Link 
@@ -313,23 +378,122 @@ export default function POSSignupsPage() {
             <Download size={16} />
             Export CSV
           </button>
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-2">
             <input
-            type="date"
-            value={date}
-            onChange={handleDateChange}
-            className="border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
-          />
-          {date && (
-            <button
-              onClick={handleClearDate}
-              className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-lg transition-colors font-medium shadow-sm"
-            >
-              Clear
-            </button>
-          )}
+              type="date"
+              value={date}
+              onChange={handleDateChange}
+              className="border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+            />
+            {date && (
+              <button
+                onClick={handleClearDate}
+                className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-lg transition-colors font-medium shadow-sm"
+              >
+                Clear
+              </button>
+            )}
           </div>
         </div>
+      </div>
+
+      {/* Filter Toolbar */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-center gap-3">
+        {/* Role Filter */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Role:</span>
+          <select
+            value={roleFilter}
+            onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
+            className="border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-500 shadow-xs cursor-pointer"
+          >
+            <option value="">All Roles</option>
+            <option value="USER">USER</option>
+            <option value="SELLER">SELLER</option>
+            <option value="ADMIN">ADMIN</option>
+          </select>
+        </div>
+
+        {/* Verification Status Filter */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Status:</span>
+          <select
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+            className="border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-500 shadow-xs cursor-pointer"
+          >
+            <option value="">All Verification</option>
+            <option value="verified">Verified</option>
+            <option value="unverified">Unverified</option>
+          </select>
+        </div>
+
+        {/* Account Status Filter */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Account:</span>
+          <select
+            value={accountStatusFilter}
+            onChange={(e) => { setAccountStatusFilter(e.target.value); setPage(1); }}
+            className="border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-500 shadow-xs cursor-pointer"
+          >
+            <option value="">All Account Statuses</option>
+            <option value="active">Active</option>
+            <option value="deactivated">Deactivated</option>
+          </select>
+        </div>
+
+        {/* Pipeline Stage Filter */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pipeline:</span>
+          <select
+            value={pipelineFilter}
+            onChange={(e) => { setPipelineFilter(e.target.value); setPage(1); }}
+            className="border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-500 shadow-xs cursor-pointer"
+          >
+            <option value="">All Pipeline Stages</option>
+            <option value="New Lead">New Lead</option>
+            <option value="Contacted">Contacted</option>
+            <option value="Demo Scheduled">Demo Scheduled</option>
+            <option value="Converted">Converted</option>
+          </select>
+        </div>
+
+        {/* Assigned Member Filter */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assigned To:</span>
+          <select
+            value={assignedToFilter}
+            onChange={(e) => { setAssignedToFilter(e.target.value); setPage(1); }}
+            className="border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-500 shadow-xs cursor-pointer max-w-[200px]"
+          >
+            <option value="">All Assignees</option>
+            <option value="unassigned">Unassigned (None)</option>
+            {teamMembers.map((m) => (
+              <option key={m.id} value={m.name}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Reset Filters */}
+        {(roleFilter || statusFilter || accountStatusFilter || pipelineFilter || assignedToFilter || date || searchQuery) && (
+          <button
+            onClick={() => {
+              setRoleFilter("");
+              setStatusFilter("");
+              setAccountStatusFilter("");
+              setPipelineFilter("");
+              setAssignedToFilter("");
+              setDate("");
+              setSearchQuery("");
+              setPage(1);
+            }}
+            className="ml-auto text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-1.5 rounded-lg transition-colors font-bold border border-rose-200 shadow-xs"
+          >
+            Reset Filters
+          </button>
+        )}
       </div>
 
       {error && (
@@ -377,6 +541,7 @@ export default function POSSignupsPage() {
                 <th className="px-6 py-3">Role</th>
                 <th className="px-6 py-3">Status</th>
                 <th className="px-6 py-3">Account</th>
+                <th className="px-6 py-3">Assigned To</th>
                 <th className="px-6 py-3">Premium Status</th>
                 <th className="px-6 py-3">Bills</th>
                 <th className="px-6 py-3">Items</th>
@@ -456,6 +621,25 @@ export default function POSSignupsPage() {
                     ) : (
                       <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">Active</span>
                     )}
+                  </td>
+                  <td className="px-6 py-4">
+                    <select
+                      value={u.assignedToName || ""}
+                      onChange={(e) => {
+                        const selectedName = e.target.value;
+                        const member = teamMembers.find(m => m.name === selectedName);
+                        handleAssignChange(u.id, member ? member.id : "", selectedName);
+                      }}
+                      disabled={assigningUserId === u.id}
+                      className="border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500 bg-white hover:bg-slate-50 text-slate-800 disabled:opacity-50 cursor-pointer min-w-[140px] max-w-[180px] shadow-xs"
+                    >
+                      <option value="">— Unassigned —</option>
+                      {teamMembers.map((m) => (
+                        <option key={m.id} value={m.name}>
+                          {m.name}
+                        </option>
+                      ))}
+                    </select>
                   </td>
                   <td className="px-6 py-4">
                     <button

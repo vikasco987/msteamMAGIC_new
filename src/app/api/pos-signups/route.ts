@@ -28,6 +28,11 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const dateParam = searchParams.get('date');
     const searchQuery = searchParams.get('search');
+    const roleFilter = searchParams.get('role');
+    const statusFilter = searchParams.get('status');
+    const accountStatusFilter = searchParams.get('accountStatus');
+    const pipelineFilter = searchParams.get('pipeline');
+    const assignedToFilter = searchParams.get('assignedTo');
     const isExport = searchParams.get('export') === 'true';
 
     const client = await getMongoClient();
@@ -101,6 +106,49 @@ export async function GET(req: Request) {
 
     if (searchFilter) {
       conditions.push(searchFilter);
+    }
+
+    if (roleFilter) {
+      conditions.push({ role: roleFilter });
+    }
+
+    if (statusFilter) {
+      if (statusFilter === "verified") {
+        conditions.push({ isVerified: true });
+      } else if (statusFilter === "unverified") {
+        conditions.push({ $or: [{ isVerified: false }, { isVerified: { $exists: false } }] });
+      }
+    }
+
+    if (accountStatusFilter) {
+      if (accountStatusFilter === "active") {
+        conditions.push({ $or: [{ isDisabled: false }, { isDisabled: { $exists: false } }] });
+      } else if (accountStatusFilter === "deactivated") {
+        conditions.push({ isDisabled: true });
+      }
+    }
+
+    if (pipelineFilter) {
+      conditions.push({ leadStatus: pipelineFilter });
+    }
+
+    if (assignedToFilter) {
+      if (assignedToFilter === "unassigned") {
+        conditions.push({
+          $or: [
+            { assignedToId: { $exists: false } },
+            { assignedToId: null },
+            { assignedToId: "" }
+          ]
+        });
+      } else {
+        conditions.push({
+          $or: [
+            { assignedToId: assignedToFilter },
+            { assignedToName: assignedToFilter }
+          ]
+        });
+      }
     }
 
     if (conditions.length > 0) {
@@ -206,6 +254,9 @@ export async function GET(req: Request) {
         itemsCount: getCount(itemsCountsRaw, u._id.toString(), u.clerkId),
         posNotes: u.posNotes || "",
         leadStatus: u.leadStatus || "New Lead",
+        assignedToId: u.assignedToId || null,
+        assignedToName: u.assignedToName || null,
+        assignedAt: u.assignedAt ? u.assignedAt.toISOString() : null,
         createdAt: u.createdAt ? u.createdAt.toISOString() : null,
         clerkId: u.clerkId || null,
         businessName: pInfo?.businessName || null,
