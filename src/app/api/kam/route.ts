@@ -42,6 +42,7 @@ export async function GET(req: Request) {
     const query = searchParams.get("query");
     const status = searchParams.get("status");
     const followUpDateFilter = searchParams.get("followUpDate");
+    const lastCheckDateFilter = searchParams.get("lastCheckDate");
     const accountStatusFilter = searchParams.get("accountStatus");
     const customerStatusFilter = searchParams.get("customerStatus");
     const assignersParam = searchParams.get("assigners");
@@ -109,6 +110,7 @@ export async function GET(req: Request) {
     // Has custom field / raw Mongo filters
     const needsMongoRawFilter = Boolean(
       followUpDateFilter ||
+      lastCheckDateFilter ||
       accountStatusFilter ||
       customerStatusFilter ||
       assignersParam
@@ -165,6 +167,18 @@ export async function GET(req: Request) {
       yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayStr = yesterday.toISOString().split("T")[0];
 
+      const past7 = new Date(now);
+      past7.setDate(past7.getDate() - 7);
+      const past7DaysStr = past7.toISOString().split("T")[0];
+
+      const past15 = new Date(now);
+      past15.setDate(past15.getDate() - 15);
+      const past15DaysStr = past15.toISOString().split("T")[0];
+
+      const past30 = new Date(now);
+      past30.setDate(past30.getDate() - 30);
+      const past30DaysStr = past30.toISOString().split("T")[0];
+
       const next7 = new Date(now);
       next7.setDate(next7.getDate() + 7);
       const next7DaysStr = next7.toISOString().split("T")[0];
@@ -213,6 +227,38 @@ export async function GET(req: Request) {
           rawFilter["customFields.nextFollowUpDate"] = { $gte: todayStr, $lte: next30DaysStr };
         } else if (followUpDateFilter === "this_month") {
           rawFilter["customFields.nextFollowUpDate"] = { $gte: startOfMonthStr, $lte: endOfMonthStr };
+        }
+      }
+
+      if (lastCheckDateFilter) {
+        if (lastCheckDateFilter === "no_date") {
+          const noLastCheckConditions = [
+            { "customFields.lastCheckOutletDate": { $exists: false } },
+            { "customFields.lastCheckOutletDate": null },
+            { "customFields.lastCheckOutletDate": "" },
+          ];
+          if (rawFilter.$and) {
+            rawFilter.$and.push({ $or: noLastCheckConditions });
+          } else if (rawFilter.$or) {
+            rawFilter.$and = [{ $or: rawFilter.$or }, { $or: noLastCheckConditions }];
+            delete rawFilter.$or;
+          } else {
+            rawFilter.$or = noLastCheckConditions;
+          }
+        } else if (lastCheckDateFilter === "has_date") {
+          rawFilter["customFields.lastCheckOutletDate"] = { $exists: true, $nin: [null, ""] };
+        } else if (lastCheckDateFilter === "today") {
+          rawFilter["customFields.lastCheckOutletDate"] = todayStr;
+        } else if (lastCheckDateFilter === "yesterday") {
+          rawFilter["customFields.lastCheckOutletDate"] = yesterdayStr;
+        } else if (lastCheckDateFilter === "last_7_days") {
+          rawFilter["customFields.lastCheckOutletDate"] = { $gte: past7DaysStr, $lte: todayStr };
+        } else if (lastCheckDateFilter === "last_15_days") {
+          rawFilter["customFields.lastCheckOutletDate"] = { $gte: past15DaysStr, $lte: todayStr };
+        } else if (lastCheckDateFilter === "last_30_days") {
+          rawFilter["customFields.lastCheckOutletDate"] = { $gte: past30DaysStr, $lte: todayStr };
+        } else if (lastCheckDateFilter === "this_month") {
+          rawFilter["customFields.lastCheckOutletDate"] = { $gte: startOfMonthStr, $lte: endOfMonthStr };
         }
       }
 

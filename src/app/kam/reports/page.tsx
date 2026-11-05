@@ -37,12 +37,23 @@ interface RetentionBreakdownRow {
   outletCurrentlyOff: number;
 }
 
+interface OverallStatusTotals {
+  growing: number;
+  needToFocus: number;
+  conflictForWeek: number;
+  askForRenewal: number;
+  creticalOutlet: number;
+  customerNotResponse: number;
+  outletCurrentlyOff: number;
+}
+
 export default function KamReportsPage() {
   const { user, isLoaded } = useUser();
   const [loading, setLoading] = useState(true);
   const [assign2Data, setAssign2Data] = useState<Assign2Row[]>([]);
   const [retentionSummary, setRetentionSummary] = useState<RetentionSummaryRow[]>([]);
   const [retentionBreakdown, setRetentionBreakdown] = useState<RetentionBreakdownRow[]>([]);
+  const [overallStatusTotals, setOverallStatusTotals] = useState<OverallStatusTotals | null>(null);
   const [totalCount, setTotalCount] = useState(0);
 
   const fetchReport = async () => {
@@ -54,6 +65,7 @@ export default function KamReportsPage() {
         setAssign2Data(data.assign2Data || []);
         setRetentionSummary(data.retentionSummary || []);
         setRetentionBreakdown(data.retentionBreakdown || []);
+        setOverallStatusTotals(data.overallStatusTotals || null);
         setTotalCount(data.totalTasksCount || 0);
       }
     } catch (e) {
@@ -124,7 +136,80 @@ export default function KamReportsPage() {
             <p className="text-sm font-semibold text-gray-600">Generating analytics report...</p>
           </div>
         ) : (
-          <div className="space-y-10">
+          <div className="space-y-8">
+            {/* Top Cards: Total Status Values (Image 3 Option Cards) */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+              <div className="bg-gradient-to-br from-purple-50 to-purple-100/70 border border-purple-200 rounded-2xl p-4 flex flex-col justify-between shadow-xs">
+                <span className="text-[11px] font-black uppercase text-purple-900 tracking-wider">Growing....</span>
+                <div className="mt-2 flex items-baseline justify-between">
+                  <span className="text-2xl font-black text-purple-950">
+                    {overallStatusTotals?.growing ?? bGrowing}
+                  </span>
+                  <span className="text-[10px] font-bold text-purple-700 bg-purple-200/60 px-2 py-0.5 rounded-full">Outlets</span>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-rose-50 to-rose-100/70 border border-rose-200 rounded-2xl p-4 flex flex-col justify-between shadow-xs">
+                <span className="text-[11px] font-black uppercase text-rose-900 tracking-wider">Need To Focus</span>
+                <div className="mt-2 flex items-baseline justify-between">
+                  <span className="text-2xl font-black text-rose-950">
+                    {overallStatusTotals?.needToFocus ?? bNeedToFocus}
+                  </span>
+                  <span className="text-[10px] font-bold text-rose-700 bg-rose-200/60 px-2 py-0.5 rounded-full">Priority</span>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-amber-50 to-amber-100/70 border border-amber-200 rounded-2xl p-4 flex flex-col justify-between shadow-xs">
+                <span className="text-[11px] font-black uppercase text-amber-900 tracking-wider">Conflict For week</span>
+                <div className="mt-2 flex items-baseline justify-between">
+                  <span className="text-2xl font-black text-amber-950">
+                    {overallStatusTotals?.conflictForWeek ?? bConflict}
+                  </span>
+                  <span className="text-[10px] font-bold text-amber-700 bg-amber-200/60 px-2 py-0.5 rounded-full">Issue</span>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/70 border border-indigo-200 rounded-2xl p-4 flex flex-col justify-between shadow-xs">
+                <span className="text-[11px] font-black uppercase text-indigo-900 tracking-wider">Ask_For_Renewal</span>
+                <div className="mt-2 flex items-baseline justify-between">
+                  <span className="text-2xl font-black text-indigo-950">
+                    {overallStatusTotals?.askForRenewal ?? bRenewal}
+                  </span>
+                  <span className="text-[10px] font-bold text-indigo-700 bg-indigo-200/60 px-2 py-0.5 rounded-full">Renewal</span>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-red-50 to-red-100/70 border border-red-200 rounded-2xl p-4 flex flex-col justify-between shadow-xs">
+                <span className="text-[11px] font-black uppercase text-red-900 tracking-wider">cretical_outlet</span>
+                <div className="mt-2 flex items-baseline justify-between">
+                  <span className="text-2xl font-black text-red-950">
+                    {overallStatusTotals?.creticalOutlet ?? bCretical}
+                  </span>
+                  <span className="text-[10px] font-bold text-red-700 bg-red-200/60 px-2 py-0.5 rounded-full">Critical</span>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-slate-50 to-slate-100/70 border border-slate-200 rounded-2xl p-4 flex flex-col justify-between shadow-xs">
+                <span className="text-[11px] font-black uppercase text-slate-800 tracking-wider">No response</span>
+                <div className="mt-2 flex items-baseline justify-between">
+                  <span className="text-2xl font-black text-slate-900">
+                    {overallStatusTotals?.customerNotResponse ?? bNoResponse}
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-600 bg-slate-200/60 px-2 py-0.5 rounded-full">Pending</span>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-gray-100 to-gray-200/70 border border-gray-300 rounded-2xl p-4 flex flex-col justify-between shadow-xs">
+                <span className="text-[11px] font-black uppercase text-gray-800 tracking-wider">Currently off</span>
+                <div className="mt-2 flex items-baseline justify-between">
+                  <span className="text-2xl font-black text-gray-900">
+                    {overallStatusTotals?.outletCurrentlyOff ?? bCurrentlyOff}
+                  </span>
+                  <span className="text-[10px] font-bold text-gray-600 bg-gray-300/60 px-2 py-0.5 rounded-full">Off</span>
+                </div>
+              </div>
+            </div>
+
             {/* Top Row: Two Side-by-Side Tables */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               {/* Table 1: Assign_2.0 Summary */}

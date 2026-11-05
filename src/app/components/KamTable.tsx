@@ -175,6 +175,7 @@ export default function KamTableView() {
   const [accountStatusFilter, setAccountStatusFilter] = useState<string | null>(null);
   const [customerStatusFilter, setCustomerStatusFilter] = useState<string | null>(null);
   const [followUpDateFilter, setFollowUpDateFilter] = useState<string | null>(null);
+  const [lastCheckDateFilter, setLastCheckDateFilter] = useState<string | null>(null);
 
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const assigneeDropdownRef = useRef<HTMLDivElement>(null);
@@ -353,6 +354,9 @@ export default function KamTableView() {
       if (followUpDateFilter) {
         params.set("followUpDate", followUpDateFilter);
       }
+      if (lastCheckDateFilter) {
+        params.set("lastCheckDate", lastCheckDateFilter);
+      }
       if (accountStatusFilter) {
         params.set("accountStatus", accountStatusFilter);
       }
@@ -377,7 +381,7 @@ export default function KamTableView() {
       setLoading(false);
       setIsFirstLoad(false);
     }
-  }, [user, isLoaded, page, limit, debouncedQuery, statusFilter, followUpDateFilter, accountStatusFilter, customerStatusFilter, selectedAssigners, sortConfig]);
+  }, [user, isLoaded, page, limit, debouncedQuery, statusFilter, followUpDateFilter, lastCheckDateFilter, accountStatusFilter, customerStatusFilter, selectedAssigners, sortConfig]);
 
   useEffect(() => {
     fetchAllTasks();
@@ -482,6 +486,49 @@ export default function KamTableView() {
       });
     }
 
+    if (lastCheckDateFilter) {
+      currentTasks = currentTasks.filter((t) => {
+        const checkDateStr = (t as any).lastCheckOutletDate || (t.customFields as any)?.lastCheckOutletDate;
+        if (!checkDateStr) {
+          return lastCheckDateFilter === "no_date";
+        }
+        const cDate = new Date(checkDateStr);
+        if (isNaN(cDate.getTime())) return lastCheckDateFilter === "no_date";
+
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const cDateStart = new Date(cDate.getFullYear(), cDate.getMonth(), cDate.getDate());
+
+        switch (lastCheckDateFilter) {
+          case "today":
+            return isToday(cDate);
+          case "yesterday": {
+            const yesterday = subDays(todayStart, 1);
+            return format(cDate, "yyyy-MM-dd") === format(yesterday, "yyyy-MM-dd");
+          }
+          case "last_7_days": {
+            const past7 = subDays(todayStart, 7);
+            return cDateStart >= past7 && cDateStart <= todayStart;
+          }
+          case "last_15_days": {
+            const past15 = subDays(todayStart, 15);
+            return cDateStart >= past15 && cDateStart <= todayStart;
+          }
+          case "last_30_days": {
+            const past30 = subDays(todayStart, 30);
+            return cDateStart >= past30 && cDateStart <= todayStart;
+          }
+          case "this_month": {
+            const startOfCurrentMonth = startOfMonth(todayStart);
+            return cDateStart >= startOfCurrentMonth && cDateStart <= todayStart;
+          }
+          case "has_date":
+            return true;
+          default:
+            return true;
+        }
+      });
+    }
+
     if (dateFilter) {
       currentTasks = currentTasks.filter((t) => {
         const taskDate = new Date(t.createdAt);
@@ -570,7 +617,7 @@ export default function KamTableView() {
     }
 
     return currentTasks;
-  }, [allRawTasks, query, statusFilter, selectedCategories, selectedAssignees, selectedAssigners, accountStatusFilter, customerStatusFilter, followUpDateFilter, dateFilter, sortConfig]);
+  }, [allRawTasks, query, statusFilter, selectedCategories, selectedAssignees, selectedAssigners, accountStatusFilter, customerStatusFilter, followUpDateFilter, lastCheckDateFilter, dateFilter, sortConfig]);
 
   useEffect(() => {
     // Since API already handles pagination, we don't slice here anymore
@@ -582,7 +629,7 @@ export default function KamTableView() {
     if (isLoaded) {
       setPage(1);
     }
-  }, [debouncedQuery, statusFilter, selectedCategories, selectedAssignees, selectedAssigners, accountStatusFilter, customerStatusFilter, followUpDateFilter, dateFilter]);
+  }, [debouncedQuery, statusFilter, selectedCategories, selectedAssignees, selectedAssigners, accountStatusFilter, customerStatusFilter, followUpDateFilter, lastCheckDateFilter, dateFilter]);
 
   const handleInputChange = (
     taskId: string,
@@ -1453,6 +1500,23 @@ export default function KamTableView() {
           <option value="this_month">This Month</option>
           <option value="has_date">Has Scheduled Follow-up</option>
           <option value="no_date">No Follow-up Scheduled</option>
+        </select>
+
+        {/* Last Check Outlet Date Filter */}
+        <select
+          value={lastCheckDateFilter || ""}
+          onChange={(e) => setLastCheckDateFilter(e.target.value || null)}
+          className="p-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 font-medium text-gray-700 bg-white"
+        >
+          <option value="">All Last Check Dates</option>
+          <option value="today">Checked Today</option>
+          <option value="yesterday">Checked Yesterday</option>
+          <option value="last_7_days">Checked Last 7 Days</option>
+          <option value="last_15_days">Checked Last 15 Days</option>
+          <option value="last_30_days">Checked Last 30 Days</option>
+          <option value="this_month">Checked This Month</option>
+          <option value="has_date">Has Check Date</option>
+          <option value="no_date">Never Checked / No Date</option>
         </select>
 
         <select

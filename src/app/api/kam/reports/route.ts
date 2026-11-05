@@ -75,18 +75,25 @@ export async function GET(req: Request) {
       assign2Map[name] = { totalCustomer: 0, activeCustomer: 0, waitingRenewal: 0 };
     });
 
-    // 2. Table 2: Retention Team Summary
-    const canonicalRetention = ["Rishav kumar", "Chahat"];
+    // 2. Table 2: Team Members Summary (Himanshu Sharma, Vishal Sood, Ansh Kushwaha, Rishav kumar, Chahat)
+    const canonicalMembers = [
+      "Himanshu Sharma",
+      "Vishal Sood",
+      "Ansh Kushwaha",
+      "Rishav kumar",
+      "Chahat",
+    ];
+
     const retentionSummaryMap: Record<
       string,
       { totalCx: number; active: number }
     > = {};
 
-    canonicalRetention.forEach((name) => {
+    canonicalMembers.forEach((name) => {
       retentionSummaryMap[name] = { totalCx: 0, active: 0 };
     });
 
-    // 3. Table 3: Retention Status Breakdown
+    // 3. Table 3: Member Status Breakdown
     const retentionBreakdownMap: Record<
       string,
       {
@@ -100,7 +107,7 @@ export async function GET(req: Request) {
       }
     > = {};
 
-    canonicalRetention.forEach((name) => {
+    canonicalMembers.forEach((name) => {
       retentionBreakdownMap[name] = {
         growing: 0,
         needToFocus: 0,
@@ -126,12 +133,50 @@ export async function GET(req: Request) {
       return "Left";
     }
 
+    function canonicalTeamMember(t: any, cf: any): string | null {
+      const full = `${t.assigneeName || ""} ${cf.assigneeName || ""} ${t.assignerName || ""} ${cf.assignerName || ""} ${cf.retentionMember || ""}`.toLowerCase();
+      if (full.includes("himanshu")) return "Himanshu Sharma";
+      if (full.includes("vishal")) return "Vishal Sood";
+      if (full.includes("ansh")) return "Ansh Kushwaha";
+      if (full.includes("rishav")) return "Rishav kumar";
+      if (full.includes("chahat")) return "Chahat";
+      return null;
+    }
+
+    // Overall Status Totals for Cards
+    const overallStatusTotals = {
+      growing: 0,
+      needToFocus: 0,
+      conflictForWeek: 0,
+      askForRenewal: 0,
+      creticalOutlet: 0,
+      customerNotResponse: 0,
+      outletCurrentlyOff: 0,
+    };
+
     tasks.forEach((task) => {
       const cf = (task.customFields as any) || {};
       const assigner = normalizeAssigner(task, cf);
 
       const customerStatus = (cf.customerStatus || "").trim().toLowerCase();
       const accountStatus = (cf.accountStatus || "").trim().toLowerCase();
+
+      // Overall status aggregation for KPI cards
+      if (accountStatus.includes("growing") && !accountStatus.includes("not")) {
+        overallStatusTotals.growing += 1;
+      } else if (accountStatus.includes("need to focus")) {
+        overallStatusTotals.needToFocus += 1;
+      } else if (accountStatus.includes("conflict")) {
+        overallStatusTotals.conflictForWeek += 1;
+      } else if (accountStatus.includes("renewal") || accountStatus.includes("ask_for_renewal")) {
+        overallStatusTotals.askForRenewal += 1;
+      } else if (accountStatus.includes("cretical") || accountStatus.includes("critical")) {
+        overallStatusTotals.creticalOutlet += 1;
+      } else if (accountStatus.includes("not response") || accountStatus.includes("no response")) {
+        overallStatusTotals.customerNotResponse += 1;
+      } else if (accountStatus.includes("currently off") || accountStatus.includes("off")) {
+        overallStatusTotals.outletCurrentlyOff += 1;
+      }
 
       // Check dates
       const endStr = cf.endDate || cf.subscriptionEndDate;
@@ -168,20 +213,14 @@ export async function GET(req: Request) {
       if (isActive) assign2Map[assigner].activeCustomer += 1;
       if (isWaitingRenewal) assign2Map[assigner].waitingRenewal += 1;
 
-      // Retention Team Detection:
-      const fullText = `${task.assignerName || ""} ${task.assigneeName || ""} ${cf.assignerName || ""} ${cf.assigneeName || ""} ${cf.retentionMember || ""}`.toLowerCase();
-      let matchedRetention: string | null = null;
-      if (fullText.includes("rishav")) {
-        matchedRetention = "Rishav kumar";
-      } else if (fullText.includes("chahat")) {
-        matchedRetention = "Chahat";
-      }
+      // Team Member Detection:
+      const matchedMember = canonicalTeamMember(task, cf);
 
-      if (matchedRetention) {
-        retentionSummaryMap[matchedRetention].totalCx += 1;
-        if (isActive) retentionSummaryMap[matchedRetention].active += 1;
+      if (matchedMember) {
+        retentionSummaryMap[matchedMember].totalCx += 1;
+        if (isActive) retentionSummaryMap[matchedMember].active += 1;
 
-        const b = retentionBreakdownMap[matchedRetention];
+        const b = retentionBreakdownMap[matchedMember];
         if (accountStatus.includes("growing") && !accountStatus.includes("not")) {
           b.growing += 1;
         } else if (accountStatus.includes("need to focus")) {
@@ -217,6 +256,7 @@ export async function GET(req: Request) {
           ...data,
         })
       ),
+      overallStatusTotals,
       totalTasksCount: tasks.length,
     });
   } catch (error) {
