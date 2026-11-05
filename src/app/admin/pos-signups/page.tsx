@@ -5,7 +5,8 @@ import React, { useState, useEffect } from "react";
 
 import Link from "next/link";
 import { format } from "date-fns";
-import { Calendar, Users, TrendingUp, AlertCircle, Loader2, BarChart3, Search, Download, FileText, X, MessageCircle, CheckSquare } from "lucide-react";
+import { Calendar, Users, TrendingUp, AlertCircle, Loader2, BarChart3, Search, Download, FileText, X, MessageCircle, CheckSquare, Crown } from "lucide-react";
+import CustomerPremiumDrawer from "./components/CustomerPremiumDrawer";
 
 interface POSUser {
   id: string;
@@ -21,6 +22,14 @@ interface POSUser {
   itemsCount?: number;
   clerkId?: string;
   createdAt: string;
+  businessName?: string;
+  premium?: {
+    status: string;
+    isPremium: boolean;
+    startDate?: string | null;
+    endDate?: string | null;
+    daysRemaining?: number | null;
+  };
 }
 
 interface Metrics {
@@ -54,6 +63,7 @@ export default function POSSignupsPage() {
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
 
   const [detailsModal, setDetailsModal] = useState<{ open: boolean; type: "bills" | "items"; user: POSUser | null }>({ open: false, type: "bills", user: null });
+  const [premiumDrawer, setPremiumDrawer] = useState<{ open: boolean; user: POSUser | null }>({ open: false, user: null });
   const [detailsData, setDetailsData] = useState<any[]>([]);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsPage, setDetailsPage] = useState(1);
@@ -367,6 +377,7 @@ export default function POSSignupsPage() {
                 <th className="px-6 py-3">Role</th>
                 <th className="px-6 py-3">Status</th>
                 <th className="px-6 py-3">Account</th>
+                <th className="px-6 py-3">Premium Status</th>
                 <th className="px-6 py-3">Bills</th>
                 <th className="px-6 py-3">Items</th>
                 <th className="px-6 py-3">Pipeline</th>
@@ -445,6 +456,34 @@ export default function POSSignupsPage() {
                     ) : (
                       <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">Active</span>
                     )}
+                  </td>
+                  <td className="px-6 py-4">
+                    <button
+                      type="button"
+                      onClick={() => setPremiumDrawer({ open: true, user: u })}
+                      className="group flex flex-col items-start gap-1 p-1 rounded-lg hover:bg-slate-100/80 transition-all cursor-pointer text-left"
+                      title="Click to view details or activate/renew Premium"
+                    >
+                      {u.premium?.status === "Active" ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 text-amber-800 rounded-full text-xs font-black shadow-xs group-hover:border-amber-400">
+                          <Crown className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                          <span>
+                            {u.premium.daysRemaining !== null && u.premium.daysRemaining !== undefined
+                              ? `${u.premium.daysRemaining}d Left`
+                              : "Active"}
+                          </span>
+                        </span>
+                      ) : u.premium?.status === "Expired" ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 border border-rose-200 text-rose-700 rounded-full text-xs font-extrabold shadow-xs group-hover:border-rose-400">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                          Expired
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-500 rounded-full text-[11px] font-medium group-hover:border-slate-300">
+                          Not Activated
+                        </span>
+                      )}
+                    </button>
                   </td>
                   <td className="px-6 py-4">
                     <button 
@@ -595,6 +634,28 @@ export default function POSSignupsPage() {
           </div>
         </div>
       )}
+      {/* Customer Premium Drawer */}
+      <CustomerPremiumDrawer
+        isOpen={premiumDrawer.open}
+        onClose={() => setPremiumDrawer({ open: false, user: null })}
+        customer={premiumDrawer.user ? {
+          id: premiumDrawer.user.id,
+          name: premiumDrawer.user.name,
+          email: premiumDrawer.user.email,
+          phone: premiumDrawer.user.phone,
+          clerkId: premiumDrawer.user.clerkId,
+          businessName: premiumDrawer.user.businessName
+        } : null}
+        onPremiumUpdated={(updatedPremium) => {
+          if (premiumDrawer.user) {
+            setUsers(prev => prev.map(item => item.id === premiumDrawer.user?.id ? {
+              ...item,
+              premium: updatedPremium
+            } : item));
+          }
+        }}
+      />
+
       {/* Details Drill-down Modal */}
       {detailsModal.open && detailsModal.user && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">

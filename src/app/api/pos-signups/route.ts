@@ -126,13 +126,23 @@ export async function GET(req: Request) {
       ]
     }).toArray();
 
-    // Create a map for quick lookup
+    // Create maps for quick lookup of phone, businessName, and premium info
     const phoneMap = new Map();
+    const profileMap = new Map();
     businessProfiles.forEach(bp => {
       if (bp.contactPersonPhone) {
         if (bp.userId) phoneMap.set(bp.userId, bp.contactPersonPhone);
         if (bp.createdBy) phoneMap.set(bp.createdBy, bp.contactPersonPhone);
       }
+      const pInfo = {
+        businessName: bp.businessName || null,
+        isPremium: Boolean(bp.isPremium),
+        trialStartedAt: bp.trialStartedAt ? new Date(bp.trialStartedAt).toISOString() : null,
+        premiumEndDate: bp.premiumEndDate ? new Date(bp.premiumEndDate).toISOString() : null,
+        profileId: bp._id ? bp._id.toString() : null
+      };
+      if (bp.userId) profileMap.set(bp.userId, pInfo);
+      if (bp.createdBy) profileMap.set(bp.createdBy, pInfo);
     });
 
     // Aggregations for Bills and Items counts
@@ -164,20 +174,50 @@ export async function GET(req: Request) {
     };
 
     // Map to a cleaner format and convert ObjectIds/Dates to string
-    const recentUsers = recentUsersRaw.map(u => ({
-      id: u._id.toString(),
-      name: u.name,
-      email: u.email,
-      phone: u.phone || phoneMap.get(u.clerkId) || null,
-      role: u.role,
-      isVerified: u.isVerified,
-      isDisabled: !!u.isDisabled,
-      billsCount: getCount(billsCountsRaw, u._id.toString(), u.clerkId),
-      itemsCount: getCount(itemsCountsRaw, u._id.toString(), u.clerkId),
-      posNotes: u.posNotes || "",
-      leadStatus: u.leadStatus || "New Lead",
-      createdAt: u.createdAt ? u.createdAt.toISOString() : null
-    }));
+    const now = new Date();
+    const recentUsers = recentUsersRaw.map(u => {
+      const pInfo = profileMap.get(u.clerkId) || null;
+      let premiumStatus = "Not Activated";
+      let daysRemaining = null;
+
+      if (pInfo && pInfo.premiumEndDate) {
+        const endDate = new Date(pInfo.premiumEndDate);
+        const diffDays = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDays > 0) {
+          premiumStatus = "Active";
+          daysRemaining = diffDays;
+        } else {
+          premiumStatus = "Expired";
+          daysRemaining = 0;
+        }
+      } else if (pInfo && pInfo.isPremium) {
+        premiumStatus = "Active";
+      }
+
+      return {
+        id: u._id.toString(),
+        name: u.name,
+        email: u.email,
+        phone: u.phone || phoneMap.get(u.clerkId) || null,
+        role: u.role,
+        isVerified: u.isVerified,
+        isDisabled: !!u.isDisabled,
+        billsCount: getCount(billsCountsRaw, u._id.toString(), u.clerkId),
+        itemsCount: getCount(itemsCountsRaw, u._id.toString(), u.clerkId),
+        posNotes: u.posNotes || "",
+        leadStatus: u.leadStatus || "New Lead",
+        createdAt: u.createdAt ? u.createdAt.toISOString() : null,
+        clerkId: u.clerkId || null,
+        businessName: pInfo?.businessName || null,
+        premium: {
+          status: premiumStatus,
+          isPremium: pInfo?.isPremium || false,
+          startDate: pInfo?.trialStartedAt || null,
+          endDate: pInfo?.premiumEndDate || null,
+          daysRemaining
+        }
+      };
+    });
 
     return NextResponse.json({
       metrics: {
