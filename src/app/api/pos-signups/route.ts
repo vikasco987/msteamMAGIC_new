@@ -242,6 +242,10 @@ export async function GET(req: Request) {
         premiumStatus = "Active";
       }
 
+      const amountPaid = u.privateMetadata?.subscriptionAmountPaid !== undefined && u.privateMetadata?.subscriptionAmountPaid !== null
+        ? Number(u.privateMetadata.subscriptionAmountPaid)
+        : null;
+
       return {
         id: u._id.toString(),
         name: u.name,
@@ -265,7 +269,8 @@ export async function GET(req: Request) {
           isPremium: pInfo?.isPremium || false,
           startDate: pInfo?.trialStartedAt || null,
           endDate: pInfo?.premiumEndDate || null,
-          daysRemaining
+          daysRemaining,
+          amountPaid
         }
       };
     });

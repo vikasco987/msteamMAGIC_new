@@ -16,6 +16,9 @@ import {
   Phone,
   Mail,
   Zap,
+  IndianRupee,
+  CreditCard,
+  Hash,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -41,6 +44,15 @@ const PRESET_DURATIONS = [
   { label: "2 Years (730 Days)", days: 730, planName: "2 Year Plan" },
 ];
 
+const PAYMENT_MODES = [
+  "UPI / QR Code",
+  "Cash",
+  "Bank Transfer (IMPS/NEFT)",
+  "Razorpay / Payment Gateway",
+  "Cheque",
+  "Complementary / Waiver",
+];
+
 export default function CustomerPremiumDrawer({
   isOpen,
   onClose,
@@ -49,8 +61,17 @@ export default function CustomerPremiumDrawer({
 }: CustomerPremiumDrawerProps) {
   const [loading, setLoading] = useState(false);
   const [details, setDetails] = useState<any>(null);
+
+  // Form states
+  const [validityMode, setValidityMode] = useState<"preset" | "exact">("preset");
   const [selectedDays, setSelectedDays] = useState<number>(365);
   const [customDays, setCustomDays] = useState<string>("");
+  const [exactDate, setExactDate] = useState<string>("");
+
+  const [amountPaid, setAmountPaid] = useState<string>("");
+  const [paymentMode, setPaymentMode] = useState<string>("UPI / QR Code");
+  const [paymentReference, setPaymentReference] = useState<string>("");
+
   const [isActivating, setIsActivating] = useState(false);
   const [showActivationForm, setShowActivationForm] = useState(false);
 
@@ -64,6 +85,15 @@ export default function CustomerPremiumDrawer({
       const data = await res.json();
       if (res.ok && data.success) {
         setDetails(data);
+        if (data.premium?.amountPaid !== undefined && data.premium?.amountPaid !== null) {
+          setAmountPaid(String(data.premium.amountPaid));
+        }
+        if (data.premium?.endDate) {
+          try {
+            const iso = new Date(data.premium.endDate).toISOString().slice(0, 10);
+            setExactDate(iso);
+          } catch (e) {}
+        }
       } else {
         toast.error(data.error || "Failed to load premium details");
       }
@@ -79,6 +109,11 @@ export default function CustomerPremiumDrawer({
     if (isOpen && customer) {
       setDetails(null);
       setShowActivationForm(false);
+      setCustomDays("");
+      setSelectedDays(365);
+      setExactDate("");
+      setAmountPaid("");
+      setPaymentReference("");
       fetchPremiumDetails();
     }
   }, [isOpen, customer]);
@@ -86,26 +121,38 @@ export default function CustomerPremiumDrawer({
   if (!isOpen || !customer) return null;
 
   const handleActivate = async () => {
-    const finalDays = customDays ? parseInt(customDays) : selectedDays;
-    if (!finalDays || isNaN(finalDays) || finalDays <= 0) {
-      toast.error("Please select or enter a valid number of days");
-      return;
+    let payload: any = {
+      userId: customer.id,
+      clerkId: customer.clerkId,
+      amountPaid: amountPaid ? parseFloat(amountPaid) : null,
+      paymentMode,
+      paymentReference,
+    };
+
+    if (validityMode === "exact") {
+      if (!exactDate) {
+        toast.error("Please pick an exact Expiry Date");
+        return;
+      }
+      payload.exactEndDate = exactDate;
+      payload.planName = `Validity till ${exactDate}`;
+    } else {
+      const finalDays = customDays ? parseInt(customDays) : selectedDays;
+      if (!finalDays || isNaN(finalDays) || finalDays <= 0) {
+        toast.error("Please select or enter a valid number of days");
+        return;
+      }
+      payload.durationDays = finalDays;
+      const selectedPlan = PRESET_DURATIONS.find((p) => p.days === finalDays);
+      payload.planName = selectedPlan?.planName || `${finalDays} Days Manual Plan`;
     }
 
     setIsActivating(true);
     try {
-      const selectedPlan = PRESET_DURATIONS.find((p) => p.days === finalDays);
-      const planName = selectedPlan?.planName || `${finalDays} Days Manual Plan`;
-
       const res = await fetch("/api/pos-signups/premium", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: customer.id,
-          clerkId: customer.clerkId,
-          durationDays: finalDays,
-          planName,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const resData = await res.json();
@@ -113,7 +160,7 @@ export default function CustomerPremiumDrawer({
         throw new Error(resData.error || "Failed to activate premium");
       }
 
-      toast.success(resData.message || "Premium activated successfully!");
+      toast.success(resData.message || "Premium updated successfully!");
       setShowActivationForm(false);
       await fetchPremiumDetails();
 
@@ -132,12 +179,13 @@ export default function CustomerPremiumDrawer({
   const isPremiumActive = premiumStatus === "Active";
   const isPremiumExpired = premiumStatus === "Expired";
   const daysLeft = details?.premium?.daysRemaining;
+  const currentAmountPaid = details?.premium?.amountPaid;
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/40 backdrop-blur-sm flex justify-end transition-opacity animate-in fade-in duration-200">
       <div className="w-full max-w-lg bg-white h-full shadow-2xl flex flex-col border-l border-slate-200 overflow-hidden">
         {/* Header */}
-        <div className="p-6 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white flex items-center justify-between shadow-sm">
+        <div className="p-6 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white flex items-center justify-between shadow-sm flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-white/20 backdrop-blur-md rounded-2xl">
               <Crown className="w-6 h-6 text-white" />
@@ -145,7 +193,7 @@ export default function CustomerPremiumDrawer({
             <div>
               <h2 className="text-xl font-black tracking-tight">Kravy Premium Manager</h2>
               <p className="text-xs text-amber-100 font-medium">
-                Subscription & Validity Control Panel
+                Subscription, Validity & Amount Control
               </p>
             </div>
           </div>
@@ -202,7 +250,7 @@ export default function CustomerPremiumDrawer({
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-5 shadow-lg relative overflow-hidden">
+              <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-2xl p-5 shadow-lg relative overflow-hidden">
                 <div className="absolute right-[-15px] top-[-15px] opacity-10 pointer-events-none">
                   <Crown size={140} />
                 </div>
@@ -226,22 +274,37 @@ export default function CustomerPremiumDrawer({
                   )}
                 </div>
 
-                <div className="mb-4">
-                  {isPremiumActive && daysLeft !== null ? (
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-3xl font-black text-white">{daysLeft}</span>
-                      <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-                        Days Remaining
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <div>
+                    {isPremiumActive && daysLeft !== null ? (
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-3xl font-black text-white">{daysLeft}</span>
+                        <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">
+                          Days Remaining
+                        </span>
+                      </div>
+                    ) : isPremiumExpired ? (
+                      <p className="text-sm font-semibold text-rose-300">
+                        Subscription expired. Renew below to restore full access.
+                      </p>
+                    ) : (
+                      <p className="text-sm text-slate-300">
+                        No active premium package assigned to this outlet.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Amount Paid Badge */}
+                  {currentAmountPaid !== null && currentAmountPaid !== undefined && (
+                    <div className="text-right bg-white/10 px-3 py-1.5 rounded-xl border border-white/15">
+                      <span className="text-[10px] text-amber-200 block uppercase font-bold tracking-wider">
+                        Amount Paid
+                      </span>
+                      <span className="text-base font-black text-white flex items-center justify-end">
+                        <IndianRupee size={14} className="inline mr-0.5" />
+                        {Number(currentAmountPaid).toLocaleString("en-IN")}
                       </span>
                     </div>
-                  ) : isPremiumExpired ? (
-                    <p className="text-sm font-semibold text-rose-300">
-                      Subscription expired. Renew below to restore full access.
-                    </p>
-                  ) : (
-                    <p className="text-sm text-slate-300">
-                      No active premium package assigned to this outlet.
-                    </p>
                   )}
                 </div>
 
@@ -270,10 +333,10 @@ export default function CustomerPremiumDrawer({
                 <div className="pt-2">
                   <button
                     onClick={() => setShowActivationForm(true)}
-                    className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold rounded-2xl shadow-md transition-all active:scale-[0.99]"
+                    className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold rounded-2xl shadow-md transition-all active:scale-[0.99] cursor-pointer"
                   >
                     <Zap className="w-4 h-4 fill-current" />
-                    {isPremiumActive ? "Extend / Renew Premium" : "Activate Premium Plan"}
+                    {isPremiumActive ? "Update Validity & Amount" : "Activate Premium Plan"}
                   </button>
                 </div>
               ) : (
@@ -283,80 +346,196 @@ export default function CustomerPremiumDrawer({
                     <div className="flex items-center gap-2">
                       <Zap className="w-4 h-4 text-amber-600" />
                       <h4 className="font-black text-sm text-amber-900">
-                        {isPremiumActive ? "Extend Subscription" : "Select Subscription Plan"}
+                        {isPremiumActive ? "Update Subscription & Purchase" : "Select Subscription Plan"}
                       </h4>
                     </div>
                     <button
                       onClick={() => setShowActivationForm(false)}
-                      className="text-xs font-semibold text-amber-700 hover:text-amber-900"
+                      className="text-xs font-semibold text-amber-700 hover:text-amber-900 cursor-pointer"
                     >
                       Cancel
                     </button>
                   </div>
 
-                  {isPremiumActive && (
-                    <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800">
-                      💡 <strong>Smart Extension:</strong> New duration will be added on top of the
-                      current expiry date (no days lost).
+                  {/* Mode Tabs: Preset Duration vs Exact Date Picker */}
+                  <div className="flex items-center bg-amber-100/70 p-1 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setValidityMode("preset")}
+                      className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                        validityMode === "preset"
+                          ? "bg-white text-amber-900 shadow-xs"
+                          : "text-amber-800 hover:text-amber-900"
+                      }`}
+                    >
+                      Preset Plans / Days
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setValidityMode("exact");
+                        if (!exactDate && details?.premium?.endDate) {
+                          try {
+                            setExactDate(new Date(details.premium.endDate).toISOString().slice(0, 10));
+                          } catch (e) {}
+                        }
+                      }}
+                      className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                        validityMode === "exact"
+                          ? "bg-white text-amber-900 shadow-xs"
+                          : "text-amber-800 hover:text-amber-900"
+                      }`}
+                    >
+                      <Calendar size={13} />
+                      Exact Expiry Date
+                    </button>
+                  </div>
+
+                  {/* Mode 1: Preset Durations */}
+                  {validityMode === "preset" ? (
+                    <div className="space-y-3">
+                      {isPremiumActive && (
+                        <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] text-emerald-800">
+                          💡 <strong>Smart Extension:</strong> Days will be added on top of the
+                          current expiry date.
+                        </div>
+                      )}
+
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-amber-900 uppercase">
+                          Select Plan
+                        </label>
+                        <div className="grid grid-cols-1 gap-1.5">
+                          {PRESET_DURATIONS.map((preset) => {
+                            const isSelected = selectedDays === preset.days && !customDays;
+                            return (
+                              <button
+                                key={preset.days}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedDays(preset.days);
+                                  setCustomDays("");
+                                }}
+                                className={`flex items-center justify-between p-2.5 rounded-xl border text-xs font-bold transition-all text-left ${
+                                  isSelected
+                                    ? "bg-amber-500 text-white border-amber-600 shadow-xs"
+                                    : "bg-white text-slate-700 border-amber-200 hover:bg-amber-100/50"
+                                }`}
+                              >
+                                <span>{preset.label}</span>
+                                <span
+                                  className={`text-[11px] font-mono ${
+                                    isSelected ? "text-amber-100" : "text-slate-400"
+                                  }`}
+                                >
+                                  +{preset.days} Days
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Custom Days Input */}
+                      <div>
+                        <label className="text-[11px] font-bold text-amber-900 uppercase block mb-1">
+                          Or Custom Days
+                        </label>
+                        <input
+                          type="number"
+                          placeholder="e.g. 15, 45, 100"
+                          value={customDays}
+                          onChange={(e) => setCustomDays(e.target.value)}
+                          min="1"
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-amber-200 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    /* Mode 2: Exact Expiry Date Picker */
+                    <div className="space-y-2 bg-white p-3.5 rounded-xl border border-amber-200">
+                      <label className="text-[11px] font-bold text-amber-900 uppercase flex items-center gap-1.5">
+                        <Calendar size={14} className="text-amber-600" />
+                        Choose Exact Expiry Date
+                      </label>
+                      <input
+                        type="date"
+                        value={exactDate}
+                        onChange={(e) => setExactDate(e.target.value)}
+                        className="w-full px-3 py-2.5 text-sm font-semibold rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      />
+                      <p className="text-[11px] text-slate-500 leading-relaxed">
+                        Outlet ka access directly is chuni gayi date tak valid rahega (jaise Kravy POS New merchant editor mein hota hai).
+                      </p>
                     </div>
                   )}
 
-                  {/* Preset Options */}
-                  <div className="space-y-2">
-                    <label className="text-[11px] font-bold text-amber-900 uppercase">
-                      Supported Plans
-                    </label>
-                    <div className="grid grid-cols-1 gap-2">
-                      {PRESET_DURATIONS.map((preset) => {
-                        const isSelected = selectedDays === preset.days && !customDays;
-                        return (
-                          <button
-                            key={preset.days}
-                            type="button"
-                            onClick={() => {
-                              setSelectedDays(preset.days);
-                              setCustomDays("");
-                            }}
-                            className={`flex items-center justify-between p-3 rounded-xl border text-xs font-bold transition-all text-left ${
-                              isSelected
-                                ? "bg-amber-500 text-white border-amber-600 shadow-sm"
-                                : "bg-white text-slate-700 border-amber-200 hover:bg-amber-100/50"
-                            }`}
-                          >
-                            <span>{preset.label}</span>
-                            <span
-                              className={`text-[11px] font-mono ${
-                                isSelected ? "text-amber-100" : "text-slate-400"
-                              }`}
-                            >
-                              +{preset.days} Days
-                            </span>
-                          </button>
-                        );
-                      })}
+                  {/* Purchase Details: Amount Paid & Payment Mode */}
+                  <div className="pt-2 border-t border-amber-200 space-y-3">
+                    <div className="flex items-center gap-1.5">
+                      <IndianRupee size={15} className="text-amber-700" />
+                      <span className="text-xs font-black uppercase text-amber-900">
+                        Purchase / Recharge Details
+                      </span>
                     </div>
-                  </div>
 
-                  {/* Custom Days Input */}
-                  <div>
-                    <label className="text-[11px] font-bold text-amber-900 uppercase block mb-1">
-                      Or Custom Days
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 15, 45, 100"
-                      value={customDays}
-                      onChange={(e) => setCustomDays(e.target.value)}
-                      min="1"
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-amber-200 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono"
-                    />
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="text-[10px] font-bold text-amber-900 uppercase block mb-1">
+                          Amount Paid (₹)
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-2 text-xs text-slate-400 font-bold">
+                            ₹
+                          </span>
+                          <input
+                            type="number"
+                            placeholder="e.g. 2999"
+                            value={amountPaid}
+                            onChange={(e) => setAmountPaid(e.target.value)}
+                            min="0"
+                            className="w-full pl-7 pr-3 py-2 text-xs rounded-xl border border-amber-200 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono font-bold"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-amber-900 uppercase block mb-1">
+                          Payment Mode
+                        </label>
+                        <select
+                          value={paymentMode}
+                          onChange={(e) => setPaymentMode(e.target.value)}
+                          className="w-full px-2.5 py-2 text-xs rounded-xl border border-amber-200 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium"
+                        >
+                          {PAYMENT_MODES.map((mode) => (
+                            <option key={mode} value={mode}>
+                              {mode}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-amber-900 uppercase block mb-1">
+                        UTR / Transaction Reference (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. UPI / Cheque Ref / Invoice #"
+                        value={paymentReference}
+                        onChange={(e) => setPaymentReference(e.target.value)}
+                        className="w-full px-3 py-1.5 text-xs rounded-xl border border-amber-200 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono"
+                      />
+                    </div>
                   </div>
 
                   {/* Confirm Button */}
                   <button
                     onClick={handleActivate}
                     disabled={isActivating}
-                    className="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                   >
                     {isActivating ? (
                       <>
@@ -364,7 +543,7 @@ export default function CustomerPremiumDrawer({
                       </>
                     ) : (
                       <>
-                        <CheckCircle className="w-4 h-4" /> Confirm & Activate
+                        <CheckCircle className="w-4 h-4" /> Save & Activate Premium
                       </>
                     )}
                   </button>
@@ -378,7 +557,7 @@ export default function CustomerPremiumDrawer({
                     Recent Subscription Log
                   </h4>
                   <div className="space-y-2">
-                    {details.history.slice(0, 3).map((item: any, idx: number) => (
+                    {details.history.slice(0, 4).map((item: any, idx: number) => (
                       <div
                         key={idx}
                         className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs flex items-center justify-between"
@@ -387,13 +566,27 @@ export default function CustomerPremiumDrawer({
                           <p className="font-bold text-slate-800">
                             {item.items?.[0]?.name || "Subscription"}
                           </p>
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            {item.createdAt ? format(new Date(item.createdAt), "dd MMM yyyy, HH:mm") : "—"}
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {item.createdAt ? format(new Date(item.createdAt), "dd MMM yyyy, HH:mm") : "—"}
+                            </span>
+                            {item.paymentMode && (
+                              <span className="text-[10px] bg-slate-200/70 text-slate-700 px-1.5 py-0.2 rounded font-medium">
+                                {item.paymentMode}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          {item.amount > 0 && (
+                            <span className="text-xs font-black text-slate-900 block font-mono">
+                              ₹{item.amount.toLocaleString("en-IN")}
+                            </span>
+                          )}
+                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 inline-block mt-0.5">
+                            {item.paymentStatus}
                           </span>
                         </div>
-                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
-                          {item.paymentStatus}
-                        </span>
                       </div>
                     ))}
                   </div>
@@ -406,4 +599,3 @@ export default function CustomerPremiumDrawer({
     </div>
   );
 }
-

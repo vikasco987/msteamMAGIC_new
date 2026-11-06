@@ -67,6 +67,7 @@ interface POSUser {
     startDate?: string | null;
     endDate?: string | null;
     daysRemaining?: number | null;
+    amountPaid?: number | null;
   };
 }
 
@@ -920,19 +921,33 @@ export default function POSSignupsPage() {
                                 title="Click to view details or activate/renew Premium"
                               >
                                 {u.premium?.status === "Active" ? (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 text-amber-800 rounded-full text-xs font-black shadow-xs group-hover:border-amber-400">
-                                    <Crown className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                                    <span>
-                                      {u.premium.daysRemaining !== null && u.premium.daysRemaining !== undefined
-                                        ? `${u.premium.daysRemaining}d Left`
-                                        : "Active"}
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 text-amber-800 rounded-full text-xs font-black shadow-xs group-hover:border-amber-400">
+                                      <Crown className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                                      <span>
+                                        {u.premium.daysRemaining !== null && u.premium.daysRemaining !== undefined
+                                          ? `${u.premium.daysRemaining}d Left`
+                                          : "Active"}
+                                      </span>
                                     </span>
-                                  </span>
+                                    {u.premium.amountPaid !== undefined && u.premium.amountPaid !== null && (
+                                      <span className="text-[11px] font-bold text-emerald-600 pl-1 font-mono">
+                                        ₹{Number(u.premium.amountPaid).toLocaleString("en-IN")}
+                                      </span>
+                                    )}
+                                  </div>
                                 ) : u.premium?.status === "Expired" ? (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 border border-rose-200 text-rose-700 rounded-full text-xs font-extrabold shadow-xs group-hover:border-rose-400">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                                    Expired
-                                  </span>
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 border border-rose-200 text-rose-700 rounded-full text-xs font-extrabold shadow-xs group-hover:border-rose-400">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                                      Expired
+                                    </span>
+                                    {u.premium.amountPaid !== undefined && u.premium.amountPaid !== null && (
+                                      <span className="text-[11px] font-bold text-slate-500 pl-1 font-mono">
+                                        ₹{Number(u.premium.amountPaid).toLocaleString("en-IN")}
+                                      </span>
+                                    )}
+                                  </div>
                                 ) : (
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-500 rounded-full text-[11px] font-medium group-hover:border-slate-300">
                                     Not Activated

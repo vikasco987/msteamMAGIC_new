@@ -102,6 +102,7 @@ export async function GET(req: Request) {
         startDate: profile?.trialStartedAt ? new Date(profile.trialStartedAt).toISOString() : null,
         endDate: profile?.premiumEndDate ? new Date(profile.premiumEndDate).toISOString() : null,
         daysRemaining,
+        amountPaid: (posUser?.privateMetadata as any)?.subscriptionAmountPaid ?? null,
         businessProfileId: profile ? profile._id.toString() : null
       },
       history: subscriptionOrders.map(o => ({
@@ -109,6 +110,8 @@ export async function GET(req: Request) {
         merchantOrderId: o.merchantOrderId,
         amount: o.amount,
         paymentStatus: o.paymentStatus,
+        paymentMode: o.paymentMode || o.items?.[0]?.paymentMode || "—",
+        paymentReference: o.paymentReference || o.items?.[0]?.paymentReference || "—",
         items: o.items || [],
         createdAt: o.createdAt ? new Date(o.createdAt).toISOString() : null
       }))
@@ -145,11 +148,29 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { userId, clerkId, durationDays, planName } = body;
+    const { userId, clerkId, durationDays, planName, exactEndDate, amountPaid, paymentMode, paymentReference } = body;
 
-    const days = parseInt(durationDays);
-    if (!days || isNaN(days) || days <= 0) {
-      return NextResponse.json({ error: "Invalid duration provided" }, { status: 400 });
+    const now = new Date();
+    let newEndDate: Date;
+    let startDate = now;
+
+    if (exactEndDate) {
+      // Direct exact end date chosen by admin
+      const parsedEnd = new Date(exactEndDate);
+      if (isNaN(parsedEnd.getTime())) {
+        return NextResponse.json({ error: "Invalid exact expiry date provided" }, { status: 400 });
+      }
+      // If date string only has YYYY-MM-DD, set to end of day 23:59:59
+      if (exactEndDate.length <= 10) {
+        parsedEnd.setHours(23, 59, 59, 999);
+      }
+      newEndDate = parsedEnd;
+    } else {
+      const days = parseInt(durationDays);
+      if (!days || isNaN(days) || days <= 0) {
+        return NextResponse.json({ error: "Invalid duration or expiry date provided" }, { status: 400 });
+      }
+      newEndDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
     }
 
     const client = await getMongoClient();
@@ -179,27 +200,26 @@ export async function POST(req: Request) {
       $or: [{ userId: resolvedClerkId }, { createdBy: resolvedClerkId }]
     });
 
-    const now = new Date();
-    let startDate = now;
-    let newEndDate = new Date();
-
-    // Extension / Renewal logic: If current premium has NOT expired, extend from existing expiry date
-    if (profile && profile.premiumEndDate) {
-      const existingEnd = new Date(profile.premiumEndDate);
-      if (existingEnd.getTime() > now.getTime()) {
-        // Active subscription extension
-        startDate = profile.trialStartedAt ? new Date(profile.trialStartedAt) : now;
-        newEndDate = new Date(existingEnd.getTime() + days * 24 * 60 * 60 * 1000);
-      } else {
-        // Expired subscription renewal
-        startDate = now;
-        newEndDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+    // If using durationDays without exactEndDate, handle smart extension
+    if (!exactEndDate) {
+      const days = parseInt(durationDays);
+      if (profile && profile.premiumEndDate) {
+        const existingEnd = new Date(profile.premiumEndDate);
+        if (existingEnd.getTime() > now.getTime()) {
+          startDate = profile.trialStartedAt ? new Date(profile.trialStartedAt) : now;
+          newEndDate = new Date(existingEnd.getTime() + days * 24 * 60 * 60 * 1000);
+        }
       }
     } else {
-      // First time activation
-      startDate = now;
-      newEndDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+      if (profile && profile.trialStartedAt) {
+        startDate = new Date(profile.trialStartedAt);
+      }
     }
+
+    // Amount paid parsed
+    const parsedAmount = amountPaid !== undefined && amountPaid !== null && amountPaid !== ""
+      ? parseFloat(String(amountPaid)) || 0
+      : null;
 
     if (profile) {
       await db.collection("BusinessProfile").updateOne(
@@ -229,6 +249,22 @@ export async function POST(req: Request) {
       });
     }
 
+    // Save subscriptionAmountPaid in User's privateMetadata (standard Kravy POS structure)
+    if (parsedAmount !== null && posUser) {
+      const currentPrivateMeta = (posUser.privateMetadata as any) || {};
+      await db.collection("User").updateOne(
+        { _id: posUser._id },
+        {
+          $set: {
+            "privateMetadata.subscriptionAmountPaid": parsedAmount,
+            updatedAt: now
+          }
+        }
+      );
+    }
+
+    const calculatedDays = Math.ceil((newEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
     // Record an activation order / transaction for audit history
     await db.collection("SubscriptionOrder").insertOne({
       merchantOrderId: `MANUAL_${Date.now()}`,
@@ -240,32 +276,35 @@ export async function POST(req: Request) {
       },
       items: [
         {
-          id: `plan_${days}d`,
-          name: planName || `${days} Days Premium Plan`,
-          price: 0,
+          id: exactEndDate ? `plan_custom_${newEndDate.toISOString().slice(0, 10)}` : `plan_${durationDays}d`,
+          name: planName || (exactEndDate ? `Validity till ${newEndDate.toISOString().slice(0, 10)}` : `${durationDays} Days Premium Plan`),
+          price: parsedAmount || 0,
           quantity: 1,
+          paymentMode: paymentMode || "Manual / Cash",
+          paymentReference: paymentReference || "",
           activatedBy: user.emailAddresses[0]?.emailAddress || user.id,
           role: normalizedRole
         }
       ],
-      amount: 0,
+      amount: parsedAmount || 0,
+      paymentMode: paymentMode || "Manual / Cash",
+      paymentReference: paymentReference || "",
       paymentStatus: "SUCCESS",
       activationType: "MANUAL_PANEL",
       createdAt: now,
       updatedAt: now
     });
 
-    const diffDays = Math.ceil((newEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
     return NextResponse.json({
       success: true,
-      message: `Premium activated successfully for ${days} days!`,
+      message: `Premium updated successfully! Valid till ${newEndDate.toLocaleDateString()}${parsedAmount !== null ? ` (₹${parsedAmount})` : ""}`,
       premium: {
-        status: "Active",
+        status: calculatedDays > 0 ? "Active" : "Expired",
         isPremium: true,
         startDate: startDate.toISOString(),
         endDate: newEndDate.toISOString(),
-        daysRemaining: diffDays
+        daysRemaining: Math.max(0, calculatedDays),
+        amountPaid: parsedAmount !== null ? parsedAmount : ((posUser?.privateMetadata as any)?.subscriptionAmountPaid ?? null)
       }
     });
   } catch (error: any) {
