@@ -1,12 +1,47 @@
 "use client";
 import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 import Link from "next/link";
 import { format } from "date-fns";
-import { Calendar, Users, TrendingUp, AlertCircle, Loader2, BarChart3, Search, Download, FileText, X, MessageCircle, CheckSquare, Crown } from "lucide-react";
+import {
+  Calendar,
+  Users,
+  TrendingUp,
+  AlertCircle,
+  Loader2,
+  BarChart3,
+  Search,
+  Download,
+  FileText,
+  X,
+  MessageCircle,
+  CheckSquare,
+  Crown,
+  Settings,
+  GripVertical,
+  UserCheck,
+  ChevronDown,
+  Check,
+} from "lucide-react";
 import CustomerPremiumDrawer from "./components/CustomerPremiumDrawer";
+
+export const POS_COLUMNS = [
+  { id: "joinedAt", label: "Joined At" },
+  { id: "name", label: "Name" },
+  { id: "phone", label: "Phone" },
+  { id: "email", label: "Email" },
+  { id: "role", label: "Role" },
+  { id: "status", label: "Status" },
+  { id: "account", label: "Account" },
+  { id: "assignedTo", label: "Assigned To" },
+  { id: "premiumStatus", label: "Premium Status" },
+  { id: "bills", label: "Bills" },
+  { id: "items", label: "Items" },
+  { id: "pipeline", label: "Pipeline" },
+  { id: "notes", label: "Recent Notes" },
+];
 
 interface POSUser {
   id: string;
@@ -82,7 +117,98 @@ export default function POSSignupsPage() {
 
   // Team Members for Assignee Selection
   const [teamMembers, setTeamMembers] = useState<{ id: string; name: string; email: string }[]>([]);
+  const [allowedAssigneeNames, setAllowedAssigneeNames] = useState<string[]>([]);
   const [assigningUserId, setAssigningUserId] = useState<string | null>(null);
+
+  // Column Customization State (Order, Hide/Unhide, Drag and Drop)
+  const [columnOrder, setColumnOrder] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("pos_signups_column_order");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const allIds = POS_COLUMNS.map((c) => c.id);
+            const valid = parsed.filter((id) => allIds.includes(id));
+            const missing = allIds.filter((id) => !valid.includes(id));
+            return [...valid, ...missing];
+          }
+        } catch (e) {}
+      }
+    }
+    return POS_COLUMNS.map((c) => c.id);
+  });
+
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("pos_signups_hidden_columns");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed;
+        } catch (e) {}
+      }
+    }
+    return [];
+  });
+
+  const [isColumnManagerOpen, setIsColumnManagerOpen] = useState(false);
+  const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
+  const columnManagerRef = useRef<HTMLDivElement>(null);
+
+  // Assignee Management Modal
+  const [isAssigneeModalOpen, setIsAssigneeModalOpen] = useState(false);
+  const [assigneeSearchQuery, setAssigneeSearchQuery] = useState("");
+  const [isSavingAssignees, setIsSavingAssignees] = useState(false);
+
+  // Save column preferences to localStorage
+  const handleToggleColumnVisibility = (colId: string) => {
+    setHiddenColumns((prev) => {
+      const updated = prev.includes(colId) ? prev.filter((id) => id !== colId) : [...prev, colId];
+      if (typeof window !== "undefined") {
+        localStorage.setItem("pos_signups_hidden_columns", JSON.stringify(updated));
+      }
+      return updated;
+    });
+  };
+
+  const handleColumnDrop = (targetColId: string) => {
+    if (!draggedColumnId || draggedColumnId === targetColId) return;
+    const currentList = [...columnOrder];
+    const fromIndex = currentList.indexOf(draggedColumnId);
+    const toIndex = currentList.indexOf(targetColId);
+    if (fromIndex === -1 || toIndex === -1) return;
+
+    currentList.splice(fromIndex, 1);
+    currentList.splice(toIndex, 0, targetColId);
+
+    setColumnOrder(currentList);
+    setDraggedColumnId(null);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("pos_signups_column_order", JSON.stringify(currentList));
+    }
+  };
+
+  const resetColumnSettings = () => {
+    const defaultOrder = POS_COLUMNS.map((c) => c.id);
+    setColumnOrder(defaultOrder);
+    setHiddenColumns([]);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("pos_signups_column_order");
+      localStorage.removeItem("pos_signups_hidden_columns");
+    }
+  };
+
+  // Close column dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (columnManagerRef.current && !columnManagerRef.current.contains(event.target as Node)) {
+        setIsColumnManagerOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const fetchDetailsData = async (u: POSUser, type: "bills" | "items", pageNum = 1) => {
     setDetailsLoading(true);
@@ -117,23 +243,58 @@ export default function POSSignupsPage() {
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  // Load team members for assignee dropdown
+  // Load team members and allowed assignees config
   useEffect(() => {
-    const fetchTeam = async () => {
+    const fetchTeamAndConfig = async () => {
       try {
-        const res = await fetch("/api/team-members");
-        if (res.ok) {
-          const data = await res.json();
+        const [teamRes, configRes] = await Promise.all([
+          fetch("/api/team-members"),
+          fetch("/api/pos-signups/assignees-config")
+        ]);
+
+        if (teamRes.ok) {
+          const data = await teamRes.json();
           if (Array.isArray(data)) {
             setTeamMembers(data);
           }
         }
+
+        if (configRes.ok) {
+          const configData = await configRes.json();
+          if (Array.isArray(configData.allowedNames)) {
+            setAllowedAssigneeNames(configData.allowedNames);
+          }
+        }
       } catch (e) {
-        console.error("Failed to load team members", e);
+        console.error("Failed to load team members or assignees config", e);
       }
     };
-    fetchTeam();
+    fetchTeamAndConfig();
   }, []);
+
+  const handleSaveAllowedAssignees = async (updatedList: string[]) => {
+    setIsSavingAssignees(true);
+    try {
+      const res = await fetch("/api/pos-signups/assignees-config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ allowedNames: updatedList }),
+      });
+      if (!res.ok) throw new Error("Failed to save allowed assignees");
+      setAllowedAssigneeNames(updatedList);
+    } catch (err: any) {
+      alert(err.message || "Error saving assignees");
+    } finally {
+      setIsSavingAssignees(false);
+    }
+  };
+
+  // Filtered members that will appear in the "Assigned To" select dropdown:
+  // If allowedAssigneeNames has items, only show those members. Otherwise fallback to all team members.
+  const activeDropdownMembers = teamMembers.filter((m) => {
+    if (!allowedAssigneeNames || allowedAssigneeNames.length === 0) return true;
+    return allowedAssigneeNames.includes(m.name);
+  });
 
   const fetchData = async (filterDate?: string, pageNum = 1, search = "") => {
     setLoading(true);
@@ -378,6 +539,85 @@ export default function POSSignupsPage() {
             <Download size={16} />
             Export CSV
           </button>
+
+          {/* Manage Assignees Dropdown List */}
+          <button
+            onClick={() => setIsAssigneeModalOpen(true)}
+            className="flex items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-100 transition-colors border border-indigo-100 shadow-sm"
+            title="Configure which team members appear in the Assigned To dropdown"
+          >
+            <UserCheck size={16} />
+            Manage Members List
+          </button>
+
+          {/* Customize Columns Button */}
+          <div className="relative" ref={columnManagerRef}>
+            <button
+              type="button"
+              onClick={() => setIsColumnManagerOpen((prev) => !prev)}
+              className="flex items-center gap-2 bg-white text-slate-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors border border-slate-300 shadow-sm"
+            >
+              <Settings size={16} className="text-slate-500" />
+              <span>Customize Columns</span>
+              <ChevronDown size={14} className="text-slate-400" />
+            </button>
+
+            {isColumnManagerOpen && (
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl ring-1 ring-black/10 z-50 p-4 border border-slate-200 max-h-[500px] overflow-y-auto">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-sm">Columns Settings</h4>
+                    <p className="text-[11px] text-slate-500">Drag to reorder, checkbox to show/hide</p>
+                  </div>
+                  <button
+                    onClick={resetColumnSettings}
+                    className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold"
+                  >
+                    Reset
+                  </button>
+                </div>
+
+                <div className="space-y-1.5">
+                  {columnOrder.map((colId) => {
+                    const colDef = POS_COLUMNS.find((c) => c.id === colId);
+                    if (!colDef) return null;
+                    const isHidden = hiddenColumns.includes(colId);
+
+                    return (
+                      <div
+                        key={colId}
+                        draggable
+                        onDragStart={() => setDraggedColumnId(colId)}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={() => handleColumnDrop(colId)}
+                        className={`flex items-center justify-between p-2 rounded-lg border text-sm transition-all ${
+                          draggedColumnId === colId
+                            ? "bg-indigo-50 border-indigo-300 opacity-60"
+                            : "bg-slate-50/70 border-slate-200 hover:bg-slate-100"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <GripVertical className="text-slate-400 cursor-grab active:cursor-grabbing text-xs w-4 h-4" />
+                          <span className={`font-medium ${isHidden ? "line-through text-slate-400" : "text-slate-800"}`}>
+                            {colDef.label}
+                          </span>
+                        </div>
+                        <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={!isHidden}
+                            onChange={() => handleToggleColumnVisibility(colId)}
+                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                          />
+                          <span>Show</span>
+                        </label>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <input
               type="date"
@@ -534,25 +774,22 @@ export default function POSSignupsPage() {
                     className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                   />
                 </th>
-                <th className="px-6 py-3">Joined At</th>
-                <th className="px-6 py-3">Name</th>
-                <th className="px-6 py-3">Phone</th>
-                <th className="px-6 py-3">Email</th>
-                <th className="px-6 py-3">Role</th>
-                <th className="px-6 py-3">Status</th>
-                <th className="px-6 py-3">Account</th>
-                <th className="px-6 py-3">Assigned To</th>
-                <th className="px-6 py-3">Premium Status</th>
-                <th className="px-6 py-3">Bills</th>
-                <th className="px-6 py-3">Items</th>
-                <th className="px-6 py-3">Pipeline</th>
-                <th className="px-6 py-3">Notes</th>
+                {columnOrder
+                  .filter((colId) => !hiddenColumns.includes(colId))
+                  .map((colId) => {
+                    const colDef = POS_COLUMNS.find((c) => c.id === colId);
+                    return (
+                      <th key={colId} className="px-6 py-3 whitespace-nowrap">
+                        {colDef?.label || colId}
+                      </th>
+                    );
+                  })}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {!loading && users.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-6 py-8 text-center text-slate-500">
+                  <td colSpan={columnOrder.filter((id) => !hiddenColumns.includes(id)).length + 1} className="px-6 py-8 text-center text-slate-500">
                     No sign-ups found.
                   </td>
                 </tr>
@@ -570,143 +807,212 @@ export default function POSSignupsPage() {
                       className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                     />
                   </td>
-                  <td className="px-6 py-4 text-slate-500 font-medium">
-                    {u.createdAt ? format(new Date(u.createdAt), "PPp") : "Unknown"}
-                  </td>
-                  <td className="px-6 py-4 font-medium text-slate-800">{u.name || "N/A"}</td>
-                  <td className="px-6 py-4 text-slate-800 font-medium">
-                    <div className="flex items-center gap-2">
-                      {u.phone || "—"}
-                      {u.phone && (
-                        <a 
-                          href={`https://wa.me/${u.phone.replace(/[^0-9]/g, '')}?text=Hello ${encodeURIComponent(u.name || 'User')}, Welcome to Billgsoftware!`}
-                          target="_blank" rel="noopener noreferrer"
-                          className="text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-full transition-colors flex-shrink-0"
-                          title="Message on WhatsApp"
-                        >
-                          <MessageCircle size={16} />
-                        </a>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-slate-600">{u.email}</td>
-                  <td className="px-6 py-4">
-                    <span className="bg-slate-100 text-slate-600 text-xs px-2 py-1 rounded-md font-semibold">
-                      {u.role || "USER"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    {u.isVerified ? (
-                      <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider flex items-center gap-1 w-fit">
-                        Verified
-                      </span>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="text-amber-600 bg-amber-50 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">
-                          Unverified
-                        </span>
-                        <button
-                          onClick={() => handleVerify(u.id)}
-                          disabled={verifyingId === u.id}
-                          className="text-[10px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-2 py-1 rounded-md transition-colors disabled:opacity-50 disabled:cursor-wait whitespace-nowrap"
-                        >
-                          {verifyingId === u.id ? "..." : "Verify Now"}
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    {u.isDisabled ? (
-                      <span className="text-red-600 bg-red-50 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">Deactivated</span>
-                    ) : (
-                      <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">Active</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <select
-                      value={u.assignedToName || ""}
-                      onChange={(e) => {
-                        const selectedName = e.target.value;
-                        const member = teamMembers.find(m => m.name === selectedName);
-                        handleAssignChange(u.id, member ? member.id : "", selectedName);
-                      }}
-                      disabled={assigningUserId === u.id}
-                      className="border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500 bg-white hover:bg-slate-50 text-slate-800 disabled:opacity-50 cursor-pointer min-w-[140px] max-w-[180px] shadow-xs"
-                    >
-                      <option value="">— Unassigned —</option>
-                      {teamMembers.map((m) => (
-                        <option key={m.id} value={m.name}>
-                          {m.name}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-6 py-4">
-                    <button
-                      type="button"
-                      onClick={() => setPremiumDrawer({ open: true, user: u })}
-                      className="group flex flex-col items-start gap-1 p-1 rounded-lg hover:bg-slate-100/80 transition-all cursor-pointer text-left"
-                      title="Click to view details or activate/renew Premium"
-                    >
-                      {u.premium?.status === "Active" ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 text-amber-800 rounded-full text-xs font-black shadow-xs group-hover:border-amber-400">
-                          <Crown className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                          <span>
-                            {u.premium.daysRemaining !== null && u.premium.daysRemaining !== undefined
-                              ? `${u.premium.daysRemaining}d Left`
-                              : "Active"}
-                          </span>
-                        </span>
-                      ) : u.premium?.status === "Expired" ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 border border-rose-200 text-rose-700 rounded-full text-xs font-extrabold shadow-xs group-hover:border-rose-400">
-                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                          Expired
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-500 rounded-full text-[11px] font-medium group-hover:border-slate-300">
-                          Not Activated
-                        </span>
-                      )}
-                    </button>
-                  </td>
-                  <td className="px-6 py-4">
-                    <button 
-                      onClick={() => openDetailsModal(u, "bills")}
-                      className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors w-16 text-center"
-                    >
-                      {u.billsCount || 0}
-                    </button>
-                  </td>
-                  <td className="px-6 py-4">
-                    <button 
-                      onClick={() => openDetailsModal(u, "items")}
-                      className="bg-purple-50 text-purple-700 hover:bg-purple-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors w-16 text-center"
-                    >
-                      {u.itemsCount || 0}
-                    </button>
-                  </td>
-                  <td className="px-6 py-4">
-                    <select
-                      value={u.leadStatus || "New Lead"}
-                      onChange={(e) => handleStatusChange(u.id, e.target.value)}
-                      disabled={statusUpdatingId === u.id}
-                      className="border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-50 cursor-pointer min-w-[110px]"
-                    >
-                      <option value="New Lead">New Lead</option>
-                      <option value="Contacted">Contacted</option>
-                      <option value="Demo Scheduled">Demo Scheduled</option>
-                      <option value="Converted">Converted</option>
-                    </select>
-                  </td>
-                  <td className="px-6 py-4">
-                    <button 
-                      onClick={() => openNotesModal(u)}
-                      className="group flex items-center justify-center p-2 rounded-lg hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 transition-colors"
-                      title={u.posNotes || "Add Note"}
-                    >
-                      <FileText size={18} className={u.posNotes ? "text-indigo-500 fill-indigo-50" : ""} />
-                    </button>
-                  </td>
+                  {columnOrder
+                    .filter((colId) => !hiddenColumns.includes(colId))
+                    .map((colId) => {
+                      switch (colId) {
+                        case "joinedAt":
+                          return (
+                            <td key="joinedAt" className="px-6 py-4 text-slate-500 font-medium whitespace-nowrap">
+                              {u.createdAt ? format(new Date(u.createdAt), "PPp") : "Unknown"}
+                            </td>
+                          );
+                        case "name":
+                          return (
+                            <td key="name" className="px-6 py-4 font-medium text-slate-800">
+                              {u.name || "N/A"}
+                            </td>
+                          );
+                        case "phone":
+                          return (
+                            <td key="phone" className="px-6 py-4 text-slate-800 font-medium">
+                              <div className="flex items-center gap-2">
+                                {u.phone || "—"}
+                                {u.phone && (
+                                  <a 
+                                    href={`https://wa.me/${u.phone.replace(/[^0-9]/g, '')}?text=Hello ${encodeURIComponent(u.name || 'User')}, Welcome to Billgsoftware!`}
+                                    target="_blank" rel="noopener noreferrer"
+                                    className="text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-full transition-colors flex-shrink-0"
+                                    title="Message on WhatsApp"
+                                  >
+                                    <MessageCircle size={16} />
+                                  </a>
+                                )}
+                              </div>
+                            </td>
+                          );
+                        case "email":
+                          return (
+                            <td key="email" className="px-6 py-4 text-slate-600">
+                              {u.email}
+                            </td>
+                          );
+                        case "role":
+                          return (
+                            <td key="role" className="px-6 py-4">
+                              <span className="bg-slate-100 text-slate-600 text-xs px-2 py-1 rounded-md font-semibold">
+                                {u.role || "USER"}
+                              </span>
+                            </td>
+                          );
+                        case "status":
+                          return (
+                            <td key="status" className="px-6 py-4">
+                              {u.isVerified ? (
+                                <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider flex items-center gap-1 w-fit">
+                                  Verified
+                                </span>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-amber-600 bg-amber-50 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">
+                                    Unverified
+                                  </span>
+                                  <button
+                                    onClick={() => handleVerify(u.id)}
+                                    disabled={verifyingId === u.id}
+                                    className="text-[10px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-2 py-1 rounded-md transition-colors disabled:opacity-50 disabled:cursor-wait whitespace-nowrap"
+                                  >
+                                    {verifyingId === u.id ? "..." : "Verify Now"}
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                          );
+                        case "account":
+                          return (
+                            <td key="account" className="px-6 py-4">
+                              {u.isDisabled ? (
+                                <span className="text-red-600 bg-red-50 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">Deactivated</span>
+                              ) : (
+                                <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">Active</span>
+                              )}
+                            </td>
+                          );
+                        case "assignedTo":
+                          return (
+                            <td key="assignedTo" className="px-6 py-4">
+                              <select
+                                value={u.assignedToName || ""}
+                                onChange={(e) => {
+                                  const selectedName = e.target.value;
+                                  const member = teamMembers.find(m => m.name === selectedName);
+                                  handleAssignChange(u.id, member ? member.id : "", selectedName);
+                                }}
+                                disabled={assigningUserId === u.id}
+                                className="border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500 bg-white hover:bg-slate-50 text-slate-800 disabled:opacity-50 cursor-pointer min-w-[140px] max-w-[180px] shadow-xs"
+                              >
+                                <option value="">— Unassigned —</option>
+                                {activeDropdownMembers.map((m) => (
+                                  <option key={m.id} value={m.name}>
+                                    {m.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                          );
+                        case "premiumStatus":
+                          return (
+                            <td key="premiumStatus" className="px-6 py-4">
+                              <button
+                                type="button"
+                                onClick={() => setPremiumDrawer({ open: true, user: u })}
+                                className="group flex flex-col items-start gap-1 p-1 rounded-lg hover:bg-slate-100/80 transition-all cursor-pointer text-left"
+                                title="Click to view details or activate/renew Premium"
+                              >
+                                {u.premium?.status === "Active" ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 text-amber-800 rounded-full text-xs font-black shadow-xs group-hover:border-amber-400">
+                                    <Crown className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                                    <span>
+                                      {u.premium.daysRemaining !== null && u.premium.daysRemaining !== undefined
+                                        ? `${u.premium.daysRemaining}d Left`
+                                        : "Active"}
+                                    </span>
+                                  </span>
+                                ) : u.premium?.status === "Expired" ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 border border-rose-200 text-rose-700 rounded-full text-xs font-extrabold shadow-xs group-hover:border-rose-400">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                                    Expired
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-500 rounded-full text-[11px] font-medium group-hover:border-slate-300">
+                                    Not Activated
+                                  </span>
+                                )}
+                              </button>
+                            </td>
+                          );
+                        case "bills":
+                          return (
+                            <td key="bills" className="px-6 py-4">
+                              <button 
+                                onClick={() => openDetailsModal(u, "bills")}
+                                className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors w-16 text-center"
+                              >
+                                {u.billsCount || 0}
+                              </button>
+                            </td>
+                          );
+                        case "items":
+                          return (
+                            <td key="items" className="px-6 py-4">
+                              <button 
+                                onClick={() => openDetailsModal(u, "items")}
+                                className="bg-purple-50 text-purple-700 hover:bg-purple-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors w-16 text-center"
+                              >
+                                {u.itemsCount || 0}
+                              </button>
+                            </td>
+                          );
+                        case "pipeline":
+                          return (
+                            <td key="pipeline" className="px-6 py-4">
+                              <select
+                                value={u.leadStatus || "New Lead"}
+                                onChange={(e) => handleStatusChange(u.id, e.target.value)}
+                                disabled={statusUpdatingId === u.id}
+                                className="border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-50 cursor-pointer min-w-[110px]"
+                              >
+                                <option value="New Lead">New Lead</option>
+                                <option value="Contacted">Contacted</option>
+                                <option value="Demo Scheduled">Demo Scheduled</option>
+                                <option value="Converted">Converted</option>
+                              </select>
+                            </td>
+                          );
+                        case "notes":
+                          return (
+                            <td key="notes" className="px-6 py-4">
+                              <div className="flex items-center gap-2 max-w-[220px]">
+                                <button 
+                                  onClick={() => openNotesModal(u)}
+                                  className="group flex-shrink-0 flex items-center justify-center p-2 rounded-lg hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 transition-colors"
+                                  title={u.posNotes || "Add Note"}
+                                >
+                                  <FileText size={18} className={u.posNotes ? "text-indigo-500 fill-indigo-50" : ""} />
+                                </button>
+                                {u.posNotes ? (
+                                  <span
+                                    onClick={() => openNotesModal(u)}
+                                    className="text-xs text-slate-700 font-medium truncate cursor-pointer hover:text-indigo-600 hover:underline"
+                                    title={u.posNotes}
+                                  >
+                                    {u.posNotes}
+                                  </span>
+                                ) : (
+                                  <span
+                                    onClick={() => openNotesModal(u)}
+                                    className="text-[11px] text-slate-400 italic cursor-pointer hover:text-indigo-500"
+                                  >
+                                    No notes
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          );
+                        default:
+                          return null;
+                      }
+                    })}
                 </tr>
               ))}
             </tbody>
@@ -940,6 +1246,137 @@ export default function POSSignupsPage() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Manage Allowed Assignees in Dropdown */}
+      {isAssigneeModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg border border-slate-200 overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-black tracking-tight flex items-center gap-2">
+                  <UserCheck size={20} /> Manage Assignees Dropdown
+                </h3>
+                <p className="text-xs text-indigo-100 mt-0.5">
+                  Select which team members appear in the "Assigned To" dropdown list
+                </p>
+              </div>
+              <button
+                onClick={() => setIsAssigneeModalOpen(false)}
+                className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-white/80 hover:text-white"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Search within Modal */}
+            <div className="p-4 border-b border-slate-100 bg-slate-50/70">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <input
+                  type="text"
+                  placeholder="Search members by name or email..."
+                  value={assigneeSearchQuery}
+                  onChange={(e) => setAssigneeSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+              </div>
+              <div className="flex items-center justify-between mt-2 px-1">
+                <span className="text-[11px] font-bold text-slate-500">
+                  {allowedAssigneeNames.length} selected of {teamMembers.length}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAllowedAssigneeNames(teamMembers.map((m) => m.name))}
+                    className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800"
+                  >
+                    Select All
+                  </button>
+                  <span className="text-slate-300">|</span>
+                  <button
+                    type="button"
+                    onClick={() => setAllowedAssigneeNames([])}
+                    className="text-[11px] font-bold text-rose-600 hover:text-rose-800"
+                  >
+                    Deselect All
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Members List */}
+            <div className="p-4 overflow-y-auto space-y-1.5 flex-1 divide-y divide-slate-100">
+              {teamMembers
+                .filter((m) => {
+                  if (!assigneeSearchQuery) return true;
+                  const q = assigneeSearchQuery.toLowerCase();
+                  return (
+                    m.name.toLowerCase().includes(q) ||
+                    (m.email && m.email.toLowerCase().includes(q))
+                  );
+                })
+                .map((m) => {
+                  const isChecked = allowedAssigneeNames.includes(m.name);
+                  return (
+                    <label
+                      key={m.id}
+                      className={`flex items-center justify-between p-2.5 rounded-xl cursor-pointer transition-colors ${
+                        isChecked ? "bg-indigo-50/60" : "hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setAllowedAssigneeNames((prev) => [...prev, m.name]);
+                            } else {
+                              setAllowedAssigneeNames((prev) => prev.filter((n) => n !== m.name));
+                            }
+                          }}
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer w-4 h-4"
+                        />
+                        <div>
+                          <p className="text-xs font-bold text-slate-800">{m.name}</p>
+                          <p className="text-[10px] text-slate-400 font-medium">{m.email}</p>
+                        </div>
+                      </div>
+                      {isChecked && (
+                        <span className="text-[10px] font-black uppercase text-indigo-600 bg-indigo-100/70 px-2 py-0.5 rounded-md flex items-center gap-1">
+                          <Check size={10} /> Active
+                        </span>
+                      )}
+                    </label>
+                  );
+                })}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsAssigneeModalOpen(false)}
+                className="px-4 py-2 border border-slate-300 text-slate-700 font-bold rounded-xl text-xs hover:bg-slate-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await handleSaveAllowedAssignees(allowedAssigneeNames);
+                  setIsAssigneeModalOpen(false);
+                }}
+                disabled={isSavingAssignees}
+                className="inline-flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold rounded-xl text-xs shadow-md transition-all disabled:opacity-50"
+              >
+                {isSavingAssignees ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                Save Selection
+              </button>
+            </div>
           </div>
         </div>
       )}
