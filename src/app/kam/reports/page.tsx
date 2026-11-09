@@ -16,6 +16,8 @@ import {
   FaTrash,
   FaCheck,
   FaTimes,
+  FaDatabase,
+  FaLayerGroup,
 } from "react-icons/fa";
 
 interface Assign2Row {
@@ -55,6 +57,7 @@ interface RetentionSummaryRow {
 
 interface RetentionBreakdownRow {
   name: string;
+  teamType?: "Retention" | "Onboarding" | "Digital" | "Other";
   growing: number;
   needToFocus: number;
   conflictForWeek: number;
@@ -84,6 +87,12 @@ export default function KamReportsPage() {
   const [teamGroups, setTeamGroups] = useState<TeamGroupData[]>([]);
   const [totalCount, setTotalCount] = useState(0);
 
+  // CRM Database Selection: "primary" (Current CRM), "secondary" (Other Server CRM), "master" (Combined Both CRMs)
+  const [selectedSource, setSelectedSource] = useState<"primary" | "secondary" | "master">("master");
+  const [hasSecondaryDb, setHasSecondaryDb] = useState(true);
+  const [primaryCount, setPrimaryCount] = useState(0);
+  const [secondaryCount, setSecondaryCount] = useState(0);
+
   // Active Tab: "teams" (Onboarding & Digital) or "assign2" (Legacy Assign_2.0)
   const [activeTab, setActiveTab] = useState<"teams" | "assign2">("teams");
 
@@ -94,10 +103,10 @@ export default function KamReportsPage() {
   const [isSavingTeams, setIsSavingTeams] = useState(false);
   const [selectedUserToAdd, setSelectedUserToAdd] = useState<{ [teamIdx: number]: string }>({});
 
-  const fetchReport = async () => {
+  const fetchReport = async (source = selectedSource) => {
     setLoading(true);
     try {
-      const res = await fetch("/api/kam/reports");
+      const res = await fetch(`/api/kam/reports?source=${source}`);
       const data = await res.json();
       if (res.ok) {
         setAssign2Data(data.assign2Data || []);
@@ -106,6 +115,9 @@ export default function KamReportsPage() {
         setRetentionBreakdown(data.retentionBreakdown || []);
         setOverallStatusTotals(data.overallStatusTotals || null);
         setTotalCount(data.totalTasksCount || 0);
+        setHasSecondaryDb(data.hasSecondaryDb ?? true);
+        setPrimaryCount(data.primaryCount || 0);
+        setSecondaryCount(data.secondaryCount || 0);
       }
     } catch (e) {
       console.error("Report fetch error:", e);
@@ -113,6 +125,10 @@ export default function KamReportsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchReport(selectedSource);
+  }, [selectedSource]);
 
   const openTeamManager = async () => {
     setIsTeamModalOpen(true);
@@ -138,55 +154,72 @@ export default function KamReportsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ teams: editableTeams }),
       });
-      if (!res.ok) throw new Error("Failed to save team assignments");
-      setIsTeamModalOpen(false);
-      await fetchReport();
-    } catch (err: any) {
-      alert(err.message || "Error saving team assignments");
+      if (res.ok) {
+        setIsTeamModalOpen(false);
+        fetchReport();
+      } else {
+        alert("Failed to save team configurations");
+      }
+    } catch (err) {
+      console.error("Error saving teams", err);
+      alert("Error saving team configuration");
     } finally {
       setIsSavingTeams(false);
     }
   };
 
   const handleAddMemberToTeam = (teamIdx: number) => {
-    const memberName = selectedUserToAdd[teamIdx];
-    if (!memberName) return;
+    const userName = selectedUserToAdd[teamIdx];
+    if (!userName) return;
+
     setEditableTeams((prev) => {
-      const copy = [...prev];
-      if (!copy[teamIdx].members.includes(memberName)) {
-        copy[teamIdx] = {
-          ...copy[teamIdx],
-          members: [...copy[teamIdx].members, memberName],
+      const clone = [...prev];
+      if (!clone[teamIdx].members.includes(userName)) {
+        clone[teamIdx] = {
+          ...clone[teamIdx],
+          members: [...clone[teamIdx].members, userName],
         };
       }
-      return copy;
+      return clone;
     });
+
     setSelectedUserToAdd((prev) => ({ ...prev, [teamIdx]: "" }));
   };
 
-  const handleRemoveMemberFromTeam = (teamIdx: number, memberIdx: number) => {
+  const handleRemoveMember = (teamIdx: number, memberName: string) => {
     setEditableTeams((prev) => {
-      const copy = [...prev];
-      const updatedMembers = copy[teamIdx].members.filter((_, idx) => idx !== memberIdx);
-      copy[teamIdx] = { ...copy[teamIdx], members: updatedMembers };
-      return copy;
+      const clone = [...prev];
+      clone[teamIdx] = {
+        ...clone[teamIdx],
+        members: clone[teamIdx].members.filter((m) => m !== memberName),
+      };
+      return clone;
     });
   };
 
-  useEffect(() => {
-    if (isLoaded) {
-      fetchReport();
-    }
-  }, [isLoaded]);
-
   // Totals for Assign_2.0
-  const assign2TotalCustomers = assign2Data.reduce((acc, r) => acc + r.totalCustomer, 0);
-  const assign2TotalActive = assign2Data.reduce((acc, r) => acc + r.activeCustomer, 0);
-  const assign2TotalWaiting = assign2Data.reduce((acc, r) => acc + r.waitingRenewal, 0);
+  const assign2TotalCustomers = assign2Data.reduce(
+    (acc, row) => acc + row.totalCustomer,
+    0
+  );
+  const assign2TotalActive = assign2Data.reduce(
+    (acc, row) => acc + row.activeCustomer,
+    0
+  );
+  const assign2TotalRenewal = assign2Data.reduce(
+    (acc, row) => acc + row.waitingRenewal,
+    0
+  );
 
   // Totals for Retention Summary
-  const retSummaryTotalCx = retentionSummary.reduce((acc, r) => acc + r.totalCx, 0);
-  const retSummaryTotalActive = retentionSummary.reduce((acc, r) => acc + r.active, 0);
+  const retSummaryTotalCx = retentionSummary.reduce(
+    (acc, row) => acc + row.totalCx,
+    0
+  );
+  const retSummaryTotalActive = retentionSummary.reduce(
+    (acc, row) => acc + row.active,
+    0
+  );
 
   // Totals for Retention Breakdown
   const bGrowing = retentionBreakdown.reduce((acc, r) => acc + r.growing, 0);
@@ -215,23 +248,81 @@ export default function KamReportsPage() {
                 <FaChartPie className="text-indigo-600" /> Account Handling Performance Report
               </h1>
               <p className="text-xs text-gray-500 font-medium">
-                Live Customer Status & Retention Team distribution analytics ({totalCount} total accounts)
+                Live Customer Status, Retention, Onboarding & Digital Team distribution analytics ({totalCount} total accounts)
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={openTeamManager}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-sm font-bold shadow-xs transition-all active:scale-95"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-sm font-bold shadow-xs transition-all active:scale-95 cursor-pointer"
             >
               <FaUserCog /> Onboarding & Digital Members Setup
             </button>
             <button
-              onClick={fetchReport}
+              onClick={() => fetchReport(selectedSource)}
               disabled={loading}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow transition-all active:scale-95 disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
             >
               <FaSync className={loading ? "animate-spin" : ""} /> Refresh Data
+            </button>
+          </div>
+        </div>
+
+        {/* Database Source Switcher: Master CRM Combined vs Single CRM */}
+        <div className="bg-white p-4 rounded-2xl shadow-xs border border-gray-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
+              <FaDatabase className="text-lg" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-gray-900 flex items-center gap-2">
+                CRM Database View
+                {selectedSource === "master" && (
+                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded-full uppercase tracking-wider">
+                    Combined Master View
+                  </span>
+                )}
+              </h3>
+              <p className="text-xs text-gray-500">
+                View individual CRM reports or combined Master CRM analytics from both databases safely (Read-Only).
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center bg-gray-100/80 p-1.5 rounded-xl border border-gray-200 text-xs font-bold w-full md:w-auto">
+            <button
+              type="button"
+              onClick={() => setSelectedSource("master")}
+              className={`flex-1 md:flex-none px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                selectedSource === "master"
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "text-gray-700 hover:text-indigo-600"
+              }`}
+            >
+              <FaLayerGroup /> Master CRM (Combined: {primaryCount + secondaryCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedSource("primary")}
+              className={`flex-1 md:flex-none px-4 py-2 rounded-lg transition-all cursor-pointer ${
+                selectedSource === "primary"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-700 hover:text-gray-900"
+              }`}
+            >
+              Current CRM ({primaryCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedSource("secondary")}
+              className={`flex-1 md:flex-none px-4 py-2 rounded-lg transition-all cursor-pointer ${
+                selectedSource === "secondary"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-700 hover:text-gray-900"
+              }`}
+            >
+              Secondary CRM ({secondaryCount})
             </button>
           </div>
         </div>
@@ -249,9 +340,11 @@ export default function KamReportsPage() {
                 <span className="text-[11px] font-black uppercase text-purple-900 tracking-wider">Growing....</span>
                 <div className="mt-2 flex items-baseline justify-between">
                   <span className="text-2xl font-black text-purple-950">
-                    {overallStatusTotals?.growing ?? bGrowing}
+                    {overallStatusTotals?.growing ?? 0}
                   </span>
-                  <span className="text-[10px] font-bold text-purple-700 bg-purple-200/60 px-2 py-0.5 rounded-full">Outlets</span>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 bg-purple-200/80 text-purple-800 rounded-md">
+                    Outlets
+                  </span>
                 </div>
               </div>
 
@@ -259,9 +352,11 @@ export default function KamReportsPage() {
                 <span className="text-[11px] font-black uppercase text-rose-900 tracking-wider">Need To Focus</span>
                 <div className="mt-2 flex items-baseline justify-between">
                   <span className="text-2xl font-black text-rose-950">
-                    {overallStatusTotals?.needToFocus ?? bNeedToFocus}
+                    {overallStatusTotals?.needToFocus ?? 0}
                   </span>
-                  <span className="text-[10px] font-bold text-rose-700 bg-rose-200/60 px-2 py-0.5 rounded-full">Priority</span>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 bg-rose-200/80 text-rose-800 rounded-md">
+                    Priority
+                  </span>
                 </div>
               </div>
 
@@ -269,9 +364,11 @@ export default function KamReportsPage() {
                 <span className="text-[11px] font-black uppercase text-amber-900 tracking-wider">Conflict For week</span>
                 <div className="mt-2 flex items-baseline justify-between">
                   <span className="text-2xl font-black text-amber-950">
-                    {overallStatusTotals?.conflictForWeek ?? bConflict}
+                    {overallStatusTotals?.conflictForWeek ?? 0}
                   </span>
-                  <span className="text-[10px] font-bold text-amber-700 bg-amber-200/60 px-2 py-0.5 rounded-full">Issue</span>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 bg-amber-200/80 text-amber-800 rounded-md">
+                    Issue
+                  </span>
                 </div>
               </div>
 
@@ -279,90 +376,94 @@ export default function KamReportsPage() {
                 <span className="text-[11px] font-black uppercase text-indigo-900 tracking-wider">Ask_For_Renewal</span>
                 <div className="mt-2 flex items-baseline justify-between">
                   <span className="text-2xl font-black text-indigo-950">
-                    {overallStatusTotals?.askForRenewal ?? bRenewal}
+                    {overallStatusTotals?.askForRenewal ?? 0}
                   </span>
-                  <span className="text-[10px] font-bold text-indigo-700 bg-indigo-200/60 px-2 py-0.5 rounded-full">Renewal</span>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 bg-indigo-200/80 text-indigo-800 rounded-md">
+                    Renewal
+                  </span>
                 </div>
               </div>
 
-              <div className="bg-gradient-to-br from-red-50 to-red-100/70 border border-red-200 rounded-2xl p-4 flex flex-col justify-between shadow-xs">
-                <span className="text-[11px] font-black uppercase text-red-900 tracking-wider">cretical_outlet</span>
+              <div className="bg-gradient-to-br from-pink-50 to-pink-100/70 border border-pink-200 rounded-2xl p-4 flex flex-col justify-between shadow-xs">
+                <span className="text-[11px] font-black uppercase text-pink-900 tracking-wider">cretical_outlet</span>
                 <div className="mt-2 flex items-baseline justify-between">
-                  <span className="text-2xl font-black text-red-950">
-                    {overallStatusTotals?.creticalOutlet ?? bCretical}
+                  <span className="text-2xl font-black text-pink-950">
+                    {overallStatusTotals?.creticalOutlet ?? 0}
                   </span>
-                  <span className="text-[10px] font-bold text-red-700 bg-red-200/60 px-2 py-0.5 rounded-full">Critical</span>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 bg-pink-200/80 text-pink-800 rounded-md">
+                    Critical
+                  </span>
                 </div>
               </div>
 
-              <div className="bg-gradient-to-br from-slate-50 to-slate-100/70 border border-slate-200 rounded-2xl p-4 flex flex-col justify-between shadow-xs">
-                <span className="text-[11px] font-black uppercase text-slate-800 tracking-wider">No response</span>
+              <div className="bg-gradient-to-br from-slate-50 to-slate-100/80 border border-slate-200 rounded-2xl p-4 flex flex-col justify-between shadow-xs">
+                <span className="text-[11px] font-black uppercase text-slate-800 tracking-wider">No Response</span>
                 <div className="mt-2 flex items-baseline justify-between">
                   <span className="text-2xl font-black text-slate-900">
-                    {overallStatusTotals?.customerNotResponse ?? bNoResponse}
+                    {overallStatusTotals?.customerNotResponse ?? 0}
                   </span>
-                  <span className="text-[10px] font-bold text-slate-600 bg-slate-200/60 px-2 py-0.5 rounded-full">Pending</span>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 bg-slate-200 text-slate-700 rounded-md">
+                    Pending
+                  </span>
                 </div>
               </div>
 
-              <div className="bg-gradient-to-br from-gray-100 to-gray-200/70 border border-gray-300 rounded-2xl p-4 flex flex-col justify-between shadow-xs">
-                <span className="text-[11px] font-black uppercase text-gray-800 tracking-wider">Currently off</span>
+              <div className="bg-gradient-to-br from-slate-100 to-gray-200/70 border border-gray-300 rounded-2xl p-4 flex flex-col justify-between shadow-xs">
+                <span className="text-[11px] font-black uppercase text-gray-800 tracking-wider">Currently Off</span>
                 <div className="mt-2 flex items-baseline justify-between">
                   <span className="text-2xl font-black text-gray-900">
-                    {overallStatusTotals?.outletCurrentlyOff ?? bCurrentlyOff}
+                    {overallStatusTotals?.outletCurrentlyOff ?? 0}
                   </span>
-                  <span className="text-[10px] font-bold text-gray-600 bg-gray-300/60 px-2 py-0.5 rounded-full">Off</span>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 bg-gray-300 text-gray-800 rounded-md">
+                    Off
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Top Row: Two Side-by-Side Tables with Tabs */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              {/* Table 1: Team Distribution (Onboarding & Digital) OR Legacy Assign_2.0 */}
-              <div className="lg:col-span-7 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
-                {/* Tabs bar */}
-                <div className="px-5 py-3.5 bg-slate-50 border-b border-gray-200 flex items-center justify-between">
+            {/* Middle Section: 2 Columns */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+              {/* Left Column: Team View (Onboarding & Digital) OR Assign_2.0 Tab */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="p-4 bg-gray-50/80 border-b border-gray-200 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setActiveTab("teams")}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
                         activeTab === "teams"
                           ? "bg-purple-600 text-white shadow-xs"
-                          : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+                          : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
                       }`}
                     >
-                      Onboarding & Digital Teams
+                      Team View (Onboarding & Digital)
                     </button>
                     <button
                       onClick={() => setActiveTab("assign2")}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
                         activeTab === "assign2"
-                          ? "bg-[#8b79b6] text-white shadow-xs"
-                          : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+                          ? "bg-purple-600 text-white shadow-xs"
+                          : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
                       }`}
                     >
                       Assign_2.0 View
                     </button>
                   </div>
-                  <button
-                    onClick={openTeamManager}
-                    className="text-xs text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1.5"
-                  >
-                    <FaPlus size={10} /> Edit / Add Members
-                  </button>
+                  <span className="text-xs text-gray-400 font-semibold">
+                    {activeTab === "teams" ? "Team Performance" : "Individual Assigners"}
+                  </span>
                 </div>
 
-                <div className="overflow-x-auto flex-1">
+                <div className="overflow-x-auto">
                   {activeTab === "teams" ? (
                     <table className="w-full text-sm text-center border-collapse">
                       <thead>
-                        <tr className="bg-gradient-to-r from-purple-700 to-indigo-700 text-white font-bold text-xs">
-                          <th className="px-4 py-3 text-left border-r border-purple-500/40">Team Name</th>
-                          <th className="px-4 py-3 text-left border-r border-purple-500/40">TL Name</th>
-                          <th className="px-4 py-3 text-left border-r border-purple-500/40">Member Name</th>
-                          <th className="px-3 py-3 border-r border-purple-500/40">CRM Dept</th>
-                          <th className="px-3 py-3 border-r border-purple-500/40">Total Cx</th>
-                          <th className="px-3 py-3 border-r border-purple-500/40">Active</th>
+                        <tr className="bg-[#6366f1] text-white font-bold text-xs uppercase tracking-wider">
+                          <th className="px-4 py-3 text-left border-r border-indigo-400">Team Name</th>
+                          <th className="px-4 py-3 text-left border-r border-indigo-400">TL Name</th>
+                          <th className="px-4 py-3 text-left border-r border-indigo-400">Member</th>
+                          <th className="px-3 py-3 border-r border-indigo-400">CRM Role</th>
+                          <th className="px-3 py-3 border-r border-indigo-400">Total Cx</th>
+                          <th className="px-3 py-3 border-r border-indigo-400">Active</th>
                           <th className="px-3 py-3">Renewal</th>
                         </tr>
                       </thead>
@@ -370,13 +471,18 @@ export default function KamReportsPage() {
                         {teamGroups.map((group, gIdx) => (
                           <React.Fragment key={gIdx}>
                             {group.members.map((member, mIdx) => (
-                              <tr key={`${gIdx}-${mIdx}`} className="hover:bg-purple-50/30 transition-colors">
+                              <tr
+                                key={mIdx}
+                                className="hover:bg-indigo-50/30 transition-colors"
+                              >
                                 {mIdx === 0 && (
                                   <td
                                     rowSpan={group.members.length}
-                                    className="px-4 py-2.5 text-left font-black text-purple-950 bg-purple-50/50 border-r border-gray-200 align-top"
+                                    className="px-4 py-2.5 text-left font-black text-gray-900 bg-gray-50/50 border-r border-gray-200 align-top"
                                   >
-                                    <div className="font-extrabold text-sm">{group.teamName}</div>
+                                    <span className="inline-block px-2.5 py-1 bg-purple-100 text-purple-900 rounded-lg text-xs font-black">
+                                      {group.teamName}
+                                    </span>
                                     <div className="text-[10px] text-purple-600 font-bold mt-1 uppercase tracking-wider">
                                       Total Cx: {group.totalCustomer}
                                     </div>
@@ -452,14 +558,14 @@ export default function KamReportsPage() {
                       </thead>
                       <tbody className="divide-y divide-gray-200 text-gray-800">
                         {assign2Data.map((row, idx) => (
-                          <tr key={idx} className="hover:bg-gray-50/80 transition-colors">
-                            <td className="px-4 py-2.5 text-left font-semibold text-gray-900 border-r border-gray-200">
+                          <tr key={idx} className="hover:bg-purple-50/30 transition-colors">
+                            <td className="px-4 py-2.5 text-left font-bold text-gray-900 border-r border-gray-200">
                               {row.name}
                             </td>
                             <td className="px-4 py-2.5 font-bold border-r border-gray-200">
                               {row.totalCustomer}
                             </td>
-                            <td className="px-4 py-2.5 font-bold text-emerald-700 bg-emerald-50/50 border-r border-gray-200">
+                            <td className="px-4 py-2.5 font-bold text-emerald-700 bg-emerald-50/20 border-r border-gray-200">
                               {row.activeCustomer}
                             </td>
                             <td className="px-4 py-2.5 font-semibold text-blue-700">
@@ -469,11 +575,11 @@ export default function KamReportsPage() {
                         ))}
                       </tbody>
                       <tfoot>
-                        <tr className="bg-gray-100 font-extrabold text-gray-900 border-t-2 border-gray-300">
+                        <tr className="bg-purple-100/60 font-extrabold text-purple-950 border-t-2 border-purple-200">
                           <td className="px-4 py-3 text-left">Total</td>
-                          <td className="px-4 py-3 border-r border-gray-200">{assign2TotalCustomers}</td>
-                          <td className="px-4 py-3 text-emerald-800 border-r border-gray-200">{assign2TotalActive}</td>
-                          <td className="px-4 py-3 text-blue-800">{assign2TotalWaiting}</td>
+                          <td className="px-4 py-3 border-r border-purple-200">{assign2TotalCustomers}</td>
+                          <td className="px-4 py-3 text-emerald-800 border-r border-purple-200">{assign2TotalActive}</td>
+                          <td className="px-4 py-3 text-blue-800">{assign2TotalRenewal}</td>
                         </tr>
                       </tfoot>
                     </table>
@@ -481,12 +587,12 @@ export default function KamReportsPage() {
                 </div>
               </div>
 
-              {/* Table 2: Retention Team Summary */}
-              <div className="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+              {/* Right Column: Retention Team Summary */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm text-center border-collapse">
                     <thead>
-                      <tr className="bg-[#fed7aa] text-amber-950 font-bold text-xs">
+                      <tr className="bg-[#fcd34d] text-amber-950 font-bold text-xs">
                         <th className="px-4 py-3 text-left border-r border-amber-300">Retention Team</th>
                         <th className="px-4 py-3 border-r border-amber-300">Total Cx</th>
                         <th className="px-4 py-3">Active</th>
@@ -494,8 +600,8 @@ export default function KamReportsPage() {
                     </thead>
                     <tbody className="divide-y divide-gray-200 text-gray-800">
                       {retentionSummary.map((row, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50/80 transition-colors">
-                          <td className="px-4 py-2.5 text-left font-semibold text-gray-900 bg-emerald-50/40 border-r border-gray-200">
+                        <tr key={idx} className="hover:bg-amber-50/30 transition-colors">
+                          <td className="px-4 py-2.5 text-left font-bold text-gray-900 border-r border-gray-200">
                             {row.name}
                           </td>
                           <td className="px-4 py-2.5 font-bold border-r border-gray-200">
@@ -526,14 +632,33 @@ export default function KamReportsPage() {
               </div>
             </div>
 
-            {/* Bottom Table: Retention Team Status Breakdown */}
+            {/* Bottom Table: Team Status Breakdown (Retention + Onboarding + Digital) */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="px-6 py-4 bg-gray-50/80 border-b border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-black text-gray-900 flex items-center gap-2">
+                    Team Status Breakdown (Retention, Onboarding & Digital)
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    Live outlet statuses mapped across Retention, Onboarding, and Digital department members.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 text-xs font-bold">
+                  <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px]">Retention</span>
+                  <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px]">Onboarding</span>
+                  <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 text-[10px]">Digital</span>
+                </div>
+              </div>
+
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-center border-collapse">
                   <thead>
                     <tr className="font-bold text-xs">
                       <th className="bg-[#bbf7d0] text-emerald-950 px-4 py-3 text-left border-r border-emerald-300">
-                        Retention Team
+                        Member Name
+                      </th>
+                      <th className="bg-[#dcfce7] text-emerald-950 px-3 py-3 border-r border-emerald-200">
+                        Team
                       </th>
                       <th className="bg-[#e9d5ff] text-purple-950 px-3 py-3 border-r border-purple-200">
                         Growing....
@@ -564,6 +689,17 @@ export default function KamReportsPage() {
                         <td className="px-4 py-2.5 text-left font-bold text-gray-900 border-r border-gray-200">
                           {row.name}
                         </td>
+                        <td className="px-3 py-2.5 font-bold text-xs border-r border-gray-200">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                            row.teamType === "Onboarding"
+                              ? "bg-amber-100 text-amber-800"
+                              : row.teamType === "Digital"
+                              ? "bg-indigo-100 text-indigo-800"
+                              : "bg-emerald-100 text-emerald-800"
+                          }`}>
+                            {row.teamType || "Retention"}
+                          </span>
+                        </td>
                         <td className="px-3 py-2.5 font-semibold border-r border-gray-200">{row.growing}</td>
                         <td className="px-3 py-2.5 font-semibold border-r border-gray-200">{row.needToFocus}</td>
                         <td className="px-3 py-2.5 font-semibold border-r border-gray-200">{row.conflictForWeek}</td>
@@ -575,7 +711,7 @@ export default function KamReportsPage() {
                     ))}
                     {retentionBreakdown.length === 0 && (
                       <tr>
-                        <td colSpan={8} className="px-4 py-6 text-gray-400 text-xs italic">
+                        <td colSpan={9} className="px-4 py-6 text-gray-400 text-xs italic">
                           No status breakdown data available.
                         </td>
                       </tr>
@@ -583,7 +719,7 @@ export default function KamReportsPage() {
                   </tbody>
                   <tfoot>
                     <tr className="bg-[#dbeafe] text-blue-950 font-extrabold border-t-2 border-blue-200">
-                      <td className="px-4 py-3 text-left">Total</td>
+                      <td colSpan={2} className="px-4 py-3 text-left">Total</td>
                       <td className="px-3 py-3 border-r border-blue-200">{bGrowing}</td>
                       <td className="px-3 py-3 border-r border-blue-200">{bNeedToFocus}</td>
                       <td className="px-3 py-3 border-r border-blue-200">{bConflict}</td>
@@ -600,47 +736,40 @@ export default function KamReportsPage() {
         )}
       </div>
 
-      {/* Modal: Manage Onboarding & Digital Members */}
+      {/* Modal: Setup Onboarding & Digital Teams */}
       {isTeamModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full border border-gray-200 overflow-hidden flex flex-col max-h-[90vh]">
-            {/* Modal Header */}
-            <div className="px-6 py-4 bg-gradient-to-r from-purple-700 to-indigo-700 text-white flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-black tracking-tight flex items-center gap-2">
-                  <FaUserCog /> Onboarding & Digital Team Setup
-                </h3>
-                <p className="text-xs text-purple-200 mt-0.5">
-                  Bando ko Onboarding aur Digital team me assign karein
-                </p>
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-gray-200 space-y-6 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-purple-50 text-purple-600 rounded-2xl">
+                  <FaUsers className="text-xl" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-gray-900">Configure Onboarding & Digital Teams</h3>
+                  <p className="text-xs text-gray-500">
+                    Add or remove members belonging to Onboarding or Digital to reflect them in the Performance Report.
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => setIsTeamModalOpen(false)}
-                className="p-2 hover:bg-white/10 rounded-full transition-colors text-white/80 hover:text-white"
+                className="p-2 text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-100 transition-colors"
               >
-                <FaTimes size={16} />
+                <FaTimes />
               </button>
             </div>
 
-            {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+            <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-1">
               {editableTeams.map((team, tIdx) => (
-                <div
-                  key={tIdx}
-                  className="bg-slate-50 p-4 rounded-2xl border border-gray-200 space-y-3"
-                >
+                <div key={tIdx} className="p-4 rounded-2xl border border-gray-200 bg-gray-50/50 space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-xs font-black uppercase tracking-wider text-purple-900 bg-purple-100 px-2.5 py-0.5 rounded-full">
+                      <span className="text-xs font-black uppercase text-purple-700 tracking-wider">
                         {team.teamName} Team
                       </span>
-                      <span className="text-xs font-bold text-gray-500 ml-2">
-                        TL: {team.tlName}
-                      </span>
+                      <p className="text-xs text-gray-500 font-medium">Team Leader: <strong className="text-gray-800">{team.tlName}</strong></p>
                     </div>
-                    <span className="text-xs font-bold text-gray-500">
-                      {team.members.length} Members
-                    </span>
                   </div>
 
                   {/* Member Tags */}
@@ -648,25 +777,22 @@ export default function KamReportsPage() {
                     {team.members.map((m, mIdx) => (
                       <span
                         key={mIdx}
-                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-800 shadow-2xs group"
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-800 shadow-xs"
                       >
                         {m}
                         <button
                           type="button"
-                          onClick={() => handleRemoveMemberFromTeam(tIdx, mIdx)}
-                          className="text-gray-400 hover:text-red-500 transition-colors p-0.5"
+                          onClick={() => handleRemoveMember(tIdx, m)}
+                          className="text-gray-400 hover:text-rose-500 transition-colors ml-0.5"
                           title="Remove member"
                         >
-                          <FaTimes size={10} />
+                          <FaTimes className="text-[10px]" />
                         </button>
                       </span>
                     ))}
-                    {team.members.length === 0 && (
-                      <span className="text-xs text-gray-400 italic">No members assigned.</span>
-                    )}
                   </div>
 
-                  {/* Add Member Dropdown & Input */}
+                  {/* Add Member Dropdown */}
                   <div className="flex items-center gap-2 pt-2">
                     <select
                       value={selectedUserToAdd[tIdx] || ""}
@@ -676,9 +802,9 @@ export default function KamReportsPage() {
                           [tIdx]: e.target.value,
                         }))
                       }
-                      className="flex-1 bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 outline-none focus:ring-2 focus:ring-purple-500"
+                      className="flex-1 text-xs px-3 py-2 rounded-xl border border-gray-200 bg-white font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
                     >
-                      <option value="">— Select Member from CRM —</option>
+                      <option value="">-- Select Member to Add --</option>
                       {allAvailableUsers
                         .filter((u) => !team.members.includes(u.name))
                         .map((u) => (
@@ -687,26 +813,23 @@ export default function KamReportsPage() {
                           </option>
                         ))}
                     </select>
-
                     <button
                       type="button"
                       onClick={() => handleAddMemberToTeam(tIdx)}
-                      disabled={!selectedUserToAdd[tIdx]}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold disabled:opacity-40 transition-colors shadow-2xs"
+                      className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-xs transition-colors"
                     >
-                      <FaPlus size={10} /> Add
+                      <FaPlus /> Add
                     </button>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* Modal Footer */}
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
               <button
                 type="button"
                 onClick={() => setIsTeamModalOpen(false)}
-                className="px-4 py-2 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-xl text-xs font-bold transition-colors"
+                className="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
               >
                 Cancel
               </button>
@@ -714,7 +837,7 @@ export default function KamReportsPage() {
                 type="button"
                 onClick={handleSaveTeams}
                 disabled={isSavingTeams}
-                className="inline-flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-md transition-all disabled:opacity-50"
+                className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow transition-all flex items-center gap-2 disabled:opacity-50"
               >
                 {isSavingTeams ? <FaSpinner className="animate-spin" /> : <FaCheck />}
                 Save Changes
@@ -726,4 +849,3 @@ export default function KamReportsPage() {
     </main>
   );
 }
-

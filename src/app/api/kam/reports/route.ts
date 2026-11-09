@@ -3,15 +3,32 @@ import { prisma } from "@/lib/prisma";
 import { auth, getUserDetails } from "@/lib/auth-utils";
 import { MongoClient } from "mongodb";
 
-let cachedClient: MongoClient | null = null;
-async function getMongoClient() {
-  if (cachedClient) return cachedClient;
+let cachedPrimaryClient: MongoClient | null = null;
+let cachedSecondaryClient: MongoClient | null = null;
+
+async function getPrimaryMongoClient() {
+  if (cachedPrimaryClient) return cachedPrimaryClient;
   const uri = process.env.DATABASE_URL;
   if (!uri) throw new Error("DATABASE_URL is not defined");
   const client = new MongoClient(uri);
   await client.connect();
-  cachedClient = client;
+  cachedPrimaryClient = client;
   return client;
+}
+
+async function getSecondaryMongoClient() {
+  if (cachedSecondaryClient) return cachedSecondaryClient;
+  const uri = process.env.SECONDARY_CRM_DATABASE_URL;
+  if (!uri) return null;
+  try {
+    const client = new MongoClient(uri);
+    await client.connect();
+    cachedSecondaryClient = client;
+    return client;
+  } catch (err) {
+    console.error("Failed to connect to SECONDARY_CRM_DATABASE_URL:", err);
+    return null;
+  }
 }
 
 const DEFAULT_KAM_TEAMS = [
@@ -57,32 +74,59 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
-    // Fetch all Account Handling tasks
-    const tasks = await prisma.task.findMany({
-      where: {
-        title: "📂 Account Handling",
-      },
-      select: {
-        id: true,
-        assignerName: true,
-        assigneeName: true,
-        customFields: true,
-      },
-    });
+    const { searchParams } = new URL(req.url);
+    const sourceParam = (searchParams.get("source") || "primary").toLowerCase(); // "primary" | "secondary" | "master"
 
-    // Fetch Retention team members
-    const retentionUsers = await prisma.user.findMany({
-      where: { currentDepartment: "Retention" },
-      select: { name: true, clerkId: true },
-    });
-    const retentionNames = new Set(
-      retentionUsers.map((u) => (u.name || "").trim().toLowerCase()).filter(Boolean)
-    );
+    // READ-ONLY: Fetch tasks from primary DB
+    let primaryTasks: any[] = [];
+    try {
+      const primaryClient = await getPrimaryMongoClient();
+      const primaryDb = primaryClient.db();
+      primaryTasks = await primaryDb
+        .collection("Task")
+        .find(
+          { title: "📂 Account Handling" },
+          { projection: { id: 1, _id: 1, assignerName: 1, assigneeName: 1, customFields: 1 } }
+        )
+        .toArray();
+    } catch (e) {
+      console.error("Error reading primary DB tasks:", e);
+    }
+
+    // READ-ONLY: Fetch tasks from secondary DB if available
+    let secondaryTasks: any[] = [];
+    const secondaryClient = await getSecondaryMongoClient();
+    if (secondaryClient) {
+      try {
+        const secondaryDb = secondaryClient.db("clickup_clone");
+        secondaryTasks = await secondaryDb
+          .collection("Task")
+          .find(
+            { title: "📂 Account Handling" },
+            { projection: { id: 1, _id: 1, assignerName: 1, assigneeName: 1, customFields: 1 } }
+          )
+          .toArray();
+      } catch (e) {
+        console.error("Error reading secondary DB tasks:", e);
+      }
+    }
+
+    // Select tasks based on chosen source
+    let tasksToProcess: any[] = [];
+    if (sourceParam === "secondary") {
+      tasksToProcess = secondaryTasks;
+    } else if (sourceParam === "master") {
+      // Combined tasks without modifying databases
+      tasksToProcess = [...primaryTasks, ...secondaryTasks];
+    } else {
+      // Default: primary
+      tasksToProcess = primaryTasks;
+    }
 
     // Fetch active team configurations from SystemSettings or default
     let kamTeams = DEFAULT_KAM_TEAMS;
     try {
-      const client = await getMongoClient();
+      const client = await getPrimaryMongoClient();
       const db = client.db();
       const settingsDoc = await db.collection("SystemSettings").findOne({ key: "kam_report_teams" });
       if (settingsDoc && Array.isArray(settingsDoc.teams) && settingsDoc.teams.length > 0) {
@@ -166,9 +210,11 @@ export async function GET(req: Request) {
     });
 
     // 3. Table 3: Member Status Breakdown
+    // We include Retention members, PLUS Onboarding and Digital members as requested by user
     const retentionBreakdownMap: Record<
       string,
       {
+        teamType: "Retention" | "Onboarding" | "Digital" | "Other";
         growing: number;
         needToFocus: number;
         conflictForWeek: number;
@@ -179,8 +225,10 @@ export async function GET(req: Request) {
       }
     > = {};
 
+    // Initialise Retention members
     canonicalMembers.forEach((name) => {
       retentionBreakdownMap[name] = {
+        teamType: "Retention",
         growing: 0,
         needToFocus: 0,
         conflictForWeek: 0,
@@ -191,12 +239,35 @@ export async function GET(req: Request) {
       };
     });
 
+    // Initialise members from configured teams (Onboarding, Digital)
+    kamTeams.forEach((team) => {
+      const type = team.teamName.toLowerCase().includes("onb")
+        ? "Onboarding"
+        : team.teamName.toLowerCase().includes("dig")
+        ? "Digital"
+        : "Other";
+      (team.members || []).forEach((memberName) => {
+        if (!retentionBreakdownMap[memberName]) {
+          retentionBreakdownMap[memberName] = {
+            teamType: type as any,
+            growing: 0,
+            needToFocus: 0,
+            conflictForWeek: 0,
+            askForRenewal: 0,
+            creticalOutlet: 0,
+            customerNotResponse: 0,
+            outletCurrentlyOff: 0,
+          };
+        }
+      });
+    });
+
     const now = new Date();
 
     function normalizeAssigner(t: any, cf: any): string {
       const raw = (t.assignerName || cf.assignerName || "").trim().toLowerCase();
       if (raw.includes("vivek")) return "Vivek";
-      if (raw.includes("shravan")) return "shravan mandal";
+      if (raw.includes("shravan") || raw.includes("sharvan")) return "shravan mandal";
       if (raw.includes("prince")) return "Prince Singh";
       if (raw.includes("priyanshu")) return "Priyanshu Kushwaha";
       if (raw.includes("yogesh")) return "Yogesh";
@@ -210,9 +281,30 @@ export async function GET(req: Request) {
       if (full.includes("himanshu")) return "Himanshu Sharma";
       if (full.includes("vishal")) return "Vishal Sood";
       if (full.includes("ansh")) return "Ansh Kushwaha";
-      if (full.includes("rishav")) return "Rishav kumar";
+      if (full.includes("rishav") || full.includes("rishab")) return "Rishav kumar";
       if (full.includes("chahat")) return "Chahat";
       return null;
+    }
+
+    // Helper to find matching breakdown members (Retention, Onboarding, Digital)
+    function findMatchingBreakdownMembers(t: any, cf: any): string[] {
+      const full = `${t.assigneeName || ""} ${cf.assigneeName || ""} ${t.assignerName || ""} ${cf.assignerName || ""} ${cf.retentionMember || ""}`.toLowerCase();
+      const matched: string[] = [];
+
+      Object.keys(retentionBreakdownMap).forEach((name) => {
+        const nLower = name.trim().toLowerCase();
+        let hit = false;
+        if (nLower === "sharvan" || nLower === "shravan") {
+          hit = full.includes("shravan") || full.includes("sharvan");
+        } else if (nLower === "rishab" || nLower === "rishav") {
+          hit = full.includes("rishab") || full.includes("rishav");
+        } else if (full.includes(nLower)) {
+          hit = true;
+        }
+        if (hit) matched.push(name);
+      });
+
+      return matched;
     }
 
     // Overall Status Totals for Cards
@@ -226,7 +318,7 @@ export async function GET(req: Request) {
       outletCurrentlyOff: 0,
     };
 
-    tasks.forEach((task) => {
+    tasksToProcess.forEach((task) => {
       const cf = (task.customFields as any) || {};
       const assigner = normalizeAssigner(task, cf);
 
@@ -286,14 +378,13 @@ export async function GET(req: Request) {
       if (isWaitingRenewal) assign2Map[assigner].waitingRenewal += 1;
 
       // Aggregate Team Groups (Onboarding, Digital, etc.)
-      const rawAssignerStr = (task.assignerName || cf.assignerName || "").trim().toLowerCase();
+      const rawAssignerStr = `${task.assignerName || ""} ${cf.assignerName || ""} ${task.assigneeName || ""} ${cf.assigneeName || ""}`.trim().toLowerCase();
       kamTeams.forEach((t) => {
         const group = teamGroupsMap[t.teamName];
         if (!group) return;
 
         (t.members || []).forEach((memberName: string) => {
           const mLower = memberName.trim().toLowerCase();
-          // Match logic for member
           let matched = false;
           if (mLower === "sharvan" || mLower === "shravan") {
             matched = rawAssignerStr.includes("shravan") || rawAssignerStr.includes("sharvan");
@@ -317,14 +408,19 @@ export async function GET(req: Request) {
         });
       });
 
-      // Team Member Detection:
+      // Team Member Detection for Retention Summary:
       const matchedMember = canonicalTeamMember(task, cf);
-
       if (matchedMember) {
         retentionSummaryMap[matchedMember].totalCx += 1;
         if (isActive) retentionSummaryMap[matchedMember].active += 1;
+      }
 
-        const b = retentionBreakdownMap[matchedMember];
+      // Populate Status Breakdown for Retention, Onboarding & Digital members:
+      const matchedBreakdownMembers = findMatchingBreakdownMembers(task, cf);
+      matchedBreakdownMembers.forEach((name) => {
+        const b = retentionBreakdownMap[name];
+        if (!b) return;
+
         if (accountStatus.includes("growing") && !accountStatus.includes("not")) {
           b.growing += 1;
         } else if (accountStatus.includes("need to focus")) {
@@ -340,10 +436,12 @@ export async function GET(req: Request) {
         } else if (accountStatus.includes("currently off") || accountStatus.includes("off")) {
           b.outletCurrentlyOff += 1;
         }
-      }
+      });
     });
 
     return NextResponse.json({
+      activeSource: sourceParam,
+      hasSecondaryDb: !!process.env.SECONDARY_CRM_DATABASE_URL,
       teamGroups: Object.values(teamGroupsMap),
       assign2Data: Object.entries(assign2Map).map(([name, data]) => ({
         name,
@@ -362,7 +460,9 @@ export async function GET(req: Request) {
         })
       ),
       overallStatusTotals,
-      totalTasksCount: tasks.length,
+      totalTasksCount: tasksToProcess.length,
+      primaryCount: primaryTasks.length,
+      secondaryCount: secondaryTasks.length,
     });
   } catch (error) {
     console.error("Failed to generate KAM report:", error);
@@ -372,4 +472,3 @@ export async function GET(req: Request) {
     );
   }
 }
-
