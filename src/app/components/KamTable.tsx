@@ -172,6 +172,10 @@ export default function KamTableView() {
   const [isAssigneeDropdownOpen, setIsAssigneeDropdownOpen] = useState(false);
   const [selectedAssigners, setSelectedAssigners] = useState<string[]>([]);
   const [isAssignerDropdownOpen, setIsAssignerDropdownOpen] = useState(false);
+  const [globalFilterOptions, setGlobalFilterOptions] = useState<{ assignees: string[]; assigners: string[] }>({
+    assignees: [],
+    assigners: []
+  });
   const [accountStatusFilter, setAccountStatusFilter] = useState<string | null>(null);
   const [customerStatusFilter, setCustomerStatusFilter] = useState<string | null>(null);
   const [followUpDateFilter, setFollowUpDateFilter] = useState<string | null>(null);
@@ -366,6 +370,9 @@ export default function KamTableView() {
       if (selectedAssigners.length > 0) {
         params.set("assigners", selectedAssigners.join(","));
       }
+      if (selectedAssignees.length > 0) {
+        params.set("assignees", selectedAssignees.join(","));
+      }
 
       const res = await fetch(`/api/kam?${params.toString()}`);
       const data = await res.json();
@@ -373,6 +380,12 @@ export default function KamTableView() {
       if (data.tasks) {
         setAllRawTasks(data.tasks);
         setTotalItems(data.pagination?.total || data.tasks.length);
+        if (data.filterOptions) {
+          setGlobalFilterOptions({
+            assignees: data.filterOptions.assignees || [],
+            assigners: data.filterOptions.assigners || []
+          });
+        }
       }
     } catch (err) {
       console.error("Failed to fetch Kam tasks:", err);
@@ -381,7 +394,7 @@ export default function KamTableView() {
       setLoading(false);
       setIsFirstLoad(false);
     }
-  }, [user, isLoaded, page, limit, debouncedQuery, statusFilter, followUpDateFilter, lastCheckDateFilter, accountStatusFilter, customerStatusFilter, selectedAssigners, sortConfig]);
+  }, [user, isLoaded, page, limit, debouncedQuery, statusFilter, followUpDateFilter, lastCheckDateFilter, accountStatusFilter, customerStatusFilter, selectedAssigners, selectedAssignees, sortConfig]);
 
   useEffect(() => {
     fetchAllTasks();
@@ -1156,6 +1169,9 @@ export default function KamTableView() {
   };
 
   const uniqueAssigneeNames = useMemo(() => {
+    if (globalFilterOptions.assignees && globalFilterOptions.assignees.length > 0) {
+      return globalFilterOptions.assignees;
+    }
     const names = new Set<string>();
     allRawTasks.forEach(task => {
       task.assignees?.forEach(assignee => {
@@ -1164,22 +1180,28 @@ export default function KamTableView() {
         }
       });
       if (task.assigneeName) {
-        names.add(task.assigneeName);
+        task.assigneeName.split(",").forEach(n => {
+          const tr = n.trim();
+          if (tr && tr !== "—" && tr !== "-") names.add(tr);
+        });
       }
     });
     return Array.from(names).sort();
-  }, [allRawTasks]);
+  }, [allRawTasks, globalFilterOptions.assignees]);
 
   const uniqueAssignerNames = useMemo(() => {
+    if (globalFilterOptions.assigners && globalFilterOptions.assigners.length > 0) {
+      return globalFilterOptions.assigners;
+    }
     const names = new Set<string>();
     allRawTasks.forEach(task => {
       const a = (task.assignerName || (task.customFields as any)?.assignerName || "").trim();
-      if (a) {
+      if (a && a !== "—" && a !== "-") {
         names.add(a);
       }
     });
     return Array.from(names).sort();
-  }, [allRawTasks]);
+  }, [allRawTasks, globalFilterOptions.assigners]);
 
   const getCategoryDropdownDisplayText = () => {
     if (selectedCategories.length === 0) {

@@ -2,6 +2,34 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client"; // Import Prisma for JsonValue type
+import { MongoClient } from "mongodb";
+
+let cachedPrimaryClient: MongoClient | null = null;
+let cachedSecondaryClient: MongoClient | null = null;
+
+async function getPrimaryMongoClient() {
+  if (cachedPrimaryClient) return cachedPrimaryClient;
+  const uri = process.env.DATABASE_URL;
+  if (!uri) throw new Error("DATABASE_URL is not defined");
+  const client = new MongoClient(uri);
+  await client.connect();
+  cachedPrimaryClient = client;
+  return client;
+}
+
+async function getSecondaryMongoClient() {
+  if (cachedSecondaryClient) return cachedSecondaryClient;
+  const uri = process.env.SECONDARY_CRM_DATABASE_URL;
+  if (!uri) return null;
+  try {
+    const client = new MongoClient(uri);
+    await client.connect();
+    cachedSecondaryClient = client;
+    return client;
+  } catch (err) {
+    return null;
+  }
+}
 
 // 1. Define the type for the customFields object
 // Removed '[key: string]: any;' to eliminate the 'any' type error.
@@ -283,6 +311,19 @@ export async function GET(req: Request) {
         }
       }
 
+      if (assigneesParam) {
+        const assigneeList = assigneesParam.split(",").map(a => a.trim()).filter(Boolean);
+        if (assigneeList.length > 0) {
+          rawFilter.$and = rawFilter.$and || [];
+          rawFilter.$and.push({
+            $or: [
+              { assigneeName: { $in: assigneeList } },
+              { "customFields.assigneeName": { $in: assigneeList } }
+            ]
+          });
+        }
+      }
+
       // Execute findRaw with count
       const allMatchingRaw: any = await prisma.task.findRaw({
         filter: rawFilter,
@@ -445,8 +486,46 @@ export async function GET(req: Request) {
       };
     });
 
+    // Fetch filter options (all distinct assignees and assigners across tasks)
+    let filterOptions = { assignees: [] as string[], assigners: [] as string[] };
+    try {
+      const pClient = await getPrimaryMongoClient();
+      const pDb = pClient.db();
+      const sClient = await getSecondaryMongoClient();
+      const sDb = sClient ? sClient.db("clickup_clone") : null;
+
+      const [pTasks, sTasks] = await Promise.all([
+        pDb.collection("Task").find({ title: "📂 Account Handling" }, { projection: { assigneeName: 1, assignerName: 1, "customFields.assignerName": 1 } }).toArray(),
+        sDb ? sDb.collection("Task").find({ title: "📂 Account Handling" }, { projection: { assigneeName: 1, assignerName: 1, "customFields.assignerName": 1 } }).toArray() : []
+      ]);
+
+      const optAssignees = new Set<string>();
+      const optAssigners = new Set<string>();
+
+      [...pTasks, ...sTasks].forEach(t => {
+        if (t.assigneeName) {
+          t.assigneeName.split(",").forEach((n: string) => {
+            const tr = n.trim();
+            if (tr && tr !== "—" && tr !== "-") optAssignees.add(tr);
+          });
+        }
+        const a1 = (t.assignerName || "").trim();
+        if (a1 && a1 !== "—" && a1 !== "-") optAssigners.add(a1);
+        const a2 = (t.customFields?.assignerName || "").trim();
+        if (a2 && a2 !== "—" && a2 !== "-") optAssigners.add(a2);
+      });
+
+      filterOptions = {
+        assignees: Array.from(optAssignees).sort(),
+        assigners: Array.from(optAssigners).sort(),
+      };
+    } catch (optErr) {
+      console.warn("Could not load full filterOptions:", optErr);
+    }
+
     return NextResponse.json({
       tasks: enrichedTasks,
+      filterOptions,
       pagination: {
         total: totalCount,
         page,
