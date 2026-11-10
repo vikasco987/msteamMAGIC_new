@@ -6,6 +6,9 @@ import { MongoClient } from "mongodb";
 
 let cachedPrimaryClient: MongoClient | null = null;
 let cachedSecondaryClient: MongoClient | null = null;
+let cachedFilterOptions: { assignees: string[]; assigners: string[] } | null = null;
+let lastFilterOptionsTime = 0;
+const FILTER_OPTIONS_CACHE_TTL = 60 * 1000; // 60 seconds TTL cache
 
 async function getPrimaryMongoClient() {
   if (cachedPrimaryClient) return cachedPrimaryClient;
@@ -302,15 +305,6 @@ export async function GET(req: Request) {
       if (assignersParam) {
         const assignerList = assignersParam.split(",").map(a => a.trim()).filter(Boolean);
         if (assignerList.length > 0) {
-          // Resolve matched user clerkIds
-          const allDbUsers = await prisma.user.findMany({ select: { clerkId: true, name: true } });
-          const matchedClerkIds = allDbUsers
-            .filter(u => assignerList.some(n => 
-              u.name.trim().toLowerCase() === n.trim().toLowerCase() ||
-              u.name.trim().toLowerCase().startsWith(n.trim().toLowerCase() + " ")
-            ))
-            .map(u => u.clerkId);
-
           const assignerOrConditions: any[] = [
             { assignerName: { $in: assignerList } },
             { "customFields.assignerName": { $in: assignerList } }
@@ -319,11 +313,6 @@ export async function GET(req: Request) {
           for (const n of assignerList) {
             assignerOrConditions.push({ assignerName: { $regex: n, $options: "i" } });
             assignerOrConditions.push({ "customFields.assignerName": { $regex: n, $options: "i" } });
-          }
-
-          if (matchedClerkIds.length > 0) {
-            assignerOrConditions.push({ createdByClerkId: { $in: matchedClerkIds } });
-            assignerOrConditions.push({ assignerId: { $in: matchedClerkIds } });
           }
 
           rawFilter.$and = rawFilter.$and || [];
@@ -532,36 +521,71 @@ export async function GET(req: Request) {
     // Fetch filter options (all distinct assignees and assigners across tasks)
     let filterOptions = { assignees: [] as string[], assigners: [] as string[] };
     try {
-      const pClient = await getPrimaryMongoClient();
-      const pDb = pClient.db();
-      const sClient = await getSecondaryMongoClient();
-      const sDb = sClient ? sClient.db("clickup_clone") : null;
+      const nowTs = Date.now();
+      if (cachedFilterOptions && (nowTs - lastFilterOptionsTime < FILTER_OPTIONS_CACHE_TTL)) {
+        filterOptions = cachedFilterOptions;
+      } else {
+        const pClient = await getPrimaryMongoClient();
+        const pDb = pClient.db();
+        const sClient = await getSecondaryMongoClient();
+        const sDb = sClient ? sClient.db("clickup_clone") : null;
 
-      const [pTasks, sTasks] = await Promise.all([
-        pDb.collection("Task").find({ title: "📂 Account Handling" }, { projection: { assigneeName: 1, assignerName: 1, "customFields.assignerName": 1 } }).toArray(),
-        sDb ? sDb.collection("Task").find({ title: "📂 Account Handling" }, { projection: { assigneeName: 1, assignerName: 1, "customFields.assignerName": 1 } }).toArray() : []
-      ]);
+        const [pTasks, sTasks] = await Promise.all([
+          pDb.collection("Task").find({ title: "📂 Account Handling" }, { projection: { assigneeName: 1, assignerName: 1, "customFields.assignerName": 1 } }).toArray(),
+          sDb ? sDb.collection("Task").find({ title: "📂 Account Handling" }, { projection: { assigneeName: 1, assignerName: 1, "customFields.assignerName": 1 } }).toArray() : []
+        ]);
 
-      const optAssignees = new Set<string>();
-      const optAssigners = new Set<string>();
+        const optAssignees = new Set<string>();
+        const optAssigners = new Set<string>();
 
-      [...pTasks, ...sTasks].forEach(t => {
-        if (t.assigneeName) {
-          t.assigneeName.split(",").forEach((n: string) => {
-            const tr = n.trim();
-            if (tr && tr !== "—" && tr !== "-") optAssignees.add(tr);
-          });
+        // Load allowed members from kam_report_teams configuration if exists
+        let allowedMembersSet: Set<string> | null = null;
+        try {
+          const teamDoc = await pDb.collection("SystemSettings").findOne({ key: "kam_report_teams" });
+          if (teamDoc && Array.isArray(teamDoc.teams) && teamDoc.teams.length > 0) {
+            allowedMembersSet = new Set<string>();
+            teamDoc.teams.forEach((tm: any) => {
+              (tm.members || []).forEach((m: string) => {
+                if (m && m.trim()) allowedMembersSet!.add(m.trim().toLowerCase());
+              });
+            });
+          }
+        } catch (err) {
+          console.warn("Could not check kam_report_teams in filter options:", err);
         }
-        const a1 = (t.assignerName || "").trim();
-        if (a1 && a1 !== "—" && a1 !== "-") optAssigners.add(a1);
-        const a2 = (t.customFields?.assignerName || "").trim();
-        if (a2 && a2 !== "—" && a2 !== "-") optAssigners.add(a2);
-      });
 
-      filterOptions = {
-        assignees: Array.from(optAssignees).sort(),
-        assigners: Array.from(optAssigners).sort(),
-      };
+        [...pTasks, ...sTasks].forEach(t => {
+          if (t.assigneeName) {
+            t.assigneeName.split(",").forEach((n: string) => {
+              const tr = n.trim();
+              if (tr && tr !== "—" && tr !== "-") {
+                if (!allowedMembersSet || allowedMembersSet.has(tr.toLowerCase())) {
+                  optAssignees.add(tr);
+                }
+              }
+            });
+          }
+          const a1 = (t.assignerName || "").trim();
+          if (a1 && a1 !== "—" && a1 !== "-") {
+            if (!allowedMembersSet || allowedMembersSet.has(a1.toLowerCase())) {
+              optAssigners.add(a1);
+            }
+          }
+          const a2 = (t.customFields?.assignerName || "").trim();
+          if (a2 && a2 !== "—" && a2 !== "-") {
+            if (!allowedMembersSet || allowedMembersSet.has(a2.toLowerCase())) {
+              optAssigners.add(a2);
+            }
+          }
+        });
+
+        filterOptions = {
+          assignees: Array.from(optAssignees).sort(),
+          assigners: Array.from(optAssigners).sort(),
+        };
+        cachedFilterOptions = filterOptions;
+        lastFilterOptionsTime = nowTs;
+      }
     } catch (optErr) {
       console.warn("Could not load full filterOptions:", optErr);
     }

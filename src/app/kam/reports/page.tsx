@@ -257,7 +257,7 @@ export default function KamReportsPage() {
               onClick={openTeamManager}
               className="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-sm font-bold shadow-xs transition-all active:scale-95 cursor-pointer"
             >
-              <FaUserCog /> Onboarding & Digital Members Setup
+              <FaUserCog /> Team Members Setup (Retention, Onboarding, Digital)
             </button>
             <button
               onClick={() => fetchReport(selectedSource)}
@@ -746,9 +746,9 @@ export default function KamReportsPage() {
                   <FaUsers className="text-xl" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-gray-900">Configure Onboarding & Digital Teams</h3>
+                  <h3 className="text-lg font-black text-gray-900">Configure Team Members</h3>
                   <p className="text-xs text-gray-500">
-                    Add or remove members belonging to Onboarding or Digital to reflect them in the Performance Report.
+                    Add or remove members belonging to Retention, Onboarding, or Digital to reflect them in the Performance Report and Filters.
                   </p>
                 </div>
               </div>

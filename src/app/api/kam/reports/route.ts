@@ -33,6 +33,11 @@ async function getSecondaryMongoClient() {
 
 const DEFAULT_KAM_TEAMS = [
   {
+    teamName: "Retention",
+    tlName: "Retention Lead",
+    members: ["Himanshu Sharma", "Vishal Sood", "Ansh Kushwaha", "Rishav kumar", "Chahat"],
+  },
+  {
     teamName: "Onboarding",
     tlName: "Himanshu Sharma",
     members: ["Mahek", "Preeti", "Sakshi", "Akansh", "Rishab"],
@@ -191,8 +196,11 @@ export async function GET(req: Request) {
       assign2Map[name] = { totalCustomer: 0, activeCustomer: 0, waitingRenewal: 0 };
     });
 
-    // 2. Table 2: Team Members Summary (Himanshu Sharma, Vishal Sood, Ansh Kushwaha, Rishav kumar, Chahat)
-    const canonicalMembers = [
+    // 2. Table 2: Team Members Summary (Dynamically sourced from configured Retention team)
+    const retentionTeamConfig = kamTeams.find(
+      (t) => t.teamName.toLowerCase().includes("retention")
+    );
+    const configuredRetentionMembers = retentionTeamConfig?.members || [
       "Himanshu Sharma",
       "Vishal Sood",
       "Ansh Kushwaha",
@@ -205,12 +213,12 @@ export async function GET(req: Request) {
       { totalCx: number; active: number }
     > = {};
 
-    canonicalMembers.forEach((name) => {
+    configuredRetentionMembers.forEach((name) => {
       retentionSummaryMap[name] = { totalCx: 0, active: 0 };
     });
 
     // 3. Table 3: Member Status Breakdown
-    // We include Retention members, PLUS Onboarding and Digital members as requested by user
+    // We include Retention members, PLUS Onboarding and Digital members as configured by user
     const retentionBreakdownMap: Record<
       string,
       {
@@ -225,27 +233,16 @@ export async function GET(req: Request) {
       }
     > = {};
 
-    // Initialise Retention members
-    canonicalMembers.forEach((name) => {
-      retentionBreakdownMap[name] = {
-        teamType: "Retention",
-        growing: 0,
-        needToFocus: 0,
-        conflictForWeek: 0,
-        askForRenewal: 0,
-        creticalOutlet: 0,
-        customerNotResponse: 0,
-        outletCurrentlyOff: 0,
-      };
-    });
-
-    // Initialise members from configured teams (Onboarding, Digital)
+    // Initialise all members strictly from kamTeams configuration
     kamTeams.forEach((team) => {
-      const type = team.teamName.toLowerCase().includes("onb")
+      const type = team.teamName.toLowerCase().includes("ret")
+        ? "Retention"
+        : team.teamName.toLowerCase().includes("onb")
         ? "Onboarding"
         : team.teamName.toLowerCase().includes("dig")
         ? "Digital"
         : "Other";
+
       (team.members || []).forEach((memberName) => {
         if (!retentionBreakdownMap[memberName]) {
           retentionBreakdownMap[memberName] = {
@@ -278,11 +275,10 @@ export async function GET(req: Request) {
 
     function canonicalTeamMember(t: any, cf: any): string | null {
       const full = `${t.assigneeName || ""} ${cf.assigneeName || ""} ${t.assignerName || ""} ${cf.assignerName || ""} ${cf.retentionMember || ""}`.toLowerCase();
-      if (full.includes("himanshu")) return "Himanshu Sharma";
-      if (full.includes("vishal")) return "Vishal Sood";
-      if (full.includes("ansh")) return "Ansh Kushwaha";
-      if (full.includes("rishav") || full.includes("rishab")) return "Rishav kumar";
-      if (full.includes("chahat")) return "Chahat";
+      for (const m of configuredRetentionMembers) {
+        const mLower = m.trim().toLowerCase();
+        if (full.includes(mLower)) return m;
+      }
       return null;
     }
 

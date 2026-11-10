@@ -17,6 +17,11 @@ async function getMongoClient() {
 
 export const DEFAULT_KAM_TEAMS = [
   {
+    teamName: "Retention",
+    tlName: "Retention Lead",
+    members: ["Himanshu Sharma", "Vishal Sood", "Ansh Kushwaha", "Rishav kumar", "Chahat"],
+  },
+  {
     teamName: "Onboarding",
     tlName: "Himanshu Sharma",
     members: ["Mahek", "Preeti", "Sakshi", "Akansh", "Rishab"],
