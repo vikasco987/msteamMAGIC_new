@@ -358,19 +358,11 @@ export async function GET(req: Request) {
       let isActive = false;
       let isWaitingRenewal = false;
 
+      // 100% Match with Table Filter: Customer status strictly determines Active/Renewal
       if (customerStatus === "active") {
         isActive = true;
       } else if (customerStatus.includes("renewal") || customerStatus.includes("waiting")) {
         isWaitingRenewal = true;
-      } else if (isValidEnd) {
-        if (end >= now) {
-          isActive = true;
-        } else {
-          const diffDays = Math.round((now.getTime() - end.getTime()) / (1000 * 60 * 60 * 24));
-          if (diffDays <= 30) {
-            isWaitingRenewal = true;
-          }
-        }
       }
 
       // Aggregate Table 1: Assign_2.0
