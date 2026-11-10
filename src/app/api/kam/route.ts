@@ -141,7 +141,8 @@ export async function GET(req: Request) {
       lastCheckDateFilter ||
       accountStatusFilter ||
       customerStatusFilter ||
-      assignersParam
+      assignersParam ||
+      assigneesParam
     );
 
     let tasks: any[] = [];
@@ -301,12 +302,33 @@ export async function GET(req: Request) {
       if (assignersParam) {
         const assignerList = assignersParam.split(",").map(a => a.trim()).filter(Boolean);
         if (assignerList.length > 0) {
+          // Resolve matched user clerkIds
+          const allDbUsers = await prisma.user.findMany({ select: { clerkId: true, name: true } });
+          const matchedClerkIds = allDbUsers
+            .filter(u => assignerList.some(n => 
+              u.name.trim().toLowerCase() === n.trim().toLowerCase() ||
+              u.name.trim().toLowerCase().startsWith(n.trim().toLowerCase() + " ")
+            ))
+            .map(u => u.clerkId);
+
+          const assignerOrConditions: any[] = [
+            { assignerName: { $in: assignerList } },
+            { "customFields.assignerName": { $in: assignerList } }
+          ];
+
+          for (const n of assignerList) {
+            assignerOrConditions.push({ assignerName: { $regex: n, $options: "i" } });
+            assignerOrConditions.push({ "customFields.assignerName": { $regex: n, $options: "i" } });
+          }
+
+          if (matchedClerkIds.length > 0) {
+            assignerOrConditions.push({ createdByClerkId: { $in: matchedClerkIds } });
+            assignerOrConditions.push({ assignerId: { $in: matchedClerkIds } });
+          }
+
           rawFilter.$and = rawFilter.$and || [];
           rawFilter.$and.push({
-            $or: [
-              { assignerName: { $in: assignerList } },
-              { "customFields.assignerName": { $in: assignerList } }
-            ]
+            $or: assignerOrConditions
           });
         }
       }
@@ -314,12 +336,33 @@ export async function GET(req: Request) {
       if (assigneesParam) {
         const assigneeList = assigneesParam.split(",").map(a => a.trim()).filter(Boolean);
         if (assigneeList.length > 0) {
+          // Resolve matched user clerkIds
+          const allDbUsers = await prisma.user.findMany({ select: { clerkId: true, name: true } });
+          const matchedClerkIds = allDbUsers
+            .filter(u => assigneeList.some(n => 
+              u.name.trim().toLowerCase() === n.trim().toLowerCase() ||
+              u.name.trim().toLowerCase().startsWith(n.trim().toLowerCase() + " ")
+            ))
+            .map(u => u.clerkId);
+
+          const assigneeOrConditions: any[] = [
+            { assigneeName: { $in: assigneeList } },
+            { "customFields.assigneeName": { $in: assigneeList } }
+          ];
+
+          for (const n of assigneeList) {
+            assigneeOrConditions.push({ assigneeName: { $regex: n, $options: "i" } });
+            assigneeOrConditions.push({ "customFields.assigneeName": { $regex: n, $options: "i" } });
+          }
+
+          if (matchedClerkIds.length > 0) {
+            assigneeOrConditions.push({ assigneeIds: { $in: matchedClerkIds } });
+            assigneeOrConditions.push({ assigneeId: { $in: matchedClerkIds } });
+          }
+
           rawFilter.$and = rawFilter.$and || [];
           rawFilter.$and.push({
-            $or: [
-              { assigneeName: { $in: assigneeList } },
-              { "customFields.assigneeName": { $in: assigneeList } }
-            ]
+            $or: assigneeOrConditions
           });
         }
       }

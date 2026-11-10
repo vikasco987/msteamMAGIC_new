@@ -56,11 +56,33 @@ export async function GET(req: Request) {
     if (!id) {
       const filters: any[] = [];
       if (assigneeId) {
+        // Resolve user in DB to check both clerkId, name, and email
+        const targetUser = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { clerkId: assigneeId },
+              { id: assigneeId }
+            ]
+          },
+          select: { clerkId: true, name: true, email: true }
+        });
+
+        const assigneeOrs: any[] = [
+          { assigneeIds: { has: assigneeId } },
+          { assigneeId: assigneeId },
+        ];
+
+        if (targetUser) {
+          if (targetUser.name) {
+            assigneeOrs.push({ assigneeName: { contains: targetUser.name, mode: "insensitive" } });
+          }
+          if (targetUser.email) {
+            assigneeOrs.push({ assigneeEmail: { equals: targetUser.email, mode: "insensitive" } });
+          }
+        }
+
         filters.push({
-          OR: [
-            { assigneeIds: { has: assigneeId } },
-            { assigneeId: assigneeId },
-          ]
+          OR: assigneeOrs
         });
       }
       if (status && status.trim()) {
