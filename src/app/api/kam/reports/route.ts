@@ -286,25 +286,33 @@ export async function GET(req: Request) {
       return null;
     }
 
-    // Helper to find matching breakdown members (Retention, Onboarding, Digital)
-    function findMatchingBreakdownMembers(t: any, cf: any): string[] {
-      const full = `${t.assigneeName || ""} ${cf.assigneeName || ""} ${t.assignerName || ""} ${cf.assignerName || ""} ${cf.retentionMember || ""}`.toLowerCase();
-      const matched: string[] = [];
-
-      Object.keys(retentionBreakdownMap).forEach((name) => {
-        const nLower = name.trim().toLowerCase();
-        let hit = false;
-        if (nLower === "sharvan" || nLower === "shravan") {
-          hit = full.includes("shravan") || full.includes("sharvan");
-        } else if (nLower === "rishab" || nLower === "rishav") {
-          hit = full.includes("rishab") || full.includes("rishav");
-        } else if (full.includes(nLower)) {
-          hit = true;
+    function matchTeamMemberName(text: string | null | undefined): string | null {
+      if (!text) return null;
+      const tLower = text.trim().toLowerCase();
+      const allMembers = Object.keys(retentionBreakdownMap);
+      for (const m of allMembers) {
+        const mLower = m.trim().toLowerCase();
+        if (mLower === "sharvan" || mLower === "shravan") {
+          if (tLower.includes("shravan") || tLower.includes("sharvan")) return m;
+        } else if (mLower === "rishab" || mLower === "rishav") {
+          if (tLower.includes("rishab") || tLower.includes("rishav")) return m;
+        } else if (tLower.includes(mLower)) {
+          return m;
         }
-        if (hit) matched.push(name);
-      });
+      }
+      return null;
+    }
 
-      return matched;
+    // Resolve exactly ONE responsible member per task (Assignee first, then Assigner fallback)
+    // to guarantee 100% mathematical accuracy without duplicate counting
+    function resolveTaskOwner(t: any, cf: any): string | null {
+      const fromAssignee = matchTeamMemberName(t.assigneeName || cf.assigneeName);
+      if (fromAssignee) return fromAssignee;
+
+      const fromAssigner = matchTeamMemberName(t.assignerName || cf.assignerName);
+      if (fromAssigner) return fromAssigner;
+
+      return null;
     }
 
     // Overall Status Totals for Cards
@@ -415,11 +423,10 @@ export async function GET(req: Request) {
         if (isActive) retentionSummaryMap[matchedMember].active += 1;
       }
 
-      // Populate Status Breakdown for Retention, Onboarding & Digital members:
-      const matchedBreakdownMembers = findMatchingBreakdownMembers(task, cf);
-      matchedBreakdownMembers.forEach((name) => {
-        const b = retentionBreakdownMap[name];
-        if (!b) return;
+      // Populate Status Breakdown for team members without duplicate counts (exact 1-to-1 match with filter)
+      const matchedOwner = resolveTaskOwner(task, cf);
+      if (matchedOwner && retentionBreakdownMap[matchedOwner]) {
+        const b = retentionBreakdownMap[matchedOwner];
 
         if (accountStatus.includes("growing") && !accountStatus.includes("not")) {
           b.growing += 1;
@@ -436,7 +443,7 @@ export async function GET(req: Request) {
         } else if (accountStatus.includes("currently off") || accountStatus.includes("off")) {
           b.outletCurrentlyOff += 1;
         }
-      });
+      }
     });
 
     return NextResponse.json({
