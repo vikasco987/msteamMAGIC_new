@@ -4,7 +4,7 @@ import { useUnifiedAuth as useUser, useAuth } from "@/lib/useUnifiedAuth";
 import Link from "next/link";
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { Paintbrush } from "lucide-react";
+import { Paintbrush, Search, X, Check, Filter } from "lucide-react";
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { format, differenceInCalendarDays, addDays, isToday, parseISO, startOfMonth, endOfMonth } from "date-fns";
 import Image from "next/image";
@@ -173,6 +173,10 @@ export default function TaskTimeline() {
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
+  const [assigneeFilterSearch, setAssigneeFilterSearch] = useState("");
+  const [isAssigneeDropdownOpen, setIsAssigneeDropdownOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("");
+  const [progressFilter, setProgressFilter] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [zoom, setZoom] = useState(40);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -373,7 +377,9 @@ export default function TaskTimeline() {
     targetPage: number = currentPage,
     targetLimit: number = tasksPerPage,
     targetAssignee: string | null = selectedAvatar,
-    targetSearch: string = searchTerm
+    targetSearch: string = searchTerm,
+    targetStatus: string = statusFilter,
+    targetProgress: string = progressFilter
   ) => {
     try {
       const token = await getToken();
@@ -386,6 +392,12 @@ export default function TaskTimeline() {
       }
       if (targetSearch.trim()) {
         params.append("search", targetSearch.trim());
+      }
+      if (targetStatus) {
+        params.append("status", targetStatus);
+      }
+      if (targetProgress) {
+        params.append("progress", targetProgress);
       }
 
       const res = await fetch(`/api/timeline?${params.toString()}`, {
@@ -411,24 +423,24 @@ export default function TaskTimeline() {
     } catch (err) {
       console.error("fetchTasks error:", err);
     }
-  }, [getToken, currentPage, tasksPerPage, selectedAvatar, searchTerm]);
+  }, [getToken, currentPage, tasksPerPage, selectedAvatar, searchTerm, statusFilter, progressFilter]);
 
   // Initial fetch and whenever page, tasksPerPage, or filter changes
   useEffect(() => {
-    fetchTasks(currentPage, tasksPerPage, selectedAvatar, searchTerm);
-  }, [currentPage, tasksPerPage, selectedAvatar, searchTerm]);
+    fetchTasks(currentPage, tasksPerPage, selectedAvatar, searchTerm, statusFilter, progressFilter);
+  }, [currentPage, tasksPerPage, selectedAvatar, searchTerm, statusFilter, progressFilter]);
 
   // 🕒 Real-time Board Update (Polling)
   useEffect(() => {
     const pollInterval = setInterval(() => {
-      fetchTasks(currentPage, tasksPerPage, selectedAvatar, searchTerm);
+      fetchTasks(currentPage, tasksPerPage, selectedAvatar, searchTerm, statusFilter, progressFilter);
       if (isPanelOpen && selectedTaskId) {
         updateSelectedTaskFromFetched();
       }
     }, 60000);
 
     return () => clearInterval(pollInterval);
-  }, [currentPage, tasksPerPage, selectedAvatar, searchTerm, isPanelOpen, selectedTaskId, updateSelectedTaskFromFetched]);
+  }, [currentPage, tasksPerPage, selectedAvatar, searchTerm, statusFilter, progressFilter, isPanelOpen, selectedTaskId, updateSelectedTaskFromFetched]);
 
   // Update selected task separately to avoid loops
   useEffect(() => {
@@ -469,6 +481,27 @@ export default function TaskTimeline() {
       setAssigneeMap(prev => ({ ...map, ...prev }));
     }
   }, [allUsers]);
+
+  const filteredAssignees = useMemo(() => {
+    if (!assigneeFilterSearch.trim()) return allAssignees;
+    const q = assigneeFilterSearch.toLowerCase();
+    return allAssignees.filter(id => {
+      const name = (assigneeMap[id]?.name || id).toLowerCase();
+      const email = (assigneeMap[id]?.email || "").toLowerCase();
+      return name.includes(q) || email.includes(q);
+    });
+  }, [allAssignees, assigneeFilterSearch, assigneeMap]);
+
+  const hasActiveFilters = Boolean(selectedAvatar || searchTerm || statusFilter || progressFilter);
+
+  const resetAllFilters = () => {
+    setSelectedAvatar(null);
+    setSearchTerm("");
+    setStatusFilter("");
+    setProgressFilter("");
+    setAssigneeFilterSearch("");
+    setCurrentPage(1);
+  };
 
   const filteredTasks = tasks;
 
@@ -934,46 +967,244 @@ export default function TaskTimeline() {
         )}
       </AnimatePresence>
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => setShowDocs(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-100 hover:bg-purple-100 text-xs font-black transition-all"
-          >
-            <FaHistory className="text-purple-500" />
-            HOW TO USE?
-          </button>
-
-          {isAdmin && (
-            <Link
-              href="/admin/reports/payments"
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-50 text-green-700 border border-green-100 hover:bg-green-100 text-xs font-black transition-all"
+      <div className="flex flex-col gap-3">
+        {/* Top Control Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setShowDocs(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-100 hover:bg-purple-100 text-xs font-black transition-all"
             >
-              📊 Financial Reports
-            </Link>
-          )}
-          
-          <span className="text-sm font-medium text-gray-600">Assignees:</span>
-          {/* Assignee Filter Dropdown */}
-          <select
-            value={selectedAvatar || ""}
-            onChange={(e) => {
-              const val = e.target.value || null;
-              setSelectedAvatar(val);
-              setCurrentPage(1);
-            }}
-            className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-semibold bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
-          >
-            <option value="">All Assignees ({allAssignees.length})</option>
-            {allAssignees.map((id) => (
-              <option key={id} value={id}>
-                {assigneeMap[id]?.name || id}
-              </option>
-            ))}
-          </select>
+              <FaHistory className="text-purple-500" />
+              HOW TO USE?
+            </button>
+
+            {isAdmin && (
+              <Link
+                href="/admin/reports/payments"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-50 text-green-700 border border-green-100 hover:bg-green-100 text-xs font-black transition-all"
+              >
+                📊 Financial Reports
+              </Link>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Search Input with Icon */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search tasks, shops, customers..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-8 pr-7 py-1.5 border border-gray-300 rounded-lg text-xs w-60 sm:w-72 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-400"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setCurrentPage(1);
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Tasks per page */}
+            <div className="flex items-center gap-1.5">
+              <label className="text-xs font-medium text-gray-500">Tasks/page:</label>
+              <select
+                value={tasksPerPage}
+                onChange={handleTasksPerPageChange}
+                className="px-2 py-1 border border-gray-300 rounded-lg text-xs font-medium bg-white"
+              >
+                {[5, 10, 15, 20, 50].map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
+
+            {/* Zoom Slider */}
+            <div className="flex items-center gap-1.5">
+              <label className="text-xs font-medium text-gray-500">Zoom:</label>
+              <input
+                type="range" min={20} max={100}
+                value={zoom}
+                onChange={(e) => setZoom(Number(e.target.value))}
+                className="w-20 accent-purple-600"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Filter Bar with Searchable Assignee Picker & Status/Progress Filters */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-gray-100">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1">
+              <Filter className="w-3.5 h-3.5 text-purple-600" />
+              Filters:
+            </span>
+
+            {/* Custom Searchable Assignee Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsAssigneeDropdownOpen(prev => !prev)}
+                className={`flex items-center gap-2 px-3 py-1.5 border rounded-lg text-xs font-medium bg-white transition-all shadow-sm ${
+                  selectedAvatar ? "border-purple-500 bg-purple-50 text-purple-800 ring-1 ring-purple-400" : "border-gray-300 text-gray-700 hover:border-gray-400"
+                }`}
+              >
+                {selectedAvatar ? (
+                  <>
+                    <Image
+                      src={assigneeMap[selectedAvatar]?.imageUrl || `https://api.dicebear.com/7.x/identicon/svg?seed=${selectedAvatar}`}
+                      alt="Avatar"
+                      width={18}
+                      height={18}
+                      unoptimized
+                      className="w-4.5 h-4.5 rounded-full object-cover"
+                    />
+                    <span className="max-w-[120px] truncate font-semibold">
+                      {assigneeMap[selectedAvatar]?.name || selectedAvatar}
+                    </span>
+                  </>
+                ) : (
+                  <span>All Assignees ({allAssignees.length})</span>
+                )}
+                <span className="text-[10px] text-gray-400 ml-1">▼</span>
+              </button>
+
+              {isAssigneeDropdownOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-30"
+                    onClick={() => setIsAssigneeDropdownOpen(false)}
+                  />
+                  <div className="absolute left-0 mt-1 w-64 bg-white border border-gray-200 rounded-xl shadow-xl z-40 p-2 space-y-1.5 animate-in fade-in zoom-in-95">
+                    {/* Search inside Assignee list */}
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="text"
+                        placeholder="Search team member..."
+                        value={assigneeFilterSearch}
+                        onChange={(e) => setAssigneeFilterSearch(e.target.value)}
+                        autoFocus
+                        className="w-full pl-8 pr-2 py-1 text-xs border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-purple-400"
+                      />
+                    </div>
+
+                    <div className="max-h-60 overflow-y-auto space-y-0.5 custom-scrollbar">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedAvatar(null);
+                          setIsAssigneeDropdownOpen(false);
+                          setCurrentPage(1);
+                        }}
+                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-left transition-colors ${
+                          !selectedAvatar ? "bg-purple-50 text-purple-700 font-bold" : "hover:bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        <span>All Assignees ({allAssignees.length})</span>
+                        {!selectedAvatar && <Check className="w-3.5 h-3.5 text-purple-600" />}
+                      </button>
+
+                      {filteredAssignees.length === 0 ? (
+                        <div className="text-center py-3 text-xs text-gray-400">No member found</div>
+                      ) : (
+                        filteredAssignees.map(id => {
+                          const isSelected = selectedAvatar === id;
+                          return (
+                            <button
+                              key={id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedAvatar(isSelected ? null : id);
+                                setIsAssigneeDropdownOpen(false);
+                                setCurrentPage(1);
+                              }}
+                              className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs text-left transition-colors ${
+                                isSelected ? "bg-purple-50 text-purple-700 font-bold" : "hover:bg-gray-100 text-gray-700"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Image
+                                  src={assigneeMap[id]?.imageUrl || `https://api.dicebear.com/7.x/identicon/svg?seed=${id}`}
+                                  alt="Avatar"
+                                  width={20}
+                                  height={20}
+                                  unoptimized
+                                  className="w-5 h-5 rounded-full object-cover flex-shrink-0"
+                                />
+                                <span className="truncate">{assigneeMap[id]?.name || id}</span>
+                              </div>
+                              {isSelected && <Check className="w-3.5 h-3.5 text-purple-600 flex-shrink-0" />}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Task Status Filter */}
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className={`px-2.5 py-1.5 border rounded-lg text-xs font-semibold bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-400 ${
+                statusFilter ? "border-purple-500 bg-purple-50 text-purple-800" : "border-gray-300 text-gray-700"
+              }`}
+            >
+              <option value="">All Statuses</option>
+              <option value="todo">To Do</option>
+              <option value="in-progress">In Progress</option>
+              <option value="done">Done</option>
+              <option value="blocked">Blocked</option>
+            </select>
+
+            {/* Progress % Filter */}
+            <select
+              value={progressFilter}
+              onChange={(e) => {
+                setProgressFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className={`px-2.5 py-1.5 border rounded-lg text-xs font-semibold bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-400 ${
+                progressFilter ? "border-purple-500 bg-purple-50 text-purple-800" : "border-gray-300 text-gray-700"
+              }`}
+            >
+              <option value="">All Progress %</option>
+              <option value="0">Not Started (0%)</option>
+              <option value="in_progress">In Progress (1% - 99%)</option>
+              <option value="100">Completed (100%)</option>
+            </select>
+
+            {/* Clear Filters Button */}
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={resetAllFilters}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors"
+              >
+                <X className="w-3 h-3" />
+                Reset Filters
+              </button>
+            )}
+          </div>
 
           {/* Quick Avatar Bar */}
-          <div className="flex items-center gap-1.5 overflow-x-auto max-w-[280px] py-0.5 custom-scrollbar">
+          <div className="flex items-center gap-1.5 overflow-x-auto max-w-[320px] py-0.5 custom-scrollbar">
             {allAssignees.map((id) => (
               <button
                 key={id}
@@ -1001,35 +1232,6 @@ export default function TaskTimeline() {
               </button>
             ))}
           </div>
-        </div>
-        <input
-          type="text"
-          placeholder="Search..."
-          value={searchTerm}
-          onChange={(e) => {
-            setSearchTerm(e.target.value);
-            setCurrentPage(1);
-          }}
-          className="px-3 py-1 border border-gray-300 rounded-md text-sm w-64"
-        />
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-500">Tasks/page:</label>
-          <select
-            value={tasksPerPage}
-            onChange={handleTasksPerPageChange}
-            className="px-2 py-1 border border-gray-300 rounded-md text-sm bg-white"
-          >
-            {[5, 10, 15, 20, 50].map(n => <option key={n} value={n}>{n}</option>)}
-          </select>
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-500">Zoom:</label>
-          <input
-            type="range" min={20} max={100}
-            value={zoom}
-            onChange={(e) => setZoom(Number(e.target.value))}
-            className="w-24"
-          />
         </div>
       </div>
 

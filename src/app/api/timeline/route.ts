@@ -20,6 +20,9 @@ export async function GET(req: Request) {
   const skip = (page - 1) * limit;
   const assigneeId = searchParams.get("assigneeId");
   const search = searchParams.get("search");
+  const status = searchParams.get("status");
+  const progressFilter = searchParams.get("progress"); // e.g. "0", "in_progress", "100"
+  const month = searchParams.get("month"); // e.g. "2026-11"
 
   try {
     let tasks;
@@ -59,6 +62,31 @@ export async function GET(req: Request) {
             { assigneeId: assigneeId },
           ]
         });
+      }
+      if (status && status.trim()) {
+        filters.push({ status: status.trim() });
+      }
+      if (progressFilter) {
+        if (progressFilter === "0") {
+          filters.push({
+            OR: [
+              { timeline: "0" },
+              { timeline: null },
+              { timeline: "" }
+            ]
+          });
+        } else if (progressFilter === "100") {
+          filters.push({ timeline: "100" });
+        } else if (progressFilter === "in_progress") {
+          filters.push({
+            AND: [
+              { timeline: { not: "0" } },
+              { timeline: { not: "100" } },
+              { timeline: { not: null } },
+              { timeline: { not: "" } }
+            ]
+          });
+        }
       }
       if (search && search.trim()) {
         const s = search.trim();
