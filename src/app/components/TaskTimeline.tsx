@@ -369,44 +369,66 @@ export default function TaskTimeline() {
     }
   }, [selectedTaskId]); // Only reset when switching tasks
 
-  const fetchTasks = useCallback(async (page: number = currentPage, limit: number = tasksPerPage) => {
-    const token = await getToken();
-    const res = await fetch(`/api/timeline?page=${page}&limit=${limit}`, {
-      cache: "no-store",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+  const fetchTasks = useCallback(async (
+    targetPage: number = currentPage,
+    targetLimit: number = tasksPerPage,
+    targetAssignee: string | null = selectedAvatar,
+    targetSearch: string = searchTerm
+  ) => {
+    try {
+      const token = await getToken();
+      const params = new URLSearchParams({
+        page: targetPage.toString(),
+        limit: targetLimit.toString(),
+      });
+      if (targetAssignee) {
+        params.append("assigneeId", targetAssignee);
+      }
+      if (targetSearch.trim()) {
+        params.append("search", targetSearch.trim());
+      }
 
-    if (!res.ok) {
-      console.error(`Frontend: Failed to fetch tasks: ${res.status} - ${res.statusText}`);
-      setTasks([]);
-      setTotalPages(1);
-      return;
+      const res = await fetch(`/api/timeline?${params.toString()}`, {
+        cache: "no-store",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        console.error(`Frontend: Failed to fetch tasks: ${res.status} - ${res.statusText}`);
+        setTasks([]);
+        setTotalPages(1);
+        return;
+      }
+
+      const data = await res.json();
+      if (Array.isArray(data.tasks)) {
+        setTasks(data.tasks);
+        setCurrentPage(data.page);
+        setTotalPages(Math.max(1, data.totalPages || 1));
+      }
+    } catch (err) {
+      console.error("fetchTasks error:", err);
     }
+  }, [getToken, currentPage, tasksPerPage, selectedAvatar, searchTerm]);
 
-    const data = await res.json();
-    if (Array.isArray(data.tasks)) {
-      setTasks(data.tasks);
-      setCurrentPage(data.page);
-      setTotalPages(data.totalPages);
-    }
-  }, [getToken, currentPage, tasksPerPage]);
-
+  // Initial fetch and whenever page, tasksPerPage, or filter changes
   useEffect(() => {
-    fetchTasks();
+    fetchTasks(currentPage, tasksPerPage, selectedAvatar, searchTerm);
+  }, [currentPage, tasksPerPage, selectedAvatar, searchTerm]);
 
-    // 🕒 Real-time Board Update (Polling)
-    // Refreshes the board for everyone every 60 seconds
+  // 🕒 Real-time Board Update (Polling)
+  useEffect(() => {
     const pollInterval = setInterval(() => {
-      fetchTasks();
+      fetchTasks(currentPage, tasksPerPage, selectedAvatar, searchTerm);
       if (isPanelOpen && selectedTaskId) {
         updateSelectedTaskFromFetched();
       }
     }, 60000);
 
     return () => clearInterval(pollInterval);
-  }, [currentPage, tasksPerPage, fetchTasks, isPanelOpen, selectedTaskId, updateSelectedTaskFromFetched]);
+  }, [currentPage, tasksPerPage, selectedAvatar, searchTerm, isPanelOpen, selectedTaskId, updateSelectedTaskFromFetched]);
 
   // Update selected task separately to avoid loops
   useEffect(() => {
@@ -425,35 +447,30 @@ export default function TaskTimeline() {
         const map: Record<string, { name: string; imageUrl: string; email: string }> = Object.fromEntries(
           assignees.map((a) => [a.id, { name: a.name, imageUrl: a.imageUrl, email: a.email }])
         );
-        setAssigneeMap(map);
+        setAssigneeMap(prev => ({ ...prev, ...map }));
       });
     }
   }, [tasks]);
 
   const allAssignees = useMemo(() => {
+    if (allUsers && allUsers.length > 0) {
+      return allUsers.map(u => u.id);
+    }
     return Array.from(new Set(tasks.flatMap((task) => task.assigneeIds || [])));
-  }, [tasks]);
+  }, [allUsers, tasks]);
 
-  const filteredTasks = useMemo(() => {
-    let currentTasks = [...tasks];
-    if (searchTerm) {
-      const lowerSearchTerm = searchTerm.toLowerCase();
-      currentTasks = currentTasks.filter(task =>
-        (task.name || "").toLowerCase().includes(lowerSearchTerm) ||
-        (task.shop || "").toLowerCase().includes(lowerSearchTerm) ||
-        (task.customer || "").toLowerCase().includes(lowerSearchTerm) ||
-        (task as any).customFields?.awbNumber?.toString().toLowerCase().includes(lowerSearchTerm) ||
-        (task as any).customFields?.awb?.toString().toLowerCase().includes(lowerSearchTerm) ||
-        (task as any).customFields?.serialNumber?.toString().toLowerCase().includes(lowerSearchTerm)
-      );
+  // Sync allUsers into assigneeMap
+  useEffect(() => {
+    if (allUsers && allUsers.length > 0) {
+      const map: Record<string, { name: string; imageUrl: string; email: string }> = {};
+      allUsers.forEach(u => {
+        map[u.id] = { name: u.name, imageUrl: u.imageUrl, email: u.email };
+      });
+      setAssigneeMap(prev => ({ ...map, ...prev }));
     }
-    if (selectedAvatar) {
-      currentTasks = currentTasks.filter(task =>
-        (task.assigneeIds || []).includes(selectedAvatar)
-      );
-    }
-    return currentTasks;
-  }, [tasks, searchTerm, selectedAvatar]);
+  }, [allUsers]);
+
+  const filteredTasks = tasks;
 
   const handleTaskClick = useCallback(async (task: Task) => {
     setSelectedTaskId(task.id);
@@ -937,25 +954,62 @@ export default function TaskTimeline() {
           )}
           
           <span className="text-sm font-medium text-gray-600">Assignees:</span>
-          {allAssignees.map((id) => (
-            <Image
-              key={id}
-              src={assigneeMap[id]?.imageUrl || `https://api.dicebear.com/7.x/identicon/svg?seed=${id}`}
-              alt={assigneeMap[id]?.name || "Avatar"}
-              width={32}
-              height={32}
-              unoptimized
-              className={`w-8 h-8 rounded-full cursor-pointer border-2 ${selectedAvatar === id ? "border-blue-500" : "border-transparent"}`}
-              onClick={() => setSelectedAvatar(prev => prev === id ? null : id)}
-              title={assigneeMap[id]?.name || id}
-            />
-          ))}
+          {/* Assignee Filter Dropdown */}
+          <select
+            value={selectedAvatar || ""}
+            onChange={(e) => {
+              const val = e.target.value || null;
+              setSelectedAvatar(val);
+              setCurrentPage(1);
+            }}
+            className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-semibold bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+          >
+            <option value="">All Assignees ({allAssignees.length})</option>
+            {allAssignees.map((id) => (
+              <option key={id} value={id}>
+                {assigneeMap[id]?.name || id}
+              </option>
+            ))}
+          </select>
+
+          {/* Quick Avatar Bar */}
+          <div className="flex items-center gap-1.5 overflow-x-auto max-w-[280px] py-0.5 custom-scrollbar">
+            {allAssignees.map((id) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => {
+                  setSelectedAvatar(prev => {
+                    const next = prev === id ? null : id;
+                    setCurrentPage(1);
+                    return next;
+                  });
+                }}
+                className={`relative flex-shrink-0 transition-transform active:scale-95 rounded-full ${
+                  selectedAvatar === id ? "ring-2 ring-purple-600 ring-offset-1 scale-105" : "opacity-80 hover:opacity-100"
+                }`}
+                title={assigneeMap[id]?.name || id}
+              >
+                <Image
+                  src={assigneeMap[id]?.imageUrl || `https://api.dicebear.com/7.x/identicon/svg?seed=${id}`}
+                  alt={assigneeMap[id]?.name || "Avatar"}
+                  width={28}
+                  height={28}
+                  unoptimized
+                  className="w-7 h-7 rounded-full object-cover border border-gray-200"
+                />
+              </button>
+            ))}
+          </div>
         </div>
         <input
           type="text"
           placeholder="Search..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setCurrentPage(1);
+          }}
           className="px-3 py-1 border border-gray-300 rounded-md text-sm w-64"
         />
         <div className="flex items-center gap-2">

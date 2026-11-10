@@ -18,6 +18,8 @@ export async function GET(req: Request) {
   const limit = parseInt(searchParams.get("limit") || "10");
   const page = parseInt(searchParams.get("page") || "1");
   const skip = (page - 1) * limit;
+  const assigneeId = searchParams.get("assigneeId");
+  const search = searchParams.get("search");
 
   try {
     let tasks;
@@ -46,6 +48,43 @@ export async function GET(req: Request) {
           }
         ]
       };
+    }
+
+    if (!id) {
+      const filters: any[] = [];
+      if (assigneeId) {
+        filters.push({
+          OR: [
+            { assigneeIds: { has: assigneeId } },
+            { assigneeId: assigneeId },
+          ]
+        });
+      }
+      if (search && search.trim()) {
+        const s = search.trim();
+        filters.push({
+          OR: [
+            { title: { contains: s, mode: "insensitive" } },
+            { shopName: { contains: s, mode: "insensitive" } },
+            { outletName: { contains: s, mode: "insensitive" } },
+            { customerName: { contains: s, mode: "insensitive" } },
+          ]
+        });
+      }
+
+      if (filters.length > 0) {
+        if (whereClause.AND) {
+          whereClause.AND.push(...filters);
+        } else if (Object.keys(whereClause).length > 0) {
+          whereClause = {
+            AND: [whereClause, ...filters]
+          };
+        } else {
+          whereClause = {
+            AND: filters
+          };
+        }
+      }
     }
 
     if (id) {
