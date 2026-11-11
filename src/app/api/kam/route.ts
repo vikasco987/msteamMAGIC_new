@@ -92,11 +92,17 @@ export async function GET(req: Request) {
     // Role-based filtering
     const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
     
-    // Use Clerk metadata for role if possible, fallback to DB role
-    const { clerkClient } = await import("@clerk/nextjs/server");
-    const client = await clerkClient();
-    const clerkUser = (await getUserDetails(userId));
-    const roleFromClerk = (clerkUser.publicMetadata as any)?.role || (clerkUser.privateMetadata as any)?.role;
+    // Safely get user details without crashing if Clerk fails
+    let roleFromClerk: string | undefined = undefined;
+    try {
+      const clerkUser = await getUserDetails(userId);
+      if (clerkUser) {
+        roleFromClerk = (clerkUser.publicMetadata as any)?.role || (clerkUser.privateMetadata as any)?.role;
+      }
+    } catch (e) {
+      console.warn("Could not fetch user details from Clerk, falling back to DB role:", e);
+    }
+
     const normalizedRole = String(roleFromClerk || dbUser?.role || 'user').toLowerCase();
     
     const isTL = (dbUser as any)?.isTeamLeader || normalizedRole === 'tl';
@@ -479,6 +485,8 @@ export async function GET(req: Request) {
     const userMap: Record<string, { name: string; email: string; imageUrl: string }> = {};
     if (allUserIds.size > 0) {
       try {
+        const { clerkClient } = await import("@clerk/nextjs/server");
+        const client = await clerkClient();
         const userList = await client.users.getUserList({
           userId: Array.from(allUserIds),
           limit: 500,
