@@ -1049,19 +1049,7 @@ export default function KamTableView() {
     );
   }
 
-  if (tasks.length === 0 && !loading && filteredAndSortedTasks.length === 0)
-    return (
-      <div className="p-8 text-center text-gray-500 bg-white rounded-2xl shadow-lg border border-gray-200 min-h-[300px] flex flex-col items-center justify-center">
-        <FaExclamationTriangle className="text-yellow-500 text-6xl mb-4" />
-        <p className="text-2xl font-semibold text-gray-800">
-          No Account Handling tasks found.
-        </p>
-        <p className="text-base mt-2 text-gray-600">
-          Try adjusting your search or filters, or there are no tasks matching
-          your permissions.
-        </p>
-      </div>
-    );
+
 
   return (
     <div className="p-8 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-3xl shadow-xl border border-blue-200 min-h-screen">
@@ -1678,7 +1666,23 @@ export default function KamTableView() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
-            {tasks.map((t, index) => {
+            {tasks.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={columnOrder.filter((c) => !hiddenColumns.includes(c)).length || 15}
+                  className="px-6 py-16 text-center text-gray-500"
+                >
+                  <div className="flex flex-col items-center justify-center">
+                    <FaExclamationTriangle className="text-yellow-500 text-4xl mb-3" />
+                    <p className="text-lg font-bold text-gray-800">No Account Handling tasks found</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Try clearing or adjusting your search or filter selections.
+                    </p>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              tasks.map((t, index) => {
               const amount = Number(t.amount) || 0;
               const received = Number(t.received) || 0;
               const pending = amount - received;
@@ -2186,7 +2190,8 @@ export default function KamTableView() {
                     })}
                 </tr>
               );
-            })}
+            })
+            )}
           </tbody>
         </table>
       </div>
