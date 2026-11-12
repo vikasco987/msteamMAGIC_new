@@ -953,3 +953,48 @@ model FaceAuditLog {
   @@index([actorId])
   @@index([createdAt])
 }
+
+// ==========================================
+// 🍽️ ONBOARDING MANAGEMENT MODULE
+// ==========================================
+
+model OnboardingRecord {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  taskId         String    @unique @db.ObjectId
+
+  // Onboarding-specific fields (editable by onboarding team)
+  taskStartDate  String?
+  fssaiNumber    String?
+  restaurantId   String?
+  isReOnboarding Boolean?  @default(false)
+  onboardedBy    String?   // Name of person who onboarded
+  accountStatus  String?   @default("Pending") // Pending | In Progress | Live | Complete | Duplicate | Manual Uploaded | Rejected
+  platform       String?   // Zomato | Swiggy | Both | Other
+  outletCreated  String?   // Pending | Yes | No
+  remarks        String?
+
+  // Audit fields
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdBy      String?   // Clerk user ID
+  updatedBy      String?   // Clerk user ID
+
+  @@index([accountStatus])
+  @@index([createdAt])
+}
+
+model OnboardingAuditLog {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  onboardingId   String    @db.ObjectId
+  taskId         String    @db.ObjectId
+  fieldName      String
+  oldValue       String?
+  newValue       String?
+  changedBy      String    // Clerk user ID
+  changedByName  String?   // Display name
+  changedAt      DateTime  @default(now())
+
+  @@index([taskId])
+  @@index([onboardingId])
+  @@index([changedAt])
+}

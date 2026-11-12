@@ -1124,6 +1124,42 @@ export async function POST(req: NextRequest) {
       }
     }));
 
+    // 🍽️ Auto-sync to Onboarding Management if applicable
+    const ONBOARDING_CATEGORY_TITLES = [
+      "🍽️ Zomato Onboarding",
+      "🍔 Swiggy Onboarding",
+      "🍽️🍔 Zomato + Swiggy Combo",
+      "🧾 Food License",
+      "📸 Photo Upload",
+    ];
+
+    if (ONBOARDING_CATEGORY_TITLES.some(t => task.title?.includes(t) || t.includes(task.title))) {
+      try {
+        let platform = "Other";
+        if (task.title.includes("Swiggy") && task.title.includes("Zomato")) platform = "Both";
+        else if (task.title.includes("Zomato")) platform = "Zomato";
+        else if (task.title.includes("Swiggy")) platform = "Swiggy";
+
+        await prisma.onboardingRecord.upsert({
+          where: { taskId: task.id },
+          create: {
+            taskId: task.id,
+            taskStartDate: (task as any).startDate || null,
+            restaurantId: (task as any).restId || null,
+            onboardedBy: task.assigneeName || null,
+            platform,
+            accountStatus: "Pending",
+            outletCreated: "Pending",
+            createdBy: userId,
+            updatedBy: userId,
+          },
+          update: {} // do not overwrite if exists
+        }).catch(e => console.warn("Onboarding auto-sync upsert error:", e));
+      } catch (err) {
+        console.warn("Onboarding auto-sync skipped:", err);
+      }
+    }
+
     // 🚀 THE FINALE: BROADCAST TO MATRIX ⚡⚡⚡
     try {
       console.log("🔥 API HIT HOI");
