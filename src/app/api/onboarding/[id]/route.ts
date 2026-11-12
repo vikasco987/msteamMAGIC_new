@@ -41,14 +41,14 @@ const ALLOWED_FIELDS = [
 // GET /api/onboarding/[id]  — id is the TASK id
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
     if (!userId)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { id: taskId } = params;
+    const { id: taskId } = await params;
 
     const client = await getMongoClient();
     const db = client.db();
@@ -121,14 +121,14 @@ export async function GET(
 // PATCH /api/onboarding/[id]  — id is the TASK id
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
     if (!userId)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { id: taskId } = params;
+    const { id: taskId } = await params;
     const body = await req.json();
 
     // Verify task is an onboarding task

@@ -166,67 +166,115 @@ export async function GET(req: Request) {
       });
     }
 
-    // ─── Fetch tasks from MongoDB ─────────────────────────────────────────────
+    // ─── Build MongoDB Aggregation Pipeline ──────────────────────────────────
+    // Step 1: Base match on Task collection
+    const pipeline: any[] = [{ $match: taskFilter }];
+
+    // Step 2: Left Outer Join with OnboardingRecord by string taskId
+    pipeline.push(
+      {
+        $addFields: {
+          taskIdStr: { $toString: "$_id" },
+        },
+      },
+      {
+        $lookup: {
+          from: "OnboardingRecord",
+          localField: "taskIdStr",
+          foreignField: "taskId",
+          as: "obData",
+        },
+      },
+      {
+        $addFields: {
+          obRecord: { $arrayElemAt: ["$obData", 0] },
+        },
+      }
+    );
+
+    // Step 3: Match onboarding-specific filters at database level
+    const obMatch: Record<string, any> = {};
+    if (accountStatusFilter && accountStatusFilter !== "All") {
+      if (accountStatusFilter === "Pending") {
+        obMatch.$or = [
+          { "obRecord.accountStatus": "Pending" },
+          { obRecord: { $exists: false } },
+          { "obRecord.accountStatus": { $exists: false } },
+        ];
+      } else {
+        obMatch["obRecord.accountStatus"] = accountStatusFilter;
+      }
+    }
+
+    if (platformFilter && platformFilter !== "All") {
+      obMatch.$or = [
+        { "obRecord.platform": platformFilter },
+        { title: { $regex: platformFilter, $options: "i" } },
+      ];
+    }
+
+    if (outletCreatedFilter && outletCreatedFilter !== "All") {
+      if (outletCreatedFilter === "Pending") {
+        obMatch.$or = [
+          { "obRecord.outletCreated": "Pending" },
+          { obRecord: { $exists: false } },
+          { "obRecord.outletCreated": { $exists: false } },
+        ];
+      } else {
+        obMatch["obRecord.outletCreated"] = outletCreatedFilter;
+      }
+    }
+
+    if (isReOnboardingFilter !== "") {
+      obMatch["obRecord.isReOnboarding"] = isReOnboardingFilter === "true";
+    }
+
+    if (Object.keys(obMatch).length > 0) {
+      pipeline.push({ $match: obMatch });
+    }
+
+    // Step 4: Sorting and Pagination with Facet
     const sortField =
       sortKey === "createdAt" ? "createdAt" : sortKey === "shopName" ? "shopName" : "createdAt";
 
-    const [tasks, totalTaskCount] = await Promise.all([
-      taskCol
-        .find(taskFilter, {
-          projection: {
-            _id: 1,
-            title: 1,
-            shopName: 1,
-            customerName: 1,
-            phone: 1,
-            assigneeName: 1,
-            assignerName: 1,
-            assigneeId: 1,
-            assignerId: 1,
-            createdAt: 1,
-            status: 1,
-            customFields: 1,
+    pipeline.push({
+      $facet: {
+        metadata: [{ $count: "total" }],
+        data: [
+          { $sort: { [sortField]: sortDir } },
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              _id: 1,
+              title: 1,
+              shopName: 1,
+              customerName: 1,
+              phone: 1,
+              assigneeName: 1,
+              assignerName: 1,
+              assigneeId: 1,
+              assignerId: 1,
+              createdAt: 1,
+              status: 1,
+              customFields: 1,
+              restId: 1,
+              obRecord: 1,
+            },
           },
-        })
-        .sort({ [sortField]: sortDir })
-        .skip(skip)
-        .limit(limit)
-        .toArray(),
-      taskCol.countDocuments(taskFilter),
-    ]);
+        ],
+      },
+    });
 
-    // ─── Fetch onboarding records for these tasks ─────────────────────────────
-    const taskIds = tasks.map((t) => t._id.toString());
-    let obRecords: Record<string, any> = {};
-
-    if (taskIds.length > 0) {
-      const obFilter: Record<string, any> = {
-        taskId: { $in: taskIds },
-      };
-      // Apply onboarding-specific filters
-      if (accountStatusFilter && accountStatusFilter !== "All") {
-        obFilter.accountStatus = accountStatusFilter;
-      }
-      if (platformFilter && platformFilter !== "All") {
-        obFilter.platform = platformFilter;
-      }
-      if (outletCreatedFilter && outletCreatedFilter !== "All") {
-        obFilter.outletCreated = outletCreatedFilter;
-      }
-      if (isReOnboardingFilter !== "") {
-        obFilter.isReOnboarding = isReOnboardingFilter === "true";
-      }
-
-      const records = await obCol.find(obFilter).toArray();
-      records.forEach((r) => {
-        obRecords[r.taskId] = r;
-      });
-    }
+    const aggResult = await taskCol.aggregate(pipeline).toArray();
+    const facetData = aggResult[0] || { metadata: [], data: [] };
+    const totalCount = facetData.metadata[0]?.total || 0;
+    const rawTasks = facetData.data || [];
 
     // ─── Merge task + onboarding record ───────────────────────────────────────
-    const enriched = tasks.map((task) => {
+    const enriched = rawTasks.map((task: any) => {
       const tid = task._id.toString();
-      const ob = obRecords[tid] || {};
+      const ob = task.obRecord || {};
       const cf = (task.customFields as any) || {};
       return {
         id: tid,
@@ -254,9 +302,6 @@ export async function GET(req: Request) {
       };
     });
 
-    // ─── If onboarding-specific filters applied, filter merged results ─────────
-    // (Already filtered at DB level above when taskIds known)
-
     // ─── Filter options ───────────────────────────────────────────────────────
     const [assigneeNames, assignerNames] = await Promise.all([
       taskCol
@@ -268,10 +313,10 @@ export async function GET(req: Request) {
     return NextResponse.json({
       tasks: enriched,
       pagination: {
-        total: totalTaskCount,
+        total: totalCount,
         page,
         limit,
-        totalPages: Math.ceil(totalTaskCount / limit),
+        totalPages: Math.ceil(totalCount / limit),
       },
       filterOptions: {
         titles: ONBOARDING_TITLES.map((t) => t.replace(/^[^\w]*/, "").trim()),
