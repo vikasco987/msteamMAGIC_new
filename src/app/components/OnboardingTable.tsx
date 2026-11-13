@@ -44,6 +44,11 @@ import {
   ShieldCheck,
   Check,
   BarChart3,
+  GripVertical,
+  Lock,
+  Eye,
+  EyeOff,
+  Save,
 } from "lucide-react";
 import PaginationControls from "./PaginationControls";
 
@@ -741,50 +746,12 @@ export default function OnboardingTable() {
   ]);
 
   // ─── Column customizer & float (sticky) state ──────────────────────────────
-  const [columnOrder, setColumnOrder] = useState<string[]>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("onboarding_table_column_order");
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            // merge in case any new columns exist
-            const allIds = ALL_COLUMNS.map((c) => c.id);
-            const valid = parsed.filter((id) => allIds.includes(id));
-            const missing = allIds.filter((id) => !valid.includes(id));
-            return [...valid, ...missing];
-          }
-        } catch (e) {}
-      }
-    }
-    return ALL_COLUMNS.map((c) => c.id);
-  });
-
-  const [hiddenColumns, setHiddenColumns] = useState<string[]>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("onboarding_table_hidden_columns");
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) return parsed;
-        } catch (e) {}
-      }
-    }
-    return [];
-  });
-
-  const [floatingColumns, setFloatingColumns] = useState<string[]>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("onboarding_table_floating_columns");
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) return parsed;
-        } catch (e) {}
-      }
-    }
-    return ["sno"]; // Default float S.No
-  });
+  const [columnOrder, setColumnOrder] = useState<string[]>(() => ALL_COLUMNS.map((c) => c.id));
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>([]);
+  const [floatingColumns, setFloatingColumns] = useState<string[]>(["sno"]);
+  const [rolePermissions, setRolePermissions] = useState<Record<string, string[]>>({});
+  const [savingColumnConfig, setSavingColumnConfig] = useState(false);
+  const [activeConfigRole, setActiveConfigRole] = useState<string>("seller");
 
   const [isColumnManagerOpen, setIsColumnManagerOpen] = useState(false);
   const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
@@ -797,12 +764,112 @@ export default function OnboardingTable() {
     return String(rawRole).toLowerCase();
   }, [user]);
 
+  // Only Master role can change column positions, freeze and visibility
+  const isMaster = useMemo(() => {
+    return normalizedUserRole === "master";
+  }, [normalizedUserRole]);
+
   const isMasterOrAdmin = useMemo(() => {
     return normalizedUserRole === "master" || normalizedUserRole === "admin";
   }, [normalizedUserRole]);
 
-  // Handle Drag & Drop reorder
+  // Load persistent column configuration from Database API (falls back to localStorage)
+  const fetchColumnConfig = useCallback(async () => {
+    try {
+      const res = await fetch("/api/onboarding/columns");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.config) {
+          const cfg = data.config;
+          if (Array.isArray(cfg.columnOrder) && cfg.columnOrder.length > 0) {
+            const allIds = ALL_COLUMNS.map((c) => c.id);
+            const valid = cfg.columnOrder.filter((id: string) => allIds.includes(id));
+            const missing = allIds.filter((id: string) => !valid.includes(id));
+            setColumnOrder([...valid, ...missing]);
+          }
+          if (Array.isArray(cfg.floatingColumns)) {
+            setFloatingColumns(cfg.floatingColumns);
+          }
+          if (Array.isArray(cfg.hiddenColumns)) {
+            setHiddenColumns(cfg.hiddenColumns);
+          }
+          if (cfg.rolePermissions && typeof cfg.rolePermissions === "object") {
+            setRolePermissions(cfg.rolePermissions);
+          }
+          return;
+        }
+      }
+    } catch {}
+
+    // Fallback to localStorage if API unavailable
+    if (typeof window !== "undefined") {
+      try {
+        const savedOrder = localStorage.getItem("onboarding_table_column_order");
+        if (savedOrder) setColumnOrder(JSON.parse(savedOrder));
+        const savedHidden = localStorage.getItem("onboarding_table_hidden_columns");
+        if (savedHidden) setHiddenColumns(JSON.parse(savedHidden));
+        const savedFloat = localStorage.getItem("onboarding_table_floating_columns");
+        if (savedFloat) setFloatingColumns(JSON.parse(savedFloat));
+      } catch {}
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchColumnConfig();
+  }, [fetchColumnConfig]);
+
+  // Save Column Config to database API
+  const persistColumnConfig = async (
+    newOrder: string[],
+    newHidden: string[],
+    newFloat: string[],
+    newRolePerms: Record<string, string[]>
+  ) => {
+    if (!isMaster) {
+      toast.error("Only Master role can configure columns");
+      return;
+    }
+    setSavingColumnConfig(true);
+    try {
+      const config = {
+        columnOrder: newOrder,
+        hiddenColumns: newHidden,
+        floatingColumns: newFloat,
+        rolePermissions: newRolePerms,
+      };
+
+      const res = await fetch("/api/onboarding/columns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Save failed");
+      }
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("onboarding_table_column_order", JSON.stringify(newOrder));
+        localStorage.setItem("onboarding_table_hidden_columns", JSON.stringify(newHidden));
+        localStorage.setItem("onboarding_table_floating_columns", JSON.stringify(newFloat));
+        localStorage.setItem("onboarding_table_role_permissions", JSON.stringify(newRolePerms));
+      }
+
+      toast.success("✅ Column settings saved across database!");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to save column config");
+    } finally {
+      setSavingColumnConfig(false);
+    }
+  };
+
+  // Handle Drag & Drop reorder (Master only)
   const handleColumnDrop = (targetColId: string) => {
+    if (!isMaster) {
+      toast.error("🔒 Only Master role can reorder columns");
+      return;
+    }
     if (!draggedColumnId || draggedColumnId === targetColId) return;
     const currentList = [...columnOrder];
     const fromIndex = currentList.indexOf(draggedColumnId);
@@ -813,59 +880,76 @@ export default function OnboardingTable() {
     currentList.splice(toIndex, 0, draggedColumnId);
     setColumnOrder(currentList);
     setDraggedColumnId(null);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("onboarding_table_column_order", JSON.stringify(currentList));
-    }
-    toast.success("Column order updated!");
+    persistColumnConfig(currentList, hiddenColumns, floatingColumns, rolePermissions);
   };
 
-  // Toggle Hide / Show column
+  // Toggle Hide / Show column (Master only)
   const toggleColumnVisibility = (colId: string) => {
-    setHiddenColumns((prev) => {
-      const next = prev.includes(colId)
-        ? prev.filter((id) => id !== colId)
-        : [...prev, colId];
-      if (typeof window !== "undefined") {
-        localStorage.setItem("onboarding_table_hidden_columns", JSON.stringify(next));
-      }
-      return next;
-    });
+    if (!isMaster) {
+      toast.error("🔒 Only Master role can hide/show columns");
+      return;
+    }
+    const next = hiddenColumns.includes(colId)
+      ? hiddenColumns.filter((id) => id !== colId)
+      : [...hiddenColumns, colId];
+    setHiddenColumns(next);
+    persistColumnConfig(columnOrder, next, floatingColumns, rolePermissions);
   };
 
-  // Toggle Float / Pin column (Sticky)
+  // Toggle Float / Pin column (Sticky) (Master only)
   const toggleColumnFloat = (colId: string) => {
-    setFloatingColumns((prev) => {
-      const next = prev.includes(colId)
-        ? prev.filter((id) => id !== colId)
-        : [...prev, colId];
-      if (typeof window !== "undefined") {
-        localStorage.setItem("onboarding_table_floating_columns", JSON.stringify(next));
-      }
-      return next;
-    });
+    if (!isMaster) {
+      toast.error("🔒 Only Master role can freeze/pin columns");
+      return;
+    }
+    const next = floatingColumns.includes(colId)
+      ? floatingColumns.filter((id) => id !== colId)
+      : [...floatingColumns, colId];
+    setFloatingColumns(next);
+    persistColumnConfig(columnOrder, hiddenColumns, next, rolePermissions);
   };
 
-  // Reset column settings
+  // Toggle role-specific column hidden status (Master only)
+  const toggleRoleColumnVisibility = (targetRole: string, colId: string) => {
+    if (!isMaster) {
+      toast.error("🔒 Only Master role can configure role column visibility");
+      return;
+    }
+    const currentHiddenForRole = rolePermissions[targetRole] || [];
+    const nextHidden = currentHiddenForRole.includes(colId)
+      ? currentHiddenForRole.filter((id) => id !== colId)
+      : [...currentHiddenForRole, colId];
+
+    const nextPerms = {
+      ...rolePermissions,
+      [targetRole]: nextHidden,
+    };
+    setRolePermissions(nextPerms);
+    persistColumnConfig(columnOrder, hiddenColumns, floatingColumns, nextPerms);
+  };
+
+  // Reset column settings (Master only)
   const resetColumnSettings = () => {
+    if (!isMaster) {
+      toast.error("🔒 Only Master role can reset column settings");
+      return;
+    }
     const defaultOrder = ALL_COLUMNS.map((c) => c.id);
     setColumnOrder(defaultOrder);
     setHiddenColumns([]);
     setFloatingColumns(["sno"]);
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("onboarding_table_column_order");
-      localStorage.removeItem("onboarding_table_hidden_columns");
-      localStorage.removeItem("onboarding_table_floating_columns");
-    }
-    toast.success("Columns reset to default");
+    setRolePermissions({});
+    persistColumnConfig(defaultOrder, [], ["sno"], {});
   };
 
-  // Visible columns in user-configured order
+  // Visible columns calculated based on Master configuration + Current User's Role Permissions
   const visibleColumns = useMemo(() => {
+    const hiddenForCurrentRole = rolePermissions[normalizedUserRole] || [];
     return columnOrder
-      .filter((colId) => !hiddenColumns.includes(colId))
+      .filter((colId) => !hiddenColumns.includes(colId) && !hiddenForCurrentRole.includes(colId))
       .map((colId) => ALL_COLUMNS.find((c) => c.id === colId))
       .filter(Boolean) as ColumnDefinition[];
-  }, [columnOrder, hiddenColumns]);
+  }, [columnOrder, hiddenColumns, rolePermissions, normalizedUserRole]);
 
   // Compute sticky left offsets for floating columns
   const getStickyStyle = useCallback(
@@ -896,12 +980,54 @@ export default function OnboardingTable() {
   const [newNoteContent, setNewNoteContent] = useState("");
   const [submittingNote, setSubmittingNote] = useState(false);
 
-  // Edit Drawer Side Panel state
+  // Edit Drawer Side Panel state & resizable width
   const [drawerTask, setDrawerTask] = useState<OnboardingTask | null>(null);
   const [drawerValues, setDrawerValues] = useState<Partial<OnboardingTask>>({});
   const [drawerSaving, setDrawerSaving] = useState(false);
   const [drawerNewNote, setDrawerNewNote] = useState("");
   const [drawerPostingNote, setDrawerPostingNote] = useState(false);
+  const [drawerWidth, setDrawerWidth] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("onboarding_drawer_width");
+      if (saved) {
+        const num = parseInt(saved);
+        if (!isNaN(num) && num >= 420 && num <= 1200) return num;
+      }
+    }
+    return 600; // default 600px width
+  });
+  const [isResizingDrawer, setIsResizingDrawer] = useState(false);
+
+  // Resize handler for Edit Drawer side panel
+  const handleDrawerResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizingDrawer(true);
+
+    const startX = e.clientX;
+    const startW = drawerWidth;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      // Dragging left increases width, dragging right decreases width
+      const delta = startX - moveEvent.clientX;
+      const newWidth = Math.min(1200, Math.max(420, startW + delta));
+      setDrawerWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingDrawer(false);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      setDrawerWidth((finalWidth) => {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("onboarding_drawer_width", String(finalWidth));
+        }
+        return finalWidth;
+      });
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  }, [drawerWidth]);
 
   const openEditDrawer = (task: OnboardingTask) => {
     setDrawerTask(task);
@@ -1179,36 +1305,86 @@ export default function OnboardingTable() {
             </button>
 
             {isColumnManagerOpen && (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl ring-1 ring-black/10 z-50 p-4 border border-gray-100 max-h-[500px] overflow-y-auto">
+              <div className="absolute right-0 mt-2 w-96 bg-white rounded-2xl shadow-2xl ring-1 ring-black/10 z-50 p-4 border border-gray-100 max-h-[560px] overflow-y-auto">
                 <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-3">
                   <div>
-                    <h4 className="font-bold text-gray-900 text-sm">Columns Settings</h4>
-                    <p className="text-[11px] text-gray-500">Drag to reorder, toggle hide or float</p>
+                    <div className="flex items-center gap-1.5">
+                      <h4 className="font-bold text-gray-900 text-sm">Columns Settings</h4>
+                      {isMaster ? (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700">
+                          Master Control
+                        </span>
+                      ) : (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-500 flex items-center gap-1">
+                          <Lock size={10} /> Read Only
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-gray-500">
+                      {isMaster
+                        ? "Configure order, freeze & per-role column visibility"
+                        : "Only Master role can modify column positions and visibility"}
+                    </p>
                   </div>
-                  <button
-                    onClick={resetColumnSettings}
-                    className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-800 font-medium"
-                    title="Reset to default columns"
-                  >
-                    <RotateCcw size={12} />
-                    Reset
-                  </button>
+                  {isMaster && (
+                    <button
+                      onClick={resetColumnSettings}
+                      className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-800 font-medium"
+                      title="Reset to default columns"
+                    >
+                      <RotateCcw size={12} />
+                      Reset
+                    </button>
+                  )}
                 </div>
+
+                {/* Master Role Visibility Switcher Tab */}
+                {isMaster && (
+                  <div className="mb-3 p-2 bg-purple-50/70 border border-purple-200/80 rounded-xl space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-purple-900 uppercase tracking-wider">
+                        Role Visibility Target:
+                      </span>
+                      <span className="text-[10px] text-purple-600">Click hide/show per role</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {["global", "seller", "tl", "user", "guest", "admin"].map((r) => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => setActiveConfigRole(r)}
+                          className={`px-2 py-0.5 text-xs font-semibold rounded-md transition ${
+                            activeConfigRole === r
+                              ? "bg-purple-600 text-white shadow-xs"
+                              : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-100"
+                          }`}
+                        >
+                          {r === "global" ? "All (Global)" : r.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-purple-600 pt-0.5">
+                      Configuring: <strong className="font-bold">{activeConfigRole === "global" ? "Global Columns" : `${activeConfigRole.toUpperCase()} Role View`}</strong>
+                    </p>
+                  </div>
+                )}
 
                 <div className="space-y-1.5">
                   {columnOrder.map((colId) => {
                     const colDef = ALL_COLUMNS.find((c) => c.id === colId);
                     if (!colDef) return null;
-                    const isHidden = hiddenColumns.includes(colId);
+                    const isGloballyHidden = hiddenColumns.includes(colId);
+                    const isRoleHidden = (rolePermissions[activeConfigRole] || []).includes(colId);
+                    const isEffectiveHidden = activeConfigRole === "global" ? isGloballyHidden : isRoleHidden;
                     const isFloating = floatingColumns.includes(colId);
 
                     return (
                       <div
                         key={colId}
-                        draggable
-                        onDragStart={() => setDraggedColumnId(colId)}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={() => handleColumnDrop(colId)}
+                        draggable={isMaster}
+                        onDragStart={() => isMaster && setDraggedColumnId(colId)}
+                        onDragOver={(e) => isMaster && e.preventDefault()}
+                        onDrop={() => isMaster && handleColumnDrop(colId)}
                         className={`flex items-center justify-between p-2 rounded-lg border text-sm transition-all ${
                           draggedColumnId === colId
                             ? "bg-purple-50 border-purple-300 opacity-60"
@@ -1216,45 +1392,80 @@ export default function OnboardingTable() {
                         }`}
                       >
                         <div className="flex items-center gap-2">
-                          <FaGripVertical className="text-gray-400 cursor-grab active:cursor-grabbing text-xs" />
+                          {isMaster ? (
+                            <FaGripVertical className="text-gray-400 cursor-grab active:cursor-grabbing text-xs" />
+                          ) : (
+                            <Lock size={12} className="text-gray-400" />
+                          )}
                           <span
                             className={`font-medium text-xs ${
-                              isHidden ? "line-through text-gray-400" : "text-gray-800"
+                              isEffectiveHidden ? "line-through text-gray-400" : "text-gray-800"
                             }`}
                           >
                             {colDef.label}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          {/* Float (Sticky Pin) toggle */}
-                          <button
-                            type="button"
-                            onClick={() => toggleColumnFloat(colId)}
-                            title={isFloating ? "Unpin column (Disable Float)" : "Pin column (Enable Float)"}
-                            className={`p-1 rounded text-xs transition ${
-                              isFloating
-                                ? "bg-purple-100 text-purple-700"
-                                : "text-gray-400 hover:text-gray-600 hover:bg-gray-200"
-                            }`}
-                          >
-                            {isFloating ? <Pin size={13} className="fill-purple-700" /> : <Pin size={13} />}
-                          </button>
+                          {/* Float (Sticky Pin) toggle (Master only) */}
+                          {isMaster && (
+                            <button
+                              type="button"
+                              onClick={() => toggleColumnFloat(colId)}
+                              title={isFloating ? "Unpin column (Disable Float)" : "Pin column (Enable Float)"}
+                              className={`p-1 rounded text-xs transition ${
+                                isFloating
+                                  ? "bg-purple-100 text-purple-700"
+                                  : "text-gray-400 hover:text-gray-600 hover:bg-gray-200"
+                              }`}
+                            >
+                              {isFloating ? <Pin size={13} className="fill-purple-700" /> : <Pin size={13} />}
+                            </button>
+                          )}
 
                           {/* Show / Hide toggle */}
-                          <label className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={!isHidden}
-                              onChange={() => toggleColumnVisibility(colId)}
-                              className="rounded accent-purple-600 cursor-pointer"
-                            />
-                            <span>Show</span>
-                          </label>
+                          {isMaster ? (
+                            <label className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={!isEffectiveHidden}
+                                onChange={() => {
+                                  if (activeConfigRole === "global") {
+                                    toggleColumnVisibility(colId);
+                                  } else {
+                                    toggleRoleColumnVisibility(activeConfigRole, colId);
+                                  }
+                                }}
+                                className="rounded accent-purple-600 cursor-pointer"
+                              />
+                              <span>Show</span>
+                            </label>
+                          ) : (
+                            <span className="text-[11px] text-gray-400">
+                              {isEffectiveHidden ? "Hidden" : "Visible"}
+                            </span>
+                          )}
                         </div>
                       </div>
                     );
                   })}
                 </div>
+
+                {/* Save Confirmation Indicator */}
+                {isMaster && (
+                  <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                    <span className="flex items-center gap-1 text-emerald-700 font-semibold">
+                      <Save size={12} />
+                      {savingColumnConfig ? "Saving to database..." : "Synced with Database"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsColumnManagerOpen(false)}
+                      className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg text-xs"
+                    >
+                      Done
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -2429,7 +2640,27 @@ export default function OnboardingTable() {
           />
 
           <div className="fixed inset-y-0 right-0 max-w-full flex pl-8">
-            <div className="w-screen max-w-xl bg-white shadow-2xl flex flex-col border-l border-slate-200 h-full">
+            <div
+              style={{ width: `${drawerWidth}px`, maxWidth: "95vw" }}
+              className="relative bg-white shadow-2xl flex flex-col border-l border-slate-200 h-full transition-[width] duration-75 ease-out select-text"
+            >
+              {/* Draggable Vertical Resize Handle on Left Border */}
+              <div
+                onMouseDown={handleDrawerResizeStart}
+                className={`absolute -left-2 top-0 bottom-0 w-4 cursor-col-resize z-50 group flex items-center justify-center hover:bg-purple-500/10 transition select-none ${
+                  isResizingDrawer ? "bg-purple-500/20" : ""
+                }`}
+                title="Drag left/right to resize panel width"
+              >
+                <div
+                  className={`w-1.5 h-12 rounded-full transition shadow-sm ${
+                    isResizingDrawer
+                      ? "bg-purple-600 ring-4 ring-purple-300"
+                      : "bg-slate-300 group-hover:bg-purple-500"
+                  }`}
+                />
+              </div>
+
               {/* Drawer Header */}
               <div className="px-6 py-5 bg-gradient-to-r from-purple-50 via-white to-indigo-50/70 border-b border-slate-200/80 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3.5 min-w-0">

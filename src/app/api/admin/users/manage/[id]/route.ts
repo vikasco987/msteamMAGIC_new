@@ -4,21 +4,65 @@ import { auth } from "@/lib/auth-utils";
 import bcrypt from "bcryptjs";
 import { clerkClient } from "@clerk/nextjs/server";
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> | { id: string } }) {
     try {
         const { userId: adminId } = await auth();
         if (!adminId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
         // Ensure user is master or admin
-        const adminUser = await prisma.user.findUnique({ where: { clerkId: adminId } });
-        if (adminUser?.role !== "MASTER" && adminUser?.role !== "ADMIN") {
+        const adminDetails = await getUserDetails(adminId);
+        const adminRole = String(adminDetails?.publicMetadata?.role || "").toUpperCase();
+
+        const adminUser = await prisma.user.findFirst({
+            where: {
+                OR: [{ clerkId: adminId }, { id: adminId }]
+            }
+        });
+        const resolvedRole = (adminRole || adminUser?.role || "").toUpperCase();
+
+        if (resolvedRole !== "MASTER" && resolvedRole !== "ADMIN") {
             return NextResponse.json({ error: "Access Denied" }, { status: 403 });
         }
 
-        const targetUserId = params.id;
-        const user = await prisma.user.findUnique({
+        const resolvedParams = await params;
+        const targetUserId = resolvedParams.id;
+
+        // Try lookup by clerkId or MongoDB id
+        let user = await prisma.user.findUnique({
             where: { clerkId: targetUserId }
         });
+
+        if (!user && targetUserId.length === 24) {
+            user = await prisma.user.findUnique({
+                where: { id: targetUserId }
+            });
+        }
+
+        if (!user) {
+            // Also check clerk directly in case user is in Clerk but not synced yet
+            try {
+                const clerkUser = await getUserDetails(targetUserId);
+                if (clerkUser) {
+                    const email = clerkUser.emailAddresses?.[0]?.emailAddress || "";
+                    const name = `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() || "User";
+                    const role = String(clerkUser.publicMetadata?.role || "USER").toUpperCase();
+                    
+                    // Upsert into DB so they exist
+                    user = await prisma.user.upsert({
+                        where: { clerkId: targetUserId },
+                        update: { email, name, role },
+                        create: {
+                            clerkId: targetUserId,
+                            email,
+                            name,
+                            role
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error("Error checking clerk user:", e);
+            }
+        }
 
         if (!user) {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -39,22 +83,38 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     }
 }
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> | { id: string } }) {
     try {
         const { userId: adminId } = await auth();
         if (!adminId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-        const adminUser = await prisma.user.findUnique({ where: { clerkId: adminId } });
-        if (adminUser?.role !== "MASTER" && adminUser?.role !== "ADMIN") {
+        const adminDetails = await getUserDetails(adminId);
+        const adminRole = String(adminDetails?.publicMetadata?.role || "").toUpperCase();
+
+        const adminUser = await prisma.user.findFirst({
+            where: {
+                OR: [{ clerkId: adminId }, { id: adminId }]
+            }
+        });
+        const resolvedRole = (adminRole || adminUser?.role || "").toUpperCase();
+
+        if (resolvedRole !== "MASTER" && resolvedRole !== "ADMIN") {
             return NextResponse.json({ error: "Access Denied" }, { status: 403 });
         }
 
-        const targetUserId = params.id;
+        const resolvedParams = await params;
+        const targetUserId = resolvedParams.id;
         const { password, role, isDisabled, alternateEmail, alternatePhone } = await req.json();
 
-        const user = await prisma.user.findUnique({
+        let user = await prisma.user.findUnique({
             where: { clerkId: targetUserId }
         });
+
+        if (!user && targetUserId.length === 24) {
+            user = await prisma.user.findUnique({
+                where: { id: targetUserId }
+            });
+        }
 
         if (!user) {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -66,23 +126,22 @@ export async function POST(req: Request, { params }: { params: { id: string } })
             const salt = await bcrypt.genSalt(10);
             updateData.password = await bcrypt.hash(password, salt);
             
-            // Note: If using Clerk, we'd also try to update Clerk's password if the user is a clerk user.
-            // But if we're migrating towards custom auth, we'll just update it in DB.
             if (!targetUserId.startsWith('custom_')) {
                 try {
-                    await clerkClient.users.updateUser(targetUserId, { password });
+                    const client = await clerkClient();
+                    await client.users.updateUser(user.clerkId, { password });
                 } catch (e) {
                     console.error("Could not update Clerk password", e);
-                    // It's okay, maybe they just use custom login now.
                 }
             }
         }
 
         if (role) {
-            updateData.role = role;
+            updateData.role = role.toUpperCase();
             if (!targetUserId.startsWith('custom_')) {
                 try {
-                    await clerkClient.users.updateUserMetadata(targetUserId, {
+                    const client = await clerkClient();
+                    await client.users.updateUserMetadata(user.clerkId, {
                         publicMetadata: { role: role.toUpperCase() }
                     });
                 } catch (e) {
@@ -95,10 +154,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
             updateData.isDisabled = isDisabled;
             if (!targetUserId.startsWith('custom_')) {
                 try {
+                    const client = await clerkClient();
                     if (isDisabled) {
-                        await clerkClient.users.banUser(targetUserId);
+                        await client.users.banUser(user.clerkId);
                     } else {
-                        await clerkClient.users.unbanUser(targetUserId);
+                        await client.users.unbanUser(user.clerkId);
                     }
                 } catch(e) {
                     console.error("Clerk ban/unban failed", e);
@@ -108,7 +168,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
         if (Object.keys(updateData).length > 0) {
             await prisma.user.update({
-                where: { clerkId: targetUserId },
+                where: { id: user.id },
                 data: updateData
             });
         }
