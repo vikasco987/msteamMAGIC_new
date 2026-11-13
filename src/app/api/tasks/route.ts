@@ -711,6 +711,18 @@ import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity";
 import { getUnifiedUserId } from "@/lib/auth-utils";
 import { getUserDetails } from "@/lib/auth-utils";
+import { MongoClient } from "mongodb";
+
+let cachedMongoClient: MongoClient | null = null;
+async function getMongoClient() {
+  if (cachedMongoClient) return cachedMongoClient;
+  const uri = process.env.DATABASE_URL;
+  if (!uri) throw new Error("DATABASE_URL is not defined");
+  const client = new MongoClient(uri);
+  await client.connect();
+  cachedMongoClient = client;
+  return client;
+}
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -854,6 +866,27 @@ export async function POST(req: NextRequest) {
     const activeTabVal = body.activeTab || (body.customFields as any)?.activeTab;
     const isRTO = activeTabVal === "rto_printer";
 
+    // 🛡️ IDEMPOTENCY GUARD: Check if task with identical idempotencyKey already exists
+    const idempotencyKey = toNullableString(body.idempotencyKey || (body.customFields as any)?.idempotencyKey);
+    if (idempotencyKey) {
+      const client = await getMongoClient();
+      const existingTaskDoc = await client.db().collection("Task").findOne({
+        "customFields.idempotencyKey": idempotencyKey,
+      });
+
+      if (existingTaskDoc) {
+        console.log(`⚠️ [Idempotency] Duplicate task submission blocked for key: ${idempotencyKey}. Returning existing task.`);
+        return NextResponse.json({
+          success: true,
+          task: {
+            ...existingTaskDoc,
+            id: existingTaskDoc._id.toString(),
+          },
+          isDuplicate: true,
+        });
+      }
+    }
+
     if (serialNumber) {
       const cleanSerial = serialNumber.trim();
       const existing = await prisma.serialNumber.findUnique({
@@ -958,6 +991,7 @@ export async function POST(req: NextRequest) {
           serialNumber: toNullableString(serialNumber),
           rtoReason: toNullableString(rtoReason),
           supportGroupUrl: toNullableString(supportGroupUrl), // ✅ Added
+          idempotencyKey: idempotencyKey, // 🛡️ Persist idempotencyKey for duplicate protection
           assignerId: userId,
           assignerName: assignerName,
           assignerEmail: assignerEmail,

@@ -73,6 +73,10 @@ export default function TaskForm() {
   const [uploadStatus, setUploadStatus] = useState("");
   const [defaultPrinterCost, setDefaultPrinterCost] = useState("");
 
+  // 🛡️ SUBMISSION-IN-PROGRESS GUARD: Prevents repeated clicks or duplicate event triggers
+  const isSubmittingRef = React.useRef(false);
+  const submissionKeyRef = React.useRef("");
+
   // Result summary state for multi-task creation
   const [creationResult, setCreationResult] = useState<{
     success: boolean;
@@ -307,6 +311,13 @@ export default function TaskForm() {
     }
 
     // STEP 3: FINAL SUBMISSION
+    if (isSubmittingRef.current) {
+      console.warn("⚠️ Duplicate submission prevented by isSubmittingRef lock.");
+      return;
+    }
+    isSubmittingRef.current = true;
+    submissionKeyRef.current = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
     setLoading(true);
     setUploading(true);
     setUploadStatus("");
@@ -428,6 +439,9 @@ export default function TaskForm() {
         // Primary assignee: first of array, or fallback
         const primaryAssigneeId = taskAssigneeIds[0] || effectiveStaff[0] || "";
 
+        // Deterministic idempotencyKey per service for this submission batch
+        const serviceIdempotencyKey = `${submissionKeyRef.current}_${srv}`;
+
         const payload = {
           title: taskTitle,
           assigneeId: primaryAssigneeId,
@@ -435,12 +449,14 @@ export default function TaskForm() {
           assigneeEmail: formData.email.trim(),
           activeTab: srv,
           accountType: formData.accountType,
+          idempotencyKey: serviceIdempotencyKey,
           attachments,
           tags: [],
           initialNote: formData.initialNote.trim(),
           customFields: {
             ...sharedCustomFields,
             activeTab: srv,
+            idempotencyKey: serviceIdempotencyKey,
           },
         };
 
@@ -481,6 +497,13 @@ export default function TaskForm() {
           failedTasks: [],
         });
         localStorage.removeItem(LOCAL_STORAGE_KEY);
+        // Clear entire form data on success
+        setFormData({ ...initialFormState, costPrice: defaultPrinterCost });
+        setSelectedServices([]);
+        setSelectedStaffIds([]);
+        setAssignmentMode("SAME_ALL");
+        setPerTaskAssignments({});
+        setCustomServiceTitles({});
       } else {
         setCreationResult({
           success: createdList.length > 0,
@@ -494,6 +517,7 @@ export default function TaskForm() {
     } finally {
       setLoading(false);
       setUploading(false);
+      isSubmittingRef.current = false;
     }
   };
 
@@ -736,11 +760,17 @@ export default function TaskForm() {
             ) : (
               <button
                 type="submit"
-                className="flex-[2] bg-emerald-600 text-white px-6 py-4 rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 flex items-center justify-center gap-2 disabled:opacity-50"
-                disabled={loading}
+                className={`flex-[2] px-6 py-4 rounded-2xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 ${
+                  creationResult?.success
+                    ? "bg-slate-300 text-slate-500 cursor-not-allowed shadow-none"
+                    : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-100 disabled:opacity-50"
+                }`}
+                disabled={loading || !!creationResult?.success}
               >
                 {loading
                   ? "Creating Tasks..."
+                  : creationResult?.success
+                  ? "✓ Tasks Created Successfully"
                   : selectedServices.length > 1
                   ? `✨ Create ${selectedServices.length} Tasks`
                   : "✨ Complete & Create Task"}
