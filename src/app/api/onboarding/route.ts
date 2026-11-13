@@ -58,8 +58,11 @@ export async function GET(req: Request) {
     }
 
     const { role, dbUser } = await getUserRole(userId);
-    const isPrivileged = role === "admin" || role === "master";
+    const isMaster = role === "master";
+    const isAdmin = role === "admin";
     const isTL = role === "tl" || (dbUser as any)?.isTeamLeader;
+    // TL, Admin, and Master see all tasks
+    const isPrivileged = isMaster || isAdmin || isTL;
     const isSeller = role === "seller";
 
     const { searchParams } = new URL(req.url);
@@ -93,27 +96,14 @@ export async function GET(req: Request) {
       title: { $in: ONBOARDING_TITLES },
     };
 
-    // Role-based restriction
-    if (!isPrivileged && !isTL) {
-      // Seller / user: only tasks where they are assignee or assigner
+    // Role-based restriction: TL, Admin, and Master see all tasks without filter.
+    // Only normal users/sellers are restricted to tasks they created or were assigned.
+    if (!isPrivileged) {
       taskFilter.$or = [
         { assigneeId: userId },
         { assigneeIds: userId },
         { assignerId: userId },
         { createdByClerkId: userId },
-      ];
-    } else if (isTL) {
-      // TL: see tasks where they or their team members are assignee/assigner
-      const members = await prisma.user.findMany({
-        where: { leaderIds: { has: userId } } as any,
-        select: { clerkId: true },
-      });
-      const memberIds = [userId, ...members.map((m) => m.clerkId)];
-      taskFilter.$or = [
-        { assigneeId: { $in: memberIds } },
-        { assigneeIds: { $in: memberIds } },
-        { assignerId: { $in: memberIds } },
-        { createdByClerkId: { $in: memberIds } },
       ];
     }
 

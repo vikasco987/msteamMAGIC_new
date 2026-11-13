@@ -15,7 +15,7 @@ export default function OnboardingPage() {
     );
   }
 
-  const role = user?.publicMetadata?.role;
+  const role = String(user?.publicMetadata?.role || "").toLowerCase();
 
   // Authorization check (RBAC)
   const isAuthorized =

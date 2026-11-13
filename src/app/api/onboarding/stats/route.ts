@@ -53,8 +53,11 @@ export async function GET(req: Request) {
     }
 
     const { role, dbUser } = await getUserRole(userId);
-    const isPrivileged = role === "admin" || role === "master";
+    const isMaster = role === "master";
+    const isAdmin = role === "admin";
     const isTL = role === "tl" || (dbUser as any)?.isTeamLeader;
+    // TL, Admin, and Master see all stats
+    const isPrivileged = isMaster || isAdmin || isTL;
 
     const client = await getMongoClient();
     const db = client.db();
@@ -64,26 +67,13 @@ export async function GET(req: Request) {
       title: { $in: ONBOARDING_TITLES },
     };
 
-    if (!isPrivileged && !isTL) {
+    if (!isPrivileged) {
       // Normal user / Seller: created by them OR assigned to them
       taskMatch.$or = [
         { assigneeId: userId },
         { assigneeIds: userId },
         { assignerId: userId },
         { createdByClerkId: userId },
-      ];
-    } else if (isTL) {
-      // TL: see their own + team members' tasks
-      const members = await prisma.user.findMany({
-        where: { leaderIds: { has: userId } } as any,
-        select: { clerkId: true },
-      });
-      const memberIds = [userId, ...members.map((m) => m.clerkId)];
-      taskMatch.$or = [
-        { assigneeId: { $in: memberIds } },
-        { assigneeIds: { $in: memberIds } },
-        { assignerId: { $in: memberIds } },
-        { createdByClerkId: { $in: memberIds } },
       ];
     }
 
