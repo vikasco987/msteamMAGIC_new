@@ -1527,89 +1527,132 @@ export default function OnboardingTable() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-10 gap-2">
             {[
               {
                 label: "Total Tasks",
                 value: stats.totalTasks,
                 color: "bg-blue-50 border-blue-200 hover:border-blue-300",
                 textColor: "text-blue-700",
-                statusFilter: "",
+                type: "status",
+                filterValue: "",
+              },
+              {
+                label: "Overdue (SLA)",
+                value: stats.sla?.overdue ?? 0,
+                color: "bg-red-50 border-red-300 hover:border-red-400 ring-1 ring-red-200",
+                textColor: "text-red-700 font-black",
+                type: "sla",
+                filterValue: "overdue",
+                isPillBadge: true,
+              },
+              {
+                label: "Urgent (<12h)",
+                value: stats.sla?.urgent ?? 0,
+                color: "bg-amber-50 border-amber-300 hover:border-amber-400 ring-1 ring-amber-200",
+                textColor: "text-amber-800 font-extrabold",
+                type: "sla",
+                filterValue: "urgent",
+                isPillBadge: true,
               },
               {
                 label: "Live",
                 value: stats.byStatus?.live || 0,
                 color: "bg-emerald-50 border-emerald-200 hover:border-emerald-300",
                 textColor: "text-emerald-700",
-                statusFilter: "Live",
+                type: "status",
+                filterValue: "Live",
               },
               {
                 label: "Pending",
                 value: stats.byStatus?.pending || 0,
                 color: "bg-amber-50 border-amber-200 hover:border-amber-300",
                 textColor: "text-amber-700",
-                statusFilter: "Pending",
+                type: "status",
+                filterValue: "Pending",
               },
               {
                 label: "In Progress",
                 value: stats.byStatus?.inProgress || 0,
                 color: "bg-yellow-50 border-yellow-200 hover:border-yellow-300",
                 textColor: "text-yellow-700",
-                statusFilter: "In Progress",
+                type: "status",
+                filterValue: "In Progress",
               },
               {
                 label: "Complete",
                 value: stats.byStatus?.complete || 0,
                 color: "bg-teal-50 border-teal-200 hover:border-teal-300",
                 textColor: "text-teal-700",
-                statusFilter: "Complete",
+                type: "status",
+                filterValue: "Complete",
               },
               {
                 label: "Duplicate",
                 value: stats.byStatus?.duplicate || 0,
                 color: "bg-rose-50 border-rose-200 hover:border-rose-300",
                 textColor: "text-rose-700",
-                statusFilter: "Duplicate",
+                type: "status",
+                filterValue: "Duplicate",
               },
               {
                 label: "Manual Upload",
                 value: stats.byStatus?.manualUploaded || 0,
                 color: "bg-purple-50 border-purple-200 hover:border-purple-300",
                 textColor: "text-purple-700",
-                statusFilter: "Manual Uploaded",
+                type: "status",
+                filterValue: "Manual Uploaded",
               },
               {
                 label: "Rejected",
                 value: stats.byStatus?.rejected || 0,
                 color: "bg-red-50 border-red-200 hover:border-red-300",
                 textColor: "text-red-700",
-                statusFilter: "Rejected",
+                type: "status",
+                filterValue: "Rejected",
               },
             ].map((card) => {
-              const isSelected = card.statusFilter
-                ? selectedAccountStatuses.includes(card.statusFilter)
-                : selectedAccountStatuses.length === 0;
+              const isSelected =
+                card.type === "sla"
+                  ? selectedTimelineSla.includes(card.filterValue)
+                  : card.filterValue
+                  ? selectedAccountStatuses.includes(card.filterValue)
+                  : selectedAccountStatuses.length === 0 && selectedTimelineSla.length === 0;
 
               return (
                 <div
                   key={card.label}
                   className={`${card.color} border rounded-lg px-2.5 py-1.5 text-center cursor-pointer transition shadow-xs ${
-                    isSelected ? "ring-2 ring-purple-400" : ""
+                    isSelected ? "ring-2 ring-purple-500 scale-[1.02]" : ""
                   }`}
                   onClick={() => {
-                    if (!card.statusFilter) {
+                    if (card.type === "sla") {
+                      setSelectedTimelineSla((prev) =>
+                        prev.includes(card.filterValue)
+                          ? prev.filter((s) => s !== card.filterValue)
+                          : [card.filterValue]
+                      );
+                    } else if (!card.filterValue) {
                       setSelectedAccountStatuses([]);
+                      setSelectedTimelineSla([]);
                     } else {
                       setSelectedAccountStatuses((prev) =>
-                        prev.includes(card.statusFilter)
-                          ? prev.filter((s) => s !== card.statusFilter)
-                          : [card.statusFilter]
+                        prev.includes(card.filterValue)
+                          ? prev.filter((s) => s !== card.filterValue)
+                          : [card.filterValue]
                       );
                     }
                   }}
+                  title={card.type === "sla" ? `Filter table by ${card.label}` : undefined}
                 >
-                  <div className={`text-base font-extrabold ${card.textColor} leading-tight`}>
-                    {card.value}
+                  <div className={`text-base font-extrabold ${card.textColor} leading-tight flex items-center justify-center gap-1`}>
+                    {card.type === "sla" && card.filterValue === "overdue" && (
+                      <AlertTriangle size={13} className="text-red-600 animate-pulse" />
+                    )}
+                    {card.type === "sla" && card.filterValue === "urgent" && (
+                      <Clock size={13} className="text-amber-600" />
+                    )}
+                    <span>{card.value}</span>
                   </div>
                   <div className="text-[11px] text-gray-500 font-medium truncate mt-0.5">
                     {card.label}

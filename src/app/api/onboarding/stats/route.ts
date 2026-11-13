@@ -87,8 +87,8 @@ export async function GET(req: Request) {
       ];
     }
 
-    // Parallelized fast execution: task count, category counts, and scoped onboarding records
-    const [taskCount, categoryAgg, obRecords] = await Promise.all([
+    // Parallelized fast execution: task count, category counts, SLA active tasks, and scoped onboarding records
+    const [taskCount, categoryAgg, obRecords, activeTasks] = await Promise.all([
       db.collection("Task").countDocuments(taskMatch),
       db
         .collection("Task")
@@ -132,7 +132,45 @@ export async function GET(req: Request) {
               { $replaceRoot: { newRoot: "$ob" } },
             ])
             .toArray(),
+      // Fetch only not-done tasks for SLA (urgent/overdue) calculation
+      db
+        .collection("Task")
+        .find(
+          { ...taskMatch, status: { $ne: "done" } },
+          { projection: { createdAt: 1, title: 1, status: 1 } }
+        )
+        .toArray(),
     ]);
+
+    // SLA Calculation
+    const now = Date.now();
+    let overdueCount = 0;
+    let urgentCount = 0;
+    let onTrackCount = 0;
+
+    activeTasks.forEach((t: any) => {
+      const created = new Date(t.createdAt).getTime();
+      let slaHours = 48;
+      const title = (t.title || "").toLowerCase();
+      if (title.includes("fssai") || title.includes("food license") || title.includes("license")) {
+        slaHours = 24;
+      } else if (title.includes("gst") || title.includes("photo")) {
+        slaHours = 48;
+      } else if (title.includes("zomato") || title.includes("swiggy")) {
+        slaHours = 72;
+      }
+
+      const targetTime = created + slaHours * 60 * 60 * 1000;
+      const remMs = targetTime - now;
+
+      if (remMs <= 0) {
+        overdueCount++;
+      } else if (remMs <= 12 * 60 * 60 * 1000) {
+        urgentCount++;
+      } else {
+        onTrackCount++;
+      }
+    });
 
     const totalTasks = taskCount;
     const totalRecords = obRecords.length;
@@ -166,6 +204,11 @@ export async function GET(req: Request) {
         duplicate: statusMap["Duplicate"] || 0,
         manualUploaded: statusMap["Manual Uploaded"] || 0,
         rejected: statusMap["Rejected"] || 0,
+      },
+      sla: {
+        overdue: overdueCount,
+        urgent: urgentCount,
+        onTrack: onTrackCount,
       },
       byPlatform: platformMap,
       byCategory: categoryMap,
