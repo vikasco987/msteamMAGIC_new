@@ -30,6 +30,10 @@ const ONBOARDING_TITLES = [
 
 async function getUserRole(userId: string) {
   const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
+  // If role is present in local MongoDB User, use it directly (saves 600-800ms Clerk HTTP round-trip)
+  if (dbUser?.role) {
+    return { role: String(dbUser.role).toLowerCase(), dbUser };
+  }
   let roleFromClerk: string | undefined;
   try {
     if (!userId.startsWith("custom_")) {
@@ -93,21 +97,23 @@ export async function GET(req: Request) {
       ];
     }
 
-    // Parallelized fast execution: task count, category counts, task board status counts, SLA active tasks, and scoped onboarding records
-    const [taskCount, categoryAgg, taskStatusAgg, obRecords, activeTasks] = await Promise.all([
-      db.collection("Task").countDocuments(taskMatch),
+    // Optimized fast execution using single $facet for Task metrics + parallel OnboardingRecord query
+    const [taskAggResult, obRecords] = await Promise.all([
       db
         .collection("Task")
         .aggregate([
           { $match: taskMatch },
-          { $group: { _id: "$title", count: { $sum: 1 } } },
-        ])
-        .toArray(),
-      db
-        .collection("Task")
-        .aggregate([
-          { $match: taskMatch },
-          { $group: { _id: "$status", count: { $sum: 1 } } },
+          {
+            $facet: {
+              totalCount: [{ $count: "count" }],
+              categoryAgg: [{ $group: { _id: "$title", count: { $sum: 1 } } }],
+              taskStatusAgg: [{ $group: { _id: "$status", count: { $sum: 1 } } }],
+              activeTasks: [
+                { $match: { status: { $ne: "done" } } },
+                { $project: { title: 1, createdAt: 1, status: 1 } },
+              ],
+            },
+          },
         ])
         .toArray(),
       isPrivileged
@@ -176,15 +182,18 @@ export async function GET(req: Request) {
               { $replaceRoot: { newRoot: "$ob" } },
             ])
             .toArray(),
-      // Fetch only not-done tasks for SLA (urgent/overdue) calculation
-      db
-        .collection("Task")
-        .find(
-          { ...taskMatch, status: { $ne: "done" } },
-          { projection: { createdAt: 1, title: 1, status: 1 } }
-        )
-        .toArray(),
     ]);
+
+    const facet = taskAggResult[0] || {
+      totalCount: [],
+      categoryAgg: [],
+      taskStatusAgg: [],
+      activeTasks: [],
+    };
+    const taskCount = facet.totalCount[0]?.count || 0;
+    const categoryAgg = facet.categoryAgg || [];
+    const taskStatusAgg = facet.taskStatusAgg || [];
+    const activeTasks = facet.activeTasks || [];
 
     // SLA Calculation
     const now = Date.now();

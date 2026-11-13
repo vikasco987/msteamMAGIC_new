@@ -34,6 +34,10 @@ const ONBOARDING_TITLES = [
 // ─── Helper: get user role ─────────────────────────────────────────────────────
 async function getUserRole(userId: string) {
   const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
+  // If role is present in local MongoDB User, use it directly (saves 600-800ms Clerk HTTP round-trip)
+  if (dbUser?.role) {
+    return { role: String(dbUser.role).toLowerCase(), dbUser };
+  }
   let roleFromClerk: string | undefined;
   try {
     if (!userId.startsWith("custom_")) {
