@@ -30,6 +30,8 @@ const ALLOWED_FIELDS = [
   "taskStartDate",
   "fssaiNumber",
   "restaurantId",
+  "swiggyRestaurantId",
+  "zomatoRestaurantId",
   "isReOnboarding",
   "onboardedBy",
   "accountStatus",
@@ -153,10 +155,27 @@ export async function PATCH(
       );
     }
 
+    // ─── If taskStatus (Team Board stage) is sent, update Task.status in Task collection ───
+    if (body.taskStatus !== undefined) {
+      const allowedStages = ["todo", "inprogress", "done"];
+      const newStatus = String(body.taskStatus).toLowerCase().trim();
+      if (allowedStages.includes(newStatus)) {
+        await db.collection("Task").updateOne(
+          { _id: taskObjId },
+          { $set: { status: newStatus, updatedAt: new Date() } }
+        );
+      }
+    }
+
     // Extract only allowed fields
     const safeFields: Record<string, any> = {};
     for (const f of ALLOWED_FIELDS) {
       if (f in body) safeFields[f] = body[f];
+    }
+
+    // If only taskStatus was updated and no onboarding record fields
+    if (Object.keys(safeFields).length === 0 && body.taskStatus !== undefined) {
+      return NextResponse.json({ success: true, updatedTaskStatus: body.taskStatus });
     }
 
     if (Object.keys(safeFields).length === 0) {

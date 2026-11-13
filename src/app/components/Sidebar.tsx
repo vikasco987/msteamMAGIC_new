@@ -35,7 +35,10 @@ import {
   CreditCard,
   MapPin,
   DollarSign,
-  Search
+  Search,
+  Sliders,
+  Sparkles,
+  GripVertical,
 } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -61,6 +64,7 @@ const NAVIGATION_GROUPS = [
       { label: 'Recovery Hub', icon: HandCoins, href: '/payments/recovery', roles: ['admin', 'master', 'seller', 'tl'] },
       { label: 'KAM Strategy', icon: Building2, href: '/kam', roles: ['admin', 'master', 'seller', 'tl'] },
       { label: 'Onboarding Management', icon: ClipboardCheck, href: '/onboarding', roles: ['admin', 'master', 'seller', 'tl', 'user'] },
+      { label: 'Onboarding Reports BI', icon: LineChart, href: '/onboarding/reports', roles: ['admin', 'master', 'seller', 'tl', 'user'] },
       { label: 'Sales Matrix', icon: TrendingUp, href: '/sales-dashboard', roles: ['master'] },
       { label: 'Team Sales', icon: LineChart, href: '/tl-dashboard', roles: ['tl', 'admin', 'master'] },
       { label: 'My Growth', icon: ShoppingCart, href: '/seller/dashboard', roles: ['seller', 'admin', 'master', 'tl'] },
@@ -581,6 +585,27 @@ export default function Sidebar({ unifiedUser }: { unifiedUser?: any }) {
             );
           })}
         </div>
+
+        {/* Master Sidebar Customizer & Access Controller Button */}
+        {userRole === 'master' && (
+          <div className="px-4 py-2 border-t border-slate-800/40 bg-slate-900/40 relative z-10">
+            <Link
+              href="/admin/roles"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white transition-all text-xs font-bold border border-indigo-500/30 group shadow-sm"
+              title="Customize Sidebar & Access Control (Master Only)"
+            >
+              <Sliders size={15} className="shrink-0 text-indigo-400 group-hover:text-white group-hover:rotate-45 transition-transform" />
+              {!isCollapsed && (
+                <div className="flex flex-col min-w-0">
+                  <span className="truncate">Edit Sidebar & Access</span>
+                  <span className="text-[9px] font-medium text-indigo-400/80 group-hover:text-indigo-100 truncate">
+                    Reorder & role visibility
+                  </span>
+                </div>
+              )}
+            </Link>
+          </div>
+        )}
 
         {/* User Workspace Profile */}
         <div className="p-4 bg-slate-800/20 border-t border-slate-800/50 backdrop-blur-md relative z-10">

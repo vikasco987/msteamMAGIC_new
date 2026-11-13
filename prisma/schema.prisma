@@ -966,6 +966,8 @@ model OnboardingRecord {
   taskStartDate  String?
   fssaiNumber    String?
   restaurantId   String?
+  swiggyRestaurantId String?
+  zomatoRestaurantId String?
   isReOnboarding Boolean?  @default(false)
   onboardedBy    String?   // Name of person who onboarded
   accountStatus  String?   @default("Pending") // Pending | In Progress | Live | Complete | Duplicate | Manual Uploaded | Rejected

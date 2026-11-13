@@ -21,7 +21,11 @@ import {
     Cloud,
     HardDrive,
     Ban,
-    User
+    User,
+    GripVertical,
+    ArrowUp,
+    ArrowDown,
+    Sliders,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -174,6 +178,43 @@ export default function RoleManagementPage() {
             toast.error("An error occurred");
         } finally {
             setChangingRoleId(null);
+        }
+    };
+
+    const [draggedSidebarItem, setDraggedSidebarItem] = useState<{ role: string; item: string } | null>(null);
+
+    const handleReorderSidebarItem = async (role: string, targetItem: string) => {
+        if (!draggedSidebarItem || draggedSidebarItem.role !== role || draggedSidebarItem.item === targetItem) return;
+
+        const roleLower = role.toLowerCase();
+        const currentPerm = permissions.find(p => p.role === roleLower) || { role: roleLower, sidebarItems: [] };
+        const items = [...currentPerm.sidebarItems];
+        const fromIdx = items.indexOf(draggedSidebarItem.item);
+        const toIdx = items.indexOf(targetItem);
+
+        if (fromIdx === -1 || toIdx === -1) return;
+
+        items.splice(fromIdx, 1);
+        items.splice(toIdx, 0, draggedSidebarItem.item);
+
+        try {
+            const res = await fetch('/api/admin/sidebar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role: roleLower, sidebarItems: items })
+            });
+
+            if (res.ok) {
+                setPermissions(prev => {
+                    const filtered = prev.filter(p => p.role !== roleLower);
+                    return [...filtered, { role: roleLower, sidebarItems: items }];
+                });
+                toast.success(`Position updated for ${role}`);
+            }
+        } catch {
+            toast.error("Failed to reorder sidebar items");
+        } finally {
+            setDraggedSidebarItem(null);
         }
     };
 
@@ -619,26 +660,72 @@ export default function RoleManagementPage() {
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        {allItems.map(item => {
-                                            const isVisible = activeItems.includes(item);
-                                            return (
-                                                <button
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between text-xs text-slate-500 font-semibold px-1 pb-1">
+                                            <span>Active Visible Items ({activeItems.length}) • Drag to reorder</span>
+                                            <span>Toggle to Show / Hide</span>
+                                        </div>
+
+                                        {/* Visible / Active Items (Draggable) */}
+                                        <div className="space-y-2">
+                                            {activeItems.map((item, idx) => (
+                                                <div
                                                     key={item}
-                                                    onClick={() => {
-                                                        if (role === 'MASTER' && item === 'Access Control') {
-                                                            toast.error("Master cannot hide Access Control (Safety Lock)");
-                                                            return;
-                                                        }
-                                                        toggleSidebarItem(role, item);
-                                                    }}
-                                                    className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isVisible ? 'bg-indigo-50 border-indigo-200 text-indigo-700 font-black' : 'bg-slate-50 border-transparent text-slate-400 grayscale'}`}
+                                                    draggable
+                                                    onDragStart={() => setDraggedSidebarItem({ role, item })}
+                                                    onDragOver={(e) => e.preventDefault()}
+                                                    onDrop={() => handleReorderSidebarItem(role, item)}
+                                                    className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all bg-indigo-50/80 border-indigo-200 text-indigo-900 font-bold shadow-sm hover:shadow group cursor-grab active:cursor-grabbing ${
+                                                        draggedSidebarItem?.item === item ? 'opacity-50 ring-2 ring-indigo-400' : ''
+                                                    }`}
                                                 >
-                                                    <span className="text-sm">{item}</span>
-                                                    {isVisible ? <Eye size={18} /> : <EyeOff size={18} />}
-                                                </button>
-                                            );
-                                        })}
+                                                    <div className="flex items-center gap-2.5">
+                                                        <GripVertical size={16} className="text-indigo-400 group-hover:text-indigo-600 shrink-0" />
+                                                        <span className="text-xs font-mono text-indigo-400 w-5">{idx + 1}.</span>
+                                                        <span className="text-sm">{item}</span>
+                                                    </div>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (role === 'MASTER' && item === 'Access Control') {
+                                                                toast.error("Master cannot hide Access Control (Safety Lock)");
+                                                                return;
+                                                            }
+                                                            toggleSidebarItem(role, item);
+                                                        }}
+                                                        className="p-1.5 rounded-xl hover:bg-indigo-100 text-indigo-600 transition"
+                                                        title="Hide from sidebar"
+                                                    >
+                                                        <Eye size={18} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Hidden Items */}
+                                        {allItems.filter(i => !activeItems.includes(i)).length > 0 && (
+                                            <div className="pt-4 mt-4 border-t border-slate-100">
+                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5 px-1">
+                                                    Hidden Items ({allItems.filter(i => !activeItems.includes(i)).length}) — Click Eye to Show
+                                                </p>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                    {allItems
+                                                        .filter(i => !activeItems.includes(i))
+                                                        .map(item => (
+                                                            <button
+                                                                key={item}
+                                                                type="button"
+                                                                onClick={() => toggleSidebarItem(role, item)}
+                                                                className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-indigo-50/60 text-slate-500 hover:text-indigo-700 transition group text-left"
+                                                            >
+                                                                <span className="text-xs font-medium truncate">{item}</span>
+                                                                <EyeOff size={16} className="text-slate-400 group-hover:text-indigo-600 shrink-0 ml-2" />
+                                                            </button>
+                                                        ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             );

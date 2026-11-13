@@ -3,7 +3,7 @@
 
 import { NextResponse } from "next/server";
 import { MongoClient } from "mongodb";
-import { auth } from "@/lib/auth-utils";
+import { auth, getUserDetails } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 import * as XLSX from "xlsx";
 
@@ -26,11 +26,39 @@ const ONBOARDING_TITLES = [
   "📸 Photo Upload",
 ];
 
+async function getUserRole(userId: string) {
+  const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
+  let roleFromClerk: string | undefined;
+  try {
+    if (!userId.startsWith("custom_")) {
+      const clerkUser = await getUserDetails(userId);
+      if (clerkUser) {
+        roleFromClerk =
+          (clerkUser.publicMetadata as any)?.role ||
+          (clerkUser.privateMetadata as any)?.role;
+      }
+    }
+  } catch {}
+  const role = String(
+    roleFromClerk || dbUser?.role || "user"
+  ).toLowerCase();
+  return { role, dbUser };
+}
+
 export async function GET(req: Request) {
   try {
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { role } = await getUserRole(userId);
+    // User requirement: "mast role can export whole" (only master or admin can export)
+    if (role !== "master" && role !== "admin") {
+      return NextResponse.json(
+        { error: "Access Denied: Only Master role can export onboarding data." },
+        { status: 403 }
+      );
     }
 
     const { searchParams } = new URL(req.url);
@@ -46,15 +74,41 @@ export async function GET(req: Request) {
       title: { $in: ONBOARDING_TITLES },
     };
     if (titleFilter && titleFilter !== "All") {
+      const titleList = titleFilter
+        .split(",")
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean);
       const matched = ONBOARDING_TITLES.filter((t) =>
-        t.toLowerCase().includes(titleFilter.toLowerCase())
+        titleList.some((target) => t.toLowerCase().includes(target))
       );
       if (matched.length > 0) taskFilter.title = { $in: matched };
     }
-    if (assigneeFilter)
-      taskFilter.assigneeName = { $regex: assigneeFilter, $options: "i" };
-    if (assignerFilter)
-      taskFilter.assignerName = { $regex: assignerFilter, $options: "i" };
+    if (assigneeFilter) {
+      const assigneeList = assigneeFilter
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (assigneeList.length === 1) {
+        taskFilter.assigneeName = { $regex: assigneeList[0], $options: "i" };
+      } else if (assigneeList.length > 1) {
+        taskFilter.assigneeName = {
+          $in: assigneeList.map((a) => new RegExp(`^${a}$`, "i")),
+        };
+      }
+    }
+    if (assignerFilter) {
+      const assignerList = assignerFilter
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (assignerList.length === 1) {
+        taskFilter.assignerName = { $regex: assignerList[0], $options: "i" };
+      } else if (assignerList.length > 1) {
+        taskFilter.assignerName = {
+          $in: assignerList.map((a) => new RegExp(`^${a}$`, "i")),
+        };
+      }
+    }
 
     const tasks = await db
       .collection("Task")
@@ -80,7 +134,15 @@ export async function GET(req: Request) {
 
     const obFilter: Record<string, any> = { taskId: { $in: taskIds } };
     if (accountStatusFilter && accountStatusFilter !== "All") {
-      obFilter.accountStatus = accountStatusFilter;
+      const statusList = accountStatusFilter
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (statusList.length === 1) {
+        obFilter.accountStatus = statusList[0];
+      } else if (statusList.length > 1) {
+        obFilter.accountStatus = { $in: statusList };
+      }
     }
 
     const records = await db.collection("OnboardingRecord").find(obFilter).toArray();
@@ -104,11 +166,8 @@ export async function GET(req: Request) {
         "Assigned By": task.assignerName || cf.assignerName || "",
         "Assigned To": task.assigneeName || "",
         "Task Status": task.status || "",
-        "Task Start Date": ob.taskStartDate || cf.startDate || "",
-        "FSSAI Number": ob.fssaiNumber || "",
-        "Restaurant ID": ob.restaurantId || task.restId || cf.restId || "",
-        "Re-Onboarding": ob.isReOnboarding ? "Yes" : "No",
-        "Onboarded By": ob.onboardedBy || "",
+        "Swiggy Restaurant ID": ob.swiggyRestaurantId || cf.swiggyRestaurantId || "",
+        "Zomato Restaurant ID": ob.zomatoRestaurantId || cf.zomatoRestaurantId || "",
         "Account Status": ob.accountStatus || "Pending",
         "Platform": ob.platform || "",
         "Outlet Created": ob.outletCreated || "Pending",
