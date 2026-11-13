@@ -187,20 +187,23 @@ export async function PATCH(
       );
     }
 
-    // Get user name
+    // Get user name (use cached dbUser first to avoid slow 1.4s Clerk API call)
     const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
-    let userName = dbUser?.name || userId;
-    try {
-      if (!userId.startsWith("custom_")) {
-        const clerkUser = await getUserDetails(userId);
-        if (clerkUser) {
-          userName =
-            `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
-            clerkUser.username ||
-            userName;
+    let userName = dbUser?.name || "";
+    if (!userName) {
+      try {
+        if (!userId.startsWith("custom_")) {
+          const clerkUser = await getUserDetails(userId);
+          if (clerkUser) {
+            userName =
+              `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
+              clerkUser.username ||
+              userId;
+          }
         }
-      }
-    } catch {}
+      } catch {}
+      if (!userName) userName = userId;
+    }
 
     // Upsert
     const existing = await prisma.onboardingRecord.findUnique({

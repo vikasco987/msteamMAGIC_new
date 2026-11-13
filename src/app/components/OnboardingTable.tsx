@@ -1226,37 +1226,57 @@ export default function OnboardingTable() {
   const saveEditDrawer = async () => {
     if (!drawerTask) return;
     setDrawerSaving(true);
+    const targetTaskId = drawerTask.taskId;
+    const updatedValues = { ...drawerValues };
+    const noteToPost = drawerNewNote.trim();
+
+    // 1. Optimistic UI update immediately
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.taskId === targetTaskId
+          ? {
+              ...t,
+              ...updatedValues,
+              taskStatus: updatedValues.taskStatus || t.taskStatus,
+            }
+          : t
+      )
+    );
+
     try {
-      if (drawerValues.taskStatus) {
-        await fetch(`/api/tasks/${drawerTask.taskId}`, {
+      // 2. Execute network requests in parallel
+      // Note: /api/onboarding/[id] already updates taskStatus in Task collection directly,
+      // so no separate sequential call to /api/tasks/[id] is needed!
+      const requests: Promise<any>[] = [
+        fetch(`/api/onboarding/${targetTaskId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: drawerValues.taskStatus }),
-        }).catch(() => {});
+          body: JSON.stringify(updatedValues),
+        }),
+      ];
+
+      if (noteToPost) {
+        requests.push(
+          fetch(`/api/tasks/${targetTaskId}/notes`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content: noteToPost }),
+          })
+        );
       }
 
-      // If user typed a note in the drawer, post it too
-      if (drawerNewNote.trim()) {
-        await fetch(`/api/tasks/${drawerTask.taskId}/notes`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: drawerNewNote.trim() }),
-        }).catch(() => {});
-      }
-
-      const res = await fetch(`/api/onboarding/${drawerTask.taskId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(drawerValues),
-      });
+      const [res] = await Promise.all(requests);
 
       if (!res.ok) throw new Error("Drawer save failed");
       toast.success("✅ Onboarding details updated successfully");
       closeEditDrawer();
-      fetchTasks();
-      fetchStats();
+
+      // Refresh in background without blocking user
+      Promise.all([fetchTasks(), fetchStats()]).catch(() => {});
     } catch {
       toast.error("❌ Failed to update details");
+      // Revert/refresh on failure
+      fetchTasks();
     } finally {
       setDrawerSaving(false);
     }
