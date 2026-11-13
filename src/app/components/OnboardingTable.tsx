@@ -659,7 +659,7 @@ export default function OnboardingTable() {
     };
   }, [query]);
 
-  // ─── Fetch tasks ───────────────────────────────────────────────────────────
+  // ─── Fetch data (Parallelized) ─────────────────────────────────────────────
   const fetchTasks = useCallback(async () => {
     setLoading(true);
     try {
@@ -721,10 +721,12 @@ export default function OnboardingTable() {
     } catch {}
   }, []);
 
+  // Fetch tasks on initial render or filter change
   useEffect(() => {
     fetchTasks();
   }, [fetchTasks]);
 
+  // Fetch stats once on mount
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
@@ -1760,13 +1762,10 @@ export default function OnboardingTable() {
         </div>
       </div>
 
-      {/* ─── Loading overlay ──────────────────────────────────────────────────── */}
+      {/* ─── Loading Bar Indicator (Non-blocking) ───────────────────────────── */}
       {loading && (
-        <div className="fixed inset-0 bg-black/10 backdrop-blur-[1px] z-40 flex items-center justify-center">
-          <div className="bg-white rounded-xl shadow-lg px-8 py-5 flex items-center gap-3">
-            <FaSpinner className="animate-spin text-purple-600" size={20} />
-            <span className="text-gray-700 font-medium">Loading data...</span>
-          </div>
+        <div className="h-0.5 w-full bg-purple-100 overflow-hidden relative">
+          <div className="h-full bg-purple-600 animate-pulse w-full" />
         </div>
       )}
 
@@ -1804,7 +1803,23 @@ export default function OnboardingTable() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {tasks.length === 0 && !loading ? (
+                {loading && tasks.length === 0 ? (
+                  // Elegant Skeleton Rows
+                  Array.from({ length: 6 }).map((_, rIdx) => (
+                    <tr key={`skeleton-${rIdx}`} className="animate-pulse">
+                      {visibleColumns.map((col, cIdx) => (
+                        <td key={`sk-${rIdx}-${col.id}`} className="px-3 py-3.5">
+                          <div
+                            className="h-4 bg-gray-200 rounded-md"
+                            style={{
+                              width: cIdx === 0 ? "24px" : cIdx === 4 ? "120px" : "80px",
+                            }}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                ) : tasks.length === 0 ? (
                   <tr>
                     <td
                       colSpan={visibleColumns.length || 1}

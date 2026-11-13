@@ -305,186 +305,252 @@ export async function GET(req: Request) {
     // Step 1: Base match on Task collection
     const pipeline: any[] = [{ $match: taskFilter }];
 
-    // Step 2: Left Outer Join with OnboardingRecord (supporting both ObjectId and string taskId)
-    pipeline.push(
-      {
-        $lookup: {
-          from: "OnboardingRecord",
-          let: { tid: "$_id", tidStr: { $toString: "$_id" } },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $or: [
-                    { $eq: ["$taskId", "$$tid"] },
-                    { $eq: ["$taskId", "$$tidStr"] },
-                  ],
+    const hasObFilter =
+      (accountStatusFilter && accountStatusFilter !== "All") ||
+      (platformFilter && platformFilter !== "All") ||
+      (outletCreatedFilter && outletCreatedFilter !== "All") ||
+      isReOnboardingFilter !== "";
+
+    // If onboarding-specific filters are active, we must join OnboardingRecord before pagination
+    if (hasObFilter) {
+      pipeline.push(
+        {
+          $lookup: {
+            from: "OnboardingRecord",
+            let: { tid: "$_id", tidStr: { $toString: "$_id" } },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $or: [
+                      { $eq: ["$taskId", "$$tid"] },
+                      { $eq: ["$taskId", "$$tidStr"] },
+                    ],
+                  },
                 },
               },
-            },
-          ],
-          as: "obData",
-        },
-      },
-      {
-        $addFields: {
-          obRecord: { $arrayElemAt: ["$obData", 0] },
-        },
-      }
-    );
-
-    // Step 3: Match onboarding-specific filters at database level
-    const obMatch: Record<string, any> = {};
-    if (accountStatusFilter && accountStatusFilter !== "All") {
-      const statusList = accountStatusFilter
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-
-      if (statusList.length === 1) {
-        if (statusList[0] === "Pending") {
-          obMatch.$or = [
-            { "obRecord.accountStatus": "Pending" },
-            { obRecord: { $exists: false } },
-            { "obRecord.accountStatus": { $exists: false } },
-          ];
-        } else {
-          obMatch["obRecord.accountStatus"] = statusList[0];
-        }
-      } else if (statusList.length > 1) {
-        const hasPending = statusList.includes("Pending");
-        if (hasPending) {
-          obMatch.$or = [
-            { "obRecord.accountStatus": { $in: statusList } },
-            { obRecord: { $exists: false } },
-            { "obRecord.accountStatus": { $exists: false } },
-          ];
-        } else {
-          obMatch["obRecord.accountStatus"] = { $in: statusList };
-        }
-      }
-    }
-
-    if (platformFilter && platformFilter !== "All") {
-      const platformList = platformFilter
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-
-      if (platformList.length === 1) {
-        obMatch.$or = [
-          { "obRecord.platform": platformList[0] },
-          { title: { $regex: platformList[0], $options: "i" } },
-        ];
-      } else if (platformList.length > 1) {
-        obMatch.$or = [
-          { "obRecord.platform": { $in: platformList } },
-          {
-            $or: platformList.map((p) => ({
-              title: { $regex: p, $options: "i" },
-            })),
+            ],
+            as: "obData",
           },
-        ];
+        },
+        {
+          $addFields: {
+            obRecord: { $arrayElemAt: ["$obData", 0] },
+          },
+        }
+      );
+
+      // Match onboarding-specific filters at database level
+      const obMatch: Record<string, any> = {};
+      if (accountStatusFilter && accountStatusFilter !== "All") {
+        const statusList = accountStatusFilter
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+
+        if (statusList.length === 1) {
+          if (statusList[0] === "Pending") {
+            obMatch.$or = [
+              { "obRecord.accountStatus": "Pending" },
+              { obRecord: { $exists: false } },
+              { "obRecord.accountStatus": { $exists: false } },
+            ];
+          } else {
+            obMatch["obRecord.accountStatus"] = statusList[0];
+          }
+        } else if (statusList.length > 1) {
+          const hasPending = statusList.includes("Pending");
+          if (hasPending) {
+            obMatch.$or = [
+              { "obRecord.accountStatus": { $in: statusList } },
+              { obRecord: { $exists: false } },
+              { "obRecord.accountStatus": { $exists: false } },
+            ];
+          } else {
+            obMatch["obRecord.accountStatus"] = { $in: statusList };
+          }
+        }
+      }
+
+      if (platformFilter && platformFilter !== "All") {
+        const platformList = platformFilter
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+
+        if (platformList.length === 1) {
+          obMatch.$or = [
+            { "obRecord.platform": platformList[0] },
+            { title: { $regex: platformList[0], $options: "i" } },
+          ];
+        } else if (platformList.length > 1) {
+          obMatch.$or = [
+            { "obRecord.platform": { $in: platformList } },
+            {
+              $or: platformList.map((p) => ({
+                title: { $regex: p, $options: "i" },
+              })),
+            },
+          ];
+        }
+      }
+
+      if (outletCreatedFilter && outletCreatedFilter !== "All") {
+        const outletList = outletCreatedFilter
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+
+        if (outletList.length === 1) {
+          if (outletList[0] === "Pending") {
+            obMatch.$or = [
+              { "obRecord.outletCreated": "Pending" },
+              { obRecord: { $exists: false } },
+              { "obRecord.outletCreated": { $exists: false } },
+            ];
+          } else {
+            obMatch["obRecord.outletCreated"] = outletList[0];
+          }
+        } else if (outletList.length > 1) {
+          const hasPending = outletList.includes("Pending");
+          if (hasPending) {
+            obMatch.$or = [
+              { "obRecord.outletCreated": { $in: outletList } },
+              { obRecord: { $exists: false } },
+              { "obRecord.outletCreated": { $exists: false } },
+            ];
+          } else {
+            obMatch["obRecord.outletCreated"] = { $in: outletList };
+          }
+        }
+      }
+
+      if (isReOnboardingFilter !== "") {
+        obMatch["obRecord.isReOnboarding"] = isReOnboardingFilter === "true";
+      }
+
+      if (Object.keys(obMatch).length > 0) {
+        pipeline.push({ $match: obMatch });
       }
     }
 
-    if (outletCreatedFilter && outletCreatedFilter !== "All") {
-      const outletList = outletCreatedFilter
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-
-      if (outletList.length === 1) {
-        if (outletList[0] === "Pending") {
-          obMatch.$or = [
-            { "obRecord.outletCreated": "Pending" },
-            { obRecord: { $exists: false } },
-            { "obRecord.outletCreated": { $exists: false } },
-          ];
-        } else {
-          obMatch["obRecord.outletCreated"] = outletList[0];
-        }
-      } else if (outletList.length > 1) {
-        const hasPending = outletList.includes("Pending");
-        if (hasPending) {
-          obMatch.$or = [
-            { "obRecord.outletCreated": { $in: outletList } },
-            { obRecord: { $exists: false } },
-            { "obRecord.outletCreated": { $exists: false } },
-          ];
-        } else {
-          obMatch["obRecord.outletCreated"] = { $in: outletList };
-        }
-      }
-    }
-
-    if (isReOnboardingFilter !== "") {
-      obMatch["obRecord.isReOnboarding"] = isReOnboardingFilter === "true";
-    }
-
-    if (Object.keys(obMatch).length > 0) {
-      pipeline.push({ $match: obMatch });
-    }
-
-    // Step 4: Sorting and Pagination with Facet
+    // Step 2: Sorting and Pagination with Facet (extracting total count, dynamic filter options, and paginated records)
     const sortField =
       sortKey === "createdAt" ? "createdAt" : sortKey === "shopName" ? "shopName" : "createdAt";
+
+    const dataStages: any[] = [
+      { $sort: { [sortField]: sortDir } },
+      { $skip: skip },
+      { $limit: limit },
+    ];
+
+    // If we didn't join OnboardingRecord earlier, join it now ONLY for the paginated 10 records
+    if (!hasObFilter) {
+      dataStages.push(
+        {
+          $lookup: {
+            from: "OnboardingRecord",
+            let: { tid: "$_id", tidStr: { $toString: "$_id" } },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $or: [
+                      { $eq: ["$taskId", "$$tid"] },
+                      { $eq: ["$taskId", "$$tidStr"] },
+                    ],
+                  },
+                },
+              },
+            ],
+            as: "obData",
+          },
+        },
+        {
+          $addFields: {
+            obRecord: { $arrayElemAt: ["$obData", 0] },
+          },
+        }
+      );
+    }
+
+    dataStages.push({
+      $project: {
+        _id: 1,
+        title: 1,
+        shopName: 1,
+        customerName: 1,
+        phone: 1,
+        assigneeName: 1,
+        assignerName: 1,
+        assigneeId: 1,
+        assignerId: 1,
+        createdAt: 1,
+        status: 1,
+        customFields: 1,
+        restId: 1,
+        obRecord: 1,
+      },
+    });
 
     pipeline.push({
       $facet: {
         metadata: [{ $count: "total" }],
-        data: [
-          { $sort: { [sortField]: sortDir } },
-          { $skip: skip },
-          { $limit: limit },
+        filterOptions: [
           {
-            $lookup: {
-              from: "Note",
-              let: { tid: "$_id", tidStr: { $toString: "$_id" } },
-              pipeline: [
-                {
-                  $match: {
-                    $expr: {
-                      $or: [
-                        { $eq: ["$taskId", "$$tid"] },
-                        { $eq: ["$taskId", "$$tidStr"] },
-                      ],
-                    },
-                  },
-                },
-                { $sort: { createdAt: -1 } },
-                { $limit: 3 },
-              ],
-              as: "taskNotes",
-            },
-          },
-          {
-            $project: {
-              _id: 1,
-              title: 1,
-              shopName: 1,
-              customerName: 1,
-              phone: 1,
-              assigneeName: 1,
-              assignerName: 1,
-              assigneeId: 1,
-              assignerId: 1,
-              createdAt: 1,
-              status: 1,
-              customFields: 1,
-              restId: 1,
-              obRecord: 1,
-              taskNotes: 1,
+            $group: {
+              _id: null,
+              assignees: { $addToSet: "$assigneeName" },
+              assigners: { $addToSet: "$assignerName" },
             },
           },
         ],
+        data: dataStages,
       },
     });
 
     const aggResult = await taskCol.aggregate(pipeline).toArray();
-    const facetData = aggResult[0] || { metadata: [], data: [] };
+    const facetData = aggResult[0] || { metadata: [], data: [], filterOptions: [] };
     const totalCount = facetData.metadata[0]?.total || 0;
     const rawTasks = facetData.data || [];
+
+    // Extract filter option names computed in the same pipeline pass
+    const filterOptionsGroup = facetData.filterOptions?.[0] || {};
+    const assigneeNames: string[] = filterOptionsGroup.assignees || [];
+    const assignerNames: string[] = filterOptionsGroup.assigners || [];
+
+    // Step 3: Efficient Batch Fetch of recent notes only for the paginated tasks
+    const pageTaskIds = rawTasks.map((t: any) => t._id);
+    const pageTaskIdsStr = pageTaskIds.map((id: any) => id.toString());
+    
+    let taskNotesMap: Record<string, any[]> = {};
+    if (pageTaskIds.length > 0) {
+      const recentNotes = await db
+        .collection("Note")
+        .find({
+          taskId: { $in: [...pageTaskIds, ...pageTaskIdsStr] },
+        })
+        .sort({ createdAt: -1 })
+        .toArray();
+
+      for (const note of recentNotes) {
+        const tidStr = note.taskId?.toString();
+        if (!tidStr) continue;
+        if (!taskNotesMap[tidStr]) {
+          taskNotesMap[tidStr] = [];
+        }
+        if (taskNotesMap[tidStr].length < 3) {
+          taskNotesMap[tidStr].push({
+            id: note._id?.toString(),
+            content: note.content || "",
+            authorName: note.authorName || "Anonymous",
+            authorEmail: note.authorEmail || "",
+            fileUrl: note.fileUrl || null,
+            createdAt: note.createdAt,
+          });
+        }
+      }
+    }
 
     // ─── Merge task + onboarding record ───────────────────────────────────────
     const enriched = rawTasks.map((task: any) => {
@@ -517,24 +583,9 @@ export async function GET(req: Request) {
         remarks: ob.remarks || "",
         hasRecord: !!ob._id,
         // Team Board Notes / Remarks
-        recentNotes: (task.taskNotes || []).map((n: any) => ({
-          id: n._id?.toString(),
-          content: n.content || "",
-          authorName: n.authorName || "Anonymous",
-          authorEmail: n.authorEmail || "",
-          fileUrl: n.fileUrl || null,
-          createdAt: n.createdAt,
-        })),
+        recentNotes: taskNotesMap[tid] || [],
       };
     });
-
-    // ─── Filter options ───────────────────────────────────────────────────────
-    const [assigneeNames, assignerNames] = await Promise.all([
-      taskCol
-        .distinct("assigneeName", taskFilter),
-      taskCol
-        .distinct("assignerName", taskFilter),
-    ]);
 
     return NextResponse.json({
       tasks: enriched,

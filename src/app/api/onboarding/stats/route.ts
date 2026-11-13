@@ -87,90 +87,79 @@ export async function GET(req: Request) {
       ];
     }
 
-    // Total onboarding tasks for this user's scope
-    const totalTasks = await db.collection("Task").countDocuments(taskMatch);
-
-    // Aggregate onboarding records joined with user's scoped tasks
-    const statsAgg = await db
-      .collection("Task")
-      .aggregate([
-        { $match: taskMatch },
-        {
-          $lookup: {
-            from: "OnboardingRecord",
-            let: { tid: "$_id", tidStr: { $toString: "$_id" } },
-            pipeline: [
+    // Parallelized fast execution: task count, category counts, and scoped onboarding records
+    const [taskCount, categoryAgg, obRecords] = await Promise.all([
+      db.collection("Task").countDocuments(taskMatch),
+      db
+        .collection("Task")
+        .aggregate([
+          { $match: taskMatch },
+          { $group: { _id: "$title", count: { $sum: 1 } } },
+        ])
+        .toArray(),
+      isPrivileged
+        ? db
+            .collection("OnboardingRecord")
+            .find({}, { projection: { accountStatus: 1, platform: 1, taskId: 1 } })
+            .toArray()
+        : db
+            .collection("Task")
+            .aggregate([
+              { $match: taskMatch },
               {
-                $match: {
-                  $expr: {
-                    $or: [
-                      { $eq: ["$taskId", "$$tid"] },
-                      { $eq: ["$taskId", "$$tidStr"] },
-                    ],
-                  },
+                $lookup: {
+                  from: "OnboardingRecord",
+                  let: { tid: "$_id", tidStr: { $toString: "$_id" } },
+                  pipeline: [
+                    {
+                      $match: {
+                        $expr: {
+                          $or: [
+                            { $eq: ["$taskId", "$$tid"] },
+                            { $eq: ["$taskId", "$$tidStr"] },
+                          ],
+                        },
+                      },
+                    },
+                    {
+                      $project: { accountStatus: 1, platform: 1 },
+                    },
+                  ],
+                  as: "ob",
                 },
               },
-            ],
-            as: "obRecord",
-          },
-        },
-        {
-          $unwind: {
-            path: "$obRecord",
-            preserveNullAndEmptyArrays: true,
-          },
-        },
-        {
-          $group: {
-            _id: {
-              accountStatus: "$obRecord.accountStatus",
-              platform: "$obRecord.platform",
-              hasRecord: { $cond: [{ $ifNull: ["$obRecord._id", false] }, true, false] },
-            },
-            count: { $sum: 1 },
-          },
-        },
-      ])
-      .toArray();
+              { $unwind: "$ob" },
+              { $replaceRoot: { newRoot: "$ob" } },
+            ])
+            .toArray(),
+    ]);
 
+    const totalTasks = taskCount;
+    const totalRecords = obRecords.length;
     const statusMap: Record<string, number> = {};
     const platformMap: Record<string, number> = {};
-    let totalRecords = 0;
 
-    statsAgg.forEach((item) => {
-      const { accountStatus, platform, hasRecord } = item._id;
-      if (hasRecord) {
-        totalRecords += item.count;
-        const status = accountStatus || "Pending";
-        statusMap[status] = (statusMap[status] || 0) + item.count;
+    obRecords.forEach((ob: any) => {
+      const status = ob.accountStatus || "Pending";
+      statusMap[status] = (statusMap[status] || 0) + 1;
 
-        const plat = platform || "Other";
-        platformMap[plat] = (platformMap[plat] || 0) + item.count;
-      }
+      const plat = ob.platform || "Other";
+      platformMap[plat] = (platformMap[plat] || 0) + 1;
     });
-
-    // Count by category (title) within user's scoped tasks
-    const categoryAgg = await db
-      .collection("Task")
-      .aggregate([
-        { $match: taskMatch },
-        { $group: { _id: "$title", count: { $sum: 1 } } },
-      ])
-      .toArray();
 
     const categoryMap: Record<string, number> = {};
     categoryAgg.forEach((c) => {
       categoryMap[c._id] = c.count;
     });
 
-    const pending = totalTasks - totalRecords; // Tasks without onboarding records
+    const pending = Math.max(0, totalTasks - totalRecords); // Tasks without onboarding records
 
     return NextResponse.json({
       totalTasks,
       totalRecords,
-      pending: Math.max(0, pending),
+      pending,
       byStatus: {
-        pending: (statusMap["Pending"] || 0) + Math.max(0, pending),
+        pending: (statusMap["Pending"] || 0) + pending,
         inProgress: statusMap["In Progress"] || 0,
         live: statusMap["Live"] || 0,
         complete: statusMap["Complete"] || 0,
