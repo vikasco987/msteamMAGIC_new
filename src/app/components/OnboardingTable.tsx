@@ -1896,22 +1896,108 @@ export default function OnboardingTable() {
             enableSearch={false}
           />
 
-          {/* Date range */}
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="text-sm border rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-400"
-            title="From date"
-          />
-          <span className="text-gray-400 text-sm">to</span>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="text-sm border rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-400"
-            title="To date"
-          />
+          {/* Task Created Date Range & Quick Selection (Default 15 Days) */}
+          <div className="relative" ref={datePickerRef}>
+            <button
+              type="button"
+              onClick={() => setIsDatePickerOpen((prev) => !prev)}
+              className={`text-sm border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white flex items-center gap-2 transition ${
+                dateFrom || dateTo
+                  ? "border-purple-400 text-purple-900 font-medium bg-purple-50/40"
+                  : "border-gray-200 text-gray-700"
+              }`}
+            >
+              <Calendar size={14} className="text-purple-600 shrink-0" />
+              <span>
+                {datePreset && datePreset !== "customRange"
+                  ? TASK_CREATED_PRESETS.find((p) => p.value === datePreset)?.label || "Task Created"
+                  : dateFrom && dateTo
+                  ? `${dateFrom} to ${dateTo}`
+                  : dateFrom
+                  ? `From ${dateFrom}`
+                  : "Task Created Date"}
+              </span>
+              <ChevronDown size={14} className="text-gray-400 shrink-0" />
+            </button>
+
+            {/* Quick Selection Dropdown Menu */}
+            {isDatePickerOpen && (
+              <div className="absolute left-0 mt-1 w-72 bg-[#0f172a] text-slate-100 rounded-2xl shadow-2xl ring-1 ring-white/10 z-50 p-3 border border-slate-800">
+                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest px-3 py-1 mb-1">
+                  QUICK SELECTION
+                </div>
+
+                <div className="space-y-0.5">
+                  {TASK_CREATED_PRESETS.map((preset) => {
+                    const isSelected = datePreset === preset.value;
+                    return (
+                      <button
+                        key={preset.value}
+                        type="button"
+                        onClick={() => applyPreset(preset.value)}
+                        className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition ${
+                          isSelected
+                            ? "bg-purple-600 text-white"
+                            : "hover:bg-slate-800/80 text-slate-300 hover:text-white"
+                        }`}
+                      >
+                        <span>{preset.label}</span>
+                        {isSelected && <Check size={14} className="text-white" />}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="border-t border-slate-800/80 my-2 pt-2">
+                  <div className="px-3 py-1 text-xs font-bold text-orange-400 uppercase tracking-wider mb-2">
+                    Custom Range
+                  </div>
+                  <div className="space-y-2 px-1">
+                    <div>
+                      <label className="block text-[10px] text-slate-400 mb-0.5">From Date</label>
+                      <input
+                        type="date"
+                        value={dateFrom}
+                        onChange={(e) => {
+                          setDatePreset("customRange");
+                          setDateFrom(e.target.value);
+                        }}
+                        className="w-full text-xs bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:ring-1 focus:ring-purple-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-400 mb-0.5">To Date</label>
+                      <input
+                        type="date"
+                        value={dateTo}
+                        onChange={(e) => {
+                          setDatePreset("customRange");
+                          setDateTo(e.target.value);
+                        }}
+                        className="w-full text-xs bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:ring-1 focus:ring-purple-400"
+                      />
+                    </div>
+                    <div className="pt-1 flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => applyPreset("allTime")}
+                        className="text-[11px] text-slate-400 hover:text-slate-200 underline"
+                      >
+                        Clear Range
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsDatePickerOpen(false)}
+                        className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Clear filters */}
           {(query ||
