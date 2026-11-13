@@ -62,10 +62,24 @@ export async function GET(req: Request) {
     const client = await getMongoClient();
     const db = client.db();
 
+    const url = new URL(req.url);
+    const dateFrom = url.searchParams.get("dateFrom") || "";
+    const dateTo = url.searchParams.get("dateTo") || "";
+
     // Build role-based filter on Task
     const taskMatch: Record<string, any> = {
       title: { $in: ONBOARDING_TITLES },
     };
+
+    if (dateFrom || dateTo) {
+      taskMatch.createdAt = {};
+      if (dateFrom) taskMatch.createdAt.$gte = new Date(dateFrom);
+      if (dateTo) {
+        const end = new Date(dateTo);
+        end.setHours(23, 59, 59, 999);
+        taskMatch.createdAt.$lte = end;
+      }
+    }
 
     if (!isPrivileged) {
       // Normal user / Seller: created by them OR assigned to them
@@ -77,8 +91,8 @@ export async function GET(req: Request) {
       ];
     }
 
-    // Parallelized fast execution: task count, category counts, SLA active tasks, and scoped onboarding records
-    const [taskCount, categoryAgg, obRecords, activeTasks] = await Promise.all([
+    // Parallelized fast execution: task count, category counts, task board status counts, SLA active tasks, and scoped onboarding records
+    const [taskCount, categoryAgg, taskStatusAgg, obRecords, activeTasks] = await Promise.all([
       db.collection("Task").countDocuments(taskMatch),
       db
         .collection("Task")
@@ -87,11 +101,49 @@ export async function GET(req: Request) {
           { $group: { _id: "$title", count: { $sum: 1 } } },
         ])
         .toArray(),
+      db
+        .collection("Task")
+        .aggregate([
+          { $match: taskMatch },
+          { $group: { _id: "$status", count: { $sum: 1 } } },
+        ])
+        .toArray(),
       isPrivileged
-        ? db
-            .collection("OnboardingRecord")
-            .find({}, { projection: { accountStatus: 1, platform: 1, taskId: 1 } })
-            .toArray()
+        ? (dateFrom || dateTo)
+          ? db
+              .collection("Task")
+              .aggregate([
+                { $match: taskMatch },
+                {
+                  $lookup: {
+                    from: "OnboardingRecord",
+                    let: { tid: "$_id", tidStr: { $toString: "$_id" } },
+                    pipeline: [
+                      {
+                        $match: {
+                          $expr: {
+                            $or: [
+                              { $eq: ["$taskId", "$$tid"] },
+                              { $eq: ["$taskId", "$$tidStr"] },
+                            ],
+                          },
+                        },
+                      },
+                      {
+                        $project: { accountStatus: 1, platform: 1 },
+                      },
+                    ],
+                    as: "ob",
+                  },
+                },
+                { $unwind: "$ob" },
+                { $replaceRoot: { newRoot: "$ob" } },
+              ])
+              .toArray()
+          : db
+              .collection("OnboardingRecord")
+              .find({}, { projection: { accountStatus: 1, platform: 1, taskId: 1 } })
+              .toArray()
         : db
             .collection("Task")
             .aggregate([
@@ -180,12 +232,27 @@ export async function GET(req: Request) {
       categoryMap[c._id] = c.count;
     });
 
+    const taskStatusMap: Record<string, number> = {
+      todo: 0,
+      inprogress: 0,
+      done: 0,
+    };
+    taskStatusAgg.forEach((s) => {
+      const key = String(s._id || "").toLowerCase();
+      taskStatusMap[key] = (taskStatusMap[key] || 0) + s.count;
+    });
+
     const pending = Math.max(0, totalTasks - totalRecords); // Tasks without onboarding records
 
     return NextResponse.json({
       totalTasks,
       totalRecords,
       pending,
+      taskBoardStatus: {
+        todo: taskStatusMap["todo"] || 0,
+        inProgress: taskStatusMap["inprogress"] || 0,
+        done: taskStatusMap["done"] || 0,
+      },
       byStatus: {
         pending: (statusMap["Pending"] || 0) + pending,
         inProgress: statusMap["In Progress"] || 0,

@@ -840,23 +840,26 @@ export default function OnboardingTable() {
     dateTo,
   ]);
 
-  // ─── Fetch stats ───────────────────────────────────────────────────────────
+  // ─── Fetch stats (Syncs with Active Date Range) ───────────────────────────
   const fetchStats = useCallback(async () => {
     try {
-      const res = await fetch("/api/onboarding/stats");
+      const params = new URLSearchParams();
+      if (dateFrom) params.set("dateFrom", dateFrom);
+      if (dateTo) params.set("dateTo", dateTo);
+      const res = await fetch(`/api/onboarding/stats?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setStats(data);
       }
     } catch {}
-  }, []);
+  }, [dateFrom, dateTo]);
 
   // Fetch tasks on initial render or filter change
   useEffect(() => {
     fetchTasks();
   }, [fetchTasks]);
 
-  // Fetch stats once on mount
+  // Fetch stats when date filter changes
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
@@ -1658,15 +1661,39 @@ export default function OnboardingTable() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-10 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
             {[
               {
                 label: "Total Tasks",
                 value: stats.totalTasks,
                 color: "bg-blue-50 border-blue-200 hover:border-blue-300",
                 textColor: "text-blue-700",
-                type: "status",
+                type: "clear",
                 filterValue: "",
+              },
+              {
+                label: "To Do (Board)",
+                value: stats.taskBoardStatus?.todo ?? 0,
+                color: "bg-sky-50 border-sky-300 hover:border-sky-400 ring-1 ring-sky-200",
+                textColor: "text-sky-700 font-extrabold",
+                type: "taskBoard",
+                filterValue: "todo",
+              },
+              {
+                label: "In Progress (Board)",
+                value: stats.taskBoardStatus?.inProgress ?? 0,
+                color: "bg-yellow-50 border-yellow-300 hover:border-yellow-400 ring-1 ring-yellow-200",
+                textColor: "text-yellow-700 font-extrabold",
+                type: "taskBoard",
+                filterValue: "inprogress",
+              },
+              {
+                label: "Done (Board)",
+                value: stats.taskBoardStatus?.done ?? 0,
+                color: "bg-emerald-50 border-emerald-300 hover:border-emerald-400 ring-1 ring-emerald-200",
+                textColor: "text-emerald-700 font-extrabold",
+                type: "taskBoard",
+                filterValue: "done",
               },
               {
                 label: "Overdue (SLA)",
@@ -1687,65 +1714,27 @@ export default function OnboardingTable() {
                 isPillBadge: true,
               },
               {
-                label: "Live",
-                value: stats.byStatus?.live || 0,
-                color: "bg-emerald-50 border-emerald-200 hover:border-emerald-300",
-                textColor: "text-emerald-700",
-                type: "status",
-                filterValue: "Live",
-              },
-              {
-                label: "Pending",
+                label: "Account Pending",
                 value: stats.byStatus?.pending || 0,
-                color: "bg-amber-50 border-amber-200 hover:border-amber-300",
-                textColor: "text-amber-700",
+                color: "bg-orange-50 border-orange-200 hover:border-orange-300",
+                textColor: "text-orange-700",
                 type: "status",
                 filterValue: "Pending",
               },
               {
-                label: "In Progress",
-                value: stats.byStatus?.inProgress || 0,
-                color: "bg-yellow-50 border-yellow-200 hover:border-yellow-300",
-                textColor: "text-yellow-700",
-                type: "status",
-                filterValue: "In Progress",
-              },
-              {
-                label: "Complete",
-                value: stats.byStatus?.complete || 0,
+                label: "Account Live",
+                value: stats.byStatus?.live || 0,
                 color: "bg-teal-50 border-teal-200 hover:border-teal-300",
                 textColor: "text-teal-700",
                 type: "status",
-                filterValue: "Complete",
-              },
-              {
-                label: "Duplicate",
-                value: stats.byStatus?.duplicate || 0,
-                color: "bg-rose-50 border-rose-200 hover:border-rose-300",
-                textColor: "text-rose-700",
-                type: "status",
-                filterValue: "Duplicate",
-              },
-              {
-                label: "Manual Upload",
-                value: stats.byStatus?.manualUploaded || 0,
-                color: "bg-purple-50 border-purple-200 hover:border-purple-300",
-                textColor: "text-purple-700",
-                type: "status",
-                filterValue: "Manual Uploaded",
-              },
-              {
-                label: "Rejected",
-                value: stats.byStatus?.rejected || 0,
-                color: "bg-red-50 border-red-200 hover:border-red-300",
-                textColor: "text-red-700",
-                type: "status",
-                filterValue: "Rejected",
+                filterValue: "Live",
               },
             ].map((card) => {
               const isSelected =
                 card.type === "sla"
                   ? selectedTimelineSla.includes(card.filterValue)
+                  : card.type === "taskBoard"
+                  ? false // task status filter can be added if desired
                   : card.filterValue
                   ? selectedAccountStatuses.includes(card.filterValue)
                   : selectedAccountStatuses.length === 0 && selectedTimelineSla.length === 0;
@@ -1763,10 +1752,10 @@ export default function OnboardingTable() {
                           ? prev.filter((s) => s !== card.filterValue)
                           : [card.filterValue]
                       );
-                    } else if (!card.filterValue) {
+                    } else if (card.type === "clear" || !card.filterValue) {
                       setSelectedAccountStatuses([]);
                       setSelectedTimelineSla([]);
-                    } else {
+                    } else if (card.type === "status") {
                       setSelectedAccountStatuses((prev) =>
                         prev.includes(card.filterValue)
                           ? prev.filter((s) => s !== card.filterValue)

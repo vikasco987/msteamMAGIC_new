@@ -88,6 +88,27 @@ export function applyBoardFilters(
             return created >= d;
           }
 
+          case "last_15_days": {
+            const d = new Date();
+            d.setDate(now.getDate() - 14);
+            d.setHours(0, 0, 0, 0);
+            return created >= d;
+          }
+
+          case "last_30_days": {
+            const d = new Date();
+            d.setDate(now.getDate() - 29);
+            d.setHours(0, 0, 0, 0);
+            return created >= d;
+          }
+
+          case "last_60_days": {
+            const d = new Date();
+            d.setDate(now.getDate() - 59);
+            d.setHours(0, 0, 0, 0);
+            return created >= d;
+          }
+
           case "this_month":
             return (
               created.getMonth() === now.getMonth() &&

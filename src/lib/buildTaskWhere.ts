@@ -211,6 +211,24 @@ export async function buildTaskWhere(req: NextRequest) {
           startDate.setHours(0, 0, 0, 0);
           endDate.setHours(23, 59, 59, 999);
           break;
+        case "last_15_days":
+          startDate = new Date(now);
+          startDate.setDate(startDate.getDate() - 14);
+          startDate.setHours(0, 0, 0, 0);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case "last_30_days":
+          startDate = new Date(now);
+          startDate.setDate(startDate.getDate() - 29);
+          startDate.setHours(0, 0, 0, 0);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case "last_60_days":
+          startDate = new Date(now);
+          startDate.setDate(startDate.getDate() - 59);
+          startDate.setHours(0, 0, 0, 0);
+          endDate.setHours(23, 59, 59, 999);
+          break;
         case "this_month":
           startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
           endDate.setHours(23, 59, 59, 999);
