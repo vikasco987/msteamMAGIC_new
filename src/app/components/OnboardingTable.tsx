@@ -585,6 +585,97 @@ function formatDate(dateStr: string) {
   }
 }
 
+// ─── Format Date YYYY-MM-DD for native date picker ────────────────────────────
+function formatYMD(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+// ─── Task Created Date Quick Filter Preset Helper ─────────────────────────────
+interface TaskCreatedPreset {
+  label: string;
+  value: string;
+  calc: () => { from: string; to: string };
+}
+
+const TASK_CREATED_PRESETS: TaskCreatedPreset[] = [
+  {
+    label: "Today",
+    value: "today",
+    calc: () => {
+      const now = new Date();
+      const s = formatYMD(now);
+      return { from: s, to: s };
+    },
+  },
+  {
+    label: "Yesterday",
+    value: "yesterday",
+    calc: () => {
+      const y = new Date();
+      y.setDate(y.getDate() - 1);
+      const s = formatYMD(y);
+      return { from: s, to: s };
+    },
+  },
+  {
+    label: "Last 7 Days",
+    value: "last7Days",
+    calc: () => {
+      const now = new Date();
+      const past = new Date();
+      past.setDate(past.getDate() - 6);
+      return { from: formatYMD(past), to: formatYMD(now) };
+    },
+  },
+  {
+    label: "Last 15 Days (Default)",
+    value: "last15Days",
+    calc: () => {
+      const now = new Date();
+      const past = new Date();
+      past.setDate(past.getDate() - 14);
+      return { from: formatYMD(past), to: formatYMD(now) };
+    },
+  },
+  {
+    label: "Last 30 Days",
+    value: "last30Days",
+    calc: () => {
+      const now = new Date();
+      const past = new Date();
+      past.setDate(past.getDate() - 29);
+      return { from: formatYMD(past), to: formatYMD(now) };
+    },
+  },
+  {
+    label: "This Month",
+    value: "thisMonth",
+    calc: () => {
+      const now = new Date();
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      return { from: formatYMD(firstDay), to: formatYMD(now) };
+    },
+  },
+  {
+    label: "Last Month",
+    value: "lastMonth",
+    calc: () => {
+      const now = new Date();
+      const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+      return { from: formatYMD(firstDayLastMonth), to: formatYMD(lastDayLastMonth) };
+    },
+  },
+  {
+    label: "All Time",
+    value: "allTime",
+    calc: () => ({ from: "", to: "" }),
+  },
+];
+
 // ─── Main Component ────────────────────────────────────────────────────────────
 export default function OnboardingTable() {
   const { user, isLoaded } = useUser();
@@ -610,8 +701,47 @@ export default function OnboardingTable() {
   const [selectedOutletCreated, setSelectedOutletCreated] = useState<string[]>([]);
   const [selectedTimeElapsed, setSelectedTimeElapsed] = useState<string[]>([]);
   const [selectedTimelineSla, setSelectedTimelineSla] = useState<string[]>([]);
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+
+  // Task Created Date Range & Quick Selection: Default Last 15 Days
+  const defaultDates = useMemo(() => {
+    const p = TASK_CREATED_PRESETS.find((x) => x.value === "last15Days");
+    return p ? p.calc() : { from: "", to: "" };
+  }, []);
+
+  const [datePreset, setDatePreset] = useState<string>("last15Days");
+  const [dateFrom, setDateFrom] = useState<string>(() => defaultDates.from);
+  const [dateTo, setDateTo] = useState<string>(() => defaultDates.to);
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const datePickerRef = useRef<HTMLDivElement>(null);
+
+  // Close Date Picker dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        datePickerRef.current &&
+        !datePickerRef.current.contains(event.target as Node)
+      ) {
+        setIsDatePickerOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const applyPreset = (presetKey: string) => {
+    setDatePreset(presetKey);
+    const p = TASK_CREATED_PRESETS.find((x) => x.value === presetKey);
+    if (p) {
+      const res = p.calc();
+      setDateFrom(res.from);
+      setDateTo(res.to);
+      if (presetKey !== "customRange") {
+        setIsDatePickerOpen(false);
+      }
+    }
+  };
 
   const titleFilter = useMemo(() => selectedTitles.join(","), [selectedTitles]);
   const assigneeFilter = useMemo(() => selectedAssignees.join(","), [selectedAssignees]);
@@ -1268,6 +1398,7 @@ export default function OnboardingTable() {
     setSelectedOutletCreated([]);
     setSelectedTimeElapsed([]);
     setSelectedTimelineSla([]);
+    setDatePreset("allTime");
     setDateFrom("");
     setDateTo("");
     setPage(1);

@@ -493,29 +493,55 @@ export async function GET(req: Request) {
       },
     });
 
+    // If hasObFilter is true, we must compute available assignees/assigners from taskFilter (task scope)
+    // so filter dropdowns remain complete and never disappear when filtering records
+    let filterOptionsFacetStages: any[] = [];
+    if (!hasObFilter) {
+      filterOptionsFacetStages = [
+        {
+          $group: {
+            _id: null,
+            assignees: { $addToSet: "$assigneeName" },
+            assigners: { $addToSet: "$assignerName" },
+          },
+        },
+      ];
+    }
+
     pipeline.push({
       $facet: {
         metadata: [{ $count: "total" }],
-        filterOptions: [
-          {
-            $group: {
-              _id: null,
-              assignees: { $addToSet: "$assigneeName" },
-              assigners: { $addToSet: "$assignerName" },
-            },
-          },
-        ],
+        ...(filterOptionsFacetStages.length > 0 && { filterOptions: filterOptionsFacetStages }),
         data: dataStages,
       },
     });
 
-    const aggResult = await taskCol.aggregate(pipeline).toArray();
+    const [aggResult, extraOptions] = await Promise.all([
+      taskCol.aggregate(pipeline).toArray(),
+      hasObFilter
+        ? taskCol
+            .aggregate([
+              { $match: taskFilter },
+              {
+                $group: {
+                  _id: null,
+                  assignees: { $addToSet: "$assigneeName" },
+                  assigners: { $addToSet: "$assignerName" },
+                },
+              },
+            ])
+            .toArray()
+        : Promise.resolve([]),
+    ]);
+
     const facetData = aggResult[0] || { metadata: [], data: [], filterOptions: [] };
     const totalCount = facetData.metadata[0]?.total || 0;
     const rawTasks = facetData.data || [];
 
-    // Extract filter option names computed in the same pipeline pass
-    const filterOptionsGroup = facetData.filterOptions?.[0] || {};
+    // Extract filter option names computed in the same pipeline pass or base task scope
+    const filterOptionsGroup = hasObFilter
+      ? extraOptions[0] || {}
+      : facetData.filterOptions?.[0] || {};
     const assigneeNames: string[] = filterOptionsGroup.assignees || [];
     const assignerNames: string[] = filterOptionsGroup.assigners || [];
 
