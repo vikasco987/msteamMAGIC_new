@@ -890,6 +890,13 @@ export async function POST(req: NextRequest) {
         if (u) {
           assigneeName = `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.username || "Unknown";
           assigneeEmail = u.emailAddresses?.[0]?.emailAddress || "Unknown";
+        } else {
+          // Check local Prisma User table
+          const localU = await prisma.user.findUnique({ where: { clerkId: body.assigneeId } });
+          if (localU) {
+            assigneeName = localU.name || "Unknown";
+            assigneeEmail = localU.email || "Unknown";
+          }
         }
       } catch (err) {
         console.error("Failed to fetch assignee details:", err);
