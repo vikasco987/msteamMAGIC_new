@@ -122,7 +122,7 @@ export default function Board() {
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
   const [selectedAssigners, setSelectedAssigners] = useState<string[]>([]);
-  const [selectedDates, setSelectedDates] = useState<string[]>(["last_15_days"]);
+  const [selectedDates, setSelectedDates] = useState<string[]>([]);
 
   const [allAssignees, setAllAssignees] = useState<string[]>([]);
   const [allAssigners, setAllAssigners] = useState<string[]>([]);

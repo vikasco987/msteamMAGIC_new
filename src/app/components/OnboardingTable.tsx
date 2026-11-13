@@ -631,7 +631,7 @@ const TASK_CREATED_PRESETS: TaskCreatedPreset[] = [
     },
   },
   {
-    label: "Last 15 Days (Default)",
+    label: "Last 15 Days",
     value: "last15Days",
     calc: () => {
       const now = new Date();
@@ -702,15 +702,10 @@ export default function OnboardingTable() {
   const [selectedTimeElapsed, setSelectedTimeElapsed] = useState<string[]>([]);
   const [selectedTimelineSla, setSelectedTimelineSla] = useState<string[]>([]);
 
-  // Task Created Date Range & Quick Selection: Default Last 15 Days
-  const defaultDates = useMemo(() => {
-    const p = TASK_CREATED_PRESETS.find((x) => x.value === "last15Days");
-    return p ? p.calc() : { from: "", to: "" };
-  }, []);
-
-  const [datePreset, setDatePreset] = useState<string>("last15Days");
-  const [dateFrom, setDateFrom] = useState<string>(() => defaultDates.from);
-  const [dateTo, setDateTo] = useState<string>(() => defaultDates.to);
+  // Task Created Date Range & Quick Selection: Default All Time
+  const [datePreset, setDatePreset] = useState<string>("allTime");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const datePickerRef = useRef<HTMLDivElement>(null);
 

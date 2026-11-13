@@ -166,7 +166,7 @@ export const BoardFilters: React.FC<BoardFiltersProps> = ({
       { label: "Today", value: "today" },
       { label: "Yesterday", value: "yesterday" },
       { label: "Last 7 Days", value: "last_7_days" },
-      { label: "Last 15 Days (Default)", value: "last_15_days" },
+      { label: "Last 15 Days", value: "last_15_days" },
       { label: "Last 30 Days", value: "last_30_days" },
       { label: "Last 60 Days", value: "last_60_days" },
       { label: "This Month", value: "this_month" },
