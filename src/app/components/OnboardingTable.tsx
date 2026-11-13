@@ -1225,6 +1225,9 @@ export default function OnboardingTable() {
     const updatedValues = { ...drawerValues };
     const noteToPost = drawerNewNote.trim();
 
+    // Snapshot current state for rollback if server requests fail
+    const previousTasksSnapshot = [...tasks];
+
     // 1. Optimistic UI update immediately
     setTasks((prev) =>
       prev.map((t) =>
@@ -1240,37 +1243,41 @@ export default function OnboardingTable() {
 
     try {
       // 2. Execute network requests in parallel
-      // Note: /api/onboarding/[id] already updates taskStatus in Task collection directly,
-      // so no separate sequential call to /api/tasks/[id] is needed!
-      const requests: Promise<any>[] = [
-        fetch(`/api/onboarding/${targetTaskId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updatedValues),
-        }),
-      ];
+      // Note: /api/onboarding/[id] already updates taskStatus in Task collection directly
+      const patchPromise = fetch(`/api/onboarding/${targetTaskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedValues),
+      });
 
-      if (noteToPost) {
-        requests.push(
-          fetch(`/api/tasks/${targetTaskId}/notes`, {
+      const notePromise = noteToPost
+        ? fetch(`/api/tasks/${targetTaskId}/notes`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ content: noteToPost }),
           })
-        );
+        : Promise.resolve(null);
+
+      const [patchRes, noteRes] = await Promise.all([patchPromise, notePromise]);
+
+      if (!patchRes.ok) {
+        throw new Error("Drawer save failed");
+      }
+      if (noteRes && !noteRes.ok) {
+        toast.error("⚠️ Details saved, but note failed to post.");
+      } else {
+        toast.success("✅ Onboarding details updated successfully");
       }
 
-      const [res] = await Promise.all(requests);
-
-      if (!res.ok) throw new Error("Drawer save failed");
-      toast.success("✅ Onboarding details updated successfully");
+      setDrawerNewNote("");
       closeEditDrawer();
 
       // Refresh in background without blocking user
       Promise.all([fetchTasks(), fetchStats()]).catch(() => {});
     } catch {
-      toast.error("❌ Failed to update details");
-      // Revert/refresh on failure
+      // Rollback to snapshot on failure so stale optimistic state never persists
+      setTasks(previousTasksSnapshot);
+      toast.error("❌ Failed to update details. Reverted changes.");
       fetchTasks();
     } finally {
       setDrawerSaving(false);
