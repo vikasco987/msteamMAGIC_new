@@ -380,7 +380,7 @@ import CustomFieldsStep from "./CustomFieldsStep"; // Assuming this component ex
 import { uploadToCloudinary } from "./utils"; // Assuming this utility function exists
 
 // Define TabType more broadly to include all categories
-type TabType = "license" | "swiggy" | "zomato" | "combo" | "photo" | "account" | "other" | "printer" | "printer_software" | "rto_printer" | "escalation";
+type TabType = "license" | "swiggy" | "zomato" | "toing" | "ownly" | "combo" | "photo" | "account" | "other" | "printer" | "printer_software" | "rto_printer" | "escalation";
 
 type CustomField = {
   label: string;
@@ -393,7 +393,8 @@ const LOCAL_STORAGE_KEY = "onboarding-task-form";
 const TASK_CATEGORIES = [
   { label: "🍽️ Zomato Onboarding", value: "zomato" },
   { label: "🍔 Swiggy Onboarding", value: "swiggy" },
-  { label: "🍽️🍔 Zomato + Swiggy Combo", value: "combo" },
+  { label: "🛵 Toing Onboarding", value: "toing" },
+  { label: "🛍️ Ownly Onboarding", value: "ownly" },
   { label: "🧾 Food License", value: "license" },
   { label: "📸 Photo Upload", value: "photo" },
   { label: "📂 Account Handling", value: "account" },

@@ -21,6 +21,8 @@ async function getMongoClient() {
 const ONBOARDING_TITLES = [
   "🍽️ Zomato Onboarding",
   "🍔 Swiggy Onboarding",
+  "🛵 Toing Onboarding",
+  "🛍️ Ownly Onboarding",
   "🍽️🍔 Zomato + Swiggy Combo",
   "🧾 Food License",
   "📸 Photo Upload",

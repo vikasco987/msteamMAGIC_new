@@ -32,7 +32,8 @@ const stripEmojis = (str: string | null | undefined): string => {
 const TASK_CATEGORIES = [
   { label: "🍽️ Zomato Onboarding", value: "zomato" },
   { label: "🍔 Swiggy Onboarding", value: "swiggy" },
-  { label: "🍽️🍔 Zomato + Swiggy Combo", value: "combo" },
+  { label: "🛵 Toing Onboarding", value: "toing" },
+  { label: "🛍️ Ownly Onboarding", value: "ownly" },
   { label: "🧾 Food License", value: "license" },
   { label: "📸 Photo Upload", value: "photo" },
   { label: "📂 Account Handling", value: "account" },

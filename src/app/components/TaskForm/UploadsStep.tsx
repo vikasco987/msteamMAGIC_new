@@ -1853,7 +1853,7 @@ import toast from "react-hot-toast";
 import CreatableSelect from "react-select/creatable";
 
 // Define TabType locally or import it if it's defined in a shared types file
-type TabType = "license" | "swiggy" | "zomato" | "combo" | "photo" | "account" | "other" | "printer" | "printer_software";
+type TabType = "license" | "swiggy" | "zomato" | "toing" | "ownly" | "combo" | "photo" | "account" | "other" | "printer" | "printer_software";
 
 interface UploadsStepProps {
   activeTab: TabType | ""; // Changed to allow empty string
@@ -2470,14 +2470,14 @@ export default function UploadsStep(props: UploadsStepProps) {
             </div>
           )}
 
-          {(activeTab === "zomato" || activeTab === "swiggy" || activeTab === "combo") && (
+          {(activeTab === "zomato" || activeTab === "swiggy" || activeTab === "toing" || activeTab === "ownly" || activeTab === "combo") && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className={labelClass}>🏷️ Outlet Name</label>
                 <input className={inputClass} placeholder="Brand/Outlet Name" value={shopName} onChange={e => setShopName(e.target.value)} />
               </div>
               <div className="md:col-span-2">
-                <label className={labelClass}>🆔 Restaurant IDs (Swiggy/Zomato)</label>
+                <label className={labelClass}>🆔 Restaurant IDs (Swiggy/Zomato/Toing/Ownly)</label>
                 <CreatableSelect
                   isMulti
                   isClearable

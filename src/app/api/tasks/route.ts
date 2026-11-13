@@ -1128,6 +1128,8 @@ export async function POST(req: NextRequest) {
     const ONBOARDING_CATEGORY_TITLES = [
       "🍽️ Zomato Onboarding",
       "🍔 Swiggy Onboarding",
+      "🛵 Toing Onboarding",
+      "🛍️ Ownly Onboarding",
       "🍽️🍔 Zomato + Swiggy Combo",
       "🧾 Food License",
       "📸 Photo Upload",
@@ -1139,6 +1141,8 @@ export async function POST(req: NextRequest) {
         if (task.title.includes("Swiggy") && task.title.includes("Zomato")) platform = "Both";
         else if (task.title.includes("Zomato")) platform = "Zomato";
         else if (task.title.includes("Swiggy")) platform = "Swiggy";
+        else if (task.title.toLowerCase().includes("toing")) platform = "Toing";
+        else if (task.title.toLowerCase().includes("ownly") || task.title.toLowerCase().includes("only")) platform = "Only";
 
         await prisma.onboardingRecord.upsert({
           where: { taskId: task.id },
