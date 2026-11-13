@@ -271,6 +271,22 @@ export const TASK_STAGE_OPTIONS = [
   },
 ];
 
+export const TIME_ELAPSED_OPTIONS = [
+  { label: "Today (< 24h ago)", value: "today", className: "bg-sky-50 text-sky-800 border-sky-200" },
+  { label: "1–2 Days ago", value: "1-2days", className: "bg-indigo-50 text-indigo-800 border-indigo-200" },
+  { label: "3–5 Days ago", value: "3-5days", className: "bg-amber-50 text-amber-800 border-amber-200" },
+  { label: "6–10 Days ago", value: "6-10days", className: "bg-orange-50 text-orange-800 border-orange-200" },
+  { label: "11–20 Days ago", value: "11-20days", className: "bg-rose-50 text-rose-800 border-rose-200" },
+  { label: "20+ Days ago", value: "20plus", className: "bg-red-100 text-red-900 border-red-300 font-bold" },
+];
+
+export const TIMELINE_SLA_OPTIONS = [
+  { label: "Completed", value: "completed", className: "bg-emerald-100 text-emerald-800 border-emerald-300 font-medium" },
+  { label: "On Track / Within SLA", value: "on-track", className: "bg-blue-50 text-blue-700 border-blue-200 font-medium" },
+  { label: "Urgent (< 12h left)", value: "urgent", className: "bg-amber-100 text-amber-800 border-amber-300 font-semibold" },
+  { label: "Overdue (SLA Breached)", value: "overdue", className: "bg-red-100 text-red-700 border-red-300 font-bold animate-pulse" },
+];
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface TaskNote {
   id: string;
@@ -587,6 +603,8 @@ export default function OnboardingTable() {
   const [selectedAccountStatuses, setSelectedAccountStatuses] = useState<string[]>([]);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [selectedOutletCreated, setSelectedOutletCreated] = useState<string[]>([]);
+  const [selectedTimeElapsed, setSelectedTimeElapsed] = useState<string[]>([]);
+  const [selectedTimelineSla, setSelectedTimelineSla] = useState<string[]>([]);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
@@ -596,6 +614,8 @@ export default function OnboardingTable() {
   const accountStatusFilter = useMemo(() => selectedAccountStatuses.join(","), [selectedAccountStatuses]);
   const platformFilter = useMemo(() => selectedPlatforms.join(","), [selectedPlatforms]);
   const outletCreatedFilter = useMemo(() => selectedOutletCreated.join(","), [selectedOutletCreated]);
+  const timeElapsedFilter = useMemo(() => selectedTimeElapsed.join(","), [selectedTimeElapsed]);
+  const timelineSlaFilter = useMemo(() => selectedTimelineSla.join(","), [selectedTimelineSla]);
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -648,6 +668,8 @@ export default function OnboardingTable() {
         ...(accountStatusFilter && { accountStatus: accountStatusFilter }),
         ...(platformFilter && { platform: platformFilter }),
         ...(outletCreatedFilter && { outletCreated: outletCreatedFilter }),
+        ...(timeElapsedFilter && { timeElapsed: timeElapsedFilter }),
+        ...(timelineSlaFilter && { timelineSla: timelineSlaFilter }),
         ...(dateFrom && { dateFrom }),
         ...(dateTo && { dateTo }),
         sortKey: "createdAt",
@@ -677,6 +699,8 @@ export default function OnboardingTable() {
     accountStatusFilter,
     platformFilter,
     outletCreatedFilter,
+    timeElapsedFilter,
+    timelineSlaFilter,
     dateFrom,
     dateTo,
   ]);
@@ -710,6 +734,8 @@ export default function OnboardingTable() {
     accountStatusFilter,
     platformFilter,
     outletCreatedFilter,
+    timeElapsedFilter,
+    timelineSlaFilter,
     dateFrom,
     dateTo,
   ]);
@@ -1112,6 +1138,8 @@ export default function OnboardingTable() {
     setSelectedAccountStatuses([]);
     setSelectedPlatforms([]);
     setSelectedOutletCreated([]);
+    setSelectedTimeElapsed([]);
+    setSelectedTimelineSla([]);
     setDateFrom("");
     setDateTo("");
     setPage(1);
@@ -1461,6 +1489,26 @@ export default function OnboardingTable() {
             }
           />
 
+          {/* Time Elapsed Filter */}
+          <MultiSelectFilter
+            label="Time Elapsed"
+            allLabel="All Time Elapsed"
+            options={TIME_ELAPSED_OPTIONS}
+            selectedValues={selectedTimeElapsed}
+            onChange={setSelectedTimeElapsed}
+            enableSearch={false}
+          />
+
+          {/* Timeline (SLA) Filter */}
+          <MultiSelectFilter
+            label="Timeline (SLA)"
+            allLabel="All SLA Status"
+            options={TIMELINE_SLA_OPTIONS}
+            selectedValues={selectedTimelineSla}
+            onChange={setSelectedTimelineSla}
+            enableSearch={false}
+          />
+
           {/* Date range */}
           <input
             type="date"
@@ -1486,6 +1534,8 @@ export default function OnboardingTable() {
             accountStatusFilter ||
             platformFilter ||
             outletCreatedFilter ||
+            timeElapsedFilter ||
+            timelineSlaFilter ||
             dateFrom ||
             dateTo) && (
             <button

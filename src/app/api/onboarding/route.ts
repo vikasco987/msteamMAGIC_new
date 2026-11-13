@@ -76,6 +76,8 @@ export async function GET(req: Request) {
     const platformFilter = searchParams.get("platform") || "";
     const outletCreatedFilter = searchParams.get("outletCreated") || "";
     const isReOnboardingFilter = searchParams.get("isReOnboarding") || "";
+    const timeElapsedFilter = searchParams.get("timeElapsed") || "";
+    const timelineSlaFilter = searchParams.get("timelineSla") || "";
     const dateFrom = searchParams.get("dateFrom") || "";
     const dateTo = searchParams.get("dateTo") || "";
     const sortKey = searchParams.get("sortKey") || "createdAt";
@@ -174,6 +176,115 @@ export async function GET(req: Request) {
         const end = new Date(dateTo);
         end.setHours(23, 59, 59, 999);
         taskFilter.createdAt.$lte = end;
+      }
+    }
+
+    // Time Elapsed filter (task age calculated from now)
+    if (timeElapsedFilter && timeElapsedFilter !== "All") {
+      const elapsedList = timeElapsedFilter
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      const now = new Date();
+      const elapsedOrConditions: any[] = [];
+
+      elapsedList.forEach((filterVal) => {
+        if (filterVal === "today") {
+          // Under 24h
+          const since = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          elapsedOrConditions.push({ createdAt: { $gte: since } });
+        } else if (filterVal === "1-2days") {
+          // 24h to 48h
+          const from = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+          const to = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          elapsedOrConditions.push({ createdAt: { $gte: from, $lt: to } });
+        } else if (filterVal === "3-5days") {
+          // 3 to 5 days
+          const from = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
+          const to = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+          elapsedOrConditions.push({ createdAt: { $gte: from, $lt: to } });
+        } else if (filterVal === "6-10days") {
+          // 6 to 10 days
+          const from = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000);
+          const to = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
+          elapsedOrConditions.push({ createdAt: { $gte: from, $lt: to } });
+        } else if (filterVal === "11-20days") {
+          // 11 to 20 days
+          const from = new Date(now.getTime() - 20 * 24 * 60 * 60 * 1000);
+          const to = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000);
+          elapsedOrConditions.push({ createdAt: { $gte: from, $lt: to } });
+        } else if (filterVal === "20plus") {
+          // 20+ days
+          const cutoff = new Date(now.getTime() - 20 * 24 * 60 * 60 * 1000);
+          elapsedOrConditions.push({ createdAt: { $lt: cutoff } });
+        }
+      });
+
+      if (elapsedOrConditions.length > 0) {
+        taskFilter.$and = taskFilter.$and || [];
+        taskFilter.$and.push({ $or: elapsedOrConditions });
+      }
+    }
+
+    // Timeline SLA filter
+    if (timelineSlaFilter && timelineSlaFilter !== "All") {
+      const slaList = timelineSlaFilter
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      const now = new Date();
+      const slaOrConditions: any[] = [];
+
+      // Helper for deadline cutoff per task category:
+      // FSSAI/License = 24h, Zomato/Swiggy = 72h, Other = 48h
+      const categories = [
+        { regex: /fssai|license|licence/i, hours: 24 },
+        { regex: /zomato|swiggy/i, hours: 72 },
+        { regex: /.*/, hours: 48 }, // fallback
+      ];
+
+      slaList.forEach((slaVal) => {
+        if (slaVal === "completed") {
+          slaOrConditions.push({ status: "done" });
+        } else if (slaVal === "overdue") {
+          // Overdue means: status != 'done' AND createdAt < (now - slaHours)
+          categories.forEach((cat) => {
+            const cutoff = new Date(now.getTime() - cat.hours * 60 * 60 * 1000);
+            slaOrConditions.push({
+              title: { $regex: cat.regex },
+              status: { $ne: "done" },
+              createdAt: { $lt: cutoff },
+            });
+          });
+        } else if (slaVal === "urgent") {
+          // Urgent: status != 'done' AND remaining <= 12 hours (i.e. createdAt between (now - slaHours) and (now - slaHours + 12h))
+          categories.forEach((cat) => {
+            const minCreated = new Date(now.getTime() - cat.hours * 60 * 60 * 1000);
+            const maxCreated = new Date(now.getTime() - (cat.hours - 12) * 60 * 60 * 1000);
+            slaOrConditions.push({
+              title: { $regex: cat.regex },
+              status: { $ne: "done" },
+              createdAt: { $gte: minCreated, $lte: maxCreated },
+            });
+          });
+        } else if (slaVal === "on-track") {
+          // On Track / Within SLA: status != 'done' AND createdAt >= (now - slaHours)
+          categories.forEach((cat) => {
+            const cutoff = new Date(now.getTime() - cat.hours * 60 * 60 * 1000);
+            slaOrConditions.push({
+              title: { $regex: cat.regex },
+              status: { $ne: "done" },
+              createdAt: { $gte: cutoff },
+            });
+          });
+        }
+      });
+
+      if (slaOrConditions.length > 0) {
+        taskFilter.$and = taskFilter.$and || [];
+        taskFilter.$and.push({ $or: slaOrConditions });
       }
     }
 
