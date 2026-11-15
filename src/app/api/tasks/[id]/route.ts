@@ -221,8 +221,9 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
             updateData.assigneeEmail = leadUser.emailAddresses[0]?.emailAddress || "Unknown";
           }
 
-          // Assigner Sync
-          if (!currentTask.assignerId || isPowerUser) {
+          // Assigner Sync: only set assigner if task does not have one yet.
+          // NEVER overwrite the task's original creator/assigner during routine assignee reassignment!
+          if (!currentTask.assignerId) {
              updateData.assignerId = userId;
              updateData.assignerName = userName;
              updateData.assignerEmail = user?.emailAddresses[0]?.emailAddress || "Unknown";

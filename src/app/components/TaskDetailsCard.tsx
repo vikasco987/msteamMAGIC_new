@@ -18,6 +18,7 @@ import CloneTaskButton from "./CloneTaskButton";
 import PaymentRemarkModal from "./PaymentRemarkModal";
 import TaskActivityModal from "./TaskActivityModal";
 import UploadDocumentModal from "./UploadDocumentModal";
+import ChangeCreatorModal from "./ChangeCreatorModal";
 import CreateDelhiveryOrderButton from "./CreateDelhiveryOrderButton";
 import { FaHandHoldingUsd, FaCommentsDollar, FaHistory, FaCloudUploadAlt, FaPaperclip } from "react-icons/fa";
 
@@ -189,7 +190,10 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
   const [showRecoveryModal, setShowRecoveryModal] = useState(false);
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showCreatorModal, setShowCreatorModal] = useState(false);
   const { user } = useUser();
+  const userRole = String(user?.publicMetadata?.role || user?.unsafeMetadata?.role || "").trim().toLowerCase();
+  const isMaster = userRole === "master" || isAdmin;
 
   const unreadCount = task.notes?.filter(n => 
     n.authorEmail !== (user?.primaryEmailAddress?.emailAddress || "") && 
@@ -199,8 +203,8 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
   const cf = task.customFields || {};
   const showTitle = task.title !== cf.shopName && task.title !== cf.outletName;
 
-  const displayAssignerName = task.assigner?.name || task.assignerName || "—";
-  const displayAssignerEmail = task.assigner?.email || task.assignerEmail || "";
+  const displayAssignerName = task.createdByName || task.assigner?.name || task.assignerName || "—";
+  const displayAssignerEmail = task.createdByEmail || task.assigner?.email || task.assignerEmail || "";
   const displayAssigneeName = task.assignees?.map(a => a?.name || a?.email).filter(Boolean).join(", ") || task.assigneeName || task.assignee?.name || "—";
   const displayAssigneeEmail = task.assignee?.email || task.assigneeEmail || "";
 
@@ -689,9 +693,24 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
   <div className="space-y-1">
     {displayAssignerName !== "—" && (
       <div className="flex flex-col">
-        <p className="text-[10px] font-medium text-slate-600">
-          By <span className="text-slate-800 font-bold">{displayAssignerName}</span>
-        </p>
+        <div className="flex items-center gap-1.5 group/creator">
+          <p className="text-[10px] font-medium text-slate-600">
+            By <span className="text-slate-800 font-bold">{displayAssignerName}</span>
+          </p>
+          {isMaster && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowCreatorModal(true);
+              }}
+              title="Change Creator (Master Only)"
+              className="text-indigo-600 hover:text-indigo-800 p-0.5 rounded hover:bg-indigo-50 transition-colors"
+            >
+              <FaUserEdit size={11} />
+            </button>
+          )}
+        </div>
         {displayAssignerEmail && (
           <p className="text-[9px] text-slate-600 lowercase">
             Email: <span className="font-medium">{displayAssignerEmail}</span>
@@ -835,6 +854,29 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
             task={task} 
             onClose={() => setShowUploadModal(false)} 
             onUploadSuccess={(payload) => onUpdateTask?.(task.id, payload)} 
+          />
+        )}
+
+        {showCreatorModal && (
+          <ChangeCreatorModal
+            taskId={task.id}
+            currentCreatorName={displayAssignerName}
+            isOpen={showCreatorModal}
+            onClose={() => setShowCreatorModal(false)}
+            onSuccess={(updatedTask) => {
+              onUpdateTask?.(task.id, {
+                createdByName: updatedTask.createdByName,
+                createdByClerkId: updatedTask.createdByClerkId,
+                createdByEmail: updatedTask.createdByEmail,
+                assignerName: updatedTask.assignerName,
+                assignerId: updatedTask.assignerId,
+                assignerEmail: updatedTask.assignerEmail,
+                assigner: {
+                  name: updatedTask.assignerName,
+                  email: updatedTask.assignerEmail,
+                },
+              });
+            }}
           />
         )}
       </AnimatePresence>

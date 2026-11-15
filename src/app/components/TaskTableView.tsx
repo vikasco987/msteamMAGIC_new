@@ -25,6 +25,8 @@ import toast from "react-hot-toast";
 import NotesModal from "../components/NotesModal";
 // ✅ Correct import path for the Copy icon component
 import CopyTaskDetailsIcon from "../components/CopyTaskDetailsIcon";
+import ChangeCreatorModal from "./ChangeCreatorModal";
+import { FaUserEdit } from "react-icons/fa";
 
 import Image from "next/image";
 
@@ -226,6 +228,7 @@ export default function TaskTableView({
   const [filteredTasks, setFilteredTasks] = useState<Task[]>(tasks || []);
   const [isSaving, setIsSaving] = useState<string | null>(null);
   const [teamMembers, setTeamMembers] = useState<{ id: string; name: string; email: string }[]>(availableUsers || []);
+  const [creatorModalTask, setCreatorModalTask] = useState<Task | null>(null);
 
   useEffect(() => {
     if (availableUsers && availableUsers.length > 0) {
@@ -1017,31 +1020,23 @@ export default function TaskTableView({
                     {visibleColumns.includes("assignerName") && (
                       <td className="border border-gray-200 px-3 py-2 whitespace-nowrap text-left text-gray-500">
                         <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 group/creator">
                             <span className="text-[10px] font-black uppercase text-gray-400">By</span>
-                            {editMode && (role === "master" || role === "admin" || role === "tl") ? (
-                                <select 
-                                    className="text-xs font-bold text-gray-800 bg-white border border-gray-200 rounded px-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                    value={teamMembers.find(m => m.name === task.assignerName)?.id || ""}
-                                    onChange={(e) => {
-                                        const member = teamMembers.find(m => m.id === e.target.value);
-                                        if (member) {
-                                            handleDirectUpdate(task.id, "assigner", null, {
-                                                assignerName: member.name,
-                                                assignerEmail: member.email
-                                            });
-                                        }
-                                    }}
-                                >
-                                    <option value="">Select Assigner</option>
-                                    {teamMembers.map(m => (
-                                        <option key={m.id} value={m.id}>{m.name}</option>
-                                    ))}
-                                </select>
-                            ) : (
-                                <span className="text-xs font-bold text-gray-800 tracking-tight">
-                                  {task.assignerName || "—"}
-                                </span>
+                            <span className="text-xs font-bold text-gray-800 tracking-tight">
+                              {task.createdByName || task.assignerName || "—"}
+                            </span>
+                            {role === "master" && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCreatorModalTask(task);
+                                }}
+                                title="Change Creator (Master Only)"
+                                className="opacity-0 group-hover/creator:opacity-100 p-1 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded transition-all ml-0.5"
+                              >
+                                <FaUserEdit size={12} />
+                              </button>
                             )}
                           </div>
                           <div className="flex flex-wrap items-center gap-1">
@@ -1613,6 +1608,34 @@ export default function TaskTableView({
         <TaskDetailsPanel
           taskId={viewedTaskId}
           onClose={() => setViewedTaskId(null)}
+        />
+      )}
+
+      {creatorModalTask && (
+        <ChangeCreatorModal
+          taskId={creatorModalTask.id}
+          currentCreatorName={creatorModalTask.createdByName || creatorModalTask.assignerName || "Unknown"}
+          isOpen={!!creatorModalTask}
+          onClose={() => setCreatorModalTask(null)}
+          onSuccess={async (updatedTask) => {
+            // Update local tasks optimistically
+            setLocalTasks((prev) =>
+              prev.map((t) =>
+                t.id === updatedTask.id
+                  ? {
+                      ...t,
+                      createdByName: updatedTask.createdByName,
+                      createdByClerkId: updatedTask.createdByClerkId,
+                      createdByEmail: updatedTask.createdByEmail,
+                      assignerName: updatedTask.assignerName,
+                      assignerId: updatedTask.assignerId,
+                      assignerEmail: updatedTask.assignerEmail,
+                    }
+                  : t
+              )
+            );
+            if (refetchTasks) await refetchTasks();
+          }}
         />
       )}
     </div>

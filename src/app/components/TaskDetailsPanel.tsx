@@ -12,6 +12,8 @@ import {
 import { format } from "date-fns";
 import toast from "react-hot-toast";
 import PaymentHistory from "./PaymentHistory";
+import ChangeCreatorModal from "./ChangeCreatorModal";
+import { FaUserEdit } from "react-icons/fa";
 
 interface TaskDetailsPanelProps {
   taskId: string | null;
@@ -168,6 +170,7 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
   const [isEditing, setIsEditing] = useState(false);
   const [editedTask, setEditedTask] = useState<any>({});
   const [savingTask, setSavingTask] = useState(false);
+  const [showCreatorModal, setShowCreatorModal] = useState(false);
 
     const handleInlineSave = async (field: string, value: any, isCustom = false) => {
     try {
@@ -489,9 +492,20 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
                     <div className="bg-indigo-50 p-5 rounded-xl sm:col-span-2 border border-indigo-100">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div>
-                          <div className="text-[10px] font-black uppercase text-indigo-400 mb-1 tracking-wider">Assigned By</div>
-                          <div className="font-bold text-indigo-900 text-lg">{task.assignerName || "Unknown"}</div>
-                          <div className="text-sm text-indigo-600">{task.assignerEmail}</div>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="text-[10px] font-black uppercase text-indigo-400 tracking-wider">Created / Assigned By</div>
+                            {isMaster && (
+                              <button
+                                type="button"
+                                onClick={() => setShowCreatorModal(true)}
+                                className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 bg-white px-2 py-0.5 rounded-lg border border-indigo-200 shadow-sm transition-all"
+                              >
+                                <FaUserEdit size={11} /> Change
+                              </button>
+                            )}
+                          </div>
+                          <div className="font-bold text-indigo-900 text-lg">{task.createdByName || task.assignerName || "Unknown"}</div>
+                          <div className="text-sm text-indigo-600">{task.createdByEmail || task.assignerEmail}</div>
                         </div>
                         <div>
                           <div className="text-[10px] font-black uppercase text-indigo-400 mb-1 tracking-wider">Assigned To</div>
@@ -855,6 +869,26 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
               </div>
             </div>
           </div>
+        )}
+
+        {showCreatorModal && task && (
+          <ChangeCreatorModal
+            taskId={task.id}
+            currentCreatorName={task.createdByName || task.assignerName || "Unknown"}
+            isOpen={showCreatorModal}
+            onClose={() => setShowCreatorModal(false)}
+            onSuccess={(updatedTask) => {
+              setTask((prev: any) => ({
+                ...prev,
+                createdByName: updatedTask.createdByName,
+                createdByClerkId: updatedTask.createdByClerkId,
+                createdByEmail: updatedTask.createdByEmail,
+                assignerName: updatedTask.assignerName,
+                assignerId: updatedTask.assignerId,
+                assignerEmail: updatedTask.assignerEmail,
+              }));
+            }}
+          />
         )}
       </div>
     </div>
