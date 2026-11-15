@@ -57,12 +57,15 @@ export async function PATCH(
     let authoritativeEmail = "";
 
     // Step 3a: Lookup in Prisma User table (by clerkId or MongoDB ObjectId)
+    const isMongoId = /^[0-9a-fA-F]{24}$/.test(targetIdClean);
+    const userSearchConditions: any[] = [{ clerkId: targetIdClean }];
+    if (isMongoId) {
+      userSearchConditions.push({ id: targetIdClean });
+    }
+
     const dbTarget = await prisma.user.findFirst({
       where: {
-        OR: [
-          { clerkId: targetIdClean },
-          { id: targetIdClean },
-        ],
+        OR: userSearchConditions,
       },
     });
 
