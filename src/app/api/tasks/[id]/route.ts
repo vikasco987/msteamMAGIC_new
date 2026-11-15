@@ -241,10 +241,11 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       }
     }
 
-    // 🔄 Sync Redundant Fields (Top-level <-> customFields)
+    // 🔄 Sync Redundant Fields (Bidirectional: Top-level <-> customFields)
     const syncableFields = [
       "phone", "email", "shopName", "location", "accountNumber", "ifscCode", 
       "restId", "customerName", "packageAmount", "startDate", "endDate", "timeline",
+      "outletName", "accountType",
       "assigneeId", "assigneeName", "assigneeEmail",
       "assignerId", "assignerName", "assignerEmail"
     ];
@@ -252,16 +253,23 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     const currentCF = { ...(currentTask.customFields as any || {}) };
     let cfChanged = false;
 
+    // 1. If customFields were passed in body, sync them to top-level updateData as well
+    if (body.customFields && typeof body.customFields === "object") {
+      Object.assign(currentCF, body.customFields);
+      cfChanged = true;
+      for (const f of syncableFields) {
+        if (body.customFields[f] !== undefined) {
+          (updateData as any)[f] = body.customFields[f];
+        }
+      }
+    }
+
+    // 2. If top-level fields were updated, sync them into customFields
     for (const f of syncableFields) {
       if ((updateData as any)[f] !== undefined) {
         currentCF[f] = (updateData as any)[f];
         cfChanged = true;
       }
-    }
-
-    if (body.customFields) {
-      Object.assign(currentCF, body.customFields);
-      cfChanged = true;
     }
 
     if (cfChanged) {
