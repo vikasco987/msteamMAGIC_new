@@ -88,11 +88,6 @@ export async function buildTaskWhere(req: NextRequest) {
     ]
   };
 
-  // 🛡️ UNIVERSAL HIDE PROTOCOL: Only Master/Admin see hidden tasks
-  if (!userIsPrivilegedFixed) {
-    where.AND.push({ isHidden: false });
-  }
-
   if (query) {
     let relatedTaskIds: string[] = [];
     try {

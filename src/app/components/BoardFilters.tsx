@@ -35,8 +35,8 @@ interface BoardFiltersProps {
   allStatuses: string[];
   allAssignees: string[];
   allAssigners: string[];
-  showAllTasksMode: boolean;
-  setShowAllTasksMode: (val: boolean) => void;
+  showAllTasksMode?: boolean;
+  setShowAllTasksMode?: (val: boolean) => void;
   exportToExcel: () => void;
   activeTasksCount: number;
 }
@@ -378,16 +378,6 @@ export const BoardFilters: React.FC<BoardFiltersProps> = ({
 
         {/* 🛠️ Action Buttons */}
         <div className="flex items-center gap-2 ml-2 md:border-l border-gray-200 md:pl-4">
-          <button
-            onClick={() => setShowAllTasksMode(!showAllTasksMode)}
-            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
-              showAllTasksMode
-                ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-            }`}
-          >
-            {showAllTasksMode ? "Hide Archived" : "Show All"}
-          </button>
           <button
             onClick={exportToExcel}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-emerald-100 hover:bg-emerald-100 transition-colors"
