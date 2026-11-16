@@ -85,6 +85,10 @@ export default function PaymentHistory({ paymentHistory, taskTitle, taskDetails,
   }
 
   const openEditModal = (entry: PaymentEntry) => {
+    if (!isMaster) {
+      toast.error("Only Master role can edit invoice details");
+      return;
+    }
     setEditingPayment(entry);
     setEditForm({
       shopName: taskDetails?.shopName || "",
@@ -197,6 +201,10 @@ export default function PaymentHistory({ paymentHistory, taskTitle, taskDetails,
 
   const handleSaveAndDownload = async () => {
     if (!editingPayment) return;
+    if (!isMaster) {
+      toast.error("Only Master role can edit and save invoice details");
+      return;
+    }
 
     // 1. Update the task in DB if needed (GST, etc)
     const tid = taskDetails?.taskId || editingPayment.taskId;
@@ -318,9 +326,11 @@ export default function PaymentHistory({ paymentHistory, taskTitle, taskDetails,
                     <button onClick={() => handleDownload(entry)} className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-xl hover:bg-green-100 transition-all font-black text-[10px] uppercase tracking-tight">
                       <FaDownload size={12} /> Invoice
                     </button>
-                    <button onClick={() => openEditModal(entry)} className="p-2 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-600 hover:text-white transition-all border border-amber-100" title="Customize Invoice PDF">
-                      <FaFilter size={12} />
-                    </button>
+                    {isMaster && (
+                      <button onClick={() => openEditModal(entry)} className="p-2 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-600 hover:text-white transition-all border border-amber-100" title="Customize Invoice PDF (Master Only)">
+                        <FaFilter size={12} />
+                      </button>
+                    )}
                   </>
                 )}
                 {isMaster && (

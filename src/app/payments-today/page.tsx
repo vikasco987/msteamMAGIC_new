@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
 import {
   Calendar,
   User,
@@ -59,6 +60,10 @@ function formatDateTime(dateString: string) {
 }
 
 export default function PaymentsTodayPage() {
+  const { user } = useUser();
+  const role = String(user?.publicMetadata?.role || user?.unsafeMetadata?.role || "").toUpperCase();
+  const isMaster = role === "MASTER";
+
   const [payments, setPayments] = useState<PaymentEntry[]>([]);
   const [summary, setSummary] = useState<SummaryByAssigner>({});
   const [loading, setLoading] = useState(false);
@@ -94,6 +99,10 @@ export default function PaymentsTodayPage() {
   });
 
   const openEditModal = (p: PaymentEntry) => {
+    if (!isMaster) {
+      toast.error("Only Master role can edit invoice details");
+      return;
+    }
     setEditingPayment(p); 
     setEditForm({ 
         shopName: p.shopName || "", 
@@ -129,38 +138,44 @@ export default function PaymentsTodayPage() {
           </div>
           <div className="grid grid-cols-2 gap-2">
             <button onClick={() => { window.open(p.invoiceUrl!, '_blank'); toast.dismiss(t.id); }} className="bg-indigo-600 text-white px-3 py-2.5 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 hover:scale-105 transition-all"><ExternalLink size={12}/> Open</button>
-            <button onClick={() => { 
-                openEditModal(p);
-                toast.dismiss(t.id); 
-            }} className="bg-amber-500 text-white px-3 py-2.5 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 shadow-lg shadow-amber-100 hover:scale-105 transition-all"><Filter size={12}/> Edit</button>
-            <button 
-              onClick={async () => { 
-                toast.dismiss(t.id);
-                setGeneratingInvoiceId(p.paymentId);
-                // Clear URL first to force fresh generation
-                await fetch('/api/payments/update-invoice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paymentId: p.paymentId, invoiceUrl: null }) });
-                setPayments(prev => prev.map(item => item.paymentId === p.paymentId ? { ...item, invoiceUrl: null } : item));
-                handleDownloadInvoice({ ...p, invoiceUrl: null } as any);
-              }} 
-              className="bg-rose-600 text-white px-3 py-2.5 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 shadow-lg shadow-rose-100 hover:scale-105 transition-all"
-            >
-              <Download size={12}/> Re-Gen
-            </button>
-            <button 
-              onClick={async () => {
-                if (confirm("Delete this invoice permanent?")) {
+            {isMaster && (
+              <button onClick={() => { 
+                  openEditModal(p);
+                  toast.dismiss(t.id); 
+              }} className="bg-amber-500 text-white px-3 py-2.5 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 shadow-lg shadow-amber-100 hover:scale-105 transition-all"><Filter size={12}/> Edit</button>
+            )}
+            {isMaster && (
+              <button 
+                onClick={async () => { 
                   toast.dismiss(t.id);
-                  const res = await fetch('/api/payments/update-invoice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paymentId: p.paymentId, invoiceUrl: null }) });
-                  if (res.ok) {
-                    setPayments(prev => prev.map(item => item.paymentId === p.paymentId ? { ...item, invoiceUrl: null } : item));
-                    toast.success("Invoice deleted");
+                  setGeneratingInvoiceId(p.paymentId);
+                  // Clear URL first to force fresh generation
+                  await fetch('/api/payments/update-invoice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paymentId: p.paymentId, invoiceUrl: null }) });
+                  setPayments(prev => prev.map(item => item.paymentId === p.paymentId ? { ...item, invoiceUrl: null } : item));
+                  handleDownloadInvoice({ ...p, invoiceUrl: null } as any);
+                }} 
+                className="bg-rose-600 text-white px-3 py-2.5 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 shadow-lg shadow-rose-100 hover:scale-105 transition-all"
+              >
+                <Download size={12}/> Re-Gen
+              </button>
+            )}
+            {isMaster && (
+              <button 
+                onClick={async () => {
+                  if (confirm("Delete this invoice permanent?")) {
+                    toast.dismiss(t.id);
+                    const res = await fetch('/api/payments/update-invoice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paymentId: p.paymentId, invoiceUrl: null }) });
+                    if (res.ok) {
+                      setPayments(prev => prev.map(item => item.paymentId === p.paymentId ? { ...item, invoiceUrl: null } : item));
+                      toast.success("Invoice deleted");
+                    }
                   }
-                }
-              }}
-              className="bg-slate-900 text-white px-3 py-2.5 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 shadow-lg shadow-slate-100 hover:scale-105 transition-all"
-            >
-              <Trash2 size={12}/> Delete
-            </button>
+                }}
+                className="bg-slate-900 text-white px-3 py-2.5 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 shadow-lg shadow-slate-100 hover:scale-105 transition-all"
+              >
+                <Trash2 size={12}/> Delete
+              </button>
+            )}
           </div>
         </div>
       ), { duration: 6000, position: 'top-center' });
@@ -696,13 +711,15 @@ export default function PaymentsTodayPage() {
                                 {generatingInvoiceId === p.paymentId ? 'Processing...' : 'Invoice'} <FileText size={12} />
                               </button>
 
-                              <button
-                                onClick={() => openEditModal(p)}
-                                className="p-2 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-600 hover:text-white transition-all border border-amber-100"
-                                title="Edit Invoice Details"
-                              >
-                                <Filter size={14} />
-                              </button>
+                              {isMaster && (
+                                <button
+                                  onClick={() => openEditModal(p)}
+                                  className="p-2 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-600 hover:text-white transition-all border border-amber-100"
+                                  title="Edit Invoice Details (Master Only)"
+                                >
+                                  <Filter size={14} />
+                                </button>
+                              )}
                               
                               {p.invoiceUrl && (
                                 <button
