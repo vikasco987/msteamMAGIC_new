@@ -19,6 +19,7 @@ import {
   FaEye,
   FaReply,
   FaComments,
+  FaStore,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
@@ -39,14 +40,26 @@ interface NotesModalProps {
 export default function NotesModal({
   taskId,
   initialNotes,
-  taskTitle,
-  taskCode,
+  taskTitle: initialTaskTitle,
+  taskCode: initialTaskCode,
   isOpen = true,
   onClose,
   onNotesUpdated,
 }: NotesModalProps) {
   const { user, isLoaded } = useUser();
   const [notes, setNotes] = useState<Note[]>(initialNotes ? [...initialNotes] : []);
+  const [taskData, setTaskData] = useState<{
+    title?: string;
+    taskCode?: string;
+    shopName?: string;
+    outletName?: string;
+    customerName?: string;
+    status?: string;
+  }>({
+    title: initialTaskTitle,
+    taskCode: initialTaskCode,
+  });
+
   const [input, setInput] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -69,6 +82,28 @@ export default function NotesModal({
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Fetch full task details so Task Title & Shop Name always display cleanly at the top
+  const fetchTaskDetails = useCallback(async () => {
+    if (!taskId) return;
+    try {
+      const res = await axios.get(`/api/tasks/${taskId}`);
+      if (res.data) {
+        const t = res.data;
+        const cf = t.customFields || {};
+        setTaskData({
+          title: t.title || initialTaskTitle,
+          taskCode: t.taskCode || initialTaskCode || `T${t.id?.slice(-4)?.toUpperCase()}`,
+          shopName: t.shopName || cf.shopName || cf["Shop Name"],
+          outletName: t.outletName || cf.outletName || cf["Outlet Name"],
+          customerName: t.customerName || cf.customerName || cf["Customer Name"],
+          status: t.status,
+        });
+      }
+    } catch (err) {
+      console.warn("Could not fetch extra task details for header:", err);
+    }
+  }, [taskId, initialTaskTitle, initialTaskCode]);
+
   const fetchNotes = useCallback(async () => {
     if (!taskId) return;
     try {
@@ -88,8 +123,9 @@ export default function NotesModal({
   }, [taskId, user?.id, router]);
 
   useEffect(() => {
+    fetchTaskDetails();
     fetchNotes();
-  }, [fetchNotes]);
+  }, [fetchTaskDetails, fetchNotes]);
 
   useEffect(() => {
     if (notes.length > 0) {
@@ -344,8 +380,13 @@ export default function NotesModal({
 
   if (!isLoaded || !isAuthorized) return null;
 
+  // Prominent Task Title & Subtitle for Header
+  const displayTitle = taskData.title || initialTaskTitle || "Task Details";
+  const displayShop = taskData.shopName || taskData.outletName || taskData.customerName || "";
+  const displayCode = taskData.taskCode || initialTaskCode || `T${taskId.slice(-4).toUpperCase()}`;
+
   return (
-    <div className="fixed inset-0 z-[100] flex justify-end">
+    <div className="fixed inset-0 z-[1000] flex justify-end">
       {/* Dim Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -364,39 +405,53 @@ export default function NotesModal({
         transition={{ type: "spring", damping: 30, stiffness: 320 }}
         className="relative z-10 flex flex-col w-full max-w-lg md:max-w-xl h-full bg-slate-100 shadow-2xl border-l border-slate-200 overflow-hidden font-sans"
       >
-        {/* Sleek Slate/Navy Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white shadow-md border-b border-slate-800 flex-shrink-0">
-          <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white flex items-center justify-center shadow-md flex-shrink-0">
-              <FaComments className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h2 className="text-base md:text-lg font-bold tracking-tight text-white truncate">
-                  Task Discussion & Notes
-                </h2>
-                {taskCode && (
-                  <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 text-xs font-mono font-bold px-2 py-0.5 rounded-md">
-                    {taskCode}
-                  </span>
-                )}
+        {/* Sleek Slate/Navy Header with Prominent Task Name */}
+        <div className="px-6 py-4 bg-slate-900 text-white shadow-md border-b border-slate-800 flex-shrink-0">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3.5 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white flex items-center justify-center shadow-md flex-shrink-0 mt-0.5">
+                <FaComments className="w-5 h-5" />
               </div>
-              <p className="text-xs text-slate-400 font-medium truncate mt-0.5">
-                {taskTitle ? taskTitle : `Task #${taskId.slice(-6)}`} • {notes.length}{" "}
-                {notes.length === 1 ? "entry" : "entries"}
-              </p>
-            </div>
-          </div>
+              <div className="min-w-0 flex-1">
+                {/* Prominent Task Title */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2
+                    className="text-lg md:text-xl font-extrabold tracking-tight text-white truncate max-w-xs md:max-w-sm"
+                    title={displayTitle}
+                  >
+                    {displayTitle}
+                  </h2>
+                  <span className="bg-indigo-500/25 text-indigo-300 border border-indigo-400/30 text-xs font-mono font-black px-2.5 py-0.5 rounded-lg shadow-xs">
+                    {displayCode}
+                  </span>
+                </div>
 
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => onClose(notes)}
-              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors focus:outline-none"
-              title="Close (Esc)"
-              aria-label="Close"
-            >
-              <FaTimes size={18} />
-            </button>
+                {/* Shop / Customer Subtitle & Note count */}
+                <div className="flex items-center gap-2 text-xs text-slate-300 font-medium mt-1 truncate">
+                  {displayShop && (
+                    <span className="flex items-center gap-1 text-amber-300 font-bold truncate">
+                      <FaStore className="w-3 h-3 text-amber-400" />
+                      {displayShop}
+                    </span>
+                  )}
+                  {displayShop && <span className="text-slate-500">•</span>}
+                  <span className="text-slate-400">
+                    {notes.length} {notes.length === 1 ? "note" : "notes"} recorded
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <button
+                onClick={() => onClose(notes)}
+                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors focus:outline-none"
+                title="Close (Esc)"
+                aria-label="Close"
+              >
+                <FaTimes size={18} />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -460,7 +515,7 @@ export default function NotesModal({
                         : "bg-white text-slate-900 border-slate-200/90 rounded-tl-none shadow-slate-200"
                     }`}
                   >
-                    {/* Note Content Text - Large Crisp Font */}
+                    {/* Note Content Text */}
                     {note.content && (
                       <p
                         className={`text-[14px] md:text-[15px] font-normal leading-relaxed whitespace-pre-wrap break-words ${
@@ -807,8 +862,8 @@ export default function NotesModal({
           </div>
         )}
 
-        {/* Input Area */}
-        <div className="p-4 bg-white border-t border-slate-200 flex-shrink-0 space-y-2.5">
+        {/* Input Area - Positioned safely above bottom footer bar */}
+        <div className="p-4 pb-16 md:pb-16 bg-white border-t border-slate-200 flex-shrink-0 space-y-2.5">
           <div className="relative rounded-2xl border-2 border-slate-300 focus-within:border-indigo-600 bg-white transition-all shadow-sm">
             <textarea
               value={input}
@@ -864,6 +919,7 @@ export default function NotesModal({
             </div>
           </div>
 
+          {/* Send Note Button and Tip */}
           <div className="flex items-center justify-between pt-0.5">
             <span className="text-xs text-slate-500 font-medium">
               Supports 1-click Download for PDFs & Images
@@ -893,7 +949,7 @@ export default function NotesModal({
       {/* Lightbox / Preview Modal for Images and PDFs */}
       <AnimatePresence>
         {previewMedia && (
-          <div className="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex flex-col justify-between p-4 md:p-6 animate-in fade-in duration-150">
+          <div className="fixed inset-0 z-[1100] bg-black/85 backdrop-blur-md flex flex-col justify-between p-4 md:p-6 animate-in fade-in duration-150">
             {/* Top Bar */}
             <div className="flex items-center justify-between text-white pb-3 border-b border-white/10 z-10">
               <div className="flex items-center gap-3 min-w-0">

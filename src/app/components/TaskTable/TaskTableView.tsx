@@ -947,18 +947,23 @@ export default function TaskTableView({ tasks, user, onTasksUpdate }: Props) {
         handlePageChange={handlePageChange}
       />
 
-      {selectedTaskIdForNotes && (
-        <NotesModal
-          isOpen={isNoteModalOpen}
-          onClose={() => {
-            setIsNoteModalOpen(false);
-            setSelectedTaskIdForNotes(null);
-          }}
-          taskId={selectedTaskIdForNotes}
-          initialNotes={notesMap[selectedTaskIdForNotes] || []}
-          onNotesUpdated={refetchTasks}
-        />
-      )}
+      {selectedTaskIdForNotes && (() => {
+        const selectedTaskObj = tasks.find((t) => t.id === selectedTaskIdForNotes);
+        return (
+          <NotesModal
+            isOpen={isNoteModalOpen}
+            onClose={() => {
+              setIsNoteModalOpen(false);
+              setSelectedTaskIdForNotes(null);
+            }}
+            taskId={selectedTaskIdForNotes}
+            initialNotes={notesMap[selectedTaskIdForNotes] || []}
+            taskTitle={selectedTaskObj?.title}
+            taskCode={selectedTaskObj?.taskCode || `T${selectedTaskIdForNotes.slice(-4).toUpperCase()}`}
+            onNotesUpdated={refetchTasks}
+          />
+        );
+      })()}
 
       {selectedTaskIdForDetails && (
         <TaskDetailsPanel

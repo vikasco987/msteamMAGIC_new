@@ -2207,8 +2207,10 @@ export default function KamTableView() {
       {/* Notes Modal */}
       {selectedTask && (
         <NotesModal
-          taskId={selectedTask.id}               // ✅ pass taskId only
-          initialNotes={selectedTask.notes || []} // ✅ optional if you preload notes
+          taskId={selectedTask.id}
+          initialNotes={selectedTask.notes || []}
+          taskTitle={selectedTask.title}
+          taskCode={selectedTask.taskCode || `T${selectedTask.id.slice(-4).toUpperCase()}`}
           onClose={(updatedNotes) => {
             if (updatedNotes) {
               setTasks((prev) =>
