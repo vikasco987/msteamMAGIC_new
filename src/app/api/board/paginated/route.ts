@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
     // Lightweight select to avoid heavy data
     const lightweightSelect = {
       id: true,
+      taskCode: true,
       title: true,
       status: true,
       priority: true,

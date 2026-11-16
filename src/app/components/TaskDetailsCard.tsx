@@ -343,21 +343,29 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
           </div>
         )}
 
-        {/* Header with Title and Control Icons */}
+        {/* Header with Title, Task Code Badge and Control Icons */}
         <div className="flex items-start justify-between gap-3">
           {showTitle && (
-            <div className="flex flex-col gap-1.5 mt-1">
-              <h3
-                className="text-base font-bold text-slate-900 leading-tight line-clamp-2"
-                title={task.title}
-              >
-                {task.title}
-              </h3>
+            <div className="flex flex-col gap-1.5 mt-1 min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-black tracking-wider bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-500/30">
+                  {task.taskCode || `T${task.id.slice(-4).toUpperCase()}`}
+                </span>
+                <h3
+                  className="text-base font-bold text-slate-900 leading-tight line-clamp-2"
+                  title={task.title}
+                >
+                  {task.title}
+                </h3>
+              </div>
               <TaskTimer createdAt={task.createdAt} status={task.status} />
             </div>
           )}
           {!showTitle && (
-            <div className="mt-1">
+            <div className="flex items-center gap-2 mt-1">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-black tracking-wider bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-500/30">
+                {task.taskCode || `T${task.id.slice(-4).toUpperCase()}`}
+              </span>
               <TaskTimer createdAt={task.createdAt} status={task.status} />
             </div>
           )}
@@ -590,6 +598,7 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
           )}
 
           <div className="grid grid-cols-1 gap-y-1 mt-1">
+            <FieldWithCopy label="🎫 Task Code" value={task.taskCode || `T${task.id.slice(-4).toUpperCase()}`} />
             <FieldWithCopy label="🆔 Task ID" value={task.id} />
             <FieldWithCopy label="🏪 Shop" value={cf.shopName} />
             <FieldWithCopy label="🏷️ Outlet" value={cf.outletName} />

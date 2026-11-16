@@ -109,12 +109,18 @@ export async function buildTaskWhere(req: NextRequest) {
     }
 
     const queryConditions: any[] = [
+      { taskCode: { contains: query, mode: 'insensitive' } },
       { title: { contains: query, mode: 'insensitive' } },
       { shopName: { contains: query, mode: 'insensitive' } },
       { email: { contains: query, mode: 'insensitive' } },
       { phone: { contains: query, mode: 'insensitive' } },
       { customerName: { contains: query, mode: 'insensitive' } }
     ];
+
+    // Priority exact match if query looks like a task code (e.g. T101, t102)
+    if (/^t\d+$/i.test(query.trim())) {
+      queryConditions.unshift({ taskCode: { equals: query.trim(), mode: 'insensitive' } });
+    }
 
     if (relatedTaskIds.length > 0) {
       queryConditions.push({ id: { in: relatedTaskIds } });

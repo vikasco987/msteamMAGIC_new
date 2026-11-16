@@ -42,6 +42,7 @@ import PaginationControls from "../components/PaginationControls";
 
 interface Task {
   id: string;
+  taskCode?: string | null;
   title: string;
   shopName?: string;
   customerName?: string;
@@ -1728,7 +1729,14 @@ export default function KamTableView() {
                               className="px-4 py-3 whitespace-nowrap text-left text-gray-700 border-r border-b sticky left-[calc(0rem+48px)] z-10"
                               style={{ backgroundColor: t.highlightColor || "white" }}
                             >
-                              {t.shopName || "—"}
+                              <div className="flex items-center gap-2">
+                                {t.taskCode && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200 shrink-0">
+                                    {t.taskCode}
+                                  </span>
+                                )}
+                                <span>{t.shopName || "—"}</span>
+                              </div>
                             </td>
                           );
                         case "accountStatus":

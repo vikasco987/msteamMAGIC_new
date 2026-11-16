@@ -398,8 +398,13 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
         {/* Sticky Header */}
         <div className="flex flex-col border-b border-gray-100 bg-white sticky top-0 z-20">
           <div className="flex items-center justify-between p-6 pb-4">
-            <h2 className="text-2xl font-extrabold text-gray-900 flex items-center gap-3">
+            <h2 className="text-2xl font-extrabold text-gray-900 flex items-center gap-3 flex-wrap">
               Task Details <span className="text-xs text-gray-400 font-normal ml-2">({userRole})</span>
+              {task?.taskCode && (
+                <span className="text-xs px-2.5 py-1 rounded-lg font-black tracking-wide bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-xs">
+                  {task.taskCode}
+                </span>
+              )}
               {task && (
                 <span className={`text-[10px] px-2 py-1 rounded-full uppercase font-black tracking-wider ${
                   task.status === "Completed" ? "bg-green-100 text-green-700" :
@@ -483,6 +488,7 @@ export default function TaskDetailsPanel({ taskId, onClose }: TaskDetailsPanelPr
               {activeTab === 'overview' && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <InfoField label="Task Code" value={task.taskCode || "—"} icon={<FaFileAlt />} copyable />
                     <InfoField label="Task ID" value={task.id} icon={<FaFileAlt />} copyable />
                     <InfoField label="Title" value={(isEditing ? editedTask.title : (task.title))} editable={isEditing} onChange={(val) => handleEditChange('title', val, false)} isMaster={isMaster} onInlineEditSave={async (val) => await handleInlineSave('title', val, false)} type="text"  icon={<FaFileAlt />} copyable />
                     <InfoField label="Created At" value={task.createdAt ? format(new Date(task.createdAt), "dd MMM yyyy, hh:mm a") : ""} icon={<FaClock />} />

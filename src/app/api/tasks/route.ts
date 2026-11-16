@@ -712,6 +712,7 @@ import { logActivity } from "@/lib/activity";
 import { getUnifiedUserId } from "@/lib/auth-utils";
 import { getUserDetails } from "@/lib/auth-utils";
 import { MongoClient } from "mongodb";
+import { getNextTaskCode } from "@/lib/taskCodeGenerator";
 
 let cachedMongoClient: MongoClient | null = null;
 async function getMongoClient() {
@@ -936,8 +937,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const taskCode = await getNextTaskCode();
+
     const task = await prisma.task.create({
       data: {
+        taskCode,
         title: body.title,
         status,
         assigneeIds: Array.isArray(body.assigneeIds)
@@ -1380,12 +1384,18 @@ export async function GET(req: NextRequest) {
         }
 
         const queryConditions: any[] = [
+          { taskCode: { contains: query, mode: 'insensitive' } },
           { title: { contains: query, mode: 'insensitive' } },
           { shopName: { contains: query, mode: 'insensitive' } },
           { email: { contains: query, mode: 'insensitive' } },
           { phone: { contains: query, mode: 'insensitive' } },
           { customerName: { contains: query, mode: 'insensitive' } }
         ];
+
+        // Priority exact match if query looks like a task code (e.g. T101, t102)
+        if (/^t\d+$/i.test(query.trim())) {
+          queryConditions.unshift({ taskCode: { equals: query.trim(), mode: 'insensitive' } });
+        }
 
         if (relatedTaskIds.length > 0) {
           queryConditions.push({ id: { in: relatedTaskIds } });

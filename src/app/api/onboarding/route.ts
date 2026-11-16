@@ -284,11 +284,12 @@ export async function GET(req: Request) {
       }
     }
 
-    // Text search (shopName, customerName, phone)
+    // Text search (taskCode, shopName, customerName, phone)
     if (query) {
       taskFilter.$and = taskFilter.$and || [];
       taskFilter.$and.push({
         $or: [
+          { taskCode: { $regex: query, $options: "i" } },
           { shopName: { $regex: query, $options: "i" } },
           { customerName: { $regex: query, $options: "i" } },
           { phone: { $regex: query, $options: "i" } },
@@ -473,6 +474,7 @@ export async function GET(req: Request) {
     dataStages.push({
       $project: {
         _id: 1,
+        taskCode: 1,
         title: 1,
         shopName: 1,
         customerName: 1,
@@ -582,6 +584,7 @@ export async function GET(req: Request) {
       return {
         id: tid,
         taskId: tid,
+        taskCode: task.taskCode || null,
         title: task.title,
         shopName: task.shopName || cf.shopName || "",
         customerName: task.customerName || cf.customerName || "",

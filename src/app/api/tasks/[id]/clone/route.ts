@@ -478,6 +478,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth-utils";
 import { clerkClient } from "@clerk/clerk-sdk-node";
 import { getUserDetails } from "@/lib/auth-utils";
+import { getNextTaskCode } from "@/lib/taskCodeGenerator";
 
 export async function POST(
   req: NextRequest,
@@ -509,11 +510,13 @@ export async function POST(
 
     // Prepare data for the new task
     // Using object destructuring to safely copy fields and exclude notes/id
-    const { id, subtasks, ...originalData } = original;
+    const { id, subtasks, taskCode: _oldTaskCode, ...originalData } = original;
+    const newTaskCode = await getNextTaskCode();
 
     const cloned = await prisma.task.create({
       data: {
         ...originalData,
+        taskCode: newTaskCode,
         // Override specific fields for the new cloned task
         title: title || `${original.title} (Copy)`,
         parentTaskId: original.id,

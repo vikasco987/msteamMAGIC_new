@@ -330,6 +330,7 @@ import { auth } from "@/lib/auth-utils";
 import { users } from "@clerk/clerk-sdk-node";
 import { prisma } from "@/lib/prisma";
 import { getUserDetails } from "@/lib/auth-utils";
+import { getNextTaskCode } from "@/lib/taskCodeGenerator";
 
 // ========== HELPERS ==========
 interface UserPublicMetadata { role?: string }
@@ -377,8 +378,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const taskCode = await getNextTaskCode();
+
     const task = await prisma.task.create({
       data: {
+        taskCode,
         title: body.title,
         status: body.status || "todo",
         assigneeId: body.assigneeId,

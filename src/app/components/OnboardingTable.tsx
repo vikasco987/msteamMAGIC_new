@@ -305,6 +305,7 @@ interface TaskNote {
 interface OnboardingTask {
   id: string;
   taskId: string;
+  taskCode?: string | null;
   title: string;
   shopName: string;
   customerName: string;
@@ -2278,13 +2279,20 @@ export default function OnboardingTable() {
                                   key="shopName"
                                   onClick={handleCellClick}
                                   style={stickyStyle}
-                                  className={`px-3 py-2.5 font-medium text-gray-900 max-w-[180px] ${
+                                  className={`px-3 py-2.5 font-medium text-gray-900 max-w-[200px] ${
                                     isFloating ? `${cellBg} border-r border-purple-100 cursor-pointer` : ""
                                   }`}
                                   title={isFloating ? "Click to open edit panel" : task.shopName}
                                 >
-                                  <div className="truncate" title={task.shopName}>
-                                    {task.shopName || "—"}
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    {task.taskCode && (
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-black bg-purple-50 text-purple-700 border border-purple-200 shrink-0">
+                                        {task.taskCode}
+                                      </span>
+                                    )}
+                                    <span className="truncate" title={task.shopName}>
+                                      {task.shopName || "—"}
+                                    </span>
                                   </div>
                                 </td>
                               );
@@ -2954,9 +2962,16 @@ export default function OnboardingTable() {
                     <SlidersHorizontal size={20} />
                   </div>
                   <div className="min-w-0">
-                    <h2 className="text-base font-extrabold text-slate-900 tracking-tight">
-                      Edit Onboarding Record
-                    </h2>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base font-extrabold text-slate-900 tracking-tight">
+                        Edit Onboarding Record
+                      </h2>
+                      {drawerTask.taskCode && (
+                        <span className="text-xs font-black px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 border border-purple-200">
+                          {drawerTask.taskCode}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-purple-700 font-semibold truncate max-w-[340px]">
                       Task & Account Controls
                     </p>

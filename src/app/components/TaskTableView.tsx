@@ -1083,7 +1083,14 @@ export default function TaskTableView({
                     )}
                     {visibleColumns.includes("shopName") && (
                       <td className="border border-gray-200 px-3 py-2 whitespace-nowrap text-left text-gray-700">
-                        {task.customFields?.shopName || "—"}
+                        <div className="flex items-center gap-1.5">
+                          {task.taskCode && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200 shrink-0">
+                              {task.taskCode}
+                            </span>
+                          )}
+                          <span>{task.customFields?.shopName || task.shopName || "—"}</span>
+                        </div>
                       </td>
                     )}
                     {visibleColumns.includes("location") && (

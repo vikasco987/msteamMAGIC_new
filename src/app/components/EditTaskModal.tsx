@@ -445,9 +445,16 @@ export default function EditTaskModal({
           <FaTimes size={18} />
         </button>
 
-        <h2 className="text-xl font-bold text-purple-800 mb-4 flex items-center gap-2">
-          🛠️ Edit Custom Fields
-        </h2>
+        <div className="flex items-center gap-3 mb-4">
+          <h2 className="text-xl font-bold text-purple-800 flex items-center gap-2">
+            🛠️ Edit Custom Fields
+          </h2>
+          {task.taskCode && (
+            <span className="text-xs font-black px-2 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-200">
+              {task.taskCode}
+            </span>
+          )}
+        </div>
 
         <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

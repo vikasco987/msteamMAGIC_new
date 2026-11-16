@@ -193,6 +193,7 @@ import { users } from "@clerk/clerk-sdk-node";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client"; // <-- Add this import
 import { getUserDetails } from "@/lib/auth-utils";
+import { getNextTaskCode } from "@/lib/taskCodeGenerator";
 
 type JsonTaskBody = {
   title: string;
@@ -262,8 +263,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const taskCode = await getNextTaskCode();
+
     const task = await prisma.task.create({
       data: {
+        taskCode,
         title: data.title,
         status: data.status || "todo",
         tags: Array.isArray(data.tags) ? data.tags : [],

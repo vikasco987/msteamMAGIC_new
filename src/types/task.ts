@@ -288,6 +288,7 @@ export type CustomFields = {
 // Consolidated and updated Task interface
 export interface Task {
   id: string;
+  taskCode?: string | null;
   title: string;
   description?: string;
   status: string;

@@ -55,13 +55,24 @@ export const TaskTableBody: React.FC<TaskTableBodyProps> = ({
               return <td key={col} className="border px-3 py-2">{task.id.slice(-5)}</td>;
             }
             if (col === "title") {
-              return <td key={col} className="border px-3 py-2">{task.title}</td>;
+              return <td key={col} className="border px-3 py-2 font-medium text-slate-800">{task.title}</td>;
             }
             if (col === "status") {
               return <td key={col} className="border px-3 py-2">{task.status || "—"}</td>;
             }
             if (col === "shopName") {
-              return <td key={col} className="border px-3 py-2">{task.customFields?.shopName || "—"}</td>;
+              return (
+                <td key={col} className="border px-3 py-2">
+                  <div className="flex items-center gap-1.5">
+                    {task.taskCode && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200 shrink-0">
+                        {task.taskCode}
+                      </span>
+                    )}
+                    <span>{task.customFields?.shopName || task.shopName || "—"}</span>
+                  </div>
+                </td>
+              );
             }
             if (col === "email") {
               return <td key={col} className="border px-3 py-2">{task.customFields?.email || "—"}</td>;

@@ -89,6 +89,19 @@ export async function GET(req: Request) {
       title: "📂 Account Handling",
     };
 
+    if (query) {
+      where.OR = [
+        { taskCode: { contains: query, mode: "insensitive" } },
+        { shopName: { contains: query, mode: "insensitive" } },
+        { customerName: { contains: query, mode: "insensitive" } },
+        { assigneeName: { contains: query, mode: "insensitive" } },
+        { assignerName: { contains: query, mode: "insensitive" } },
+      ];
+      if (/^t\d+$/i.test(query.trim())) {
+        where.OR.unshift({ taskCode: { equals: query.trim(), mode: "insensitive" } });
+      }
+    }
+
     // Role-based filtering
     const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
     
@@ -168,6 +181,7 @@ export async function GET(req: Request) {
 
       if (query) {
         rawFilter.$or = [
+          { taskCode: { $regex: query, $options: "i" } },
           { shopName: { $regex: query, $options: "i" } },
           { customerName: { $regex: query, $options: "i" } },
           { assigneeName: { $regex: query, $options: "i" } },
@@ -391,6 +405,7 @@ export async function GET(req: Request) {
           where: { id: { in: pageIds } },
           select: {
             id: true,
+            taskCode: true,
             title: true,
             status: true,
             shopName: true,
@@ -434,6 +449,7 @@ export async function GET(req: Request) {
           where,
           select: {
             id: true,
+            taskCode: true,
             title: true,
             status: true,
             shopName: true,
