@@ -15,10 +15,10 @@ import {
   FaDownload,
   FaFilePdf,
   FaImage,
-  FaExternalLinkAlt,
   FaPaperPlane,
-  FaChevronRight,
   FaEye,
+  FaReply,
+  FaComments,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
@@ -54,7 +54,7 @@ export default function NotesModal({
   const [activeReactionNote, setActiveReactionNote] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [previewMedia, setPreviewMedia] = useState<{ url: string; type: "image" | "pdf"; name: string } | null>(null);
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
@@ -65,23 +65,19 @@ export default function NotesModal({
   const userRole = user?.publicMetadata?.role as string | undefined;
   const isAuthorized = Boolean(userRole);
 
-  // Auto-scroll to bottom of notes when loaded or new note added
   const scrollToBottom = () => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Fetch only notes for THIS exact task
   const fetchNotes = useCallback(async () => {
     if (!taskId) return;
     try {
       const res = await axios.get<Note[]>(`/api/notes?taskId=${taskId}`);
-      // Sort oldest to newest so newest appear at the bottom like modern chat/feed
       const sorted = (res.data || []).sort(
         (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       );
       setNotes(sorted);
 
-      // Mark notes as read in the background
       if (user?.id) {
         await axios.post("/api/notes/mark-read", { taskId });
         router.refresh();
@@ -101,7 +97,6 @@ export default function NotesModal({
     }
   }, [notes.length]);
 
-  // Handle ESC key to close panel
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -116,7 +111,6 @@ export default function NotesModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose, notes, previewMedia]);
 
-  // Clean speech recognition on unmount
   useEffect(() => {
     return () => {
       if (recognitionRef.current) {
@@ -204,7 +198,10 @@ export default function NotesModal({
 
     setIsUploading(true);
 
-    const authorName = `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || (user as any)?.name || "User";
+    const authorName =
+      `${user?.firstName || ""} ${user?.lastName || ""}`.trim() ||
+      (user as any)?.name ||
+      "User";
     const authorEmail =
       user?.primaryEmailAddress?.emailAddress ||
       user?.emailAddresses?.[0]?.emailAddress ||
@@ -260,7 +257,6 @@ export default function NotesModal({
   const toggleReaction = async (noteId: string | undefined, emoji: string) => {
     if (!noteId || !user) return;
 
-    // Optimistic update
     setNotes((prev) =>
       prev.map((note) => {
         if (note.id !== noteId) return note;
@@ -275,7 +271,8 @@ export default function NotesModal({
           newReactions.push({
             emoji,
             userId: user.id,
-            userName: `${user.firstName || ""} ${user.lastName || ""}`.trim() || "User",
+            userName:
+              `${user.firstName || ""} ${user.lastName || ""}`.trim() || "User",
           });
         }
         return { ...note, reactions: newReactions };
@@ -292,7 +289,6 @@ export default function NotesModal({
     }
   };
 
-  // Robust File Download Helper for Images and PDFs (bypasses CORS restrictions)
   const handleDownloadFile = async (url: string, defaultName?: string) => {
     setDownloadingUrl(url);
     const toastId = toast.loading("Downloading attachment...");
@@ -319,7 +315,6 @@ export default function NotesModal({
       toast.success("Download complete!", { id: toastId });
     } catch (err) {
       console.warn("Direct blob download failed, falling back to direct link open:", err);
-      // Fallback: trigger standard browser download/open
       const a = document.createElement("a");
       a.href = url;
       a.target = "_blank";
@@ -351,52 +346,53 @@ export default function NotesModal({
 
   return (
     <div className="fixed inset-0 z-[100] flex justify-end">
-      {/* Backdrop */}
+      {/* Dim Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.2 }}
         onClick={() => onClose(notes)}
-        className="fixed inset-0 bg-slate-900/50 backdrop-blur-[2px]"
+        className="fixed inset-0 bg-slate-900/60 backdrop-blur-[3px]"
       />
 
-      {/* Slide-over Right Panel */}
+      {/* Slide-over Right Drawer */}
       <motion.div
         initial={{ x: "100%" }}
         animate={{ x: 0 }}
         exit={{ x: "100%" }}
-        transition={{ type: "spring", damping: 28, stiffness: 300 }}
-        className="relative z-10 flex flex-col w-full max-w-lg md:max-w-xl h-full bg-white shadow-2xl border-l border-slate-200 overflow-hidden"
+        transition={{ type: "spring", damping: 30, stiffness: 320 }}
+        className="relative z-10 flex flex-col w-full max-w-lg md:max-w-xl h-full bg-slate-100 shadow-2xl border-l border-slate-200 overflow-hidden font-sans"
       >
-        {/* Panel Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 text-white shadow-sm flex-shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur-sm">
-              <FaStickyNote className="w-5 h-5 text-white" />
+        {/* Sleek Slate/Navy Header */}
+        <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white shadow-md border-b border-slate-800 flex-shrink-0">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white flex items-center justify-center shadow-md flex-shrink-0">
+              <FaComments className="w-5 h-5" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-black tracking-tight text-white truncate">
-                  Task Notes & Discussion
+                <h2 className="text-base md:text-lg font-bold tracking-tight text-white truncate">
+                  Task Discussion & Notes
                 </h2>
                 {taskCode && (
-                  <span className="bg-white/25 text-white text-xs font-mono font-bold px-2 py-0.5 rounded-md">
+                  <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 text-xs font-mono font-bold px-2 py-0.5 rounded-md">
                     {taskCode}
                   </span>
                 )}
               </div>
-              <p className="text-xs text-amber-100 font-medium truncate">
-                {taskTitle ? taskTitle : `Task #${taskId.slice(-6)}`} • {notes.length} {notes.length === 1 ? "note" : "notes"}
+              <p className="text-xs text-slate-400 font-medium truncate mt-0.5">
+                {taskTitle ? taskTitle : `Task #${taskId.slice(-6)}`} • {notes.length}{" "}
+                {notes.length === 1 ? "entry" : "entries"}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => onClose(notes)}
-              className="p-2 rounded-xl text-white/80 hover:text-white hover:bg-white/20 transition-all focus:outline-none"
-              title="Close Panel (Esc)"
+              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors focus:outline-none"
+              title="Close (Esc)"
               aria-label="Close"
             >
               <FaTimes size={18} />
@@ -404,23 +400,26 @@ export default function NotesModal({
           </div>
         </div>
 
-        {/* Scrollable Messages / Notes Feed */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-slate-50/70">
+        {/* Scrollable Chat Area */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-slate-100">
           {notes.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center p-8">
-              <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mb-4 shadow-inner">
+              <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 text-indigo-500 flex items-center justify-center mb-4 shadow-sm">
                 <FaStickyNote className="w-8 h-8" />
               </div>
-              <h3 className="text-base font-bold text-slate-800 mb-1">No notes recorded yet</h3>
+              <h3 className="text-base font-bold text-slate-800 mb-1">
+                No notes or comments yet
+              </h3>
               <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
-                Add progress updates, instructions, PDFs, or images below. All team members assigned will stay aligned.
+                Post important updates, attach receipts, images, or PDFs. Everything is synchronized with the team.
               </p>
             </div>
           ) : (
             notes.map((note, index) => {
               const isCurrentUser =
                 note.authorEmail === user?.primaryEmailAddress?.emailAddress ||
-                note.authorName?.toLowerCase() === `${user?.firstName || ""} ${user?.lastName || ""}`.toLowerCase().trim();
+                note.authorName?.toLowerCase() ===
+                  `${user?.firstName || ""} ${user?.lastName || ""}`.toLowerCase().trim();
 
               const fileUrl = note.fileUrl;
               const hasFile = Boolean(fileUrl);
@@ -433,76 +432,74 @@ export default function NotesModal({
                   key={note.id || `${note.content}-${index}`}
                   className={`flex flex-col ${isCurrentUser ? "items-end" : "items-start"}`}
                 >
-                  {/* Note Card */}
+                  {/* Sender Name & Timestamp above bubble */}
                   <div
-                    className={`group relative max-w-[90%] md:max-w-[85%] rounded-2xl p-4 shadow-sm border transition-all ${
-                      isCurrentUser
-                        ? "bg-amber-500 text-white border-amber-600 rounded-tr-none shadow-amber-500/10"
-                        : "bg-white text-slate-800 border-slate-200/80 rounded-tl-none shadow-slate-200/50"
+                    className={`flex items-center gap-2 mb-1 px-1 text-xs font-semibold ${
+                      isCurrentUser ? "text-indigo-900" : "text-slate-600"
                     }`}
                   >
-                    {/* Author & Timestamp */}
-                    <div
-                      className={`flex items-center justify-between gap-4 mb-1.5 text-[11px] font-semibold ${
-                        isCurrentUser ? "text-amber-100" : "text-slate-500"
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5 truncate">
-                        <FaUserCircle className="w-3.5 h-3.5 opacity-80 flex-shrink-0" />
-                        <span className="truncate">
-                          {isCurrentUser ? "You" : note.authorName || note.authorEmail || "Staff Member"}
-                        </span>
-                      </div>
-                      <span className="text-[10px] opacity-75 whitespace-nowrap">
-                        {new Date(note.createdAt).toLocaleTimeString([], {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    </div>
+                    <span className="flex items-center gap-1">
+                      <FaUserCircle className="w-3.5 h-3.5 text-slate-400" />
+                      {isCurrentUser ? "You" : note.authorName || note.authorEmail || "Staff Member"}
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-normal">
+                      • {new Date(note.createdAt).toLocaleTimeString([], {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
 
-                    {/* Note Content */}
+                  {/* Clean Contrast Message Bubble */}
+                  <div
+                    className={`group relative max-w-[92%] md:max-w-[88%] rounded-2xl p-4 shadow-sm border transition-all ${
+                      isCurrentUser
+                        ? "bg-indigo-600 text-white border-indigo-700 rounded-tr-none shadow-indigo-600/10"
+                        : "bg-white text-slate-900 border-slate-200/90 rounded-tl-none shadow-slate-200"
+                    }`}
+                  >
+                    {/* Note Content Text - Large Crisp Font */}
                     {note.content && (
                       <p
-                        className={`text-sm leading-relaxed whitespace-pre-wrap break-words ${
-                          isCurrentUser ? "text-white" : "text-slate-800"
+                        className={`text-[14px] md:text-[15px] font-normal leading-relaxed whitespace-pre-wrap break-words ${
+                          isCurrentUser ? "text-white" : "text-slate-900"
                         }`}
                       >
                         {note.content}
                       </p>
                     )}
 
-                    {/* Attachment Section (Images & PDFs with 1-Click Download) */}
+                    {/* Attachments Section */}
                     {hasFile && (
-                      <div className="mt-3 pt-2.5 border-t border-black/10 dark:border-white/10 space-y-2">
+                      <div className="mt-3 pt-3 border-t border-black/10 dark:border-white/15 space-y-2.5">
                         {isImg ? (
                           <div className="space-y-2">
-                            {/* Image Thumbnail Preview */}
+                            {/* Image Preview with Hover Overlay */}
                             <div
                               onClick={() =>
                                 setPreviewMedia({ url: fileUrl!, type: "image", name: fileName })
                               }
-                              className="relative cursor-pointer overflow-hidden rounded-xl border border-black/10 group/img max-h-56 bg-black/5"
+                              className="relative cursor-pointer overflow-hidden rounded-xl border border-black/10 group/img max-h-60 bg-black/5"
                             >
                               <img
                                 src={fileUrl}
                                 alt={fileName}
-                                className="w-full h-auto max-h-56 object-cover rounded-xl transition-transform duration-300 group-hover/img:scale-105"
+                                className="w-full h-auto max-h-60 object-cover rounded-xl transition-transform duration-300 group-hover/img:scale-105"
                               />
-                              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                <span className="bg-white/90 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow">
-                                  <FaEye /> Preview
+                              <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                <span className="bg-white text-slate-900 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-md">
+                                  <FaEye /> View Full Image
                                 </span>
                               </div>
                             </div>
 
-                            {/* Image Action Buttons */}
-                            <div className="flex items-center justify-between gap-2">
+                            {/* Image Filename & Download Bar */}
+                            <div className="flex items-center justify-between gap-2 pt-0.5">
                               <span
-                                className={`text-[11px] truncate font-medium ${
-                                  isCurrentUser ? "text-amber-100" : "text-slate-600"
+                                className={`text-xs truncate font-medium ${
+                                  isCurrentUser ? "text-indigo-100" : "text-slate-700"
                                 }`}
                                 title={fileName}
                               >
@@ -516,10 +513,10 @@ export default function NotesModal({
                                   }
                                   className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors ${
                                     isCurrentUser
-                                      ? "bg-amber-600 hover:bg-amber-700 text-white"
-                                      : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                                      ? "bg-indigo-700 hover:bg-indigo-800 text-white"
+                                      : "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
                                   }`}
-                                  title="View Fullscreen"
+                                  title="Fullscreen Preview"
                                 >
                                   <FaEye size={12} />
                                 </button>
@@ -527,10 +524,10 @@ export default function NotesModal({
                                   type="button"
                                   disabled={downloadingUrl === fileUrl}
                                   onClick={() => handleDownloadFile(fileUrl!, fileName)}
-                                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm ${
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm ${
                                     isCurrentUser
-                                      ? "bg-white text-amber-700 hover:bg-amber-50"
-                                      : "bg-amber-600 text-white hover:bg-amber-700"
+                                      ? "bg-white text-indigo-700 hover:bg-indigo-50"
+                                      : "bg-indigo-600 text-white hover:bg-indigo-700"
                                   }`}
                                   title="Download Image"
                                 >
@@ -545,25 +542,25 @@ export default function NotesModal({
                             </div>
                           </div>
                         ) : isPdf ? (
-                          /* PDF Attachment Card with Direct Download */
+                          /* PDF Card */
                           <div
                             className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${
                               isCurrentUser
-                                ? "bg-amber-600/60 border-amber-400/40 text-white"
-                                : "bg-slate-50 border-slate-200 text-slate-800"
+                                ? "bg-indigo-700/80 border-indigo-400/40 text-white"
+                                : "bg-slate-50 border-slate-200 text-slate-900"
                             }`}
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="p-2 bg-red-500 text-white rounded-lg flex-shrink-0 shadow-sm">
+                              <div className="p-2.5 bg-rose-500 text-white rounded-lg flex-shrink-0 shadow-sm">
                                 <FaFilePdf className="w-5 h-5" />
                               </div>
                               <div className="min-w-0">
-                                <p className="text-xs font-bold truncate" title={fileName}>
+                                <p className="text-xs md:text-sm font-bold truncate" title={fileName}>
                                   {fileName}
                                 </p>
                                 <span
                                   className={`text-[10px] font-semibold uppercase tracking-wider ${
-                                    isCurrentUser ? "text-amber-200" : "text-slate-400"
+                                    isCurrentUser ? "text-indigo-200" : "text-slate-500"
                                   }`}
                                 >
                                   PDF Document
@@ -580,7 +577,7 @@ export default function NotesModal({
                                 className={`p-2 rounded-lg text-xs font-semibold transition-colors ${
                                   isCurrentUser
                                     ? "bg-white/20 hover:bg-white/30 text-white"
-                                    : "bg-slate-200/80 hover:bg-slate-300 text-slate-700"
+                                    : "bg-slate-200 hover:bg-slate-300 text-slate-800"
                                 }`}
                                 title="View PDF"
                               >
@@ -590,10 +587,10 @@ export default function NotesModal({
                                 type="button"
                                 disabled={downloadingUrl === fileUrl}
                                 onClick={() => handleDownloadFile(fileUrl!, fileName)}
-                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm ${
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm ${
                                   isCurrentUser
-                                    ? "bg-white text-amber-800 hover:bg-amber-50"
-                                    : "bg-red-600 text-white hover:bg-red-700"
+                                    ? "bg-white text-rose-700 hover:bg-rose-50"
+                                    : "bg-rose-600 text-white hover:bg-rose-700"
                                 }`}
                                 title="Download PDF"
                               >
@@ -607,16 +604,16 @@ export default function NotesModal({
                             </div>
                           </div>
                         ) : (
-                          /* Generic Attachment Card */
+                          /* Other File Attachment */
                           <div
                             className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${
                               isCurrentUser
-                                ? "bg-amber-600/60 border-amber-400/40 text-white"
-                                : "bg-slate-50 border-slate-200 text-slate-800"
+                                ? "bg-indigo-700/80 border-indigo-400/40 text-white"
+                                : "bg-slate-50 border-slate-200 text-slate-900"
                             }`}
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="p-2 bg-blue-500 text-white rounded-lg flex-shrink-0 shadow-sm">
+                              <div className="p-2 bg-indigo-500 text-white rounded-lg flex-shrink-0 shadow-sm">
                                 <FaPaperclip className="w-4 h-4" />
                               </div>
                               <div className="min-w-0">
@@ -625,10 +622,10 @@ export default function NotesModal({
                                 </p>
                                 <span
                                   className={`text-[10px] font-semibold uppercase tracking-wider ${
-                                    isCurrentUser ? "text-amber-200" : "text-slate-400"
+                                    isCurrentUser ? "text-indigo-200" : "text-slate-500"
                                   }`}
                                 >
-                                  Attachment
+                                  File
                                 </span>
                               </div>
                             </div>
@@ -639,8 +636,8 @@ export default function NotesModal({
                               onClick={() => handleDownloadFile(fileUrl!, fileName)}
                               className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm ${
                                 isCurrentUser
-                                  ? "bg-white text-amber-800 hover:bg-amber-50"
-                                  : "bg-blue-600 text-white hover:bg-blue-700"
+                                  ? "bg-white text-indigo-700 hover:bg-indigo-50"
+                                  : "bg-indigo-600 text-white hover:bg-indigo-700"
                               }`}
                             >
                               {downloadingUrl === fileUrl ? (
@@ -655,9 +652,9 @@ export default function NotesModal({
                       </div>
                     )}
 
-                    {/* Reactions & Note Actions */}
-                    <div className="mt-2.5 pt-2 border-t border-black/5 dark:border-white/10 flex items-center justify-between gap-2 flex-wrap">
-                      {/* Existing Reactions */}
+                    {/* Reactions Bar & Quick Action Controls */}
+                    <div className="mt-3 pt-2.5 border-t border-black/10 dark:border-white/10 flex items-center justify-between gap-2 flex-wrap">
+                      {/* Emoji Reactions */}
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {Object.entries(
                           (note.reactions || []).reduce((acc: any, r: any) => {
@@ -676,29 +673,31 @@ export default function NotesModal({
                               className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border transition-all ${
                                 hasReacted
                                   ? isCurrentUser
-                                    ? "bg-white text-amber-900 border-white font-bold"
-                                    : "bg-amber-100 text-amber-900 border-amber-300 font-bold"
+                                    ? "bg-white text-indigo-950 border-white font-bold"
+                                    : "bg-indigo-100 text-indigo-950 border-indigo-300 font-bold"
                                   : isCurrentUser
-                                  ? "bg-amber-600/80 text-white border-amber-400/40 hover:bg-amber-600"
-                                  : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                                  ? "bg-indigo-700/80 text-white border-indigo-400/40 hover:bg-indigo-700"
+                                  : "bg-slate-100 text-slate-800 border-slate-200 hover:bg-slate-200"
                               }`}
                             >
                               <span>{emoji}</span>
-                              <span className="text-[11px]">{users.length}</span>
+                              <span className="text-[11px] font-semibold">{users.length}</span>
                             </button>
                           );
                         })}
 
-                        {/* Add Reaction Picker */}
+                        {/* Reaction Picker Icon */}
                         <div className="relative">
                           <button
                             type="button"
                             onClick={() =>
-                              setActiveReactionNote(activeReactionNote === note.id ? null : note.id!)
+                              setActiveReactionNote(
+                                activeReactionNote === note.id ? null : note.id!
+                              )
                             }
                             className={`p-1 rounded-full transition-colors ${
                               isCurrentUser
-                                ? "text-amber-100 hover:text-white hover:bg-amber-600/70"
+                                ? "text-indigo-200 hover:text-white hover:bg-indigo-700/60"
                                 : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
                             }`}
                             title="Add reaction"
@@ -723,8 +722,8 @@ export default function NotesModal({
                         </div>
                       </div>
 
-                      {/* Right action icons (Reply, Copy, Delete) */}
-                      <div className="flex items-center gap-1 opacity-90 group-hover:opacity-100 transition-opacity">
+                      {/* Right Action Buttons (Reply, Copy, Delete) */}
+                      <div className="flex items-center gap-1.5 opacity-90 group-hover:opacity-100 transition-opacity">
                         <button
                           type="button"
                           onClick={() => {
@@ -733,14 +732,16 @@ export default function NotesModal({
                             } `;
                             setInput((prev) => (prev ? prev + `\n${mention}` : mention));
                           }}
-                          className={`text-[11px] font-semibold px-2 py-0.5 rounded-md transition-colors ${
+                          className={`text-xs font-semibold px-2 py-0.5 rounded-md flex items-center gap-1 transition-colors ${
                             isCurrentUser
-                              ? "bg-amber-600 hover:bg-amber-700 text-white"
-                              : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                              ? "bg-indigo-700 hover:bg-indigo-800 text-white"
+                              : "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
                           }`}
                         >
-                          Reply
+                          <FaReply size={10} />
+                          <span>Reply</span>
                         </button>
+
                         <button
                           type="button"
                           onClick={() => {
@@ -749,25 +750,26 @@ export default function NotesModal({
                           }}
                           className={`p-1.5 rounded-md text-xs transition-colors ${
                             isCurrentUser
-                              ? "hover:bg-amber-600 text-amber-100 hover:text-white"
+                              ? "hover:bg-indigo-700 text-indigo-200 hover:text-white"
                               : "hover:bg-slate-100 text-slate-400 hover:text-slate-700"
                           }`}
                           title="Copy text"
                         >
-                          <FaCopy size={11} />
+                          <FaCopy size={12} />
                         </button>
+
                         {userRole === "master" && (
                           <button
                             type="button"
                             onClick={() => deleteNote(note.id)}
                             className={`p-1.5 rounded-md text-xs transition-colors ${
                               isCurrentUser
-                                ? "hover:bg-red-700 text-amber-100 hover:text-white"
-                                : "hover:bg-red-50 text-slate-400 hover:text-red-600"
+                                ? "hover:bg-rose-700 text-indigo-200 hover:text-white"
+                                : "hover:bg-rose-50 text-slate-400 hover:text-rose-600"
                             }`}
                             title="Delete note (Master only)"
                           >
-                            <FaTrashAlt size={11} />
+                            <FaTrashAlt size={12} />
                           </button>
                         )}
                       </div>
@@ -782,22 +784,22 @@ export default function NotesModal({
 
         {/* Selected File Chip preview prior to send */}
         {file && (
-          <div className="px-5 py-2.5 bg-amber-50 border-t border-amber-200 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 min-w-0">
+          <div className="px-5 py-2.5 bg-indigo-50 border-t border-indigo-200 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
               {file.type.startsWith("image/") ? (
-                <FaImage className="text-amber-600 flex-shrink-0" />
+                <FaImage className="text-indigo-600 flex-shrink-0" />
               ) : (
-                <FaFilePdf className="text-red-600 flex-shrink-0" />
+                <FaFilePdf className="text-rose-600 flex-shrink-0" />
               )}
-              <span className="text-xs text-amber-900 font-bold truncate">{file.name}</span>
-              <span className="text-[10px] text-amber-700">
+              <span className="text-xs text-indigo-950 font-bold truncate">{file.name}</span>
+              <span className="text-[11px] text-indigo-700 font-medium">
                 ({(file.size / 1024).toFixed(0)} KB)
               </span>
             </div>
             <button
               type="button"
               onClick={() => setFile(null)}
-              className="p-1 rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+              className="p-1 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
               title="Remove file"
             >
               <FaTimes size={13} />
@@ -805,9 +807,9 @@ export default function NotesModal({
           </div>
         )}
 
-        {/* Panel Footer Input Area */}
-        <div className="p-4 bg-white border-t border-slate-200 flex-shrink-0 space-y-2">
-          <div className="relative rounded-2xl border border-slate-300 focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-200 bg-slate-50 transition-all">
+        {/* Input Area */}
+        <div className="p-4 bg-white border-t border-slate-200 flex-shrink-0 space-y-2.5">
+          <div className="relative rounded-2xl border-2 border-slate-300 focus-within:border-indigo-600 bg-white transition-all shadow-sm">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -819,33 +821,37 @@ export default function NotesModal({
               }}
               placeholder="Write a note or comment... (Press Enter to send)"
               rows={2}
-              className="w-full p-3 pr-24 bg-transparent text-sm text-slate-800 placeholder-slate-400 focus:outline-none resize-none"
+              className="w-full p-3.5 pr-24 bg-transparent text-[14px] font-medium text-slate-800 placeholder-slate-400 focus:outline-none resize-none leading-relaxed"
             />
 
-            {/* Input Toolbar Icons */}
-            <div className="absolute right-2.5 bottom-2 flex items-center gap-1">
+            {/* Mic and Attach File Buttons */}
+            <div className="absolute right-2.5 bottom-2.5 flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={toggleListening}
                 className={`p-2 rounded-xl transition-all ${
                   isListening
                     ? "text-rose-600 bg-rose-100 animate-pulse scale-110"
-                    : "text-slate-400 hover:text-amber-600 hover:bg-amber-50"
+                    : "text-slate-500 hover:text-indigo-600 hover:bg-indigo-50"
                 }`}
-                title={isListening ? "Listening... Click to stop" : "Speak voice note (Hinglish/English)"}
+                title={
+                  isListening
+                    ? "Listening... Click to stop"
+                    : "Speak voice note (Hinglish/English)"
+                }
                 disabled={isUploading}
               >
-                <FaMicrophone size={15} />
+                <FaMicrophone size={16} />
               </button>
 
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="p-2 rounded-xl text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                className="p-2 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
                 title="Attach PDF or image"
                 disabled={isUploading}
               >
-                <FaPaperclip size={15} />
+                <FaPaperclip size={16} />
               </button>
 
               <input
@@ -858,15 +864,15 @@ export default function NotesModal({
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-1">
-            <span className="text-[11px] text-slate-400 font-medium">
-              Tip: Supports Images & PDFs with 1-click downloads
+          <div className="flex items-center justify-between pt-0.5">
+            <span className="text-xs text-slate-500 font-medium">
+              Supports 1-click Download for PDFs & Images
             </span>
             <button
               type="button"
               onClick={addNote}
               disabled={isUploading || (!input.trim() && !file)}
-              className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white px-5 py-2 rounded-xl font-bold text-sm shadow-md shadow-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {isUploading ? (
                 <>
@@ -887,14 +893,14 @@ export default function NotesModal({
       {/* Lightbox / Preview Modal for Images and PDFs */}
       <AnimatePresence>
         {previewMedia && (
-          <div className="fixed inset-0 z-[110] bg-black/80 backdrop-blur-md flex flex-col justify-between p-4 md:p-6 animate-in fade-in duration-150">
+          <div className="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex flex-col justify-between p-4 md:p-6 animate-in fade-in duration-150">
             {/* Top Bar */}
             <div className="flex items-center justify-between text-white pb-3 border-b border-white/10 z-10">
               <div className="flex items-center gap-3 min-w-0">
                 {previewMedia.type === "pdf" ? (
-                  <FaFilePdf className="text-red-400 w-5 h-5 flex-shrink-0" />
+                  <FaFilePdf className="text-rose-400 w-5 h-5 flex-shrink-0" />
                 ) : (
-                  <FaImage className="text-amber-400 w-5 h-5 flex-shrink-0" />
+                  <FaImage className="text-indigo-400 w-5 h-5 flex-shrink-0" />
                 )}
                 <span className="font-bold text-sm truncate">{previewMedia.name}</span>
               </div>
@@ -902,7 +908,7 @@ export default function NotesModal({
                 <button
                   type="button"
                   onClick={() => handleDownloadFile(previewMedia.url, previewMedia.name)}
-                  className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg transition-all"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg transition-all"
                 >
                   <FaDownload />
                   <span>Download</span>
