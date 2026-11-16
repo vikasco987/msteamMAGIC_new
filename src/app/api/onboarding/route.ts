@@ -284,16 +284,24 @@ export async function GET(req: Request) {
       }
     }
 
-    // Text search (taskCode, shopName, customerName, phone)
+    // Text search (taskCode, shopName, customerName, phone, city, state, pincode, fullAddress)
     if (query) {
+      const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const queryRegex = { $regex: escaped, $options: "i" };
       taskFilter.$and = taskFilter.$and || [];
       taskFilter.$and.push({
         $or: [
-          { taskCode: { $regex: query, $options: "i" } },
-          { shopName: { $regex: query, $options: "i" } },
-          { customerName: { $regex: query, $options: "i" } },
-          { phone: { $regex: query, $options: "i" } },
-          { assigneeName: { $regex: query, $options: "i" } },
+          { taskCode: queryRegex },
+          { shopName: queryRegex },
+          { customerName: queryRegex },
+          { phone: queryRegex },
+          { assigneeName: queryRegex },
+          { "customFields.pincode": queryRegex },
+          { "customFields.city": queryRegex },
+          { "customFields.state": queryRegex },
+          { "customFields.fullAddress": queryRegex },
+          { "customFields.location": queryRegex },
+          { location: queryRegex },
         ],
       });
     }

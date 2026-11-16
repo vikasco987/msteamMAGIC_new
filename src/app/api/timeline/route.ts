@@ -112,13 +112,53 @@ export async function GET(req: Request) {
       }
       if (search && search.trim()) {
         const s = search.trim();
+        let relatedLocationIds: string[] = [];
+        try {
+          const { MongoClient } = await import("mongodb");
+          const mClient = new MongoClient(process.env.DATABASE_URL || "");
+          await mClient.connect();
+          const db = mClient.db();
+          const escaped = s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const regex = { $regex: escaped, $options: "i" };
+          const locTasks = await db.collection("Task").find({
+            $or: [
+              { "customFields.pincode": regex },
+              { "customFields.city": regex },
+              { "customFields.state": regex },
+              { "customFields.fullAddress": regex },
+              { "customFields.location": regex },
+              { location: regex }
+            ]
+          }, { projection: { _id: 1 } }).limit(500).toArray();
+          await mClient.close();
+          relatedLocationIds = locTasks.map((t) => t._id.toString());
+        } catch (e) {
+          console.error("Error matching location/pincode in timeline route:", e);
+        }
+
+        const orConditions: any[] = [
+          { taskCode: { contains: s, mode: "insensitive" } },
+          { title: { contains: s, mode: "insensitive" } },
+          { shopName: { contains: s, mode: "insensitive" } },
+          { outletName: { contains: s, mode: "insensitive" } },
+          { customerName: { contains: s, mode: "insensitive" } },
+          { phone: { contains: s, mode: "insensitive" } }
+        ];
+
+        if (/^t\d+$/i.test(s)) {
+          orConditions.unshift({ taskCode: { equals: s, mode: "insensitive" } });
+        }
+
+        if (relatedLocationIds.length > 0) {
+          orConditions.push({ id: { in: relatedLocationIds } });
+        }
+
+        if (/^[0-9a-fA-F]{24}$/.test(s)) {
+          orConditions.push({ id: s });
+        }
+
         filters.push({
-          OR: [
-            { title: { contains: s, mode: "insensitive" } },
-            { shopName: { contains: s, mode: "insensitive" } },
-            { outletName: { contains: s, mode: "insensitive" } },
-            { customerName: { contains: s, mode: "insensitive" } },
-          ]
+          OR: orConditions
         });
       }
 

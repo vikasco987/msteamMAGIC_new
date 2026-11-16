@@ -90,12 +90,39 @@ export async function GET(req: Request) {
     };
 
     if (query) {
+      let kamRelatedLocIds: string[] = [];
+      try {
+        const { MongoClient } = await import("mongodb");
+        const mClient = new MongoClient(process.env.DATABASE_URL || "");
+        await mClient.connect();
+        const db = mClient.db();
+        const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const regex = { $regex: escaped, $options: "i" };
+        const locTasks = await db.collection("Task").find({
+          title: "📂 Account Handling",
+          $or: [
+            { "customFields.pincode": regex },
+            { "customFields.city": regex },
+            { "customFields.state": regex },
+            { "customFields.fullAddress": regex },
+            { "customFields.location": regex },
+            { location: regex }
+          ]
+        }, { projection: { _id: 1 } }).limit(500).toArray();
+        await mClient.close();
+        kamRelatedLocIds = locTasks.map((t) => t._id.toString());
+      } catch (e) {
+        console.error("Error matching location/pincode in KAM route:", e);
+      }
+
       where.OR = [
         { taskCode: { contains: query, mode: "insensitive" } },
         { shopName: { contains: query, mode: "insensitive" } },
         { customerName: { contains: query, mode: "insensitive" } },
         { assigneeName: { contains: query, mode: "insensitive" } },
         { assignerName: { contains: query, mode: "insensitive" } },
+        { phone: { contains: query, mode: "insensitive" } },
+        ...(kamRelatedLocIds.length > 0 ? [{ id: { in: kamRelatedLocIds } }] : [])
       ];
       if (/^t\d+$/i.test(query.trim())) {
         where.OR.unshift({ taskCode: { equals: query.trim(), mode: "insensitive" } });
@@ -180,12 +207,21 @@ export async function GET(req: Request) {
       }
 
       if (query) {
+        const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const queryRegex = { $regex: escaped, $options: "i" };
         rawFilter.$or = [
-          { taskCode: { $regex: query, $options: "i" } },
-          { shopName: { $regex: query, $options: "i" } },
-          { customerName: { $regex: query, $options: "i" } },
-          { assigneeName: { $regex: query, $options: "i" } },
-          { assignerName: { $regex: query, $options: "i" } },
+          { taskCode: queryRegex },
+          { shopName: queryRegex },
+          { customerName: queryRegex },
+          { assigneeName: queryRegex },
+          { assignerName: queryRegex },
+          { phone: queryRegex },
+          { "customFields.pincode": queryRegex },
+          { "customFields.city": queryRegex },
+          { "customFields.state": queryRegex },
+          { "customFields.fullAddress": queryRegex },
+          { "customFields.location": queryRegex },
+          { location: queryRegex },
         ];
       }
 
