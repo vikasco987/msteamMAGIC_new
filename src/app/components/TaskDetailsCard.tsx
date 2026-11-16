@@ -817,6 +817,8 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
           <NotesModal
             taskId={task.id}
             initialNotes={task.notes}
+            taskTitle={task.title}
+            taskCode={task.taskCode || `T${task.id.slice(-4).toUpperCase()}`}
             onClose={(notes) => {
               if (notes && onUpdateTask) onUpdateTask(task.id, { notes });
               setShowNotesModal(false);

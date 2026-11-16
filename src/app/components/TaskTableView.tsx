@@ -1534,22 +1534,27 @@ export default function TaskTableView({
         </div>
       </div>
 
-      {isNoteModalOpen && selectedTaskIdForNotes && (
-        <NotesModal
-          taskId={selectedTaskIdForNotes}
-          initialNotes={notesMap[selectedTaskIdForNotes] || []}
-          onClose={(updatedNotes) => {
-            if (updatedNotes) {
-              setNotesMap((prev) => ({
-                ...prev,
-                [selectedTaskIdForNotes]: updatedNotes,
-              }));
-            }
-            setIsNoteModalOpen(false);
-            setSelectedTaskIdForNotes(null);
-          }}
-        />
-      )}
+      {isNoteModalOpen && selectedTaskIdForNotes && (() => {
+        const selectedTaskObj = tasks.find((t) => t.id === selectedTaskIdForNotes);
+        return (
+          <NotesModal
+            taskId={selectedTaskIdForNotes}
+            initialNotes={notesMap[selectedTaskIdForNotes] || []}
+            taskTitle={selectedTaskObj?.title}
+            taskCode={selectedTaskObj?.taskCode || `T${selectedTaskIdForNotes.slice(-4).toUpperCase()}`}
+            onClose={(updatedNotes) => {
+              if (updatedNotes) {
+                setNotesMap((prev) => ({
+                  ...prev,
+                  [selectedTaskIdForNotes]: updatedNotes,
+                }));
+              }
+              setIsNoteModalOpen(false);
+              setSelectedTaskIdForNotes(null);
+            }}
+          />
+        );
+      })()}
 
       {attachmentModalOpen && (
         <Dialog.Root
