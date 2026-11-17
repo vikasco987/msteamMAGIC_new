@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { buildTaskWhere } from "@/lib/buildTaskWhere";
+import { fetchExternalBoardTasks } from "@/lib/multiDbTasks";
 
 export const dynamic = "force-dynamic";
 
@@ -125,10 +126,44 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    console.log(`📄 GET /api/board/paginated – Role: ${normalizedRole || "unknown"} – fetched ${enrichedTasks.length} lightweight tasks`);
+    // 🌐 Multi-Database Integration: Check if Secondary or 3rd CRM feeds are enabled
+    let combinedTasks: any[] = enrichedTasks;
+    try {
+      const settings = await prisma.businessSettings.findFirst({
+        select: { showSecondaryDbTasks: true, showThirdDbTasks: true }
+      });
+
+      const includeSecondary = !!(settings as any)?.showSecondaryDbTasks;
+      const includeThird = !!(settings as any)?.showThirdDbTasks;
+
+      if (includeSecondary || includeThird) {
+        const colStatus = url.searchParams.get('status') || '';
+        const search = url.searchParams.get('search') || url.searchParams.get('query') || '';
+        const categories = url.searchParams.get('categories')?.split(',').filter(Boolean) || [];
+
+        const externalTasks = await fetchExternalBoardTasks({
+          includeSecondary,
+          includeThird,
+          status: colStatus || undefined,
+          search: search || undefined,
+          categories: categories.length ? categories : undefined,
+        });
+
+        if (externalTasks.length > 0) {
+          // If on page 1, merge external tasks with primary tasks
+          if (page === 1) {
+            combinedTasks = [...externalTasks, ...enrichedTasks];
+          }
+        }
+      }
+    } catch (multiDbErr) {
+      console.error("Error merging multi-database board tasks:", multiDbErr);
+    }
+
+    console.log(`📄 GET /api/board/paginated – Role: ${normalizedRole || "unknown"} – fetched ${combinedTasks.length} lightweight tasks`);
 
     return NextResponse.json({
-      tasks: enrichedTasks,
+      tasks: combinedTasks,
       hasMore: enrichedTasks.length === limit,
       page,
       limit,

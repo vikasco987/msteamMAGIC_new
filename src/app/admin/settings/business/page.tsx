@@ -45,7 +45,9 @@ export default function BusinessSettingsPage() {
     defaultPrinterCost: "",
     syncLinksToProfitLoss: false,
     syncTasksToProfitLoss: true,
-    disableInvoiceDownload: false
+    disableInvoiceDownload: false,
+    showSecondaryDbTasks: false,
+    showThirdDbTasks: false
   });
 
   useEffect(() => {
@@ -75,7 +77,9 @@ export default function BusinessSettingsPage() {
           defaultPrinterCost: data.defaultPrinterCost || "",
           syncLinksToProfitLoss: data.syncLinksToProfitLoss || false,
           syncTasksToProfitLoss: typeof data.syncTasksToProfitLoss === 'boolean' ? data.syncTasksToProfitLoss : true,
-          disableInvoiceDownload: data.disableInvoiceDownload || false
+          disableInvoiceDownload: data.disableInvoiceDownload || false,
+          showSecondaryDbTasks: !!data.showSecondaryDbTasks,
+          showThirdDbTasks: !!data.showThirdDbTasks
         });
       }
     } catch (error) {
@@ -501,6 +505,67 @@ export default function BusinessSettingsPage() {
                 >
                   <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.disableInvoiceDownload ? 'translate-x-6' : 'translate-x-1'}`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* 🌐 Section 6: Multi-Database Integration (Team Board Only) */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+                <Globe size={18} className="text-purple-600" />
+                <div>
+                  <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">Multi-Database Team Board Feeds</h2>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Show & search tasks from Secondary and 3rd external CRM databases directly inside Team Board. Assigned tasks and other modules remain unchanged.
+                  </p>
+                </div>
+              </div>
+
+              {/* Secondary Database Feed */}
+              <div className="flex items-center justify-between bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-slate-800 text-white">
+                      Grey CRM
+                    </span>
+                    <h3 className="text-sm font-bold text-slate-800">Secondary Database Tasks</h3>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-medium mt-1">
+                    When enabled, tasks from Secondary CRM (<code className="text-indigo-600 font-mono text-[10px]">SECONDARY_CRM_DATABASE_URL</code>) appear in Team Board labeled with a prominent <strong className="text-slate-800 font-bold">Grey CRM</strong> badge.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, showSecondaryDbTasks: !formData.showSecondaryDbTasks })}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.showSecondaryDbTasks ? 'bg-purple-600' : 'bg-slate-300'}`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.showSecondaryDbTasks ? 'translate-x-6' : 'translate-x-1'}`}
+                  />
+                </button>
+              </div>
+
+              {/* 3rd Database Feed */}
+              <div className="flex items-center justify-between bg-emerald-50/40 p-6 rounded-2xl border border-emerald-200 shadow-sm">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-600 text-white">
+                      Onboarding CRM
+                    </span>
+                    <h3 className="text-sm font-bold text-slate-800">3rd Database Tasks (Onboarding CRM)</h3>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-medium mt-1">
+                    When enabled, tasks from 3rd CRM (<code className="text-indigo-600 font-mono text-[10px]">THIRD_CRM_DATABASE_URL</code>) appear in Team Board labeled with a prominent <strong className="text-emerald-700 font-bold">Onboarding CRM</strong> badge.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, showThirdDbTasks: !formData.showThirdDbTasks })}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.showThirdDbTasks ? 'bg-emerald-600' : 'bg-slate-300'}`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.showThirdDbTasks ? 'translate-x-6' : 'translate-x-1'}`}
                   />
                 </button>
               </div>

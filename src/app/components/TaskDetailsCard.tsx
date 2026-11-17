@@ -347,6 +347,19 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
         <div className="flex items-start justify-between gap-3">
           {showTitle && (
             <div className="flex flex-col gap-1.5 mt-1 min-w-0 flex-1">
+              {/* Prominent Multi-Database Source Badge if from External CRM */}
+              {task.externalSource === "grey" && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider bg-slate-900 text-slate-100 border border-slate-700 shadow-md w-fit">
+                  <span className="w-2 h-2 rounded-full bg-slate-400 animate-pulse"></span>
+                  🏢 GREY CRM
+                </div>
+              )}
+              {task.externalSource === "onboarding" && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider bg-emerald-700 text-white border border-emerald-500 shadow-md w-fit">
+                  <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span>
+                  📋 ONBOARDING CRM
+                </div>
+              )}
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-black tracking-wider bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-500/30">
                   {task.taskCode || `T${task.id.slice(-4).toUpperCase()}`}
@@ -362,11 +375,25 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
             </div>
           )}
           {!showTitle && (
-            <div className="flex items-center gap-2 mt-1">
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-black tracking-wider bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-500/30">
-                {task.taskCode || `T${task.id.slice(-4).toUpperCase()}`}
-              </span>
-              <TaskTimer createdAt={task.createdAt} status={task.status} />
+            <div className="flex flex-col gap-1.5 mt-1">
+              {task.externalSource === "grey" && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider bg-slate-900 text-slate-100 border border-slate-700 shadow-md w-fit">
+                  <span className="w-2 h-2 rounded-full bg-slate-400 animate-pulse"></span>
+                  🏢 GREY CRM
+                </div>
+              )}
+              {task.externalSource === "onboarding" && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider bg-emerald-700 text-white border border-emerald-500 shadow-md w-fit">
+                  <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span>
+                  📋 ONBOARDING CRM
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-black tracking-wider bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-500/30">
+                  {task.taskCode || `T${task.id.slice(-4).toUpperCase()}`}
+                </span>
+                <TaskTimer createdAt={task.createdAt} status={task.status} />
+              </div>
             </div>
           )}
           <div className="flex items-center gap-1.5 shrink-0">

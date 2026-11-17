@@ -578,6 +578,10 @@ model BusinessSettings {
   // Invoice Settings
   disableInvoiceDownload Boolean @default(false)
 
+  // Multi-Database Board Settings
+  showSecondaryDbTasks Boolean @default(false)
+  showThirdDbTasks     Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

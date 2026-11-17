@@ -725,6 +725,11 @@ async function getMongoClient() {
   return client;
 }
 
+// Global in-memory cache for Clerk users to prevent rate-limit 429 and slow cold-starts
+let cachedClerkUsersTasks: any[] | null = null;
+let clerkUsersTasksCacheTime = 0;
+const CLERK_CACHE_TTL_MS = 60000; // 1 minute
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -1276,9 +1281,21 @@ export async function GET(req: NextRequest) {
     const listView = url.searchParams.get('listView') === 'true';
     const skip = (page - 1) * limit;
 
-    // ✅ BULK CLERK LOOKUP: Fetch all users once for efficiency and filtering
-    const clerkResponse = await client.users.getUserList({ limit: 500 });
-    const allClerkUsers = clerkResponse.data;
+    // ✅ BULK CLERK LOOKUP: Fetch all users once with caching for efficiency and filtering
+    let allClerkUsers: any[] = [];
+    try {
+      if (cachedClerkUsersTasks && Date.now() - clerkUsersTasksCacheTime < CLERK_CACHE_TTL_MS) {
+        allClerkUsers = cachedClerkUsersTasks;
+      } else {
+        const clerkResponse = await client.users.getUserList({ limit: 500 });
+        allClerkUsers = clerkResponse.data;
+        cachedClerkUsersTasks = allClerkUsers;
+        clerkUsersTasksCacheTime = Date.now();
+      }
+    } catch (clerkErr) {
+      console.warn("⚠️ Warning: Clerk users fetch failed in /api/tasks, falling back to cache or DB:", clerkErr);
+      allClerkUsers = cachedClerkUsersTasks || [];
+    }
 
     // Build user map by ID and email, and also a reverse map for name-to-ID resolution
     const userMap: Record<string, { id: string; name: string; email: string }> = {};
@@ -1652,13 +1669,7 @@ export async function GET(req: NextRequest) {
       `📄 GET /api/tasks – Role: ${normalizedRole || "unknown"} – fetched ${enrichedTasks.length} tasks`
     );
 
-    // 🛰️ REAL-TIME SHARD (NO REFRESH ARCHITECTURE)
-    try {
-      const { emitMatrixUpdate } = await import("@/lib/socket-server");
-      await emitMatrixUpdate();
-    } catch (e) {
-      console.error("❌ Matrix Sync Failed:", e);
-    }
+
 
     return NextResponse.json({
       tasks: enrichedTasks,

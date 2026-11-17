@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { buildTaskWhere } from "@/lib/buildTaskWhere";
+import { fetchExternalBoardCounts } from "@/lib/multiDbTasks";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +69,34 @@ export async function GET(req: NextRequest) {
           counts[s] = g._count._all;
         }
       });
+    }
+
+    // 🌐 Multi-Database Integration: Add counts from Secondary & 3rd DB if enabled
+    try {
+      const settings = await prisma.businessSettings.findFirst({
+        select: { showSecondaryDbTasks: true, showThirdDbTasks: true }
+      });
+
+      const includeSecondary = !!(settings as any)?.showSecondaryDbTasks;
+      const includeThird = !!(settings as any)?.showThirdDbTasks;
+
+      if (includeSecondary || includeThird) {
+        const search = url.searchParams.get('search') || url.searchParams.get('query') || '';
+        const categories = url.searchParams.get('categories')?.split(',').filter(Boolean) || [];
+
+        const externalCounts = await fetchExternalBoardCounts({
+          includeSecondary,
+          includeThird,
+          search: search || undefined,
+          categories: categories.length ? categories : undefined,
+        });
+
+        counts.todo += externalCounts.todo || 0;
+        counts.inprogress += externalCounts.inprogress || 0;
+        counts.done += externalCounts.done || 0;
+      }
+    } catch (multiDbErr) {
+      console.error("Error aggregating multi-database board counts:", multiDbErr);
     }
 
     return NextResponse.json({ counts });

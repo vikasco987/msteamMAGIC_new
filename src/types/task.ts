@@ -337,6 +337,11 @@ export interface Task {
   chequeUrl?: string;
   menuCardUrls?: string[];
 
+  // Multi-database source tag
+  externalSource?: "grey" | "onboarding";
+  externalSourceLabel?: string;
+  isExternal?: boolean;
+
   // Optional for frontend features (nested structures)
   subtasks?: {
     title: string;

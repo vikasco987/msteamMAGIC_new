@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
             name, address, gstin, phone, email, website, logo,
             bankName, bankBranch, accountName, accountNumber, ifscCode, terms, signatureUrl,
             defaultPrinterCost, syncLinksToProfitLoss, syncTasksToProfitLoss, showEmployeeSalaryHistory,
-            disableInvoiceDownload
+            disableInvoiceDownload, showSecondaryDbTasks, showThirdDbTasks
         } = body;
 
         const existing = await prisma.businessSettings.findFirst();
@@ -32,7 +32,9 @@ export async function POST(req: NextRequest) {
                     bankName, bankBranch, accountName, accountNumber, ifscCode, terms, signatureUrl,
                     defaultPrinterCost, syncLinksToProfitLoss, syncTasksToProfitLoss,
                     showEmployeeSalaryHistory: showEmployeeSalaryHistory !== undefined ? showEmployeeSalaryHistory : existing.showEmployeeSalaryHistory,
-                    disableInvoiceDownload: disableInvoiceDownload !== undefined ? disableInvoiceDownload : existing.disableInvoiceDownload
+                    disableInvoiceDownload: disableInvoiceDownload !== undefined ? disableInvoiceDownload : existing.disableInvoiceDownload,
+                    showSecondaryDbTasks: showSecondaryDbTasks !== undefined ? showSecondaryDbTasks : (existing as any).showSecondaryDbTasks ?? false,
+                    showThirdDbTasks: showThirdDbTasks !== undefined ? showThirdDbTasks : (existing as any).showThirdDbTasks ?? false,
                 }
             });
         } else {
@@ -42,7 +44,9 @@ export async function POST(req: NextRequest) {
                     bankName, bankBranch, accountName, accountNumber, ifscCode, terms, signatureUrl,
                     defaultPrinterCost, syncLinksToProfitLoss, syncTasksToProfitLoss,
                     showEmployeeSalaryHistory: showEmployeeSalaryHistory || false,
-                    disableInvoiceDownload: disableInvoiceDownload || false
+                    disableInvoiceDownload: disableInvoiceDownload || false,
+                    showSecondaryDbTasks: showSecondaryDbTasks || false,
+                    showThirdDbTasks: showThirdDbTasks || false,
                 }
             });
         }
