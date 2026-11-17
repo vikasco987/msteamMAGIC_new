@@ -338,7 +338,7 @@ export interface Task {
   menuCardUrls?: string[];
 
   // Multi-database source tag
-  externalSource?: "grey" | "onboarding";
+  externalSource?: "kravy" | "onboarding";
   externalSourceLabel?: string;
   isExternal?: boolean;
 

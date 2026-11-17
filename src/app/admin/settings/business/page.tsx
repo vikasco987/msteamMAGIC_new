@@ -526,13 +526,13 @@ export default function BusinessSettingsPage() {
               <div className="flex items-center justify-between bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-sm">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-slate-800 text-white">
-                      Grey CRM
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-indigo-900 text-white">
+                      Kravy CRM
                     </span>
                     <h3 className="text-sm font-bold text-slate-800">Secondary Database Tasks</h3>
                   </div>
                   <p className="text-[11px] text-slate-500 font-medium mt-1">
-                    When enabled, tasks from Secondary CRM (<code className="text-indigo-600 font-mono text-[10px]">SECONDARY_CRM_DATABASE_URL</code>) appear in Team Board labeled with a prominent <strong className="text-slate-800 font-bold">Grey CRM</strong> badge.
+                    When enabled, tasks from Secondary CRM (<code className="text-indigo-600 font-mono text-[10px]">SECONDARY_CRM_DATABASE_URL</code>) appear in Team Board labeled with a prominent <strong className="text-indigo-900 font-bold">Kravy CRM</strong> badge.
                   </p>
                 </div>
                 <button

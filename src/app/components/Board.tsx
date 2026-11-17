@@ -521,16 +521,16 @@ export default function Board() {
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
                                 className={`${getTaskBgColor(task)} p-4 rounded-3xl shadow-sm border hover:shadow-md transition-shadow group relative ${
-                                  task.externalSource === "grey"
-                                    ? "ring-2 ring-slate-800/20 bg-slate-50/60"
+                                  task.externalSource === "kravy"
+                                    ? "ring-2 ring-indigo-800/20 bg-indigo-50/40"
                                     : task.externalSource === "onboarding"
                                     ? "ring-2 ring-emerald-500/20 bg-emerald-50/30"
                                     : ""
                                 }`}
                                 style={{
                                   ...provided.draggableProps.style,
-                                  borderLeft: task.externalSource === "grey"
-                                    ? "5px solid #1e293b"
+                                  borderLeft: task.externalSource === "kravy"
+                                    ? "5px solid #4338ca"
                                     : task.externalSource === "onboarding"
                                     ? "5px solid #059669"
                                     : task.highlightColor

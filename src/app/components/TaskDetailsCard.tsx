@@ -348,10 +348,10 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
           {showTitle && (
             <div className="flex flex-col gap-1.5 mt-1 min-w-0 flex-1">
               {/* Prominent Multi-Database Source Badge if from External CRM */}
-              {task.externalSource === "grey" && (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider bg-slate-900 text-slate-100 border border-slate-700 shadow-md w-fit">
-                  <span className="w-2 h-2 rounded-full bg-slate-400 animate-pulse"></span>
-                  🏢 GREY CRM
+              {task.externalSource === "kravy" && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider bg-indigo-900 text-indigo-100 border border-indigo-700 shadow-md w-fit">
+                  <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
+                  🏢 KRAVY CRM
                 </div>
               )}
               {task.externalSource === "onboarding" && (
@@ -376,10 +376,10 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
           )}
           {!showTitle && (
             <div className="flex flex-col gap-1.5 mt-1">
-              {task.externalSource === "grey" && (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider bg-slate-900 text-slate-100 border border-slate-700 shadow-md w-fit">
-                  <span className="w-2 h-2 rounded-full bg-slate-400 animate-pulse"></span>
-                  🏢 GREY CRM
+              {task.externalSource === "kravy" && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider bg-indigo-900 text-indigo-100 border border-indigo-700 shadow-md w-fit">
+                  <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
+                  🏢 KRAVY CRM
                 </div>
               )}
               {task.externalSource === "onboarding" && (

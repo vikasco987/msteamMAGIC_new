@@ -87,7 +87,7 @@ export interface NormalizedExternalTask {
   location?: string;
   customerName?: string;
   outletName?: string;
-  externalSource: "grey" | "onboarding"; // 'grey' for Secondary, 'onboarding' for 3rd
+  externalSource: "kravy" | "onboarding"; // 'kravy' for Secondary, 'onboarding' for 3rd
   externalSourceLabel: string;
   isExternal?: boolean;
 }
@@ -158,7 +158,7 @@ export async function fetchExternalBoardTasks(
 
   const promises: Promise<void>[] = [];
 
-  // 1. Fetch from Secondary CRM (cluster0) -> Tagged as 'grey'
+  // 1. Fetch from Secondary CRM (cluster0) -> Tagged as 'kravy'
   if (options.includeSecondary) {
     promises.push((async () => {
       try {
@@ -199,8 +199,8 @@ export async function fetchExternalBoardTasks(
             location: doc.location || doc.customFields?.location,
             customerName: doc.customerName || doc.customFields?.customerName,
             outletName: doc.outletName || doc.customFields?.outletName,
-            externalSource: "grey",
-            externalSourceLabel: "Grey CRM",
+            externalSource: "kravy",
+            externalSourceLabel: "KRAVY CRM",
             isExternal: true,
           });
         });
