@@ -58,6 +58,8 @@ export interface ExternalTaskFetchOptions {
   search?: string;
   category?: string;
   categories?: string[];
+  assignees?: string[];
+  assigners?: string[];
   dateFilter?: string;
 }
 
@@ -110,41 +112,151 @@ function buildMongoFilter(options: ExternalTaskFetchOptions): MongoFilter {
   // Search filter matching shopName, title, taskCode, phone, customerName, location, email
   if (options.search && options.search.trim()) {
     const term = options.search.trim();
-    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const regex = { $regex: escaped, $options: "i" };
 
-    const searchConditions: any[] = [
-      { title: regex },
-      { shopName: regex },
-      { outletName: regex },
-      { customerName: regex },
-      { phone: regex },
-      { email: regex },
-      { location: regex },
-      { taskCode: regex },
-      { "customFields.shopName": regex },
-      { "customFields.outletName": regex },
-      { "customFields.phone": regex },
-      { "customFields.customerName": regex },
-    ];
-
+    // 1. Exact Task Code Search: if user typed something like "T105" or "t105"
     if (/^t\d+$/i.test(term)) {
-      searchConditions.unshift({ taskCode: { $regex: `^${term}$`, $options: "i" } });
-    }
+      const codeRegex = { $regex: `^${term}$`, $options: "i" };
+      if (filter.$and) {
+        filter.$and.push({ taskCode: codeRegex });
+      } else {
+        filter.$and = [{ taskCode: codeRegex }];
+      }
+    } else {
+      // 2. General search across multiple fields
+      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = { $regex: escaped, $options: "i" };
 
-    filter.$or = searchConditions;
+      const searchConditions: any[] = [
+        { title: regex },
+        { shopName: regex },
+        { outletName: regex },
+        { customerName: regex },
+        { phone: regex },
+        { email: regex },
+        { location: regex },
+        { taskCode: regex },
+        { "customFields.shopName": regex },
+        { "customFields.outletName": regex },
+        { "customFields.phone": regex },
+        { "customFields.customerName": regex },
+      ];
+
+      if (filter.$and) {
+        filter.$and.push({ $or: searchConditions });
+      } else {
+        filter.$and = [{ $or: searchConditions }];
+      }
+    }
   }
 
-  // Categories filter (title matches)
+  // Assigner filter: जिसने बनाया / असाइन किया
+  if (options.assigners && options.assigners.length > 0) {
+    const assignerRegexes = options.assigners.map(a => new RegExp(`^${a.trim()}$`, "i"));
+    const assignerConditions = [
+      { assignerName: { $in: assignerRegexes } },
+      { createdByName: { $in: assignerRegexes } },
+      { "customFields.assignerName": { $in: assignerRegexes } },
+    ];
+    if (filter.$and) {
+      filter.$and.push({ $or: assignerConditions });
+    } else {
+      filter.$and = [{ $or: assignerConditions }];
+    }
+  }
+
+  // Assignee filter: जिसे टास्क दिया गया
+  if (options.assignees && options.assignees.length > 0) {
+    const assigneeRegexes = options.assignees.map(a => new RegExp(`^${a.trim()}$`, "i"));
+    const assigneeConditions = [
+      { assigneeName: { $in: assigneeRegexes } },
+      { "customFields.assigneeName": { $in: assigneeRegexes } },
+      { assigneeIds: { $in: options.assignees } }
+    ];
+    if (filter.$and) {
+      filter.$and.push({ $or: assigneeConditions });
+    } else {
+      filter.$and = [{ $or: assigneeConditions }];
+    }
+  }
+
+  // Categories filter (activeTab & structured title matching)
   const cats = options.categories || (options.category ? [options.category] : []);
   if (cats.length > 0) {
-    const catConditions = cats.map(c => ({
-      title: { $regex: c.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" }
-    }));
+    const getCategoryConditions = (cat: string): any[] => {
+      const c = cat.toLowerCase().trim();
+      switch (c) {
+        case "zomato":
+          return [
+            { "customFields.activeTab": { $in: ["zomato", "combo"] } },
+            { title: { $regex: "zomato", $options: "i" } }
+          ];
+        case "swiggy":
+          return [
+            { "customFields.activeTab": { $in: ["swiggy", "combo"] } },
+            { title: { $regex: "swiggy", $options: "i" } }
+          ];
+        case "ownly":
+          return [
+            { "customFields.activeTab": "ownly" },
+            { title: { $regex: "ownly", $options: "i" } }
+          ];
+        case "license":
+          return [
+            { "customFields.activeTab": "license" },
+            { title: { $regex: "license|licence|fssai", $options: "i" } }
+          ];
+        case "photo":
+          return [
+            { "customFields.activeTab": "photo" },
+            { title: { $regex: "photo", $options: "i" } }
+          ];
+        case "account":
+          return [
+            { "customFields.activeTab": "account" },
+            { title: { $regex: "account", $options: "i" } }
+          ];
+        case "printer":
+          return [
+            { "customFields.activeTab": "printer" },
+            { title: { $regex: "printer", $options: "i" } }
+          ];
+        case "printer_software":
+          return [
+            { "customFields.activeTab": "printer_software" },
+            { title: { $regex: "software", $options: "i" } }
+          ];
+        case "rto_printer":
+          return [
+            { "customFields.activeTab": "rto_printer" },
+            { title: { $regex: "rto", $options: "i" } }
+          ];
+        case "escalation":
+          return [
+            { "customFields.activeTab": "escalation" },
+            { title: { $regex: "escalat", $options: "i" } }
+          ];
+        case "toing":
+          return [
+            { "customFields.activeTab": "toing" },
+            { title: { $regex: "toing", $options: "i" } }
+          ];
+        case "other":
+          return [
+            { "customFields.activeTab": "other" }
+          ];
+        default:
+          return [
+            { "customFields.activeTab": c },
+            { title: { $regex: c, $options: "i" } }
+          ];
+      }
+    };
+
+    const allCatConditions = cats.flatMap(cat => getCategoryConditions(cat));
     if (filter.$and) {
-      filter.$and.push({ $or: catConditions });
+      filter.$and.push({ $or: allCatConditions });
     } else {
-      filter.$and = [{ $or: catConditions }];
+      filter.$and = [{ $or: allCatConditions }];
     }
   }
 

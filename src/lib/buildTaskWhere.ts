@@ -89,79 +89,84 @@ export async function buildTaskWhere(req: NextRequest) {
   };
 
   if (query) {
-    let relatedTaskIds: string[] = [];
-    try {
-      const [relatedDispatchLogs, relatedSerialNumbers, locationTaskMatches] = await Promise.all([
-        prisma.dispatchLog.findMany({
-          where: { awbNumber: { contains: query, mode: 'insensitive' } },
-          select: { taskId: true }
-        }),
-        prisma.serialNumber.findMany({
-          where: { number: { contains: query, mode: 'insensitive' } },
-          select: { taskId: true }
-        }),
-        // Universal Search: Support PIN code, State, City, Full Address & Location URL/text
-        (async () => {
-          try {
-            const { MongoClient } = await import("mongodb");
-            const mClient = new MongoClient(process.env.DATABASE_URL || "");
-            await mClient.connect();
-            const db = mClient.db();
-            const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-            const regex = { $regex: escaped, $options: "i" };
-            const locTasks = await db.collection("Task").find({
-              $or: [
-                { "customFields.pincode": regex },
-                { "customFields.city": regex },
-                { "customFields.state": regex },
-                { "customFields.fullAddress": regex },
-                { "customFields.location": regex },
-                { location: regex }
-              ]
-            }, { projection: { _id: 1 } }).limit(500).toArray();
-            await mClient.close();
-            return locTasks.map((t) => t._id.toString());
-          } catch (e) {
-            console.error("Error matching location/pincode in buildTaskWhere:", e);
-            return [];
-          }
-        })()
-      ]);
+    const trimmedQuery = query.trim();
+    const isTaskCode = /^t\d+$/i.test(trimmedQuery);
 
-      relatedTaskIds = [
-        ...relatedDispatchLogs.map((d: { taskId: string }) => d.taskId).filter(Boolean),
-        ...relatedSerialNumbers.map((s: { taskId: string | null }) => s.taskId).filter(Boolean),
-        ...locationTaskMatches
-      ] as string[];
-    } catch(err) {
-      console.error("Error finding related AWB/Serial/Location task ids:", err);
+    if (isTaskCode) {
+      // 1. Strict exact task code match when user specifically targets a task code like T105
+      where.AND.push({
+        taskCode: { equals: trimmedQuery, mode: 'insensitive' }
+      });
+    } else {
+      let relatedTaskIds: string[] = [];
+      try {
+        const [relatedDispatchLogs, relatedSerialNumbers, locationTaskMatches] = await Promise.all([
+          prisma.dispatchLog.findMany({
+            where: { awbNumber: { contains: query, mode: 'insensitive' } },
+            select: { taskId: true }
+          }),
+          prisma.serialNumber.findMany({
+            where: { number: { contains: query, mode: 'insensitive' } },
+            select: { taskId: true }
+          }),
+          // Universal Search: Support PIN code, State, City, Full Address & Location URL/text
+          (async () => {
+            try {
+              const { MongoClient } = await import("mongodb");
+              const mClient = new MongoClient(process.env.DATABASE_URL || "");
+              await mClient.connect();
+              const db = mClient.db();
+              const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+              const regex = { $regex: escaped, $options: "i" };
+              const locTasks = await db.collection("Task").find({
+                $or: [
+                  { "customFields.pincode": regex },
+                  { "customFields.city": regex },
+                  { "customFields.state": regex },
+                  { "customFields.fullAddress": regex },
+                  { "customFields.location": regex },
+                  { location: regex }
+                ]
+              }, { projection: { _id: 1 } }).limit(500).toArray();
+              await mClient.close();
+              return locTasks.map((t) => t._id.toString());
+            } catch (e) {
+              console.error("Error matching location/pincode in buildTaskWhere:", e);
+              return [];
+            }
+          })()
+        ]);
+
+        relatedTaskIds = [
+          ...relatedDispatchLogs.map((d: { taskId: string }) => d.taskId).filter(Boolean),
+          ...relatedSerialNumbers.map((s: { taskId: string | null }) => s.taskId).filter(Boolean),
+          ...locationTaskMatches
+        ] as string[];
+      } catch(err) {
+        console.error("Error finding related AWB/Serial/Location task ids:", err);
+      }
+
+      const queryConditions: any[] = [
+        { taskCode: { contains: query, mode: 'insensitive' } },
+        { title: { contains: query, mode: 'insensitive' } },
+        { shopName: { contains: query, mode: 'insensitive' } },
+        { email: { contains: query, mode: 'insensitive' } },
+        { phone: { contains: query, mode: 'insensitive' } },
+        { customerName: { contains: query, mode: 'insensitive' } }
+      ];
+
+      if (relatedTaskIds.length > 0) {
+        queryConditions.push({ id: { in: relatedTaskIds } });
+      }
+
+      if (/^[0-9a-fA-F]{24}$/.test(query)) {
+        queryConditions.push({ id: query });
+      }
+
+      where.AND.push({
+        OR: queryConditions
+      });
     }
-
-    const queryConditions: any[] = [
-      { taskCode: { contains: query, mode: 'insensitive' } },
-      { title: { contains: query, mode: 'insensitive' } },
-      { shopName: { contains: query, mode: 'insensitive' } },
-      { email: { contains: query, mode: 'insensitive' } },
-      { phone: { contains: query, mode: 'insensitive' } },
-      { customerName: { contains: query, mode: 'insensitive' } }
-    ];
-
-    // Priority exact match if query looks like a task code (e.g. T101, t102)
-    if (/^t\d+$/i.test(query.trim())) {
-      queryConditions.unshift({ taskCode: { equals: query.trim(), mode: 'insensitive' } });
-    }
-
-    if (relatedTaskIds.length > 0) {
-      queryConditions.push({ id: { in: relatedTaskIds } });
-    }
-
-    if (/^[0-9a-fA-F]{24}$/.test(query)) {
-      queryConditions.push({ id: query });
-    }
-
-    where.AND.push({
-      OR: queryConditions
-    });
   }
 
   if (status) {
@@ -169,11 +174,103 @@ export async function buildTaskWhere(req: NextRequest) {
   }
 
   if (categories && categories.length > 0) {
-    where.AND.push({
-      OR: categories.map(cat => ({
-        title: { contains: cat, mode: 'insensitive' }
-      }))
-    });
+    try {
+      const { MongoClient } = await import("mongodb");
+      const mClient = new MongoClient(process.env.DATABASE_URL || "");
+      await mClient.connect();
+      const db = mClient.db();
+
+      const getCategoryConditions = (cat: string): any[] => {
+        const c = cat.toLowerCase().trim();
+        switch (c) {
+          case "zomato":
+            return [
+              { "customFields.activeTab": { $in: ["zomato", "combo"] } },
+              { title: { $regex: "zomato", $options: "i" } }
+            ];
+          case "swiggy":
+            return [
+              { "customFields.activeTab": { $in: ["swiggy", "combo"] } },
+              { title: { $regex: "swiggy", $options: "i" } }
+            ];
+          case "ownly":
+            return [
+              { "customFields.activeTab": "ownly" },
+              { title: { $regex: "ownly", $options: "i" } }
+            ];
+          case "license":
+            return [
+              { "customFields.activeTab": "license" },
+              { title: { $regex: "license|licence|fssai", $options: "i" } }
+            ];
+          case "photo":
+            return [
+              { "customFields.activeTab": "photo" },
+              { title: { $regex: "photo", $options: "i" } }
+            ];
+          case "account":
+            return [
+              { "customFields.activeTab": "account" },
+              { title: { $regex: "account", $options: "i" } }
+            ];
+          case "printer":
+            return [
+              { "customFields.activeTab": "printer" },
+              { title: { $regex: "printer", $options: "i" } }
+            ];
+          case "printer_software":
+            return [
+              { "customFields.activeTab": "printer_software" },
+              { title: { $regex: "software", $options: "i" } }
+            ];
+          case "rto_printer":
+            return [
+              { "customFields.activeTab": "rto_printer" },
+              { title: { $regex: "rto", $options: "i" } }
+            ];
+          case "escalation":
+            return [
+              { "customFields.activeTab": "escalation" },
+              { title: { $regex: "escalat", $options: "i" } }
+            ];
+          case "toing":
+            return [
+              { "customFields.activeTab": "toing" },
+              { title: { $regex: "toing", $options: "i" } }
+            ];
+          case "other":
+            return [
+              { "customFields.activeTab": "other" }
+            ];
+          default:
+            return [
+              { "customFields.activeTab": c },
+              { title: { $regex: c, $options: "i" } }
+            ];
+        }
+      };
+
+      const allCatConditions = categories.flatMap(cat => getCategoryConditions(cat));
+      const matchedCategoryDocs = await db.collection("Task").find(
+        { $or: allCatConditions },
+        { projection: { _id: 1 } }
+      ).limit(5000).toArray();
+
+      await mClient.close();
+      const matchedCategoryIds = matchedCategoryDocs.map(d => d._id.toString());
+
+      where.AND.push({
+        id: { in: matchedCategoryIds }
+      });
+    } catch (catErr) {
+      console.error("Error matching category IDs in buildTaskWhere:", catErr);
+      // Fallback to title matching if MongoDB direct query fails
+      where.AND.push({
+        OR: categories.map(cat => ({
+          title: { contains: cat, mode: 'insensitive' }
+        }))
+      });
+    }
   }
 
   if (assignees && assignees.length > 0) {

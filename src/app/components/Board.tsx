@@ -116,6 +116,7 @@ export default function Board() {
   const [floatingTask, setFloatingTask] = useState<TaskType | null>(null);
 
   const [filterText, setFilterText] = useState("");
+  const [debouncedFilterText, setDebouncedFilterText] = useState("");
   const [sortBy, setSortBy] = useState<keyof TaskType>("createdAt");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -123,6 +124,16 @@ export default function Board() {
   const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
   const [selectedAssigners, setSelectedAssigners] = useState<string[]>([]);
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
+  const [isFiltering, setIsFiltering] = useState(false);
+
+  // Debounce search query by 350ms to prevent high load and lagging
+  useEffect(() => {
+    setIsFiltering(true);
+    const timer = setTimeout(() => {
+      setDebouncedFilterText(filterText);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [filterText]);
 
   const [allAssignees, setAllAssignees] = useState<string[]>([]);
   const [allAssigners, setAllAssigners] = useState<string[]>([]);
@@ -136,6 +147,7 @@ export default function Board() {
 
   const hasFetchedInitially = useRef(false);
   const seenTaskIdsRef = useRef<Set<string>>(new Set());
+  const filterVersionRef = useRef<number>(0);
 
   const [pendingChanges, setPendingChanges] = useState<Record<string, string>>({});
   const lastUpdateRef = useRef<number>(0);
@@ -147,7 +159,7 @@ export default function Board() {
     params.set('limit', limit.toString());
     params.set('sortKey', sortBy);
     params.set('sortDir', sortDirection);
-    if (filterText) params.set('search', filterText);
+    if (debouncedFilterText) params.set('search', debouncedFilterText);
     if (selectedCategories.length) params.set('categories', selectedCategories.join(','));
     if (selectedAssignees.length) params.set('assignees', selectedAssignees.join(','));
     if (selectedAssigners.length) params.set('assigners', selectedAssigners.join(','));
@@ -178,9 +190,9 @@ export default function Board() {
         setTotalActiveTasks(total);
       }
     } catch (err) {}
-  }, [filterText, selectedCategories, selectedAssignees, selectedAssigners, selectedDates]);
+  }, [debouncedFilterText, selectedCategories, selectedAssignees, selectedAssigners, selectedDates]);
 
-  const fetchColumnTasks = useCallback(async (colId: string, page: number, isInitial: boolean = false, isAutoRefresh: boolean = false) => {
+  const fetchColumnTasks = useCallback(async (colId: string, page: number, isInitial: boolean = false, isAutoRefresh: boolean = false, reqVersion?: number) => {
     if (!isAutoRefresh) {
       setColumnsData(prev => ({
         ...prev,
@@ -189,11 +201,17 @@ export default function Board() {
     }
 
     try {
+      const currentReqVersion = reqVersion !== undefined ? reqVersion : filterVersionRef.current;
       const q = buildQueryParams(colId, page, 20);
       const res = await fetch("/api/board/paginated?" + q);
       if (!res.ok) throw new Error("Fetch failed");
       const json = await res.json();
       
+      // If a newer filter change happened while this request was in-flight, discard stale result
+      if (filterVersionRef.current !== currentReqVersion) {
+        return;
+      }
+
       const newTasks: TaskType[] = json.tasks || [];
       const hasMore = json.hasMore;
 
@@ -209,12 +227,12 @@ export default function Board() {
       newTasks.forEach(t => seenTaskIds.add(t.id));
 
       setColumnsData(prev => {
-        // If it's page 1 AND not an auto-refresh, we are applying a filter or initial load, so reset tasks.
-        // If it's auto-refresh, we keep existing tasks and merge new ones to avoid resetting scroll/pagination.
-        const existingTasks = (page === 1 && !isAutoRefresh) ? [] : prev[colId].tasks;
+        // If it's page 1, reset tasks to strictly reflect currently returned filtered tasks.
+        // If it's page > 1 (infinite scroll), append to existing page tasks.
+        const existingTasks = (page === 1) ? [] : prev[colId].tasks;
         
-        // Merge strategy: preserve pending changes
-        const mergedTasks = [...newTasks, ...existingTasks].map(incomingTask => {
+        // Merge strategy: preserve pending optimistic changes
+        const mergedTasks = (page === 1 ? newTasks : [...existingTasks, ...newTasks]).map(incomingTask => {
           if (pendingChanges[incomingTask.id]) {
             return { ...incomingTask, status: pendingChanges[incomingTask.id] };
           }
@@ -235,8 +253,10 @@ export default function Board() {
         ...prev,
         [colId]: { ...prev[colId], loading: false }
       }));
+    } finally {
+      setIsFiltering(false);
     }
-  }, [filterText, sortBy, sortDirection, selectedCategories, selectedAssignees, selectedAssigners, selectedDates, pendingChanges]);
+  }, [debouncedFilterText, sortBy, sortDirection, selectedCategories, selectedAssignees, selectedAssigners, selectedDates, pendingChanges]);
 
   // Load all columns for page 1
   const loadAllColumns = useCallback(async (isInitial = false, isAutoRefresh = false) => {
@@ -246,10 +266,16 @@ export default function Board() {
     const role = (user.publicMetadata?.role as string || user.unsafeMetadata?.role as string || "").toLowerCase();
     setUserRole(role);
 
+    // Bump version for fresh filter requests so older in-flight requests get ignored
+    if (!isAutoRefresh) {
+      filterVersionRef.current += 1;
+    }
+    const currentVersion = filterVersionRef.current;
+
     await Promise.all([
-      fetchColumnTasks("todo", 1, isInitial, isAutoRefresh),
-      fetchColumnTasks("inprogress", 1, isInitial, isAutoRefresh),
-      fetchColumnTasks("done", 1, isInitial, isAutoRefresh),
+      fetchColumnTasks("todo", 1, isInitial, isAutoRefresh, currentVersion),
+      fetchColumnTasks("inprogress", 1, isInitial, isAutoRefresh, currentVersion),
+      fetchColumnTasks("done", 1, isInitial, isAutoRefresh, currentVersion),
       fetchCounts()
     ]);
 
@@ -263,7 +289,7 @@ export default function Board() {
       fetchOptions();
       hasFetchedInitially.current = true;
     } else {
-      // If any dependency changed (like search), reset pages and reload
+      // If any dependency changed (like search or filters), reset pages and reload
       loadAllColumns(false);
     }
 
@@ -277,7 +303,7 @@ export default function Board() {
       }, 10000);
     }
     return () => clearInterval(intervalId);
-  }, [user?.id, loadAllColumns, fetchOptions, autoRefresh]);
+  }, [user?.id, debouncedFilterText, selectedCategories, selectedAssignees, selectedAssigners, selectedDates, sortBy, sortDirection, loadAllColumns, fetchOptions, autoRefresh]);
 
   // Infinite Scroll Observer
   const observer = useRef<IntersectionObserver | null>(null);
@@ -489,6 +515,13 @@ export default function Board() {
         exportToExcel={exportToExcel}
         activeTasksCount={totalActiveTasks}
       />
+
+      {isFiltering && (
+        <div className="flex items-center justify-center gap-2 py-2 text-xs font-semibold text-indigo-600 bg-indigo-50/80 rounded-xl my-2 border border-indigo-100 animate-pulse">
+          <div className="w-3.5 h-3.5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+          Filtering tasks across databases...
+        </div>
+      )}
 
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">

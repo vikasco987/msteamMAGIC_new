@@ -140,6 +140,8 @@ export async function GET(req: NextRequest) {
         const colStatus = url.searchParams.get('status') || '';
         const search = url.searchParams.get('search') || url.searchParams.get('query') || '';
         const categories = url.searchParams.get('categories')?.split(',').filter(Boolean) || [];
+        const assignees = url.searchParams.get('assignees')?.split(',').filter(Boolean) || [];
+        const assigners = url.searchParams.get('assigners')?.split(',').filter(Boolean) || [];
 
         const externalTasks = await fetchExternalBoardTasks({
           includeSecondary,
@@ -147,6 +149,8 @@ export async function GET(req: NextRequest) {
           status: colStatus || undefined,
           search: search || undefined,
           categories: categories.length ? categories : undefined,
+          assignees: assignees.length ? assignees : undefined,
+          assigners: assigners.length ? assigners : undefined,
         });
 
         if (externalTasks.length > 0) {
