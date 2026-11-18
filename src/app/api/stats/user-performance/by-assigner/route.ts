@@ -114,17 +114,17 @@ export async function GET(req: Request) {
           amount: 1, received: 1, deliveryCharge: 1, costPrice: 1,
           name: {
             $cond: {
-              if: { $ne: ["$aName", ""] }, then: "$aName",
+              if: { $ne: ["$cName", ""] }, then: "$cName",
               else: {
-                $cond: { if: { $ne: ["$cName", ""] }, then: "$cName", else: "Unknown" }
+                $cond: { if: { $ne: ["$aName", ""] }, then: "$aName", else: "Unknown" }
               }
             }
           },
           email: {
             $cond: {
-              if: { $ne: ["$aEmail", ""] }, then: "$aEmail",
+              if: { $ne: ["$cEmail", ""] }, then: "$cEmail",
               else: {
-                $cond: { if: { $ne: ["$cEmail", ""] }, then: "$cEmail", else: "" }
+                $cond: { if: { $ne: ["$aEmail", ""] }, then: "$aEmail", else: "" }
               }
             }
           }
