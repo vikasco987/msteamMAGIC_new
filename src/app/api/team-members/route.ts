@@ -162,6 +162,7 @@
 
 import { createClerkClient, User } from "@clerk/backend"; // This is the correct and only import needed for createClerkClient
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 const secret = process.env.CLERK_SECRET_KEY;
 const clerk = secret ? createClerkClient({ secretKey: secret }) : null;
@@ -206,9 +207,34 @@ export async function GET() {
         "Unnamed User",
     }));
 
-    return NextResponse.json(formatted);
+    // Fetch custom / non-Clerk users from database
+    const dbUsers = await prisma.user.findMany({
+      where: {
+        isDisabled: false,
+        OR: [
+          { clerkId: { startsWith: "custom_" } },
+          { clerkId: { not: { startsWith: "user_" } } }
+        ]
+      },
+      select: {
+        clerkId: true,
+        email: true,
+        name: true
+      }
+    });
+
+    const existingEmails = new Set(formatted.map(u => u.email.toLowerCase()));
+    const customFormatted = dbUsers
+      .filter(u => u.email && !existingEmails.has(u.email.toLowerCase()))
+      .map(u => ({
+        id: u.clerkId,
+        email: u.email,
+        name: u.name || u.email.split("@")[0] || "Custom User"
+      }));
+
+    return NextResponse.json([...formatted, ...customFormatted]);
   } catch (err) {
-    console.error("❌ Error fetching Clerk users:", err);
+    console.error("❌ Error fetching Clerk/DB users:", err);
     return NextResponse.json(
       { error: "Failed to fetch team members" },
       { status: 500 }
