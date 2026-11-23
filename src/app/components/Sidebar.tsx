@@ -38,6 +38,8 @@ import {
   Search,
   Sliders,
   Sparkles,
+  Ticket,
+  TicketCheck,
   GripVertical,
 } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
@@ -109,6 +111,7 @@ const NAVIGATION_GROUPS = [
       { label: 'Employee Directory', icon: UserSquare2, href: '/admin/employees', roles: ['master'] },
       { label: 'Team Management', icon: Users, href: '/admin/teams', roles: ['master'] },
       { label: 'POS Sign-ups', icon: Users, href: '/admin/pos-signups', roles: ['admin', 'master'] },
+      { label: 'Customer Tickets', icon: Ticket, href: '/admin/customer-tickets', roles: ['admin', 'master'] },
       { label: 'DB Backups', icon: Database, href: '/admin/backups', roles: ['master'] },
     ]
   },

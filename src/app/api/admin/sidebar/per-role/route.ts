@@ -31,13 +31,13 @@ export async function GET(req: NextRequest) {
 
         // --- INJECT NEW FEATURES IF MISSING ---
         if (role.toLowerCase() === 'master') {
-            const masterMustHaves = ['Employee Directory', 'Payroll Management', 'Access Control', 'Team Management', 'Employee Insights', 'Client Locator', 'DB Backups', 'POS Sign-ups'];
+            const masterMustHaves = ['Employee Directory', 'Payroll Management', 'Access Control', 'Team Management', 'Employee Insights', 'Client Locator', 'DB Backups', 'POS Sign-ups', 'Customer Tickets'];
             masterMustHaves.forEach(item => {
                 if (!finalItems.includes(item)) finalItems.push(item);
             });
         }
         if (role.toLowerCase() === 'admin') {
-            const adminMustHaves = ['Payroll Management', 'Employee Insights', 'Client Locator', 'POS Sign-ups'];
+            const adminMustHaves = ['Payroll Management', 'Employee Insights', 'Client Locator', 'POS Sign-ups', 'Customer Tickets'];
             adminMustHaves.forEach(item => {
                 if (!finalItems.includes(item)) finalItems.push(item);
             });

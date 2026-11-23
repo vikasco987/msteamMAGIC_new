@@ -24,6 +24,7 @@ import {
   UserCheck,
   ChevronDown,
   Check,
+  Headphones,
 } from "lucide-react";
 import CustomerPremiumDrawer from "./components/CustomerPremiumDrawer";
 
@@ -519,6 +520,13 @@ export default function POSSignupsPage() {
               className="pl-9 pr-4 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none w-full sm:w-64 shadow-sm"
             />
           </div>
+          <Link 
+            href="/admin/customer-tickets" 
+            className="flex items-center gap-2 bg-amber-50 text-amber-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-amber-100 transition-colors border border-amber-200 shadow-sm"
+          >
+            <Headphones size={16} />
+            Customer Tickets
+          </Link>
           <Link 
             href="/admin/pos-signups/monthly-report" 
             className="flex items-center gap-2 bg-purple-50 text-purple-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-purple-100 transition-colors border border-purple-100 shadow-sm"
