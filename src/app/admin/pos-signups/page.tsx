@@ -521,6 +521,13 @@ export default function POSSignupsPage() {
             />
           </div>
           <Link 
+            href="/admin/customer-funnel" 
+            className="flex items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-100 transition-colors border border-indigo-200 shadow-sm"
+          >
+            <Users size={16} />
+            Customer Funnel
+          </Link>
+          <Link 
             href="/admin/customer-tickets" 
             className="flex items-center gap-2 bg-amber-50 text-amber-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-amber-100 transition-colors border border-amber-200 shadow-sm"
           >
