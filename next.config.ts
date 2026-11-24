@@ -3,7 +3,6 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   transpilePackages: ["framer-motion", "recharts", "d3-array", "d3-scale", "victory-vendor", "internmap"],
 
-  output: 'standalone',
   reactStrictMode: true,
   images: {
     remotePatterns: [

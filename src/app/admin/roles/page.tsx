@@ -1,5 +1,6 @@
 'use client';
 import { useUnifiedAuth as useUser } from "@/lib/useUnifiedAuth";
+import Link from 'next/link';
 
 import { useEffect, useState } from 'react';
 
@@ -617,14 +618,14 @@ export default function RoleManagementPage() {
                                                     </button>
                                                 )}
 
-                                                <button
-                                                    onClick={() => window.location.href = `/admin/roles/${u.id}`}
-                                                    className="px-4 py-2.5 rounded-xl text-sm font-black uppercase tracking-widest bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 transition-all flex items-center gap-2 cursor-pointer"
+                                                <Link
+                                                    href={`/admin/roles/${u.id}`}
+                                                    className="px-4 py-2.5 rounded-xl text-sm font-black uppercase tracking-widest bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 transition-all flex items-center gap-2 cursor-pointer no-underline"
                                                     title="View Advanced Details"
                                                 >
                                                     <Settings2 size={16} />
                                                     DETAILS
-                                                </button>
+                                                </Link>
 
                                                 {changingRoleId === u.id && <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />}
                                             </div>

@@ -7,6 +7,7 @@ let clerkUsersCacheTime = 0;
 const CLERK_CACHE_TTL_MS = 60 * 1000; // 1 minute cache
 
 export async function buildTaskWhere(req: NextRequest) {
+  console.log(`[DEBUG buildTaskWhere] URL: ${req.url}, Cookies: ${req.cookies.getAll().map(c => c.name).join(", ")}`);
   const userId = await getUnifiedUserId(req);
   if (!userId) {
     throw new Error("Unauthorized");

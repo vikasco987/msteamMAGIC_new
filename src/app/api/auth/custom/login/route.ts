@@ -2,8 +2,15 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { checkRateLimit, resetRateLimit } from "@/lib/rateLimit";
 
-const JWT_SECRET = process.env.JWT_SECRET || "default_super_secret_key_12345";
+function getJwtSecret(): string {
+    const secret = process.env.JWT_SECRET;
+    if (!secret && process.env.NODE_ENV === "production") {
+        console.error("FATAL: JWT_SECRET environment variable is missing in production!");
+    }
+    return secret || "magicscale-secret-key-12345";
+}
 
 export async function POST(req: Request) {
     try {
@@ -14,6 +21,18 @@ export async function POST(req: Request) {
         }
 
         const normalizedEmail = email.toLowerCase().trim();
+
+        // Rate limiting: 5 attempts per 15 minutes per normalized email & client IP
+        const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+        const rateLimitKey = `login_${clientIp}_${normalizedEmail}`;
+        const rateCheck = checkRateLimit(rateLimitKey, { limit: 5, windowMs: 15 * 60 * 1000 });
+
+        if (!rateCheck.allowed) {
+            return NextResponse.json(
+                { error: `Too many login attempts. Please wait ${Math.ceil(rateCheck.retryAfterSeconds / 60)} minutes before trying again.` },
+                { status: 429, headers: { "Retry-After": String(rateCheck.retryAfterSeconds) } }
+            );
+        }
 
         const user = await prisma.user.findUnique({
             where: { email: normalizedEmail }
@@ -36,10 +55,14 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
         }
 
-        // Generate JWT
+        // Login successful: reset rate limiter for this user
+        resetRateLimit(rateLimitKey);
+
+        // Generate JWT using verified secret
+        const secret = getJwtSecret();
         const token = jwt.sign(
             { userId: user.clerkId, role: user.role, email: user.email },
-            JWT_SECRET,
+            secret,
             { expiresIn: '7d' }
         );
 

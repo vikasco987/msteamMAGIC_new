@@ -20,6 +20,9 @@ import {
   FaReply,
   FaComments,
   FaStore,
+  FaSearch,
+  FaCheck,
+  FaCheckDouble,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
@@ -62,16 +65,44 @@ export default function NotesModal({
 
   const [input, setInput] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [downloadingUrl, setDownloadingUrl] = useState<string | null>(null);
   const [activeReactionNote, setActiveReactionNote] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [previewMedia, setPreviewMedia] = useState<{ url: string; type: "image" | "pdf"; name: string } | null>(null);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<{ author: string; content: string } | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
+
+  // Manage object URL for file preview
+  const handleSetFile = useCallback((newFile: File | null) => {
+    if (filePreviewUrl) {
+      URL.revokeObjectURL(filePreviewUrl);
+    }
+    setFile(newFile);
+    if (newFile && newFile.type.startsWith("image/")) {
+      setFilePreviewUrl(URL.createObjectURL(newFile));
+    } else {
+      setFilePreviewUrl(null);
+    }
+  }, [filePreviewUrl]);
+
+  // Clean up object URL on unmount
+  useEffect(() => {
+    return () => {
+      if (filePreviewUrl) {
+        URL.revokeObjectURL(filePreviewUrl);
+      }
+    };
+  }, [filePreviewUrl]);
 
   const EMOJI_OPTIONS = ["👍", "❤️", "😂", "🎉", "👀", "🙏", "🔥", "✅"];
 
@@ -229,6 +260,69 @@ export default function NotesModal({
     }
   };
 
+  // Handle Ctrl+V / Cmd+V Clipboard Image Paste
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.indexOf("image") !== -1) {
+        e.preventDefault();
+        const blob = item.getAsFile();
+        if (blob) {
+          const extension = item.type.split("/")[1] || "png";
+          const pastedFile = new File(
+            [blob],
+            `screenshot-${new Date().toISOString().replace(/[:.]/g, "-")}.${extension}`,
+            { type: item.type }
+          );
+          handleSetFile(pastedFile);
+          toast.success("Image pasted from clipboard! Add caption or click Send.", {
+            icon: "📋",
+          });
+        }
+        return;
+      }
+    }
+  }, [handleSetFile]);
+
+  // Handle Drag and Drop
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+
+    const droppedFiles = e.dataTransfer?.files;
+    if (droppedFiles && droppedFiles.length > 0) {
+      const droppedFile = droppedFiles[0];
+      // Validate file type
+      if (!droppedFile.type.startsWith("image/") && droppedFile.type !== "application/pdf") {
+        toast.error("Please drop an image or PDF file.");
+        return;
+      }
+      // Validate file size (10 MB max)
+      if (droppedFile.size > 10 * 1024 * 1024) {
+        toast.error("File is too large. Max size is 10 MB.");
+        return;
+      }
+      handleSetFile(droppedFile);
+      toast.success(`Attached "${droppedFile.name}"!`, { icon: "📎" });
+    }
+  }, [handleSetFile]);
+
   const addNote = async () => {
     if (!input.trim() && !file) return;
 
@@ -254,9 +348,16 @@ export default function NotesModal({
         uploadedFileUrl = uploadRes.data.url;
       }
 
+      // If replying to another note, format reply banner
+      let finalContent = input;
+      if (replyingTo) {
+        const cleanReplyText = replyingTo.content.slice(0, 100);
+        finalContent = `> 💬 Replying to @${replyingTo.author}:\n> "${cleanReplyText}"\n\n${input}`;
+      }
+
       const res = await axios.post<Note>("/api/notes", {
         taskId,
-        content: input,
+        content: finalContent,
         authorName,
         authorEmail,
         fileUrl: uploadedFileUrl || undefined,
@@ -264,7 +365,8 @@ export default function NotesModal({
 
       setNotes((prev) => [...prev, res.data]);
       setInput("");
-      setFile(null);
+      handleSetFile(null);
+      setReplyingTo(null);
       if (onNotesUpdated) onNotesUpdated();
       setTimeout(scrollToBottom, 100);
       toast.success("Note added!");
@@ -444,6 +546,21 @@ export default function NotesModal({
 
             <div className="flex items-center gap-1.5 flex-shrink-0">
               <button
+                type="button"
+                onClick={() => {
+                  setShowSearch((prev) => !prev);
+                  if (showSearch) setSearchQuery("");
+                }}
+                className={`p-2 rounded-xl transition-colors ${
+                  showSearch
+                    ? "text-indigo-400 bg-slate-800"
+                    : "text-slate-400 hover:text-white hover:bg-slate-800"
+                }`}
+                title="Search notes"
+              >
+                <FaSearch size={15} />
+              </button>
+              <button
                 onClick={() => onClose(notes)}
                 className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors focus:outline-none"
                 title="Close (Esc)"
@@ -453,10 +570,68 @@ export default function NotesModal({
               </button>
             </div>
           </div>
+
+          {/* Collapsible Search Input */}
+          <AnimatePresence>
+            {showSearch && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden mt-3 pt-2 border-t border-slate-800"
+              >
+                <div className="relative">
+                  <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search in this conversation..."
+                    className="w-full pl-8 pr-8 py-1.5 bg-slate-800/90 text-xs text-white rounded-lg border border-slate-700 placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+                    autoFocus
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs"
+                    >
+                      <FaTimes />
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        {/* Scrollable Chat Area */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-slate-100">
+        {/* Scrollable Chat Area with Drag & Drop Dropzone */}
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className="relative flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-slate-100"
+        >
+          {/* Drag & Drop Visual Overlay */}
+          <AnimatePresence>
+            {isDraggingOver && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="absolute inset-2 z-50 rounded-2xl bg-indigo-600/90 backdrop-blur-xs border-3 border-dashed border-white text-white flex flex-col items-center justify-center p-6 text-center pointer-events-none shadow-2xl"
+              >
+                <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mb-3 text-white">
+                  <FaPaperclip className="w-8 h-8" />
+                </div>
+                <h3 className="text-lg font-black tracking-tight">Drop files to attach</h3>
+                <p className="text-xs text-indigo-100 mt-1 max-w-xs font-medium">
+                  Support for Images (PNG, JPG, WEBP) & PDF documents up to 10 MB.
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {notes.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center p-8">
               <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 text-indigo-500 flex items-center justify-center mb-4 shadow-sm">
@@ -782,16 +957,18 @@ export default function NotesModal({
                         <button
                           type="button"
                           onClick={() => {
-                            const mention = `@${
-                              note.authorName || note.authorEmail?.split("@")[0] || "User"
-                            } `;
-                            setInput((prev) => (prev ? prev + `\n${mention}` : mention));
+                            setReplyingTo({
+                              author: note.authorName || note.authorEmail?.split("@")[0] || "User",
+                              content: note.content || "Attachment",
+                            });
+                            textareaRef.current?.focus();
                           }}
                           className={`text-xs font-semibold px-2 py-0.5 rounded-md flex items-center gap-1 transition-colors ${
                             isCurrentUser
                               ? "bg-indigo-700 hover:bg-indigo-800 text-white"
                               : "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
                           }`}
+                          title="Reply to this note"
                         >
                           <FaReply size={10} />
                           <span>Reply</span>
@@ -837,24 +1014,57 @@ export default function NotesModal({
           <div ref={chatBottomRef} />
         </div>
 
-        {/* Selected File Chip preview prior to send */}
-        {file && (
-          <div className="px-5 py-2.5 bg-indigo-50 border-t border-indigo-200 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              {file.type.startsWith("image/") ? (
-                <FaImage className="text-indigo-600 flex-shrink-0" />
-              ) : (
-                <FaFilePdf className="text-rose-600 flex-shrink-0" />
-              )}
-              <span className="text-xs text-indigo-950 font-bold truncate">{file.name}</span>
-              <span className="text-[11px] text-indigo-700 font-medium">
-                ({(file.size / 1024).toFixed(0)} KB)
+        {/* Replying Banner */}
+        {replyingTo && (
+          <div className="px-5 py-2 bg-indigo-100/90 border-t border-indigo-200 flex items-center justify-between gap-3 text-xs text-indigo-900">
+            <div className="flex items-center gap-2 min-w-0">
+              <FaReply className="text-indigo-600 flex-shrink-0" />
+              <span className="font-bold">Replying to @{replyingTo.author}:</span>
+              <span className="truncate italic text-slate-600 max-w-xs md:max-w-md">
+                "{replyingTo.content}"
               </span>
             </div>
             <button
               type="button"
-              onClick={() => setFile(null)}
-              className="p-1 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+              onClick={() => setReplyingTo(null)}
+              className="p-1 rounded-full text-slate-500 hover:text-slate-800 hover:bg-indigo-200/50 transition-colors"
+              title="Cancel reply"
+            >
+              <FaTimes size={12} />
+            </button>
+          </div>
+        )}
+
+        {/* Selected File Chip preview prior to send (with image thumbnail if image) */}
+        {file && (
+          <div className="px-5 py-2.5 bg-indigo-50 border-t border-indigo-200 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              {filePreviewUrl ? (
+                <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-indigo-200 flex-shrink-0 bg-white">
+                  <img
+                    src={filePreviewUrl}
+                    alt={file.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : file.type.startsWith("image/") ? (
+                <FaImage className="text-indigo-600 flex-shrink-0 w-5 h-5" />
+              ) : (
+                <FaFilePdf className="text-rose-600 flex-shrink-0 w-5 h-5" />
+              )}
+              <div className="min-w-0">
+                <span className="text-xs text-indigo-950 font-bold truncate block max-w-[200px] md:max-w-xs">
+                  {file.name}
+                </span>
+                <span className="text-[11px] text-indigo-700 font-medium">
+                  ({(file.size / 1024).toFixed(0)} KB) • Ready to upload
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSetFile(null)}
+              className="p-1.5 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
               title="Remove file"
             >
               <FaTimes size={13} />
@@ -866,15 +1076,17 @@ export default function NotesModal({
         <div className="p-4 pb-16 md:pb-16 bg-white border-t border-slate-200 flex-shrink-0 space-y-2.5">
           <div className="relative rounded-2xl border-2 border-slate-300 focus-within:border-indigo-600 bg-white transition-all shadow-sm">
             <textarea
+              ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onPaste={handlePaste}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
                   addNote();
                 }
               }}
-              placeholder="Write a note or comment... (Press Enter to send)"
+              placeholder="Write a note... Paste screenshot (Ctrl+V) or drag file here"
               rows={2}
               className="w-full p-3.5 pr-24 bg-transparent text-[14px] font-medium text-slate-800 placeholder-slate-400 focus:outline-none resize-none leading-relaxed"
             />
@@ -913,7 +1125,7 @@ export default function NotesModal({
                 type="file"
                 ref={fileInputRef}
                 accept="image/*,application/pdf"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                onChange={(e) => handleSetFile(e.target.files?.[0] || null)}
                 className="hidden"
               />
             </div>

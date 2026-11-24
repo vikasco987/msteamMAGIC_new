@@ -212,6 +212,11 @@ model User {
   password         String?
   isVerified       Boolean  @default(false)
 
+  secondaryEmails  String[] @default([]) // Multi-email support
+  secondaryPhones  String[] @default([]) // Multi-phone support
+  allowedPaths     String[] @default([]) // Custom granular permission overrides
+  sessionsRevokedAt DateTime?            // Logout everywhere / Session revocation timestamp
+
   currentDepartment String?                @default("Digital")
   historyLogs       DepartmentHistoryLog[]
 
@@ -1010,3 +1015,26 @@ model OnboardingAuditLog {
   @@index([onboardingId])
   @@index([changedAt])
 }
+
+// 🛡️ Model for User Management & Personnel Security Audit Trail
+model UserAuditLog {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  targetUserId String   // Target canonical user ID or clerkId
+  actorUserId  String   // Administrator user ID who performed action
+  actorName    String?  // Administrator display name or email
+  action       String   // ROLE_CHANGED, STATUS_TOGGLED, PASSWORD_RESET, CONTACT_UPDATED, PROFILE_UPDATED, VERIFICATION_CHANGED
+  entityType   String   @default("User")
+  fieldName    String?
+  previousValue String?
+  newValue     String?
+  reason       String?
+  result       String   @default("SUCCESS") // SUCCESS, FAILED
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  @@index([targetUserId])
+  @@index([actorUserId])
+  @@index([action])
+  @@index([createdAt])
+}
+

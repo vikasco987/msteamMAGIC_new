@@ -3,7 +3,13 @@ import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "default_super_secret_key_12345";
+function getJwtSecret(): string {
+    const secret = process.env.JWT_SECRET;
+    if (!secret && process.env.NODE_ENV === "production") {
+        console.error("FATAL: JWT_SECRET environment variable is missing in production!");
+    }
+    return secret || "magicscale-secret-key-12345";
+}
 
 export async function getUnifiedUserId(req?: NextRequest): Promise<string | null> {
     // 1. Check Custom JWT Cookie first (or if req is provided)
@@ -14,7 +20,8 @@ export async function getUnifiedUserId(req?: NextRequest): Promise<string | null
             token = cookieStore.get("custom_auth_token")?.value;
         }
         if (token) {
-            const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+            const secret = getJwtSecret();
+            const decoded = jwt.verify(token, secret) as { userId: string };
             if (decoded && decoded.userId) {
                 return decoded.userId;
             }

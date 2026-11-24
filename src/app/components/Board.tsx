@@ -111,6 +111,7 @@ export default function Board() {
 
   const [counts, setCounts] = useState<Record<string, number>>({ todo: 0, inprogress: 0, done: 0 });
   const [totalActiveTasks, setTotalActiveTasks] = useState(0);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const [editingTask, setEditingTask] = useState<TaskType | null>(null);
   const [floatingTask, setFloatingTask] = useState<TaskType | null>(null);
@@ -188,6 +189,7 @@ export default function Board() {
         setCounts(json.counts || { todo: 0, inprogress: 0, done: 0 });
         const total = (json.counts?.todo || 0) + (json.counts?.inprogress || 0) + (json.counts?.done || 0);
         setTotalActiveTasks(total);
+        setFetchError(null);
       }
     } catch (err) {
       console.error("fetchCounts error:", err);
@@ -206,8 +208,16 @@ export default function Board() {
       const currentReqVersion = reqVersion !== undefined ? reqVersion : filterVersionRef.current;
       const q = buildQueryParams(colId, page, 20);
       const res = await fetch("/api/board/paginated?" + q);
-      if (!res.ok) throw new Error(`Fetch failed with status ${res.status}`);
+      if (!res.ok) {
+        if (res.status === 401) {
+          setFetchError("Session expired or unauthorized. Please refresh or sign in again.");
+        } else if (res.status >= 500) {
+          setFetchError("Server error loading tasks. Please try clicking Retry.");
+        }
+        throw new Error(`Fetch failed with status ${res.status}`);
+      }
       const json = await res.json();
+      setFetchError(null);
       
       // If a newer filter change happened while this request was in-flight, discard stale result
       if (filterVersionRef.current !== currentReqVersion) {
@@ -249,8 +259,11 @@ export default function Board() {
           [colId]: { tasks: uniqueTasks, page: isAutoRefresh ? prev[colId].page : page, hasMore: isAutoRefresh ? prev[colId].hasMore : hasMore, loading: false }
         };
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Fetch tasks error for column", colId, err);
+      if (err?.message?.includes("Failed to fetch") || err?.name === "TypeError") {
+        setFetchError("Unable to connect to the server (Network/Redirect error). Please check connection or click Retry.");
+      }
       setColumnsData(prev => ({
         ...prev,
         [colId]: { ...prev[colId], loading: false }
@@ -522,6 +535,27 @@ export default function Board() {
         exportToExcel={exportToExcel}
         activeTasksCount={totalActiveTasks}
       />
+
+      {fetchError && (
+        <div className="flex items-center justify-between gap-4 p-4 my-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-sm shadow-sm">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">⚠️</span>
+            <div>
+              <p className="font-semibold">{fetchError}</p>
+              <p className="text-xs text-rose-600 mt-0.5">Please check your internet or reload the page if tasks do not appear.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setFetchError(null);
+              loadAllColumns(false);
+            }}
+            className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition shadow-sm whitespace-nowrap active:scale-95"
+          >
+            Retry Now
+          </button>
+        </div>
+      )}
 
       {isFiltering && (
         <div className="flex items-center justify-center gap-2 py-2 text-xs font-semibold text-indigo-600 bg-indigo-50/80 rounded-xl my-2 border border-indigo-100 animate-pulse">
