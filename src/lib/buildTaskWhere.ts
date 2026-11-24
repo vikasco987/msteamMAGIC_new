@@ -1,7 +1,10 @@
 import { NextRequest } from "next/server";
 import { getUnifiedUserId, getUserDetails } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
-import { clerkClient } from "@clerk/nextjs/server";
+
+let cachedClerkUsers: any[] | null = null;
+let clerkUsersCacheTime = 0;
+const CLERK_CACHE_TTL_MS = 60 * 1000; // 1 minute cache
 
 export async function buildTaskWhere(req: NextRequest) {
   const userId = await getUnifiedUserId(req);
@@ -9,7 +12,6 @@ export async function buildTaskWhere(req: NextRequest) {
     throw new Error("Unauthorized");
   }
 
-  const client = await clerkClient();
   const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
   
   let metadataRole = dbUser?.role;
@@ -25,14 +27,51 @@ export async function buildTaskWhere(req: NextRequest) {
 
   const url = new URL(req.url);
 
-  // BULK CLERK LOOKUP: Fetch all users once for efficiency and filtering
-  const clerkResponse = await client.users.getUserList({ limit: 500 });
-  const allClerkUsers = clerkResponse.data;
+  // CLERK LOOKUP WITH DB FALLBACK & IN-MEMORY CACHE
+  let allClerkUsers: any[] = [];
+  try {
+    if (cachedClerkUsers && Date.now() - clerkUsersCacheTime < CLERK_CACHE_TTL_MS) {
+      allClerkUsers = cachedClerkUsers;
+    } else {
+      const { clerkClient } = await import("@clerk/nextjs/server");
+      const client = await clerkClient();
+      const clerkResponse = await client.users.getUserList({ limit: 500 });
+      allClerkUsers = clerkResponse.data || [];
+      cachedClerkUsers = allClerkUsers;
+      clerkUsersCacheTime = Date.now();
+    }
+  } catch (clerkErr) {
+    console.warn("⚠️ Warning: Clerk users fetch failed in buildTaskWhere, falling back to cache or DB:", clerkErr);
+    allClerkUsers = cachedClerkUsers || [];
+  }
 
   // Build user map by ID and email, and also a reverse map for name-to-ID resolution
   const userMap: Record<string, { id: string; name: string; email: string }> = {};
   const nameToIdMap: Record<string, string[]> = {};
   
+  // 1. Populate from Prisma User DB first (covers all registered/synced users & custom users)
+  try {
+    const dbUsers = await prisma.user.findMany({
+      select: { clerkId: true, name: true, email: true }
+    });
+    dbUsers.forEach((u) => {
+      const email = u.email || "";
+      const name = u.name?.trim() || "Unnamed User";
+      const userData = { id: u.clerkId, name, email };
+      userMap[u.clerkId] = userData;
+      if (email) userMap[email] = userData;
+      
+      const lowerName = name.toLowerCase();
+      if (!nameToIdMap[lowerName]) nameToIdMap[lowerName] = [];
+      if (!nameToIdMap[lowerName].includes(u.clerkId)) {
+        nameToIdMap[lowerName].push(u.clerkId);
+      }
+    });
+  } catch (dbErr) {
+    console.warn("⚠️ Warning: Prisma users fetch failed in buildTaskWhere:", dbErr);
+  }
+
+  // 2. Overlay with Clerk users if available
   allClerkUsers.forEach((u) => {
     const email = u.emailAddresses?.[0]?.emailAddress || "";
     const name = `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.username || "Unnamed User";
@@ -42,7 +81,9 @@ export async function buildTaskWhere(req: NextRequest) {
     
     const lowerName = name.toLowerCase();
     if (!nameToIdMap[lowerName]) nameToIdMap[lowerName] = [];
-    nameToIdMap[lowerName].push(u.id);
+    if (!nameToIdMap[lowerName].includes(u.id)) {
+      nameToIdMap[lowerName].push(u.id);
+    }
   });
 
   // Extract filters and sorting from searchParams
