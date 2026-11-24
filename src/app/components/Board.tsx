@@ -189,8 +189,10 @@ export default function Board() {
         const total = (json.counts?.todo || 0) + (json.counts?.inprogress || 0) + (json.counts?.done || 0);
         setTotalActiveTasks(total);
       }
-    } catch (err) {}
-  }, [debouncedFilterText, selectedCategories, selectedAssignees, selectedAssigners, selectedDates]);
+    } catch (err) {
+      console.error("fetchCounts error:", err);
+    }
+  }, [debouncedFilterText, selectedCategories, selectedStatuses, selectedAssignees, selectedAssigners, selectedDates, sortBy, sortDirection]);
 
   const fetchColumnTasks = useCallback(async (colId: string, page: number, isInitial: boolean = false, isAutoRefresh: boolean = false, reqVersion?: number) => {
     if (!isAutoRefresh) {
@@ -204,7 +206,7 @@ export default function Board() {
       const currentReqVersion = reqVersion !== undefined ? reqVersion : filterVersionRef.current;
       const q = buildQueryParams(colId, page, 20);
       const res = await fetch("/api/board/paginated?" + q);
-      if (!res.ok) throw new Error("Fetch failed");
+      if (!res.ok) throw new Error(`Fetch failed with status ${res.status}`);
       const json = await res.json();
       
       // If a newer filter change happened while this request was in-flight, discard stale result
@@ -256,7 +258,7 @@ export default function Board() {
     } finally {
       setIsFiltering(false);
     }
-  }, [debouncedFilterText, sortBy, sortDirection, selectedCategories, selectedAssignees, selectedAssigners, selectedDates, pendingChanges]);
+  }, [debouncedFilterText, sortBy, sortDirection, selectedCategories, selectedStatuses, selectedAssignees, selectedAssigners, selectedDates, pendingChanges]);
 
   // Load all columns for page 1
   const loadAllColumns = useCallback(async (isInitial = false, isAutoRefresh = false) => {
@@ -282,28 +284,33 @@ export default function Board() {
     if (isInitial) setLoading(false);
   }, [user, fetchColumnTasks, fetchCounts]);
 
+  const loadAllColumnsRef = useRef(loadAllColumns);
+  useEffect(() => {
+    loadAllColumnsRef.current = loadAllColumns;
+  }, [loadAllColumns]);
+
   useEffect(() => {
     if (!user?.id) return;
     if (!hasFetchedInitially.current) {
-      loadAllColumns(true);
+      loadAllColumnsRef.current(true);
       fetchOptions();
       hasFetchedInitially.current = true;
     } else {
-      // If any dependency changed (like search or filters), reset pages and reload
-      loadAllColumns(false);
+      // If any filter/sorting dependency changed, reload
+      loadAllColumnsRef.current(false);
     }
+  }, [user?.id, debouncedFilterText, selectedCategories, selectedStatuses, selectedAssignees, selectedAssigners, selectedDates, sortBy, sortDirection]);
 
-    let intervalId: NodeJS.Timeout;
-    if (autoRefresh) {
-      intervalId = setInterval(() => {
-        // Only run auto-refresh if we haven't manually updated in the last 3s
-        if (Date.now() - lastUpdateRef.current >= 3000) {
-          loadAllColumns(false, true);
-        }
-      }, 10000);
-    }
+  useEffect(() => {
+    if (!user?.id || !autoRefresh) return;
+    const intervalId = setInterval(() => {
+      // Only run auto-refresh if we haven't manually updated in the last 3s
+      if (Date.now() - lastUpdateRef.current >= 3000) {
+        loadAllColumnsRef.current(false, true);
+      }
+    }, 10000);
     return () => clearInterval(intervalId);
-  }, [user?.id, debouncedFilterText, selectedCategories, selectedAssignees, selectedAssigners, selectedDates, sortBy, sortDirection, loadAllColumns, fetchOptions, autoRefresh]);
+  }, [user?.id, autoRefresh]);
 
   // Infinite Scroll Observer
   const observer = useRef<IntersectionObserver | null>(null);
