@@ -39,6 +39,8 @@ interface BoardFiltersProps {
   setShowAllTasksMode?: (val: boolean) => void;
   exportToExcel: () => void;
   activeTasksCount: number;
+  crmSource?: string;
+  setCrmSource?: (val: string) => void;
 }
 
 export const BoardFilters: React.FC<BoardFiltersProps> = ({
@@ -66,9 +68,11 @@ export const BoardFilters: React.FC<BoardFiltersProps> = ({
   setShowAllTasksMode,
   exportToExcel,
   activeTasksCount,
-}) => {
+  crmSource = "all",
+  setCrmSource,
+}: BoardFiltersProps) => {
   const [openDropdown, setOpenDropdown] = useState<
-    "category" | "assignee" | "assigner" | "status" | "date" | null
+    "category" | "assignee" | "assigner" | "status" | "date" | "crmSource" | null
   >(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -236,6 +240,23 @@ export const BoardFilters: React.FC<BoardFiltersProps> = ({
       </div>
 
       <div className="flex flex-wrap gap-3 ml-auto">
+        {/* 🌐 CRM Source Filter */}
+        {setCrmSource && (
+          <div className="flex items-center gap-1.5">
+            <select
+              value={crmSource}
+              onChange={(e) => setCrmSource(e.target.value)}
+              className="border border-indigo-200 px-3 py-2 rounded-lg text-sm bg-indigo-50/50 text-indigo-900 font-semibold focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out appearance-none pr-8 cursor-pointer"
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath fill='%234F46E5' d='M5 8l5 5 5-5z'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1em' }}
+            >
+              <option value="all">🌐 All CRMs</option>
+              <option value="primary">🏢 Primary (MagicScale)</option>
+              <option value="secondary">💜 Kravy CRM (2nd)</option>
+              <option value="third">🟢 Onboarding CRM (3rd)</option>
+            </select>
+          </div>
+        )}
+
         {/* 🗓️ Date Filter */}
         <div className="relative">
           <button

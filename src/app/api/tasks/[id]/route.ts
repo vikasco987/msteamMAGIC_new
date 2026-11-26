@@ -65,6 +65,17 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
   try {
     const body: PatchRequestBody = await req.json();
 
+    // 🌐 Multi-Database Integration: If this is an external task from Secondary or 3rd CRM
+    if (taskId.startsWith("ext_sec_") || taskId.startsWith("ext_trd_")) {
+      const { updateExternalTask } = await import("@/lib/multiDbTasks");
+      const updated = await updateExternalTask(taskId, body);
+      if (updated) {
+        return NextResponse.json({ success: true, message: "External task updated in source CRM" });
+      } else {
+        return NextResponse.json({ error: "External task not found or failed to update" }, { status: 404 });
+      }
+    }
+
     // Fetch current state for logging and validation
     const currentTask = await prisma.task.findUnique({
       where: { id: taskId },

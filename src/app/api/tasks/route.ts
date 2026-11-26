@@ -1330,6 +1330,61 @@ export async function GET(req: NextRequest) {
     let totalCount = 0;
 
     if (taskId) {
+      // 🌐 Support fetching external tasks with notes
+      if (taskId.startsWith("ext_sec_") || taskId.startsWith("ext_trd_")) {
+        const isSecondary = taskId.startsWith("ext_sec_");
+        const rawId = taskId.replace(/^ext_(sec|trd)_/, "");
+        const { ObjectId } = await import("mongodb");
+        const { getSecondaryClient, getThirdClient, fetchExternalTaskNotes } = await import("@/lib/multiDbTasks");
+        const client = isSecondary ? await getSecondaryClient() : await getThirdClient();
+        if (client) {
+          const doc = await client.db().collection("Task").findOne({ _id: new ObjectId(rawId) });
+          if (doc) {
+            const externalNotes = await fetchExternalTaskNotes(taskId);
+            const externalTask = {
+              id: taskId,
+              taskCode: doc.taskCode || null,
+              title: doc.title || "Untitled Task",
+              status: (doc.status || "todo").toLowerCase(),
+              priority: doc.priority || "medium",
+              createdAt: doc.createdAt || new Date(),
+              updatedAt: doc.updatedAt || new Date(),
+              assignerName: doc.assignerName || doc.createdByName || "—",
+              assignerEmail: doc.assignerEmail || doc.createdByEmail || "",
+              assigneeName: doc.assigneeName || "—",
+              assigneeEmail: doc.assigneeEmail || "",
+              assigneeId: doc.assigneeId,
+              assigneeIds: doc.assigneeIds || [],
+              amount: doc.amount || 0,
+              received: doc.received || 0,
+              tags: doc.tags || [],
+              highlightColor: doc.highlightColor,
+              isHidden: !!doc.isHidden,
+              customFields: doc.customFields || {},
+              phone: doc.phone || doc.customFields?.phone,
+              email: doc.email || doc.customFields?.email,
+              shopName: doc.shopName || doc.customFields?.shopName || doc.outletName || doc.customFields?.outletName,
+              location: doc.location || doc.customFields?.location,
+              customerName: doc.customerName || doc.customFields?.customerName,
+              outletName: doc.outletName || doc.customFields?.outletName,
+              externalSource: isSecondary ? "kravy" : "onboarding",
+              externalSourceLabel: isSecondary ? "KRAVY CRM" : "Onboarding CRM",
+              isExternal: true,
+              notes: externalNotes,
+              subtasks: [],
+            };
+            return NextResponse.json({
+              tasks: [externalTask],
+              totalCount: 1,
+              page: 1,
+              limit: 1,
+              totalPages: 1
+            });
+          }
+        }
+        return NextResponse.json({ tasks: [], totalCount: 0 });
+      }
+
       const task = await prisma.task.findUnique({
         where: { id: taskId },
         include: {

@@ -6,7 +6,7 @@ type MongoFilter = Record<string, any>;
 let cachedSecondaryClient: MongoClient | null = null;
 let cachedThirdClient: MongoClient | null = null;
 
-async function getSecondaryClient(): Promise<MongoClient | null> {
+export async function getSecondaryClient(): Promise<MongoClient | null> {
   const uri = process.env.SECONDARY_CRM_DATABASE_URL;
   if (!uri) return null;
   if (cachedSecondaryClient) {
@@ -29,7 +29,7 @@ async function getSecondaryClient(): Promise<MongoClient | null> {
   }
 }
 
-async function getThirdClient(): Promise<MongoClient | null> {
+export async function getThirdClient(): Promise<MongoClient | null> {
   const uri = process.env.THIRD_CRM_DATABASE_URL;
   if (!uri) return null;
   if (cachedThirdClient) {
@@ -223,6 +223,93 @@ function buildMongoFilter(options: ExternalTaskFetchOptions, source: "secondary"
     }
   }
 
+  // 📅 Date filter: exactly matching buildTaskWhere logic
+  if (options.dateFilter) {
+    const dates = options.dateFilter.split(',').filter(Boolean);
+    const dateConditions: any[] = [];
+    const now = new Date();
+
+    dates.forEach(d => {
+      let startDate: Date | null = null;
+      let endDate: Date | null = null;
+
+      switch (d) {
+        case "today":
+          startDate = new Date(now);
+          startDate.setHours(0, 0, 0, 0);
+          endDate = new Date(now);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case "yesterday":
+          startDate = new Date(now);
+          startDate.setDate(startDate.getDate() - 1);
+          startDate.setHours(0, 0, 0, 0);
+          endDate = new Date(startDate);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case "last_7_days":
+          startDate = new Date(now);
+          startDate.setDate(startDate.getDate() - 7);
+          startDate.setHours(0, 0, 0, 0);
+          endDate = new Date(now);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case "last_15_days":
+          startDate = new Date(now);
+          startDate.setDate(startDate.getDate() - 14);
+          startDate.setHours(0, 0, 0, 0);
+          endDate = new Date(now);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case "last_30_days":
+          startDate = new Date(now);
+          startDate.setDate(startDate.getDate() - 29);
+          startDate.setHours(0, 0, 0, 0);
+          endDate = new Date(now);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case "last_60_days":
+          startDate = new Date(now);
+          startDate.setDate(startDate.getDate() - 59);
+          startDate.setHours(0, 0, 0, 0);
+          endDate = new Date(now);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case "this_month":
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+          endDate = new Date(now);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case "last_month":
+          startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+          endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+          break;
+        case "this_year":
+          startDate = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+          endDate = new Date(now);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+      }
+
+      if (startDate && endDate) {
+        dateConditions.push({
+          createdAt: {
+            $gte: startDate,
+            $lte: endDate
+          }
+        });
+      }
+    });
+
+    if (dateConditions.length > 0) {
+      if (filter.$and) {
+        filter.$and.push({ $or: dateConditions });
+      } else {
+        filter.$and = [{ $or: dateConditions }];
+      }
+    }
+  }
+
   // Categories filter (activeTab & structured title matching)
   const cats = options.categories || (options.category ? [options.category] : []);
   if (cats.length > 0) {
@@ -328,9 +415,32 @@ export async function fetchExternalBoardTasks(
           .limit(100)
           .toArray();
 
+        // 📝 Batch fetch notes for these tasks
+        const taskIds = docs.map(d => d._id);
+        const notes = await db.collection("Note").find({
+          taskId: { $in: taskIds }
+        }).toArray();
+
+        const notesMap: Record<string, any[]> = {};
+        notes.forEach(n => {
+          const tid = n.taskId ? n.taskId.toString() : "";
+          if (!notesMap[tid]) notesMap[tid] = [];
+          notesMap[tid].push({
+            id: n._id.toString(),
+            taskId: `ext_sec_${tid}`,
+            content: n.content,
+            authorName: n.authorName || "Unknown",
+            authorEmail: n.authorEmail || "",
+            fileUrl: n.fileUrl || null,
+            createdAt: n.createdAt,
+            updatedAt: n.updatedAt,
+          });
+        });
+
         docs.forEach(doc => {
+          const rawId = doc._id.toString();
           tasks.push({
-            id: `ext_sec_${doc._id.toString()}`,
+            id: `ext_sec_${rawId}`,
             taskCode: doc.taskCode || null,
             title: doc.title || "Untitled Task",
             status: (doc.status || "todo").toLowerCase(),
@@ -358,7 +468,8 @@ export async function fetchExternalBoardTasks(
             externalSource: "kravy",
             externalSourceLabel: "KRAVY CRM",
             isExternal: true,
-          });
+            notes: notesMap[rawId] || [],
+          } as any);
         });
       } catch (err) {
         console.error("Error fetching tasks from Secondary DB:", err);
@@ -380,9 +491,32 @@ export async function fetchExternalBoardTasks(
           .limit(100)
           .toArray();
 
+        // 📝 Batch fetch notes for these tasks
+        const taskIds = docs.map(d => d._id);
+        const notes = await db.collection("Note").find({
+          taskId: { $in: taskIds }
+        }).toArray();
+
+        const notesMap: Record<string, any[]> = {};
+        notes.forEach(n => {
+          const tid = n.taskId ? n.taskId.toString() : "";
+          if (!notesMap[tid]) notesMap[tid] = [];
+          notesMap[tid].push({
+            id: n._id.toString(),
+            taskId: `ext_trd_${tid}`,
+            content: n.content,
+            authorName: n.authorName || "Unknown",
+            authorEmail: n.authorEmail || "",
+            fileUrl: n.fileUrl || null,
+            createdAt: n.createdAt,
+            updatedAt: n.updatedAt,
+          });
+        });
+
         docs.forEach(doc => {
+          const rawId = doc._id.toString();
           tasks.push({
-            id: `ext_trd_${doc._id.toString()}`,
+            id: `ext_trd_${rawId}`,
             taskCode: doc.taskCode || null,
             title: doc.title || "Untitled Task",
             status: (doc.status || "todo").toLowerCase(),
@@ -410,7 +544,8 @@ export async function fetchExternalBoardTasks(
             externalSource: "onboarding",
             externalSourceLabel: "Onboarding CRM",
             isExternal: true,
-          });
+            notes: notesMap[rawId] || [],
+          } as any);
         });
       } catch (err) {
         console.error("Error fetching tasks from 3rd DB:", err);
@@ -485,4 +620,132 @@ export async function fetchExternalBoardCounts(
 
   await Promise.all(promises);
   return counts;
+}
+
+// -------------------------------------------------------------
+// 📝 Cross-CRM Notes Support
+// -------------------------------------------------------------
+export async function fetchExternalTaskNotes(externalTaskId: string): Promise<any[]> {
+  const isSecondary = externalTaskId.startsWith("ext_sec_");
+  const isThird = externalTaskId.startsWith("ext_trd_");
+  if (!isSecondary && !isThird) return [];
+
+  const rawId = externalTaskId.replace(/^ext_(sec|trd)_/, "");
+  try {
+    const { ObjectId } = await import("mongodb");
+    const mongoId = new ObjectId(rawId);
+
+    const client = isSecondary ? await getSecondaryClient() : await getThirdClient();
+    if (!client) return [];
+
+    const db = client.db();
+    const notes = await db.collection("Note").find({
+      $or: [
+        { taskId: mongoId },
+        { taskId: rawId }
+      ]
+    }).sort({ createdAt: -1 }).toArray();
+
+    return notes.map(n => ({
+      id: n._id.toString(),
+      taskId: externalTaskId,
+      content: n.content,
+      authorName: n.authorName || "Unknown",
+      authorEmail: n.authorEmail || "",
+      fileUrl: n.fileUrl || null,
+      mentions: n.mentions || [],
+      reactions: n.reactions || [],
+      readBy: n.readBy || [],
+      createdAt: n.createdAt || new Date(),
+      updatedAt: n.updatedAt || new Date(),
+    }));
+  } catch (err) {
+    console.error(`Error fetching external notes for ${externalTaskId}:`, err);
+    return [];
+  }
+}
+
+export async function createExternalTaskNote(
+  externalTaskId: string,
+  data: { content: string; authorName?: string; authorEmail?: string; fileUrl?: string }
+): Promise<any | null> {
+  const isSecondary = externalTaskId.startsWith("ext_sec_");
+  const isThird = externalTaskId.startsWith("ext_trd_");
+  if (!isSecondary && !isThird) return null;
+
+  const rawId = externalTaskId.replace(/^ext_(sec|trd)_/, "");
+  try {
+    const { ObjectId } = await import("mongodb");
+    const mongoId = new ObjectId(rawId);
+
+    const client = isSecondary ? await getSecondaryClient() : await getThirdClient();
+    if (!client) return null;
+
+    const db = client.db();
+    const newNote = {
+      taskId: mongoId,
+      content: data.content,
+      authorName: data.authorName || "Unknown",
+      authorEmail: data.authorEmail || "",
+      fileUrl: data.fileUrl || null,
+      mentions: [],
+      reactions: [],
+      readBy: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const result = await db.collection("Note").insertOne(newNote);
+    return {
+      id: result.insertedId.toString(),
+      ...newNote,
+      taskId: externalTaskId,
+    };
+  } catch (err) {
+    console.error(`Error creating external note for ${externalTaskId}:`, err);
+    return null;
+  }
+}
+
+// -------------------------------------------------------------
+// 🔄 Cross-CRM Task Status & Field Updates
+// -------------------------------------------------------------
+export async function updateExternalTask(
+  externalTaskId: string,
+  updates: Record<string, any>
+): Promise<boolean> {
+  const isSecondary = externalTaskId.startsWith("ext_sec_");
+  const isThird = externalTaskId.startsWith("ext_trd_");
+  if (!isSecondary && !isThird) return false;
+
+  const rawId = externalTaskId.replace(/^ext_(sec|trd)_/, "");
+  try {
+    const { ObjectId } = await import("mongodb");
+    const mongoId = new ObjectId(rawId);
+
+    const client = isSecondary ? await getSecondaryClient() : await getThirdClient();
+    if (!client) return false;
+
+    const db = client.db();
+    const updateDoc: Record<string, any> = {
+      updatedAt: new Date(),
+    };
+
+    if (updates.status) {
+      updateDoc.status = updates.status.toLowerCase();
+    }
+    if (updates.title) updateDoc.title = updates.title;
+    if (updates.priority) updateDoc.priority = updates.priority;
+    if (updates.notes !== undefined) updateDoc.notes = updates.notes;
+
+    const result = await db.collection("Task").updateOne(
+      { _id: mongoId },
+      { $set: updateDoc }
+    );
+
+    return result.matchedCount > 0;
+  } catch (err) {
+    console.error(`Error updating external task ${externalTaskId}:`, err);
+    return false;
+  }
 }

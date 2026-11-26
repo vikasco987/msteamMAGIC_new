@@ -125,6 +125,7 @@ export default function Board() {
   const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
   const [selectedAssigners, setSelectedAssigners] = useState<string[]>([]);
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
+  const [crmSource, setCrmSource] = useState<string>("all");
   const [isFiltering, setIsFiltering] = useState(false);
 
   // Debounce search query by 350ms to prevent high load and lagging
@@ -165,6 +166,7 @@ export default function Board() {
     if (selectedAssignees.length) params.set('assignees', selectedAssignees.join(','));
     if (selectedAssigners.length) params.set('assigners', selectedAssigners.join(','));
     if (selectedDates.length) params.set('dateFilter', selectedDates.join(','));
+    if (crmSource && crmSource !== "all") params.set('crmSource', crmSource);
     return params.toString();
   };
 
@@ -194,7 +196,7 @@ export default function Board() {
     } catch (err) {
       console.error("fetchCounts error:", err);
     }
-  }, [debouncedFilterText, selectedCategories, selectedStatuses, selectedAssignees, selectedAssigners, selectedDates, sortBy, sortDirection]);
+  }, [debouncedFilterText, selectedCategories, selectedStatuses, selectedAssignees, selectedAssigners, selectedDates, crmSource, sortBy, sortDirection]);
 
   const fetchColumnTasks = useCallback(async (colId: string, page: number, isInitial: boolean = false, isAutoRefresh: boolean = false, reqVersion?: number) => {
     if (!isAutoRefresh) {
@@ -312,7 +314,7 @@ export default function Board() {
       // If any filter/sorting dependency changed, reload
       loadAllColumnsRef.current(false);
     }
-  }, [user?.id, debouncedFilterText, selectedCategories, selectedStatuses, selectedAssignees, selectedAssigners, selectedDates, sortBy, sortDirection]);
+  }, [user?.id, debouncedFilterText, selectedCategories, selectedStatuses, selectedAssignees, selectedAssigners, selectedDates, crmSource, sortBy, sortDirection]);
 
   useEffect(() => {
     if (!user?.id || !autoRefresh) return;
@@ -534,6 +536,8 @@ export default function Board() {
         setShowAllTasksMode={setShowAllTasksMode}
         exportToExcel={exportToExcel}
         activeTasksCount={totalActiveTasks}
+        crmSource={crmSource}
+        setCrmSource={setCrmSource}
       />
 
       {fetchError && (

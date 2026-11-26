@@ -151,15 +151,27 @@ export async function GET(req: NextRequest) {
         const categories = url.searchParams.get('categories')?.split(',').filter(Boolean) || [];
         const assignees = url.searchParams.get('assignees')?.split(',').filter(Boolean) || [];
         const assigners = url.searchParams.get('assigners')?.split(',').filter(Boolean) || [];
+        const dateFilter = url.searchParams.get('dateFilter') || '';
+        const crmSource = url.searchParams.get('crmSource') || 'all';
+
+        // Filter based on user-selected CRM source in Board filter dropdown
+        const shouldIncludeSecondary = includeSecondary && (crmSource === 'all' || crmSource === 'secondary' || crmSource === 'kravy');
+        const shouldIncludeThird = includeThird && (crmSource === 'all' || crmSource === 'third' || crmSource === 'onboarding');
+
+        if (crmSource === 'secondary' || crmSource === 'third' || crmSource === 'kravy' || crmSource === 'onboarding') {
+          // If user specifically filtered to Secondary or Tertiary CRM only, do not include primary tasks
+          combinedTasks = [];
+        }
 
         const externalTasks = await fetchExternalBoardTasks({
-          includeSecondary,
-          includeThird,
+          includeSecondary: shouldIncludeSecondary,
+          includeThird: shouldIncludeThird,
           status: colStatus || undefined,
           search: search || undefined,
           categories: categories.length ? categories : undefined,
           assignees: assignees.length ? assignees : undefined,
           assigners: assigners.length ? assigners : undefined,
+          dateFilter: dateFilter || undefined,
           userClerkId: userId,
           userEmail,
           userRole: normalizedRole,
@@ -170,7 +182,7 @@ export async function GET(req: NextRequest) {
         if (externalTasks.length > 0) {
           // If on page 1, merge external tasks with primary tasks
           if (page === 1) {
-            combinedTasks = [...externalTasks, ...enrichedTasks];
+            combinedTasks = [...externalTasks, ...combinedTasks];
           }
         }
       }

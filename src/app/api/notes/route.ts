@@ -77,6 +77,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
+import { fetchExternalTaskNotes, createExternalTaskNote } from "@/lib/multiDbTasks";
 
 interface CreateNoteRequestBody {
   taskId: string;
@@ -94,26 +95,36 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing taskId" }, { status: 400 });
   }
 
-  // ✅ Ensure task exists
-  const task = await prisma.task.findUnique({
-    where: { id: new ObjectId(taskId).toString() },
-    select: { id: true },
-  });
-
-  if (!task) {
-    return NextResponse.json({ error: "Task not found" }, { status: 404 });
+  // 🌐 External DB Task Notes Support (Secondary / Tertiary)
+  if (taskId.startsWith("ext_sec_") || taskId.startsWith("ext_trd_")) {
+    const externalNotes = await fetchExternalTaskNotes(taskId);
+    return NextResponse.json(externalNotes);
   }
 
-  const notes = await prisma.note.findMany({
-    where: {
-      taskId: task.id,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+  // ✅ Primary CRM task
+  try {
+    const task = await prisma.task.findUnique({
+      where: { id: new ObjectId(taskId).toString() },
+      select: { id: true },
+    });
 
-  return NextResponse.json(notes);
+    if (!task) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+
+    const notes = await prisma.note.findMany({
+      where: {
+        taskId: task.id,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return NextResponse.json(notes);
+  } catch (e: any) {
+    return NextResponse.json({ error: "Invalid task ID", details: e?.message }, { status: 400 });
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -125,6 +136,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
+    // 🌐 External DB Task Note Creation Support (Secondary / Tertiary)
+    if (taskId.startsWith("ext_sec_") || taskId.startsWith("ext_trd_")) {
+      const createdExternalNote = await createExternalTaskNote(taskId, {
+        content: content || "Sent an attachment",
+        authorName,
+        authorEmail,
+        fileUrl,
+      });
+
+      if (!createdExternalNote) {
+        return NextResponse.json({ error: "Failed to create note in external CRM" }, { status: 500 });
+      }
+      return NextResponse.json(createdExternalNote);
+    }
+
+    // ✅ Primary CRM task
     const task = await prisma.task.findUnique({
       where: { id: new ObjectId(taskId).toString() },
     });

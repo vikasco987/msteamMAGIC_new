@@ -80,6 +80,12 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    const crmSource = url.searchParams.get('crmSource') || 'all';
+    if (crmSource === 'secondary' || crmSource === 'third' || crmSource === 'kravy' || crmSource === 'onboarding') {
+      // If user specifically filtered only to external CRM, zero out primary counts
+      counts = { todo: 0, inprogress: 0, done: 0 };
+    }
+
     // 🌐 Multi-Database Integration: Add counts from Secondary & 3rd DB if enabled
     try {
       const settings = await prisma.businessSettings.findFirst({
@@ -89,15 +95,24 @@ export async function GET(req: NextRequest) {
       const includeSecondary = !!(settings as any)?.showSecondaryDbTasks;
       const includeThird = !!(settings as any)?.showThirdDbTasks;
 
-      if (includeSecondary || includeThird) {
+      const shouldIncludeSecondary = includeSecondary && (crmSource === 'all' || crmSource === 'secondary' || crmSource === 'kravy');
+      const shouldIncludeThird = includeThird && (crmSource === 'all' || crmSource === 'third' || crmSource === 'onboarding');
+
+      if (shouldIncludeSecondary || shouldIncludeThird) {
         const search = url.searchParams.get('search') || url.searchParams.get('query') || '';
         const categories = url.searchParams.get('categories')?.split(',').filter(Boolean) || [];
+        const dateFilter = url.searchParams.get('dateFilter') || '';
+        const assignees = url.searchParams.get('assignees')?.split(',').filter(Boolean) || [];
+        const assigners = url.searchParams.get('assigners')?.split(',').filter(Boolean) || [];
 
         const externalCounts = await fetchExternalBoardCounts({
-          includeSecondary,
-          includeThird,
+          includeSecondary: shouldIncludeSecondary,
+          includeThird: shouldIncludeThird,
           search: search || undefined,
           categories: categories.length ? categories : undefined,
+          assignees: assignees.length ? assignees : undefined,
+          assigners: assigners.length ? assigners : undefined,
+          dateFilter: dateFilter || undefined,
           userClerkId: userId,
           userEmail,
           userRole: normalizedRole,
