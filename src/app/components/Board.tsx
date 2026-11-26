@@ -15,6 +15,7 @@ import { Task as TaskType } from "../../types/task"; // Ensure this path is corr
 import EditTaskModal from "./EditTaskModal";
 import TaskDetailsCard from "./TaskDetailsCard";
 import FloatingTaskCard from "./FloatingTaskCard";
+import TaskDetailsPanel from "./TaskDetailsPanel";
 import toast from "react-hot-toast";
 
 import { FaFileExcel } from "react-icons/fa";
@@ -115,6 +116,7 @@ export default function Board() {
 
   const [editingTask, setEditingTask] = useState<TaskType | null>(null);
   const [floatingTask, setFloatingTask] = useState<TaskType | null>(null);
+  const [viewedTaskId, setViewedTaskId] = useState<string | null>(null);
 
   const [filterText, setFilterText] = useState("");
   const [debouncedFilterText, setDebouncedFilterText] = useState("");
@@ -623,6 +625,7 @@ export default function Board() {
                                   onDelete={handleDeleteTask}
                                   onUpdateTask={handleFieldUpdate}
                                   onFloatRequest={setFloatingTask}
+                                  onViewDetails={(t) => setViewedTaskId(t.id)}
                                 />
                                 <div className="flex gap-2 mt-4 pt-3 border-t border-slate-50 opacity-0 group-hover:opacity-100 transition-opacity">
                                   <button onClick={() => setEditingTask(task)} className="text-[9px] font-black uppercase text-slate-400 hover:text-indigo-600">Edit</button>
@@ -664,6 +667,13 @@ export default function Board() {
           onClose={() => setFloatingTask(null)}
           onUpdate={handleFieldUpdate}
           onDelete={handleDeleteTask}
+        />
+      )}
+
+      {viewedTaskId && (
+        <TaskDetailsPanel
+          taskId={viewedTaskId}
+          onClose={() => setViewedTaskId(null)}
         />
       )}
     </div>

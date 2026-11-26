@@ -29,6 +29,7 @@ interface Props {
   onDelete?: (taskId: string) => void;
   onUpdateTask?: (taskId: string, updatedFields: Partial<Task>) => void;
   onFloatRequest?: (task: Task) => void;
+  onViewDetails?: (task: Task) => void;
 }
 
 // --- Utility Functions ---
@@ -182,7 +183,7 @@ const TaskTimer = ({ createdAt, status }: { createdAt: string | Date | undefined
 };
 
 // --- TaskDetailsCard Component ---
-export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, onDelete, onUpdateTask, onFloatRequest }: Props) {
+export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, onDelete, onUpdateTask, onFloatRequest, onViewDetails }: Props) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [showReassignModal, setShowReassignModal] = useState(false);
@@ -365,7 +366,8 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
                   {task.taskCode || `T${task.id.slice(-4).toUpperCase()}`}
                 </span>
                 <h3
-                  className="text-base font-bold text-slate-900 leading-tight line-clamp-2"
+                  onClick={() => onViewDetails && onViewDetails(task)}
+                  className={`text-base font-bold text-slate-900 leading-tight line-clamp-2 ${onViewDetails ? "hover:text-indigo-600 cursor-pointer hover:underline transition-colors" : ""}`}
                   title={task.title}
                 >
                   {task.title}
@@ -389,7 +391,10 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
                 </div>
               )}
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-black tracking-wider bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-500/30">
+                <span 
+                  onClick={() => onViewDetails && onViewDetails(task)}
+                  className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-black tracking-wider bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-500/30 ${onViewDetails ? "hover:bg-indigo-700 cursor-pointer" : ""}`}
+                >
                   {task.taskCode || `T${task.id.slice(-4).toUpperCase()}`}
                 </span>
                 <TaskTimer createdAt={task.createdAt} status={task.status} />
@@ -526,6 +531,16 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
                       <Share2 size={12} className="text-indigo-400" />
                       SHARE CARD LINK
                     </DropdownMenu.Item>
+
+                    {onViewDetails && (
+                      <DropdownMenu.Item 
+                        onClick={() => onViewDetails(task)}
+                        className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-800 hover:bg-indigo-50 rounded-lg cursor-pointer outline-none"
+                      >
+                        <Layers size={12} className="text-indigo-600" />
+                        VIEW FULL DETAILS (POPUP)
+                      </DropdownMenu.Item>
+                    )}
 
                     {onFloatRequest && (
                       <DropdownMenu.Item 
