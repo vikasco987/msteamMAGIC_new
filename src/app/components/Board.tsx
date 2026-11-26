@@ -15,7 +15,7 @@ import { Task as TaskType } from "../../types/task"; // Ensure this path is corr
 import EditTaskModal from "./EditTaskModal";
 import TaskDetailsCard from "./TaskDetailsCard";
 import FloatingTaskCard from "./FloatingTaskCard";
-import TaskDetailsPanel from "./TaskDetailsPanel";
+import TaskModalPopup from "./TaskModalPopup";
 import toast from "react-hot-toast";
 
 import { FaFileExcel } from "react-icons/fa";
@@ -116,7 +116,7 @@ export default function Board() {
 
   const [editingTask, setEditingTask] = useState<TaskType | null>(null);
   const [floatingTask, setFloatingTask] = useState<TaskType | null>(null);
-  const [viewedTaskId, setViewedTaskId] = useState<string | null>(null);
+  const [viewedTask, setViewedTask] = useState<TaskType | null>(null);
 
   const [filterText, setFilterText] = useState("");
   const [debouncedFilterText, setDebouncedFilterText] = useState("");
@@ -128,6 +128,7 @@ export default function Board() {
   const [selectedAssigners, setSelectedAssigners] = useState<string[]>([]);
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [crmSource, setCrmSource] = useState<string>("all");
+  const [assignedToMeOnly, setAssignedToMeOnly] = useState<boolean>(false);
   const [isFiltering, setIsFiltering] = useState(false);
 
   // Debounce search query by 350ms to prevent high load and lagging
@@ -165,7 +166,14 @@ export default function Board() {
     params.set('sortDir', sortDirection);
     if (debouncedFilterText) params.set('search', debouncedFilterText);
     if (selectedCategories.length) params.set('categories', selectedCategories.join(','));
-    if (selectedAssignees.length) params.set('assignees', selectedAssignees.join(','));
+    
+    // 👤 Assign to Me filter support
+    if (assignedToMeOnly && user?.id) {
+      params.set('assignees', user.id);
+    } else if (selectedAssignees.length) {
+      params.set('assignees', selectedAssignees.join(','));
+    }
+
     if (selectedAssigners.length) params.set('assigners', selectedAssigners.join(','));
     if (selectedDates.length) params.set('dateFilter', selectedDates.join(','));
     if (crmSource && crmSource !== "all") params.set('crmSource', crmSource);
@@ -198,7 +206,7 @@ export default function Board() {
     } catch (err) {
       console.error("fetchCounts error:", err);
     }
-  }, [debouncedFilterText, selectedCategories, selectedStatuses, selectedAssignees, selectedAssigners, selectedDates, crmSource, sortBy, sortDirection]);
+  }, [debouncedFilterText, selectedCategories, selectedStatuses, selectedAssignees, selectedAssigners, selectedDates, crmSource, assignedToMeOnly, user?.id, sortBy, sortDirection]);
 
   const fetchColumnTasks = useCallback(async (colId: string, page: number, isInitial: boolean = false, isAutoRefresh: boolean = false, reqVersion?: number) => {
     if (!isAutoRefresh) {
@@ -275,7 +283,7 @@ export default function Board() {
     } finally {
       setIsFiltering(false);
     }
-  }, [debouncedFilterText, sortBy, sortDirection, selectedCategories, selectedStatuses, selectedAssignees, selectedAssigners, selectedDates, pendingChanges]);
+  }, [debouncedFilterText, sortBy, sortDirection, selectedCategories, selectedStatuses, selectedAssignees, selectedAssigners, selectedDates, crmSource, assignedToMeOnly, user?.id, pendingChanges]);
 
   // Load all columns for page 1
   const loadAllColumns = useCallback(async (isInitial = false, isAutoRefresh = false) => {
@@ -316,7 +324,7 @@ export default function Board() {
       // If any filter/sorting dependency changed, reload
       loadAllColumnsRef.current(false);
     }
-  }, [user?.id, debouncedFilterText, selectedCategories, selectedStatuses, selectedAssignees, selectedAssigners, selectedDates, crmSource, sortBy, sortDirection]);
+  }, [user?.id, debouncedFilterText, selectedCategories, selectedStatuses, selectedAssignees, selectedAssigners, selectedDates, crmSource, assignedToMeOnly, sortBy, sortDirection]);
 
   useEffect(() => {
     if (!user?.id || !autoRefresh) return;
@@ -540,6 +548,8 @@ export default function Board() {
         activeTasksCount={totalActiveTasks}
         crmSource={crmSource}
         setCrmSource={setCrmSource}
+        assignedToMeOnly={assignedToMeOnly}
+        setAssignedToMeOnly={setAssignedToMeOnly}
       />
 
       {fetchError && (
@@ -625,7 +635,7 @@ export default function Board() {
                                   onDelete={handleDeleteTask}
                                   onUpdateTask={handleFieldUpdate}
                                   onFloatRequest={setFloatingTask}
-                                  onViewDetails={(t) => setViewedTaskId(t.id)}
+                                  onViewDetails={(t) => setViewedTask(t)}
                                 />
                                 <div className="flex gap-2 mt-4 pt-3 border-t border-slate-50 opacity-0 group-hover:opacity-100 transition-opacity">
                                   <button onClick={() => setEditingTask(task)} className="text-[9px] font-black uppercase text-slate-400 hover:text-indigo-600">Edit</button>
@@ -670,10 +680,15 @@ export default function Board() {
         />
       )}
 
-      {viewedTaskId && (
-        <TaskDetailsPanel
-          taskId={viewedTaskId}
-          onClose={() => setViewedTaskId(null)}
+      {viewedTask && (
+        <TaskModalPopup
+          task={viewedTask}
+          isOpen={!!viewedTask}
+          isAdmin={userRole === "master"}
+          isTL={userRole === "tl"}
+          onClose={() => setViewedTask(null)}
+          onDelete={handleDeleteTask}
+          onUpdateTask={handleFieldUpdate}
         />
       )}
     </div>

@@ -719,6 +719,41 @@ export async function createExternalTaskNote(
   }
 }
 
+export async function deleteExternalTaskNote(noteId: string): Promise<boolean> {
+  try {
+    const { ObjectId } = await import("mongodb");
+    if (!ObjectId.isValid(noteId)) return false;
+    const mongoId = new ObjectId(noteId);
+
+    // Try secondary DB
+    try {
+      const secClient = await getSecondaryClient();
+      if (secClient) {
+        const res = await secClient.db().collection("Note").deleteOne({ _id: mongoId });
+        if (res.deletedCount > 0) return true;
+      }
+    } catch (e) {
+      console.error("Error deleting note from secondary DB:", e);
+    }
+
+    // Try third DB
+    try {
+      const trdClient = await getThirdClient();
+      if (trdClient) {
+        const res = await trdClient.db().collection("Note").deleteOne({ _id: mongoId });
+        if (res.deletedCount > 0) return true;
+      }
+    } catch (e) {
+      console.error("Error deleting note from third DB:", e);
+    }
+
+    return false;
+  } catch (err) {
+    console.error(`Error deleting external note ${noteId}:`, err);
+    return false;
+  }
+}
+
 // -------------------------------------------------------------
 // 🔄 Cross-CRM Task Status & Field Updates
 // -------------------------------------------------------------

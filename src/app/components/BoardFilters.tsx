@@ -41,6 +41,8 @@ interface BoardFiltersProps {
   activeTasksCount: number;
   crmSource?: string;
   setCrmSource?: (val: string) => void;
+  assignedToMeOnly?: boolean;
+  setAssignedToMeOnly?: (val: boolean) => void;
 }
 
 export const BoardFilters: React.FC<BoardFiltersProps> = ({
@@ -70,6 +72,8 @@ export const BoardFilters: React.FC<BoardFiltersProps> = ({
   activeTasksCount,
   crmSource = "all",
   setCrmSource,
+  assignedToMeOnly = false,
+  setAssignedToMeOnly,
 }: BoardFiltersProps) => {
   const [openDropdown, setOpenDropdown] = useState<
     "category" | "assignee" | "assigner" | "status" | "date" | "crmSource" | null
@@ -240,6 +244,24 @@ export const BoardFilters: React.FC<BoardFiltersProps> = ({
       </div>
 
       <div className="flex flex-wrap gap-3 ml-auto">
+        {/* 👤 Assign To Me Quick Toggle */}
+        {setAssignedToMeOnly && (
+          <button
+            type="button"
+            onClick={() => setAssignedToMeOnly(!assignedToMeOnly)}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-bold transition-all duration-150 border cursor-pointer ${
+              assignedToMeOnly
+                ? "bg-indigo-600 text-white border-indigo-600 shadow-md ring-2 ring-indigo-200"
+                : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50 hover:border-slate-400"
+            }`}
+            title="Show only tasks assigned to me"
+          >
+            <span>👤</span>
+            <span>Assign to Me</span>
+            {assignedToMeOnly && <span className="text-xs ml-1">✓</span>}
+          </button>
+        )}
+
         {/* 🌐 CRM Source Filter */}
         {setCrmSource && (
           <div className="flex items-center gap-1.5">
