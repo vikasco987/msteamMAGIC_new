@@ -20,7 +20,8 @@ import TaskActivityModal from "./TaskActivityModal";
 import UploadDocumentModal from "./UploadDocumentModal";
 import ChangeCreatorModal from "./ChangeCreatorModal";
 import CreateDelhiveryOrderButton from "./CreateDelhiveryOrderButton";
-import { FaHandHoldingUsd, FaCommentsDollar, FaHistory, FaCloudUploadAlt, FaPaperclip } from "react-icons/fa";
+import CreateOrderModal from "./CreateOrderModal";
+import { FaHandHoldingUsd, FaCommentsDollar, FaHistory, FaCloudUploadAlt, FaPaperclip, FaShippingFast } from "react-icons/fa";
 
 interface Props {
   task: Task;
@@ -192,6 +193,7 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showCreatorModal, setShowCreatorModal] = useState(false);
+  const [showCreateOrderModal, setShowCreateOrderModal] = useState(false);
   const { user } = useUser();
   const userRole = String(user?.publicMetadata?.role || user?.unsafeMetadata?.role || "").trim().toLowerCase();
   const isMaster = userRole === "master" || isAdmin;
@@ -691,20 +693,45 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
             </div>
           )}
 
-          {/* Delhivery Order Button */}
-          <CreateDelhiveryOrderButton 
-            taskId={task.id} 
-            hasAwb={!!cf.awbNumber} 
-            isHardwareTask={isHardwareTask} 
-            onSuccess={(awb) => {
-              if (onUpdateTask) {
-                // Update local state by forcing a refresh or passing updated customFields
-                onUpdateTask(task.id, { 
-                  customFields: { ...cf, awbNumber: awb } 
-                });
-              }
-            }}
-          />
+          {/* Shipping Order Creation (Shadowfax / Delhivery) */}
+          {isHardwareTask && (
+            <div className="mt-2.5">
+              {cf.awbNumber ? (
+                <div className="flex items-center justify-between p-2.5 bg-emerald-50/70 border border-emerald-200/80 rounded-xl">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">📦</span>
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-wider text-emerald-800">
+                        {cf.courierName || "Courier"} Shipment
+                      </p>
+                      <p className="text-xs font-bold text-slate-700">AWB: {cf.awbNumber}</p>
+                    </div>
+                  </div>
+                  <a
+                    href={`/dispatch/track?awb=${cf.awbNumber}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm transition-colors"
+                  >
+                    Track ↗
+                  </a>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowCreateOrderModal(true);
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-black tracking-wider text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl shadow-md shadow-emerald-600/20 cursor-pointer transition-all uppercase"
+                >
+                  <FaShippingFast size={14} />
+                  <span>Create Courier Order (Shadowfax)</span>
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Attachments Section */}
           {(() => {
@@ -929,6 +956,21 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
                   email: updatedTask.assignerEmail,
                 },
               });
+            }}
+          />
+        )}
+
+        {showCreateOrderModal && (
+          <CreateOrderModal
+            isOpen={showCreateOrderModal}
+            task={task}
+            onClose={() => setShowCreateOrderModal(false)}
+            onSuccess={(awb, courierName) => {
+              if (onUpdateTask) {
+                onUpdateTask(task.id, {
+                  customFields: { ...cf, awbNumber: awb, courierName },
+                });
+              }
             }}
           />
         )}

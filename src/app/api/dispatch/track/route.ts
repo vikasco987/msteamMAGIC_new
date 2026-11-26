@@ -91,6 +91,12 @@ export async function GET(req: Request) {
             const history = sfxData.tracking_details || [];
             const latestStatus = order.status_display || order.status || (history[0]?.status) || "In Transit";
 
+            const pickup = order.pickup_details || {};
+            const delivery = order.delivery_details || {};
+
+            const originStr = [pickup.city, pickup.state, pickup.pincode].filter(Boolean).join(", ") || pickup.city || "Delhi";
+            const destStr = [delivery.city, delivery.state, delivery.pincode].filter(Boolean).join(", ") || delivery.city || "Mumbai";
+
             trackingResult = {
               Courier: "Shadowfax",
               ShipmentData: [
@@ -100,10 +106,23 @@ export async function GET(req: Request) {
                     Courier: "Shadowfax",
                     Status: {
                       Status: latestStatus,
-                      Instructions: history[0]?.remarks || order.status_display || ""
+                      Instructions: history[history.length - 1]?.remarks || order.status_display || ""
                     },
+                    Consignee: {
+                      Name: delivery.name || "",
+                      City: delivery.city || "",
+                      State: delivery.state || "",
+                      PinCode: delivery.pincode || "",
+                      Address: [delivery.address_line_1, delivery.address_line_2].filter(Boolean).join(", ") || ""
+                    },
+                    Origin: originStr,
+                    Destination: destStr,
+                    OrderType: (order.payment_mode || "COD").toUpperCase(),
+                    CODAmount: order.cod_amount || order.product_value || 0,
+                    ProductValue: order.product_value || 0,
+                    ClientOrderId: order.client_order_id || null,
                     ExpectedDeliveryDate: order.promised_delivery_date || null,
-                    PickUpDate: history.length > 0 ? history[history.length - 1]?.created : null,
+                    PickUpDate: history.length > 0 ? history[0]?.created : null,
                     Scans: history.map((scan: any) => ({
                       ScanDetail: {
                         Scan: scan.status || scan.status_id || "Status Update",
