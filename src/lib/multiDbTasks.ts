@@ -465,6 +465,12 @@ export async function fetchExternalBoardTasks(
             location: doc.location || doc.customFields?.location,
             customerName: doc.customerName || doc.customFields?.customerName,
             outletName: doc.outletName || doc.customFields?.outletName,
+            aadhaarUrl: doc.aadhaarUrl || null,
+            panUrl: doc.panUrl || null,
+            selfieUrl: doc.selfieUrl || null,
+            chequeUrl: doc.chequeUrl || null,
+            menuCardUrls: doc.menuCardUrls || [],
+            attachments: doc.attachments || [],
             externalSource: "kravy",
             externalSourceLabel: "KRAVY CRM",
             isExternal: true,
@@ -541,6 +547,12 @@ export async function fetchExternalBoardTasks(
             location: doc.location || doc.customFields?.location,
             customerName: doc.customerName || doc.customFields?.customerName,
             outletName: doc.outletName || doc.customFields?.outletName,
+            aadhaarUrl: doc.aadhaarUrl || null,
+            panUrl: doc.panUrl || null,
+            selfieUrl: doc.selfieUrl || null,
+            chequeUrl: doc.chequeUrl || null,
+            menuCardUrls: doc.menuCardUrls || [],
+            attachments: doc.attachments || [],
             externalSource: "onboarding",
             externalSourceLabel: "Onboarding CRM",
             isExternal: true,
@@ -753,6 +765,14 @@ export async function updateExternalTask(
     if (updates.tags !== undefined) updateDoc.tags = updates.tags;
     if (updates.customFields !== undefined) updateDoc.customFields = updates.customFields;
     if (updates.highlightColor !== undefined) updateDoc.highlightColor = updates.highlightColor;
+
+    // 📎 Documents & Attachments
+    if (updates.aadhaarUrl !== undefined) updateDoc.aadhaarUrl = updates.aadhaarUrl;
+    if (updates.panUrl !== undefined) updateDoc.panUrl = updates.panUrl;
+    if (updates.selfieUrl !== undefined) updateDoc.selfieUrl = updates.selfieUrl;
+    if (updates.chequeUrl !== undefined) updateDoc.chequeUrl = updates.chequeUrl;
+    if (updates.menuCardUrls !== undefined) updateDoc.menuCardUrls = updates.menuCardUrls;
+    if (updates.attachments !== undefined) updateDoc.attachments = updates.attachments;
 
     const result = await db.collection("Task").updateOne(
       { _id: mongoId },

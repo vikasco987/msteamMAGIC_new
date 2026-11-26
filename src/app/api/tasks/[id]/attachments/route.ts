@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth-utils";
 import cloudinary from "cloudinary";
+import { getSecondaryClient, getThirdClient } from "@/lib/multiDbTasks";
 
 // ✅ Cloudinary Config
 cloudinary.v2.config({
@@ -35,6 +36,27 @@ export async function PATCH(
     const { oldUrl, newUrl } = await req.json();
     if (!oldUrl || !newUrl) {
       return NextResponse.json({ error: "Missing URLs" }, { status: 400 });
+    }
+
+    if (id.startsWith("ext_sec_") || id.startsWith("ext_trd_")) {
+      const isSec = id.startsWith("ext_sec_");
+      const rawId = id.replace(/^ext_(sec|trd)_/, "");
+      const { ObjectId } = await import("mongodb");
+      const client = isSec ? await getSecondaryClient() : await getThirdClient();
+      if (!client) return NextResponse.json({ error: "Database unavailable" }, { status: 500 });
+      const db = client.db();
+      const task = await db.collection("Task").findOne({ _id: new ObjectId(rawId) });
+      if (!task) return NextResponse.json({ error: "Task not found" }, { status: 404 });
+      const current = task.attachments || [];
+      if (!current.includes(oldUrl)) {
+        return NextResponse.json({ error: "Old URL not found in attachments" }, { status: 400 });
+      }
+      const updatedAttachments = current.map((url: string) => url === oldUrl ? newUrl : url);
+      await db.collection("Task").updateOne(
+        { _id: new ObjectId(rawId) },
+        { $set: { attachments: updatedAttachments, updatedAt: new Date() } }
+      );
+      return NextResponse.json({ success: true });
     }
 
     const task = await prisma.task.findUnique({ where: { id } });
@@ -78,6 +100,20 @@ export async function POST(
       return NextResponse.json({ error: "Attachment URL required" }, { status: 400 });
     }
 
+    if (id.startsWith("ext_sec_") || id.startsWith("ext_trd_")) {
+      const isSec = id.startsWith("ext_sec_");
+      const rawId = id.replace(/^ext_(sec|trd)_/, "");
+      const { ObjectId } = await import("mongodb");
+      const client = isSec ? await getSecondaryClient() : await getThirdClient();
+      if (!client) return NextResponse.json({ error: "Database unavailable" }, { status: 500 });
+      const db = client.db();
+      await db.collection("Task").updateOne(
+        { _id: new ObjectId(rawId) },
+        { $push: { attachments: url } as any, $set: { updatedAt: new Date() } }
+      );
+      return NextResponse.json({ message: "Attachment added" });
+    }
+
     await prisma.task.update({
       where: { id },
       data: { attachments: { push: url }, updatedAt: new Date() },
@@ -106,6 +142,35 @@ export async function DELETE(
     const { url } = await req.json();
     if (!url) {
       return NextResponse.json({ error: "Attachment URL required" }, { status: 400 });
+    }
+
+    if (id.startsWith("ext_sec_") || id.startsWith("ext_trd_")) {
+      const isSec = id.startsWith("ext_sec_");
+      const rawId = id.replace(/^ext_(sec|trd)_/, "");
+      const { ObjectId } = await import("mongodb");
+      const client = isSec ? await getSecondaryClient() : await getThirdClient();
+      if (!client) return NextResponse.json({ error: "Database unavailable" }, { status: 500 });
+      const db = client.db();
+      const task = await db.collection("Task").findOne({ _id: new ObjectId(rawId) });
+      if (!task) return NextResponse.json({ error: "Task not found" }, { status: 404 });
+
+      const current = task.attachments || [];
+      if (!current.includes(url)) {
+        return NextResponse.json({ error: "Attachment not found in task" }, { status: 400 });
+      }
+
+      const publicId = extractPublicId(url);
+      if (publicId) {
+        await cloudinary.v2.uploader.destroy(publicId, { resource_type: "auto" });
+      }
+
+      const updatedAttachments = current.filter((att: string) => att !== url);
+      await db.collection("Task").updateOne(
+        { _id: new ObjectId(rawId) },
+        { $set: { attachments: updatedAttachments, updatedAt: new Date() } }
+      );
+
+      return NextResponse.json({ success: true, message: "Attachment deleted" });
     }
 
     const task = await prisma.task.findUnique({ where: { id } });
