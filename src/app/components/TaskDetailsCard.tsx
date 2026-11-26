@@ -211,7 +211,26 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
   const displayAssigneeName = task.assignees?.map(a => a?.name || a?.email).filter(Boolean).join(", ") || task.assigneeName || task.assignee?.name || "—";
   const displayAssigneeEmail = task.assignee?.email || task.assigneeEmail || "";
 
-  const isHardwareTask = task.title?.toLowerCase().includes("printer") || task.title?.toLowerCase().includes("hardware") || task.title?.toLowerCase().includes("machine") || false;
+  const isHardwareTask =
+    task.title?.toLowerCase().includes("printer") ||
+    task.title?.toLowerCase().includes("hardware") ||
+    task.title?.toLowerCase().includes("machine") ||
+    (task as any).activeTab === "printer" ||
+    (task as any).activeTab === "printer_software" ||
+    cf.activeTab === "printer" ||
+    cf.activeTab === "printer_software" ||
+    false;
+
+  const rawAwb = (cf.awbNumber || "").trim();
+  const hasValidAwb =
+    Boolean(rawAwb) &&
+    rawAwb.toLowerCase() !== "printer nahi h" &&
+    rawAwb.toLowerCase() !== "n/a" &&
+    rawAwb.toLowerCase() !== "na" &&
+    rawAwb.toLowerCase() !== "null" &&
+    rawAwb.toLowerCase() !== "undefined" &&
+    rawAwb !== "-" &&
+    rawAwb.length > 4;
 
   const allValues = [
     task.title,
@@ -696,7 +715,7 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
           {/* Shipping Order Creation (Shadowfax / Delhivery) */}
           {isHardwareTask && (
             <div className="mt-2.5">
-              {cf.awbNumber ? (
+              {hasValidAwb ? (
                 <div className="flex items-center justify-between p-2.5 bg-emerald-50/70 border border-emerald-200/80 rounded-xl">
                   <div className="flex items-center gap-2">
                     <span className="text-base">📦</span>
@@ -704,11 +723,11 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
                       <p className="text-[10px] font-black uppercase tracking-wider text-emerald-800">
                         {cf.courierName || "Courier"} Shipment
                       </p>
-                      <p className="text-xs font-bold text-slate-700">AWB: {cf.awbNumber}</p>
+                      <p className="text-xs font-bold text-slate-700">AWB: {rawAwb}</p>
                     </div>
                   </div>
                   <a
-                    href={`/dispatch/track?awb=${cf.awbNumber}`}
+                    href={`/dispatch/track?awb=${encodeURIComponent(rawAwb)}`}
                     target="_blank"
                     rel="noreferrer"
                     onClick={(e) => e.stopPropagation()}
