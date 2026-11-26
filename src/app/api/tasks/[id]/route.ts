@@ -55,6 +55,56 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
         return NextResponse.json({ error: "External task not found" }, { status: 404 });
       }
 
+      // 👥 Resolve all assignees for this task
+      const targetIds: string[] = (doc.assigneeIds && Array.isArray(doc.assigneeIds) && doc.assigneeIds.length > 0)
+        ? doc.assigneeIds
+        : (doc.assigneeId ? [doc.assigneeId] : []);
+
+      let assigneesList: { id?: string; name?: string; email?: string; imageUrl?: string }[] = [];
+      if (targetIds.length > 0) {
+        const userMap: Record<string, { id: string; name: string; email: string; imageUrl?: string }> = {};
+        try {
+          const users = await client.db().collection("User").find({
+            $or: [
+              { clerkId: { $in: targetIds } },
+              { id: { $in: targetIds } }
+            ]
+          }).toArray();
+          users.forEach(u => {
+            const uid = u.clerkId || u.id;
+            if (uid) {
+              userMap[uid] = {
+                id: uid,
+                name: u.name || `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || "Unknown",
+                email: u.email || "",
+                imageUrl: u.imageUrl || u.avatar || undefined,
+              };
+            }
+          });
+        } catch (e) {
+          console.error("Error fetching users for external task detail:", e);
+        }
+
+        assigneesList = targetIds.map(id => {
+          if (userMap[id]) return userMap[id];
+          return {
+            id,
+            name: (id === doc.assigneeId && doc.assigneeName) ? doc.assigneeName : id,
+            email: (id === doc.assigneeId && doc.assigneeEmail) ? doc.assigneeEmail : "",
+          };
+        });
+      } else if (doc.assigneeName) {
+        assigneesList = [{
+          id: doc.assigneeId || undefined,
+          name: doc.assigneeName,
+          email: doc.assigneeEmail || "",
+        }];
+      }
+
+      const combinedAssigneeName = assigneesList.length > 0
+        ? assigneesList.map(a => a.name).filter(Boolean).join(", ")
+        : (doc.assigneeName || "—");
+
       const notes = await fetchExternalTaskNotes(taskId);
       const task = {
         id: taskId,
@@ -67,10 +117,11 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
         updatedAt: doc.updatedAt || new Date(),
         assignerName: doc.assignerName || doc.createdByName || "—",
         assignerEmail: doc.assignerEmail || doc.createdByEmail || "",
-        assigneeName: doc.assigneeName || "—",
+        assigneeName: combinedAssigneeName,
         assigneeEmail: doc.assigneeEmail || "",
         assigneeId: doc.assigneeId,
         assigneeIds: doc.assigneeIds || [],
+        assignees: assigneesList,
         amount: doc.amount || 0,
         received: doc.received || 0,
         tags: doc.tags || [],

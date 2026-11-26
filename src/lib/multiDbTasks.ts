@@ -98,6 +98,9 @@ export interface NormalizedExternalTask {
   externalSource: "kravy" | "onboarding"; // 'kravy' for Secondary, 'onboarding' for 3rd
   externalSourceLabel: string;
   isExternal?: boolean;
+  assignees?: { id?: string; name?: string; email?: string; imageUrl?: string }[];
+  assignee?: { name: string; email: string };
+  assigner?: { name: string; email: string };
 }
 
 function buildMongoFilter(options: ExternalTaskFetchOptions, source: "secondary" | "third" = "secondary"): MongoFilter {
@@ -437,8 +440,64 @@ export async function fetchExternalBoardTasks(
           });
         });
 
+        // 👥 Resolve all assignees for these tasks
+        const allAssigneeIds = Array.from(new Set(
+          docs.flatMap(d => (d.assigneeIds && Array.isArray(d.assigneeIds)) ? d.assigneeIds : (d.assigneeId ? [d.assigneeId] : []))
+        )).filter(Boolean);
+
+        const userMap: Record<string, { id: string; name: string; email: string; imageUrl?: string }> = {};
+        if (allAssigneeIds.length > 0) {
+          try {
+            const users = await db.collection("User").find({
+              $or: [
+                { clerkId: { $in: allAssigneeIds } },
+                { id: { $in: allAssigneeIds } }
+              ]
+            }).toArray();
+            users.forEach(u => {
+              const uid = u.clerkId || u.id;
+              if (uid) {
+                userMap[uid] = {
+                  id: uid,
+                  name: u.name || `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || "Unknown",
+                  email: u.email || "",
+                  imageUrl: u.imageUrl || u.avatar || undefined,
+                };
+              }
+            });
+          } catch (e) {
+            console.error("Error batch fetching users from Secondary DB:", e);
+          }
+        }
+
         docs.forEach(doc => {
           const rawId = doc._id.toString();
+          const targetIds: string[] = (doc.assigneeIds && Array.isArray(doc.assigneeIds) && doc.assigneeIds.length > 0)
+            ? doc.assigneeIds
+            : (doc.assigneeId ? [doc.assigneeId] : []);
+
+          let assigneesList: { id?: string; name?: string; email?: string; imageUrl?: string }[] = [];
+          if (targetIds.length > 0) {
+            assigneesList = targetIds.map(id => {
+              if (userMap[id]) return userMap[id];
+              return {
+                id,
+                name: (id === doc.assigneeId && doc.assigneeName) ? doc.assigneeName : id,
+                email: (id === doc.assigneeId && doc.assigneeEmail) ? doc.assigneeEmail : "",
+              };
+            });
+          } else if (doc.assigneeName) {
+            assigneesList = [{
+              id: doc.assigneeId || undefined,
+              name: doc.assigneeName,
+              email: doc.assigneeEmail || "",
+            }];
+          }
+
+          const combinedAssigneeName = assigneesList.length > 0
+            ? assigneesList.map(a => a.name).filter(Boolean).join(", ")
+            : (doc.assigneeName || "—");
+
           tasks.push({
             id: `ext_sec_${rawId}`,
             taskCode: doc.taskCode || null,
@@ -449,10 +508,11 @@ export async function fetchExternalBoardTasks(
             updatedAt: doc.updatedAt || new Date(),
             assignerName: doc.assignerName || doc.createdByName || "—",
             assignerEmail: doc.assignerEmail || doc.createdByEmail || "",
-            assigneeName: doc.assigneeName || "—",
+            assigneeName: combinedAssigneeName,
             assigneeEmail: doc.assigneeEmail || "",
             assigneeId: doc.assigneeId,
             assigneeIds: doc.assigneeIds || [],
+            assignees: assigneesList,
             amount: doc.amount || 0,
             received: doc.received || 0,
             tags: doc.tags || [],
@@ -519,8 +579,64 @@ export async function fetchExternalBoardTasks(
           });
         });
 
+        // 👥 Resolve all assignees for these tasks
+        const allAssigneeIds = Array.from(new Set(
+          docs.flatMap(d => (d.assigneeIds && Array.isArray(d.assigneeIds)) ? d.assigneeIds : (d.assigneeId ? [d.assigneeId] : []))
+        )).filter(Boolean);
+
+        const userMap: Record<string, { id: string; name: string; email: string; imageUrl?: string }> = {};
+        if (allAssigneeIds.length > 0) {
+          try {
+            const users = await db.collection("User").find({
+              $or: [
+                { clerkId: { $in: allAssigneeIds } },
+                { id: { $in: allAssigneeIds } }
+              ]
+            }).toArray();
+            users.forEach(u => {
+              const uid = u.clerkId || u.id;
+              if (uid) {
+                userMap[uid] = {
+                  id: uid,
+                  name: u.name || `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || "Unknown",
+                  email: u.email || "",
+                  imageUrl: u.imageUrl || u.avatar || undefined,
+                };
+              }
+            });
+          } catch (e) {
+            console.error("Error batch fetching users from 3rd DB:", e);
+          }
+        }
+
         docs.forEach(doc => {
           const rawId = doc._id.toString();
+          const targetIds: string[] = (doc.assigneeIds && Array.isArray(doc.assigneeIds) && doc.assigneeIds.length > 0)
+            ? doc.assigneeIds
+            : (doc.assigneeId ? [doc.assigneeId] : []);
+
+          let assigneesList: { id?: string; name?: string; email?: string; imageUrl?: string }[] = [];
+          if (targetIds.length > 0) {
+            assigneesList = targetIds.map(id => {
+              if (userMap[id]) return userMap[id];
+              return {
+                id,
+                name: (id === doc.assigneeId && doc.assigneeName) ? doc.assigneeName : id,
+                email: (id === doc.assigneeId && doc.assigneeEmail) ? doc.assigneeEmail : "",
+              };
+            });
+          } else if (doc.assigneeName) {
+            assigneesList = [{
+              id: doc.assigneeId || undefined,
+              name: doc.assigneeName,
+              email: doc.assigneeEmail || "",
+            }];
+          }
+
+          const combinedAssigneeName = assigneesList.length > 0
+            ? assigneesList.map(a => a.name).filter(Boolean).join(", ")
+            : (doc.assigneeName || "—");
+
           tasks.push({
             id: `ext_trd_${rawId}`,
             taskCode: doc.taskCode || null,
@@ -531,10 +647,11 @@ export async function fetchExternalBoardTasks(
             updatedAt: doc.updatedAt || new Date(),
             assignerName: doc.assignerName || doc.createdByName || "—",
             assignerEmail: doc.assignerEmail || doc.createdByEmail || "",
-            assigneeName: doc.assigneeName || "—",
+            assigneeName: combinedAssigneeName,
             assigneeEmail: doc.assigneeEmail || "",
             assigneeId: doc.assigneeId,
             assigneeIds: doc.assigneeIds || [],
+            assignees: assigneesList,
             amount: doc.amount || 0,
             received: doc.received || 0,
             tags: doc.tags || [],
