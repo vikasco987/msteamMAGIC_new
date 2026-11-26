@@ -64,21 +64,91 @@ export async function GET(req: Request) {
     }
 
     const DELHIVERY_API_TOKEN = process.env.DELHIVERY_API_TOKEN;
-    if (!DELHIVERY_API_TOKEN) {
-      return NextResponse.json({ error: "Delhivery API Token not configured" }, { status: 500 });
+    const SHADOWFAX_API_TOKEN = process.env.SHADOWFAX_API_TOKEN || "50b54c53d49eea0930d97763c8f57fe5a3d6357d";
+
+    let trackingResult: any = null;
+    let courierUsed = "Delhivery";
+
+    // 1. Try Shadowfax first if token exists
+    if (SHADOWFAX_API_TOKEN) {
+      try {
+        const sfxRes = await fetch(
+          `https://dale.shadowfax.in/api/v4/clients/orders/${awb}/track/`,
+          {
+            method: "GET",
+            headers: {
+              "Authorization": `Token ${SHADOWFAX_API_TOKEN}`,
+              "Content-Type": "application/json"
+            }
+          }
+        );
+        if (sfxRes.ok) {
+          const sfxData = await sfxRes.json();
+          if (sfxData && (sfxData.tracking_details || sfxData.order_details)) {
+            courierUsed = "Shadowfax";
+            // Normalize Shadowfax response to match standard tracking UI
+            const order = sfxData.order_details || {};
+            const history = sfxData.tracking_details || [];
+            const latestStatus = order.status_display || order.status || (history[0]?.status) || "In Transit";
+
+            trackingResult = {
+              Courier: "Shadowfax",
+              ShipmentData: [
+                {
+                  Shipment: {
+                    AWB: order.awb_number || awb,
+                    Courier: "Shadowfax",
+                    Status: {
+                      Status: latestStatus,
+                      Instructions: history[0]?.remarks || order.status_display || ""
+                    },
+                    ExpectedDeliveryDate: order.promised_delivery_date || null,
+                    PickUpDate: history.length > 0 ? history[history.length - 1]?.created : null,
+                    Scans: history.map((scan: any) => ({
+                      ScanDetail: {
+                        Scan: scan.status || scan.status_id || "Status Update",
+                        ScanDateTime: scan.created,
+                        Instructions: scan.remarks || "",
+                        ScannedLocation: scan.location || "Transit Hub"
+                      }
+                    }))
+                  }
+                }
+              ]
+            };
+          }
+        }
+      } catch (sfxErr) {
+        console.error("Shadowfax track attempt error:", sfxErr);
+      }
     }
 
-    const response = await fetch(
-      `https://track.delhivery.com/api/v1/packages/json/?token=${DELHIVERY_API_TOKEN}&waybill=${awb}`,
-      { method: "GET" }
-    );
+    // 2. Fallback to Delhivery if Shadowfax didn't find the shipment
+    if (!trackingResult && DELHIVERY_API_TOKEN) {
+      try {
+        const response = await fetch(
+          `https://track.delhivery.com/api/v1/packages/json/?token=${DELHIVERY_API_TOKEN}&waybill=${awb}`,
+          { method: "GET" }
+        );
+        const data = await response.json();
+        if (data && data.ShipmentData && data.ShipmentData.length > 0) {
+          trackingResult = data;
+          courierUsed = "Delhivery";
+        } else if (!trackingResult) {
+          trackingResult = data;
+        }
+      } catch (delErr) {
+        console.error("Delhivery track attempt error:", delErr);
+      }
+    }
 
-    const data = await response.json();
+    const data = trackingResult || { Error: "No tracking details found for this AWB number" };
 
     if (isTaskId) {
       return NextResponse.json({
         isTaskId: true,
         activeAwb,
+        courier: courierUsed,
         previousDispatches,
         customerPhone,
         customerEmail,

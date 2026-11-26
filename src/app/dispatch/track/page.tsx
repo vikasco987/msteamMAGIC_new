@@ -220,7 +220,9 @@ function TrackAWBContent() {
                 {trackingData.ExpectedDeliveryDate && (
                   <p className="text-emerald-400 font-bold text-sm mt-3 flex items-center gap-2 bg-emerald-950/40 border border-emerald-500/25 px-3 py-1.5 rounded-xl w-fit">
                     <span>📅 Expected Delivery: {format(new Date(trackingData.ExpectedDeliveryDate), "dd MMM yyyy")}</span>
-                    <span className="inline-block px-1 py-0.2 text-[8px] font-black tracking-widest uppercase bg-emerald-900/60 text-emerald-300 rounded border border-emerald-800">Delhivery API</span>
+                    <span className="inline-block px-1 py-0.2 text-[8px] font-black tracking-widest uppercase bg-emerald-900/60 text-emerald-300 rounded border border-emerald-800">
+                      {trackingData.Courier ? `${trackingData.Courier} API` : "Delhivery API"}
+                    </span>
                   </p>
                 )}
                 {getExpectedDeliveryBadge()}
