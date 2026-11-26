@@ -440,5 +440,14 @@ export async function buildTaskWhere(req: NextRequest) {
     });
   }
 
-  return { where, userMap, normalizedRole, userIsPrivilegedFixed };
+  return {
+    where,
+    userMap,
+    normalizedRole,
+    userIsPrivilegedFixed,
+    userId,
+    userEmail: dbUser?.email || (userMap[userId]?.email || ""),
+    isTL,
+    teamMemberIds,
+  };
 }

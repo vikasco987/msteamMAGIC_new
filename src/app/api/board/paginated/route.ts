@@ -7,7 +7,16 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const { where, userMap, normalizedRole } = await buildTaskWhere(req);
+    const {
+      where,
+      userMap,
+      normalizedRole,
+      userIsPrivilegedFixed,
+      userId,
+      userEmail,
+      isTL,
+      teamMemberIds
+    } = await buildTaskWhere(req);
 
     const url = new URL(req.url);
     const page = parseInt(url.searchParams.get('page') || '1');
@@ -151,6 +160,11 @@ export async function GET(req: NextRequest) {
           categories: categories.length ? categories : undefined,
           assignees: assignees.length ? assignees : undefined,
           assigners: assigners.length ? assigners : undefined,
+          userClerkId: userId,
+          userEmail,
+          userRole: normalizedRole,
+          isPrivileged: userIsPrivilegedFixed,
+          teamMemberIds: isTL ? teamMemberIds : undefined,
         });
 
         if (externalTasks.length > 0) {

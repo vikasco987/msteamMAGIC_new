@@ -7,7 +7,16 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const { where } = await buildTaskWhere(req);
+    const {
+      where,
+      userMap,
+      normalizedRole,
+      userIsPrivilegedFixed,
+      userId,
+      userEmail,
+      isTL,
+      teamMemberIds
+    } = await buildTaskWhere(req);
     
     // We want the counts of 'todo', 'inprogress', 'done' independently.
     // groupBy is perfect, but with complex WHERE clauses in MongoDB Prisma, it can sometimes be slow or restrictive.
@@ -89,6 +98,11 @@ export async function GET(req: NextRequest) {
           includeThird,
           search: search || undefined,
           categories: categories.length ? categories : undefined,
+          userClerkId: userId,
+          userEmail,
+          userRole: normalizedRole,
+          isPrivileged: userIsPrivilegedFixed,
+          teamMemberIds: isTL ? teamMemberIds : undefined,
         });
 
         counts.todo += externalCounts.todo || 0;

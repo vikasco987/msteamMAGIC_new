@@ -61,6 +61,12 @@ export interface ExternalTaskFetchOptions {
   assignees?: string[];
   assigners?: string[];
   dateFilter?: string;
+  // Auth & Role-based visibility
+  userClerkId?: string;
+  userEmail?: string;
+  userRole?: string;
+  isPrivileged?: boolean;
+  teamMemberIds?: string[];
 }
 
 export interface NormalizedExternalTask {
@@ -94,10 +100,48 @@ export interface NormalizedExternalTask {
   isExternal?: boolean;
 }
 
-function buildMongoFilter(options: ExternalTaskFetchOptions): MongoFilter {
+function buildMongoFilter(options: ExternalTaskFetchOptions, source: "secondary" | "third" = "secondary"): MongoFilter {
   const filter: MongoFilter = {
     isHidden: { $ne: true },
   };
+
+  // 🔒 RBAC Permission Check:
+  // Non-privileged users (e.g. SELLER, USER, etc.) must ONLY see tasks assigned to them or their team (for TL) or created by them!
+  if (!options.isPrivileged && (options.userClerkId || options.userEmail)) {
+    const userConditions: any[] = [];
+    const validIds: string[] = [];
+    if (options.userClerkId) validIds.push(options.userClerkId);
+    if (options.teamMemberIds && options.teamMemberIds.length > 0) {
+      validIds.push(...options.teamMemberIds);
+    }
+
+    if (validIds.length > 0) {
+      userConditions.push(
+        { assigneeId: { $in: validIds } },
+        { assigneeIds: { $in: validIds } },
+        { createdByClerkId: { $in: validIds } }
+      );
+    }
+
+    if (options.userEmail) {
+      const emailRegex = new RegExp(`^${options.userEmail.trim()}$`, "i");
+      userConditions.push(
+        { assigneeEmail: emailRegex },
+        { createdByEmail: emailRegex }
+      );
+    }
+
+    if (userConditions.length > 0) {
+      if (filter.$and) {
+        filter.$and.push({ $or: userConditions });
+      } else {
+        filter.$and = [{ $or: userConditions }];
+      }
+    } else {
+      // If user is a seller but has no valid identifier, block all tasks to prevent accidental leak
+      filter._id = { $exists: false };
+    }
+  }
 
   // Status mapping: 'todo', 'inprogress', 'done'
   if (options.status) {
@@ -277,7 +321,7 @@ export async function fetchExternalBoardTasks(
         const client = await getSecondaryClient();
         if (!client) return;
         const db = client.db();
-        const filter = buildMongoFilter(options);
+        const filter = buildMongoFilter(options, "secondary");
         const docs = await db.collection("Task")
           .find(filter)
           .sort({ createdAt: -1 })
@@ -329,7 +373,7 @@ export async function fetchExternalBoardTasks(
         const client = await getThirdClient();
         if (!client) return;
         const db = client.db();
-        const filter = buildMongoFilter(options);
+        const filter = buildMongoFilter(options, "third");
         const docs = await db.collection("Task")
           .find(filter)
           .sort({ createdAt: -1 })
@@ -396,7 +440,7 @@ export async function fetchExternalBoardCounts(
         const client = await getSecondaryClient();
         if (!client) return;
         const db = client.db();
-        const baseFilter = buildMongoFilter({ ...options, status: undefined });
+        const baseFilter = buildMongoFilter({ ...options, status: undefined }, "secondary");
         const agg = await db.collection("Task").aggregate([
           { $match: baseFilter },
           { $group: { _id: { $toLower: "$status" }, count: { $sum: 1 } } }
@@ -421,7 +465,7 @@ export async function fetchExternalBoardCounts(
         const client = await getThirdClient();
         if (!client) return;
         const db = client.db();
-        const baseFilter = buildMongoFilter({ ...options, status: undefined });
+        const baseFilter = buildMongoFilter({ ...options, status: undefined }, "third");
         const agg = await db.collection("Task").aggregate([
           { $match: baseFilter },
           { $group: { _id: { $toLower: "$status" }, count: { $sum: 1 } } }
