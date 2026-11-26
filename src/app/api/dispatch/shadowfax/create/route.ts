@@ -66,6 +66,7 @@ export async function POST(req: Request) {
         pincode: "110037",
       },
       return_details: {
+        return_type: "origin",
         name: "Kravy Software Development",
         contact: "9289507882",
         address_line_1: "3rd floor PLOT IN MUSTATIL. NO 14, KILLA NO 12/2, 19/1, 20/ FIRST FLOOR VILL. SAMALKA",
