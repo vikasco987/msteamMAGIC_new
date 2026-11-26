@@ -738,6 +738,22 @@ export async function updateExternalTask(
     if (updates.priority) updateDoc.priority = updates.priority;
     if (updates.notes !== undefined) updateDoc.notes = updates.notes;
 
+    // 👤 Assignee / Reassignment fields
+    if (updates.assigneeId !== undefined) updateDoc.assigneeId = updates.assigneeId;
+    if (updates.assigneeIds !== undefined) updateDoc.assigneeIds = updates.assigneeIds;
+    if (updates.assigneeName !== undefined) updateDoc.assigneeName = updates.assigneeName;
+    if (updates.assigneeEmail !== undefined) updateDoc.assigneeEmail = updates.assigneeEmail;
+
+    // 👑 Assigner / Ownership fields
+    if (updates.assignerId !== undefined) updateDoc.assignerId = updates.assignerId;
+    if (updates.assignerName !== undefined) updateDoc.assignerName = updates.assignerName;
+    if (updates.assignerEmail !== undefined) updateDoc.assignerEmail = updates.assignerEmail;
+
+    // 🏷️ Tags & Custom Fields
+    if (updates.tags !== undefined) updateDoc.tags = updates.tags;
+    if (updates.customFields !== undefined) updateDoc.customFields = updates.customFields;
+    if (updates.highlightColor !== undefined) updateDoc.highlightColor = updates.highlightColor;
+
     const result = await db.collection("Task").updateOne(
       { _id: mongoId },
       { $set: updateDoc }
