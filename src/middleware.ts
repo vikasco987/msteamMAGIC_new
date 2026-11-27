@@ -43,7 +43,9 @@ const middleware = clerkMiddleware(async (auth, req) => {
                     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
                 }
             } else {
-                await auth.protect();
+                return auth.protect({
+                    unauthenticatedUrl: new URL("/sign-in", req.url).toString(),
+                });
             }
         }
     }
