@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { format } from "date-fns";
+import PrintLabelModal from "@/app/components/PrintLabelModal";
 import { useSearchParams } from "next/navigation";
 
 function TrackAWBContent() {
@@ -19,6 +20,7 @@ function TrackAWBContent() {
   const [outletName, setOutletName] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [initialFetchDone, setInitialFetchDone] = useState(false);
+  const [showPrintLabelModal, setShowPrintLabelModal] = useState(false);
 
   const fetchTracking = async (awbToTrack: string) => {
     if (!awbToTrack.trim()) return;
@@ -227,9 +229,18 @@ function TrackAWBContent() {
                 )}
                 {getExpectedDeliveryBadge()}
               </div>
-              <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/10 text-right">
-                <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-1">AWB Number</p>
-                <p className="text-xl font-black tracking-wider">{trackingData.AWB}</p>
+              <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/10 text-right flex flex-col items-end gap-2">
+                <div>
+                  <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-1">AWB Number</p>
+                  <p className="text-xl font-black tracking-wider">{trackingData.AWB}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPrintLabelModal(true)}
+                  className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-slate-900 hover:text-white rounded-lg text-xs font-black uppercase tracking-wider shadow transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>🖨️ Print Label</span>
+                </button>
               </div>
             </div>
           </div>
@@ -297,13 +308,15 @@ function TrackAWBContent() {
                   <span>👤</span> Consignee Details
                 </h3>
                 <div className="space-y-4">
-                  {/* Name from Delhivery */}
+                  {/* Name from Courier */}
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="font-bold text-slate-700 text-lg">{trackingData.Consignee?.Name || "N/A"}</p>
-                      <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider bg-sky-50 text-sky-600 border border-sky-100/80 rounded">Delhivery</span>
+                      <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider bg-sky-50 text-sky-600 border border-sky-100/80 rounded">
+                        {trackingData.Courier || "Courier"}
+                      </span>
                     </div>
-                    {/* Destination/Address from Delhivery */}
+                    {/* Destination/Address from Courier */}
                     <p className="text-sm text-slate-500 mt-1">{trackingData.Destination || "N/A"}</p>
                     {trackingData.Consignee?.City && (
                       <p className="text-xs text-slate-400 mt-0.5">
@@ -353,7 +366,9 @@ function TrackAWBContent() {
                   <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
                     <span>📝</span> Shipment Info
                   </h3>
-                  <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider bg-sky-50 text-sky-600 border border-sky-100/80 rounded">Delhivery</span>
+                  <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider bg-sky-50 text-sky-600 border border-sky-100/80 rounded">
+                    {trackingData.Courier || "Courier"}
+                  </span>
                 </div>
                 <div className="grid grid-cols-2 gap-y-4">
                   {productTitle && (
@@ -467,6 +482,14 @@ function TrackAWBContent() {
             </div>
           </div>
         </div>
+      )}
+
+      {showPrintLabelModal && trackingData?.AWB && (
+        <PrintLabelModal
+          isOpen={showPrintLabelModal}
+          onClose={() => setShowPrintLabelModal(false)}
+          awbNumber={trackingData.AWB}
+        />
       )}
     </div>
   );
