@@ -7,6 +7,7 @@ import BasicInfoStep, {
 } from "./BasicInfoStep";
 import UploadsStep from "./UploadsStep";
 import CustomFieldsStep from "./CustomFieldsStep";
+import TechTaskStep, { initialTechTaskData } from "./TechTaskStep";
 import { uploadToCloudinary } from "./utils";
 
 type CustomField = {
@@ -55,6 +56,7 @@ const initialFormState = {
   rtoReason: "",
   initialNote: "",
   supportGroupUrl: "",
+  techTask: initialTechTaskData,
 };
 
 export default function TaskForm() {
@@ -258,8 +260,24 @@ export default function TaskForm() {
     if (step === 1) {
       const effectiveServices = selectedServices.length > 0 ? selectedServices : [formData.activeTab];
       const isOnlyRtoOrEscalation = effectiveServices.every((s) => s === "rto_printer" || s === "escalation");
+      const isOnlyTech = effectiveServices.every((s) => s === "tech");
 
-      if (!isOnlyRtoOrEscalation) {
+      if (isOnlyTech) {
+        if (!formData.techTask.title.trim()) {
+          alert("⚠️ Task Title is compulsory for Tech Team Tasks.");
+          return;
+        }
+        if (!formData.techTask.projectModule.trim()) {
+          alert("⚠️ Project / Module is compulsory for Tech Team Tasks.");
+          return;
+        }
+        if (!formData.techTask.description.trim()) {
+          alert("⚠️ Description is compulsory for Tech Team Tasks.");
+          return;
+        }
+      }
+
+      if (!isOnlyRtoOrEscalation && !isOnlyTech) {
         const requiredFields = {
           "Customer Name": formData.customerName,
           "Shop/Outlet Name": formData.shopName,
@@ -420,6 +438,8 @@ export default function TaskForm() {
           taskTitle = customServiceTitles["escalation"] || "⚠️ Escalation";
         } else if (srv === "other") {
           taskTitle = customServiceTitles["other"] || "🛠️ Other";
+        } else if (srv === "tech") {
+          taskTitle = formData.techTask.title.trim() || "💻 Tech Team Task";
         } else {
           taskTitle = TASK_CATEGORIES.find((c) => c.value === srv)?.label || srv;
         }
@@ -438,6 +458,15 @@ export default function TaskForm() {
         // Deterministic idempotencyKey per service for this submission batch
         const serviceIdempotencyKey = `${submissionKeyRef.current}_${srv}`;
 
+        // Upload techFiles if tech task
+        const techAttachments: string[] = [];
+        if (srv === "tech" && formData.techTask.techFiles.length > 0) {
+          for (const f of formData.techTask.techFiles) {
+            const url = await uploadToCloudinary(f);
+            if (url) techAttachments.push(url);
+          }
+        }
+
         const payload = {
           title: taskTitle,
           assigneeId: primaryAssigneeId,
@@ -446,13 +475,24 @@ export default function TaskForm() {
           activeTab: srv,
           accountType: formData.accountType,
           idempotencyKey: serviceIdempotencyKey,
-          attachments,
-          tags: [],
+          attachments: [...attachments, ...techAttachments],
+          tags: srv === "tech" ? ["tech", formData.techTask.taskType] : [],
+          priority: srv === "tech" ? formData.techTask.priority : undefined,
+          dueDate: srv === "tech" && formData.techTask.dueDate ? formData.techTask.dueDate : undefined,
           initialNote: formData.initialNote.trim(),
           customFields: {
             ...sharedCustomFields,
             activeTab: srv,
             idempotencyKey: serviceIdempotencyKey,
+            ...(srv === "tech"
+              ? {
+                  isTechTask: true,
+                  techTask: {
+                    ...formData.techTask,
+                    techFiles: undefined,
+                  },
+                }
+              : {}),
           },
         };
 
@@ -656,7 +696,44 @@ export default function TaskForm() {
             />
           )}
 
-          {(step === 1 || step === 2) && (
+          {step === 1 && (formData.activeTab === "tech" || selectedServices.includes("tech")) ? (
+            <TechTaskStep
+              data={formData.techTask}
+              onChange={(val) => updateFormData("techTask", val)}
+            />
+          ) : step === 2 && (formData.activeTab === "tech" || selectedServices.includes("tech")) ? (
+            <div className="space-y-6">
+              <div className="border-b border-slate-200 pb-3">
+                <h2 className="text-lg font-bold text-slate-800">🖼️ Software & Design Attachments</h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Upload screenshots, UI/Figma designs, screen recordings, or error logs (no KYC/Aadhaar needed).
+                </p>
+              </div>
+              <div className="p-6 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/60 text-center space-y-3">
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*,video/*,.pdf,.txt,.log,.json"
+                  onChange={(e) =>
+                    updateFormData("techTask", {
+                      ...formData.techTask,
+                      techFiles: Array.from(e.target.files || []),
+                    })
+                  }
+                  className="block w-full text-sm text-slate-600 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
+                />
+                <p className="text-xs text-slate-400">
+                  PNG, JPG, WebP, MP4, PDF, or Log files
+                </p>
+                {formData.techTask.techFiles.length > 0 && (
+                  <div className="text-xs font-semibold text-emerald-600 pt-1">
+                    {formData.techTask.techFiles.length} file(s) ready to upload:{" "}
+                    {formData.techTask.techFiles.map((f) => f.name).join(", ")}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (step === 1 || step === 2) && (
             <UploadsStep
               step={step}
               activeTab={formData.activeTab || (selectedServices[0] || "")}

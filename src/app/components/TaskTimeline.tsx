@@ -1400,6 +1400,111 @@ export default function TaskTimeline() {
                   </div>
                 </div>
 
+                {(selectedTask as any).customFields?.isTechTask && (selectedTask as any).customFields?.techTask && (() => {
+                  const tt = (selectedTask as any).customFields.techTask;
+                  const attachments: string[] = (selectedTask as any).attachments || [];
+                  const detailRows: { label: string; value?: string }[] = [
+                    { label: "Where it appeared", value: tt.bugWhere },
+                    { label: "Platform & Version", value: tt.bugPlatformVersion },
+                    { label: "Steps to Reproduce", value: tt.bugSteps },
+                    { label: "Current Behavior", value: tt.bugCurrent },
+                    { label: "Expected Behavior", value: tt.bugExpected },
+                    { label: "User Need", value: tt.featureUserNeed },
+                    { label: "Proposed New Flow", value: tt.featureNewFlow },
+                    { label: "Existing Flows to Preserve", value: tt.featureExistingFlows },
+                    { label: "Build / Environment", value: tt.testingBuildEnv },
+                    { label: "Scenarios to Check", value: tt.testingScenarios },
+                    { label: "Expected Result", value: tt.testingExpectedResult },
+                    { label: "Service / Module", value: tt.maintServiceModule },
+                    { label: "Why Change Needed", value: tt.maintWhyNeeded },
+                    { label: "Post-Change Verification", value: tt.maintVerifyAfter },
+                  ].filter((r) => r.value && String(r.value).trim() !== "");
+
+                  return (
+                    <div className="bg-white p-5 rounded-xl shadow-sm space-y-4 border border-blue-100">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
+                        <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                          <span>💻 Tech Task Details</span>
+                        </h3>
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                            {tt.taskType}
+                          </span>
+                          {tt.projectModule && (
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                              {tt.projectModule}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {tt.description && (
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Description</p>
+                          <p className="text-sm text-gray-800 whitespace-pre-wrap bg-slate-50 p-3 rounded-lg border border-slate-100">
+                            {tt.description}
+                          </p>
+                        </div>
+                      )}
+
+                      {detailRows.length > 0 && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {detailRows.map((row) => (
+                            <div key={row.label} className="bg-slate-50/70 p-3 rounded-lg border border-slate-100">
+                              <p className="text-[11px] text-gray-500 uppercase font-semibold mb-0.5">{row.label}</p>
+                              <p className="text-sm text-gray-800 whitespace-pre-wrap">{row.value}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {tt.doneWhen && (
+                        <div>
+                          <p className="text-xs text-emerald-700 uppercase font-semibold mb-1">✅ Done When</p>
+                          <p className="text-sm text-gray-800 whitespace-pre-wrap bg-emerald-50/50 p-3 rounded-lg border border-emerald-100">
+                            {tt.doneWhen}
+                          </p>
+                        </div>
+                      )}
+
+                      {tt.referenceLink && (
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Reference Link</p>
+                          <a href={tt.referenceLink} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline break-all">
+                            🔗 {tt.referenceLink}
+                          </a>
+                        </div>
+                      )}
+
+                      {attachments.length > 0 && (
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase font-semibold mb-2">Attachments / Images ({attachments.length})</p>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            {attachments.map((url, idx) => {
+                              const isImg = /\.(png|jpe?g|gif|webp|svg)(\?|$)/i.test(url) || url.includes("/image/upload/");
+                              return (
+                                <a
+                                  key={idx}
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block rounded-lg overflow-hidden border border-slate-200 hover:border-blue-400 transition-all bg-slate-50"
+                                >
+                                  {isImg ? (
+                                    <img src={url} alt={`Attachment ${idx + 1}`} className="w-full h-28 object-cover" />
+                                  ) : (
+                                    <div className="p-3 text-xs text-blue-600 truncate">📎 Attachment {idx + 1}</div>
+                                  )}
+                                </a>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 <div className="bg-white p-5 rounded-xl shadow-sm space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold text-gray-800">Assignees</h3>

@@ -30,7 +30,8 @@ export type TabType =
   | "printer"
   | "printer_software"
   | "rto_printer"
-  | "escalation";
+  | "escalation"
+  | "tech";
 
 export type AssignmentMode = "SAME_ALL" | "SEPARATE" | "DISTRIBUTE";
 
@@ -52,6 +53,7 @@ export const TASK_CATEGORIES: { label: string; value: TabType }[] = [
   { label: "🖨️💻 Printer + Software", value: "printer_software" },
   { label: "🔄 RTO Printer", value: "rto_printer" },
   { label: "⚠️ Escalation", value: "escalation" },
+  { label: "💻 Tech Team Task", value: "tech" },
   { label: "🛠️ Other", value: "other" },
 ];
 
