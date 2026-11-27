@@ -725,16 +725,16 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
           {isHardwareTask && (
             <div className="mt-2.5">
               {hasValidAwb ? (
-                <div className="flex flex-col gap-2 p-2.5 bg-emerald-50/70 border border-emerald-200/80 rounded-xl">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">📦</span>
-                      <div>
+                <div className="flex flex-col gap-2 p-2.5 bg-emerald-50/70 border border-emerald-200/80 rounded-xl overflow-hidden">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-base flex-shrink-0">📦</span>
+                      <div className="min-w-0">
                         <p className="text-[10px] font-black uppercase tracking-wider text-emerald-800">
                           {cf.courierName || "Courier"} Shipment
                         </p>
                         {isEditingAwb ? (
-                          <div className="flex items-center gap-1.5 mt-1" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
                             <input
                               type="text"
                               value={editedAwb}
@@ -760,7 +760,10 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
                                     headers: { "Content-Type": "application/json" },
                                     body: JSON.stringify({ customFields: updatedCf }),
                                   });
-                                  if (!res.ok) throw new Error("Failed to update AWB");
+                                  if (!res.ok) {
+                                    const errData = await res.json().catch(() => ({}));
+                                    throw new Error(errData.error || "Failed to update AWB");
+                                  }
                                   toast.success("AWB updated successfully!");
                                   setIsEditingAwb(false);
                                   if (onUpdateTask) {
@@ -788,27 +791,26 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
                             </button>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <p className="text-xs font-bold text-slate-700">AWB: {rawAwb}</p>
-                            {isMaster && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditedAwb(rawAwb);
-                                  setIsEditingAwb(true);
-                                }}
-                                className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer"
-                                title="Edit AWB (Master/Admin Only)"
-                              >
-                                ✏️ Edit AWB
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditedAwb(rawAwb);
+                                setIsEditingAwb(true);
+                              }}
+                              className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer flex items-center gap-0.5"
+                              title="Edit AWB Number"
+                            >
+                              <span>✏️</span>
+                              <span>Edit AWB</span>
+                            </button>
                           </div>
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <div className="flex flex-wrap items-center gap-1.5 flex-shrink-0">
                       <button
                         type="button"
                         onClick={(e) => {

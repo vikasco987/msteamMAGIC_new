@@ -915,7 +915,12 @@ export async function updateExternalTask(
 
     // 🏷️ Tags & Custom Fields
     if (updates.tags !== undefined) updateDoc.tags = updates.tags;
-    if (updates.customFields !== undefined) updateDoc.customFields = updates.customFields;
+    if (updates.customFields !== undefined && typeof updates.customFields === "object") {
+      // Merge individual customFields keys with dot notation so existing keys are not wiped out
+      for (const [key, val] of Object.entries(updates.customFields)) {
+        updateDoc[`customFields.${key}`] = val;
+      }
+    }
     if (updates.highlightColor !== undefined) updateDoc.highlightColor = updates.highlightColor;
 
     // 📎 Documents & Attachments

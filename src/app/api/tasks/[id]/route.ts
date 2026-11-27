@@ -405,6 +405,47 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       data: updateData,
     });
 
+    // 🚚 Sync DispatchLog if awbNumber was updated in customFields
+    if (body.customFields && body.customFields.awbNumber !== undefined) {
+      try {
+        const newAwb = String(body.customFields.awbNumber).trim();
+        if (newAwb) {
+          const courier = body.customFields.courierName || currentCF.courierName || "Shadowfax";
+          let printerItem = await prisma.inventoryItem.findFirst({ where: { name: "Printer" } });
+          if (!printerItem) {
+            printerItem = await prisma.inventoryItem.create({
+              data: { name: "Printer", type: "HARDWARE", quantity: 0 },
+            });
+          }
+
+          const existingLog = await prisma.dispatchLog.findUnique({ where: { taskId } });
+          if (existingLog) {
+            await prisma.dispatchLog.update({
+              where: { id: existingLog.id },
+              data: {
+                awbNumber: newAwb,
+                courierName: courier,
+                updatedAt: new Date(),
+              },
+            });
+          } else {
+            await prisma.dispatchLog.create({
+              data: {
+                awbNumber: newAwb,
+                courierName: courier,
+                inventoryItemId: printerItem.id,
+                taskId,
+                trackingStatus: "In Manifest",
+                dispatchDate: new Date(),
+              },
+            });
+          }
+        }
+      } catch (dispatchSyncErr) {
+        console.error("DispatchLog sync on task AWB update failed:", dispatchSyncErr);
+      }
+    }
+
     // Logging activities
     for (const log of logs) {
       await logActivity({
