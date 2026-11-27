@@ -49,10 +49,17 @@ export default function TrackingModalPopup({
           });
         }
 
-        if (data.Error) {
-          setError(data.Error);
+        let shipmentObj = null;
+        if (data.activeTracking?.ShipmentData && data.activeTracking.ShipmentData.length > 0) {
+          shipmentObj = data.activeTracking.ShipmentData[0].Shipment;
         } else if (data.ShipmentData && data.ShipmentData.length > 0) {
-          setTrackingData(data.ShipmentData[0].Shipment);
+          shipmentObj = data.ShipmentData[0].Shipment;
+        }
+
+        if (data.Error || data.activeTracking?.Error) {
+          setError(data.Error || data.activeTracking?.Error);
+        } else if (shipmentObj) {
+          setTrackingData(shipmentObj);
         } else {
           setError("No tracking information available for this waybill.");
         }
