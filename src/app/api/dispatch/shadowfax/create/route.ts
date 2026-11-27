@@ -112,6 +112,19 @@ export async function POST(req: Request) {
         const existingTask = await prisma.task.findUnique({ where: { id: taskId } });
         if (existingTask) {
           const cf = (existingTask.customFields as any) || {};
+
+          // 🔄 If task already had an active AWB, push it to previousDispatches (for reorders/reshipments)
+          if (cf.awbNumber && cf.awbNumber !== awbNumber) {
+            const prevList = Array.isArray(cf.previousDispatches) ? [...cf.previousDispatches] : [];
+            prevList.push({
+              awbNumber: cf.awbNumber,
+              courierName: cf.courierName || "Shadowfax",
+              dispatchStatus: cf.dispatchStatus || "Replaced",
+              date: new Date().toISOString(),
+            });
+            cf.previousDispatches = prevList;
+          }
+
           cf.awbNumber = awbNumber;
           cf.courierName = "Shadowfax";
           cf.dispatchStatus = "In Manifest";

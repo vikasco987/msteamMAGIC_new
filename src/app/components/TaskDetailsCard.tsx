@@ -813,9 +813,21 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
+                          setShowCreateOrderModal(true);
+                        }}
+                        className="px-2 py-1 bg-white border border-teal-500 hover:bg-teal-50 text-teal-700 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm transition-colors cursor-pointer flex items-center gap-1"
+                        title="Re-order / Create Another Shipment (keeps old AWB in history)"
+                      >
+                        <FaShippingFast size={10} className="text-teal-600" />
+                        <span>Re-Order</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setShowUpdateOrderModal(true);
                         }}
-                        className="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm transition-colors cursor-pointer flex items-center gap-1"
+                        className="px-2 py-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm transition-colors cursor-pointer flex items-center gap-1"
                         title="Update Delivery & Order Details"
                       >
                         <FaEdit size={10} className="text-slate-500" />
@@ -827,7 +839,7 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
                           e.stopPropagation();
                           setShowPrintLabelModal(true);
                         }}
-                        className="px-2.5 py-1 bg-white border border-emerald-600 hover:bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm transition-colors cursor-pointer flex items-center gap-1"
+                        className="px-2 py-1 bg-white border border-emerald-600 hover:bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm transition-colors cursor-pointer flex items-center gap-1"
                         title="Print / Download Shipping Label directly"
                       >
                         <FaPrint size={10} />
