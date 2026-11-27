@@ -35,17 +35,15 @@ const middleware = clerkMiddleware(async (auth, req) => {
     // ✅ Protect all non-public routes
     if (!isPublicRoute(req)) {
         // If they have a custom auth token, let them through
-        const hasCustomToken = req.cookies.has("custom_auth_token");
+        const hasCustomToken = req.cookies?.has?.("custom_auth_token") || false;
         if (!hasCustomToken) {
             if (url.pathname.startsWith('/api/')) {
-                const { userId } = await auth();
-                if (!userId) {
+                const authObj = await auth();
+                if (!authObj?.userId) {
                     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
                 }
             } else {
-                return auth.protect({
-                    unauthenticatedUrl: new URL("/sign-in", req.url).toString(),
-                });
+                await auth.protect();
             }
         }
     }
