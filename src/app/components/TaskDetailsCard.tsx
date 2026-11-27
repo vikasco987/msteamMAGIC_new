@@ -23,7 +23,8 @@ import CreateDelhiveryOrderButton from "./CreateDelhiveryOrderButton";
 import CreateOrderModal from "./CreateOrderModal";
 import TrackingModalPopup from "./TrackingModalPopup";
 import PrintLabelModal from "./PrintLabelModal";
-import { FaHandHoldingUsd, FaCommentsDollar, FaHistory, FaCloudUploadAlt, FaPaperclip, FaShippingFast, FaPrint } from "react-icons/fa";
+import UpdateOrderModal from "./UpdateOrderModal";
+import { FaHandHoldingUsd, FaCommentsDollar, FaHistory, FaCloudUploadAlt, FaPaperclip, FaShippingFast, FaPrint, FaEdit } from "react-icons/fa";
 
 interface Props {
   task: Task;
@@ -198,6 +199,7 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
   const [showCreateOrderModal, setShowCreateOrderModal] = useState(false);
   const [showTrackingModal, setShowTrackingModal] = useState(false);
   const [showPrintLabelModal, setShowPrintLabelModal] = useState(false);
+  const [showUpdateOrderModal, setShowUpdateOrderModal] = useState(false);
   const [isEditingAwb, setIsEditingAwb] = useState(false);
   const [editedAwb, setEditedAwb] = useState("");
   const [savingAwb, setSavingAwb] = useState(false);
@@ -811,6 +813,18 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
+                          setShowUpdateOrderModal(true);
+                        }}
+                        className="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm transition-colors cursor-pointer flex items-center gap-1"
+                        title="Update Delivery & Order Details"
+                      >
+                        <FaEdit size={10} className="text-slate-500" />
+                        <span>Update</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setShowPrintLabelModal(true);
                         }}
                         className="px-2.5 py-1 bg-white border border-emerald-600 hover:bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm transition-colors cursor-pointer flex items-center gap-1"
@@ -1104,6 +1118,30 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
             isOpen={showPrintLabelModal}
             onClose={() => setShowPrintLabelModal(false)}
             awbNumber={rawAwb}
+          />
+        )}
+
+        {showUpdateOrderModal && rawAwb && (
+          <UpdateOrderModal
+            isOpen={showUpdateOrderModal}
+            onClose={() => setShowUpdateOrderModal(false)}
+            order={{
+              awbNumber: rawAwb,
+              trackingStatus: cf.dispatchStatus || "In Manifest",
+              taskId: task.id,
+              task: task,
+              customerPhone: task.phone || cf.phone,
+              customerAddress: cf.fullAddress || task.location,
+              customerPincode: cf.pincode,
+              customerCity: cf.city,
+              customerState: cf.state,
+              paymentMode: cf.paymentMode,
+              orderAmount: cf.packageAmount || task.packageAmount,
+              codAmount: cf.codAmount,
+            }}
+            onSuccess={() => {
+              if (onUpdateTask) onUpdateTask(task.id, {});
+            }}
           />
         )}
       </AnimatePresence>

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { format } from "date-fns";
 import PrintLabelModal from "../components/PrintLabelModal";
+import UpdateOrderModal from "../components/UpdateOrderModal";
 
 export default function DispatchDashboard() {
   const [dispatches, setDispatches] = useState<any[]>([]);
@@ -14,6 +15,7 @@ export default function DispatchDashboard() {
   // State for the Task Details Modal
   const [selectedLog, setSelectedLog] = useState<any | null>(null);
   const [labelModalAwb, setLabelModalAwb] = useState<string | null>(null);
+  const [updateOrderLog, setUpdateOrderLog] = useState<any | null>(null);
 
   const TABS = [
     "Ready To Ship",
@@ -215,6 +217,15 @@ export default function DispatchDashboard() {
                           
                           <button
                             type="button"
+                            onClick={() => setUpdateOrderLog(log)}
+                            className="text-[10px] font-black uppercase tracking-wider text-slate-700 hover:text-indigo-600 transition-colors flex items-center gap-1 cursor-pointer"
+                            title="Update Order Details"
+                          >
+                            <span>✏️ Update Order</span>
+                          </button>
+
+                          <button
+                            type="button"
                             onClick={() => setLabelModalAwb(log.awbNumber)}
                             className="text-[10px] font-black uppercase tracking-wider text-emerald-600 hover:text-emerald-800 transition-colors flex items-center gap-1 cursor-pointer"
                           >
@@ -383,6 +394,31 @@ export default function DispatchDashboard() {
           isOpen={Boolean(labelModalAwb)}
           onClose={() => setLabelModalAwb(null)}
           awbNumber={labelModalAwb}
+        />
+      )}
+
+      {/* Update Order Modal */}
+      {updateOrderLog && (
+        <UpdateOrderModal
+          isOpen={Boolean(updateOrderLog)}
+          onClose={() => setUpdateOrderLog(null)}
+          order={{
+            awbNumber: updateOrderLog.awbNumber,
+            trackingStatus: updateOrderLog.trackingStatus,
+            taskId: updateOrderLog.taskId || updateOrderLog.task?.id,
+            task: updateOrderLog.task,
+            customerPhone: updateOrderLog.task?.phone || updateOrderLog.task?.customFields?.phone,
+            customerAddress: updateOrderLog.task?.customFields?.fullAddress || updateOrderLog.task?.location,
+            customerPincode: updateOrderLog.task?.customFields?.pincode,
+            customerCity: updateOrderLog.task?.customFields?.city,
+            customerState: updateOrderLog.task?.customFields?.state,
+            paymentMode: updateOrderLog.task?.customFields?.paymentMode,
+            orderAmount: updateOrderLog.task?.customFields?.packageAmount || updateOrderLog.task?.packageAmount,
+            codAmount: updateOrderLog.task?.customFields?.codAmount,
+          }}
+          onSuccess={() => {
+            fetchDispatches();
+          }}
         />
       )}
     </div>
