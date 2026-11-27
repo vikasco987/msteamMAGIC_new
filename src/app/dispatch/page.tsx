@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { format } from "date-fns";
+import PrintLabelModal from "../components/PrintLabelModal";
 
 export default function DispatchDashboard() {
   const [dispatches, setDispatches] = useState<any[]>([]);
@@ -12,6 +13,7 @@ export default function DispatchDashboard() {
   
   // State for the Task Details Modal
   const [selectedLog, setSelectedLog] = useState<any | null>(null);
+  const [labelModalAwb, setLabelModalAwb] = useState<string | null>(null);
 
   const TABS = [
     "Ready To Ship",
@@ -211,6 +213,14 @@ export default function DispatchDashboard() {
                             <option value="RTO In-Transit">RTO In-Transit</option>
                           </select>
                           
+                          <button
+                            type="button"
+                            onClick={() => setLabelModalAwb(log.awbNumber)}
+                            className="text-[10px] font-black uppercase tracking-wider text-emerald-600 hover:text-emerald-800 transition-colors flex items-center gap-1 cursor-pointer"
+                          >
+                            <span>🖨️ Print Label</span>
+                          </button>
+                          
                           <a 
                             href={`https://www.google.com/search?q=track+awb+${log.awbNumber}`} 
                             target="_blank" 
@@ -365,6 +375,15 @@ export default function DispatchDashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Print Label Modal */}
+      {labelModalAwb && (
+        <PrintLabelModal
+          isOpen={Boolean(labelModalAwb)}
+          onClose={() => setLabelModalAwb(null)}
+          awbNumber={labelModalAwb}
+        />
       )}
     </div>
   );

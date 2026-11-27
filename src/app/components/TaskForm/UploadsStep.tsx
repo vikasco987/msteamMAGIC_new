@@ -2338,69 +2338,6 @@ export default function UploadsStep(props: UploadsStepProps) {
               )}
               {(activeTab === "printer" || activeTab === "printer_software" || activeTab === "rto_printer") && (
                 <>
-                  <div className="md:col-span-2">
-                    <label className={labelClass}>📦 AWB Tracking Number *</label>
-                    <input className={inputClass} placeholder="Enter AWB Tracking Number" value={awbNumber} onChange={e => setAwbNumber(e.target.value)} required />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className={labelClass}>🏷️ Printer Serial Number</label>
-                    {loadingSerials ? (
-                      <p className="text-xs text-slate-400 font-bold animate-pulse py-2">Loading available serial numbers...</p>
-                    ) : (
-                      <div className="flex flex-col gap-2">
-                        <CreatableSelect
-                          isClearable
-                          placeholder="Search or enter Serial Number (Optional)"
-                          options={availableSerials.map((s) => ({
-                            value: s.number,
-                            label: `${s.number} (${s.status === "Returned" ? "Returned/RTO" : "Available"})`,
-                          }))}
-                          onChange={(newValue) => setSerialNumber(newValue ? newValue.value : "")}
-                          value={
-                            serialNumber
-                              ? {
-                                  value: serialNumber,
-                                  label: availableSerials.find((s) => s.number === serialNumber)
-                                    ? `${serialNumber} (${availableSerials.find((s) => s.number === serialNumber).status === "Returned" ? "Returned/RTO" : "Available"})`
-                                    : serialNumber,
-                                }
-                              : null
-                          }
-                          formatCreateLabel={(inputValue) => `+ Add Custom/New Serial Number: "${inputValue}"`}
-                          menuPortalTarget={typeof document !== "undefined" ? document.body : null}
-                          menuPosition="fixed"
-                          styles={{
-                            menuPortal: (base) => ({ ...base, zIndex: 9999 }),
-                            control: (base) => ({
-                              ...base,
-                              borderRadius: "0.75rem",
-                              borderColor: "#e2e8f0",
-                              padding: "0.15rem 0",
-                              boxShadow: "none",
-                              "&:hover": {
-                                borderColor: "#94a3b8",
-                              },
-                            }),
-                            option: (base, state) => ({
-                              ...base,
-                              backgroundColor: state.isFocused ? "#f1f5f9" : "white",
-                              color: "#334155",
-                              cursor: "pointer",
-                            }),
-                          }}
-                        />
-                        <p className="text-[10px] text-slate-500 font-medium mt-1">
-                          💡 You can select an available serial number or type a new one to register it automatically. Duplicates will be rejected on submission.
-                        </p>
-                        {serialNumber && availableSerials.find(s => s.number === serialNumber)?.status === "Returned" && (
-                          <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-700 text-xs font-semibold flex items-start gap-1">
-                            <span>⚠️</span>
-                            <span>This printer was previously RTO. This will be its 2nd+ dispatch.</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
                   {activeTab !== "rto_printer" && (
                     <div className="md:col-span-2">
                       <label className={labelClass}>🚚 Delivery Charge</label>

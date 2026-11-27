@@ -283,12 +283,8 @@ export default function TaskForm() {
         }
       }
 
-      if (effectiveServices.some((s) => ["printer", "printer_software", "rto_printer"].includes(s))) {
-        if (!formData.awbNumber || formData.awbNumber.trim() === "") {
-          alert("⚠️ AWB Tracking Number is compulsory for printer tasks.");
-          return;
-        }
-      }
+      // AWB Number and Printer Serial Number are no longer required during task creation.
+      // They can be added/assigned after the task is created.
 
       if (effectiveServices.includes("rto_printer")) {
         if (!formData.rtoReason || formData.rtoReason.trim() === "") {

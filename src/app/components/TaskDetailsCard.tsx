@@ -21,7 +21,9 @@ import UploadDocumentModal from "./UploadDocumentModal";
 import ChangeCreatorModal from "./ChangeCreatorModal";
 import CreateDelhiveryOrderButton from "./CreateDelhiveryOrderButton";
 import CreateOrderModal from "./CreateOrderModal";
-import { FaHandHoldingUsd, FaCommentsDollar, FaHistory, FaCloudUploadAlt, FaPaperclip, FaShippingFast } from "react-icons/fa";
+import TrackingModalPopup from "./TrackingModalPopup";
+import PrintLabelModal from "./PrintLabelModal";
+import { FaHandHoldingUsd, FaCommentsDollar, FaHistory, FaCloudUploadAlt, FaPaperclip, FaShippingFast, FaPrint } from "react-icons/fa";
 
 interface Props {
   task: Task;
@@ -194,6 +196,11 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showCreatorModal, setShowCreatorModal] = useState(false);
   const [showCreateOrderModal, setShowCreateOrderModal] = useState(false);
+  const [showTrackingModal, setShowTrackingModal] = useState(false);
+  const [showPrintLabelModal, setShowPrintLabelModal] = useState(false);
+  const [isEditingAwb, setIsEditingAwb] = useState(false);
+  const [editedAwb, setEditedAwb] = useState("");
+  const [savingAwb, setSavingAwb] = useState(false);
   const { user } = useUser();
   const userRole = String(user?.publicMetadata?.role || user?.unsafeMetadata?.role || "").trim().toLowerCase();
   const isMaster = userRole === "master" || isAdmin;
@@ -716,25 +723,114 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
           {isHardwareTask && (
             <div className="mt-2.5">
               {hasValidAwb ? (
-                <div className="flex items-center justify-between p-2.5 bg-emerald-50/70 border border-emerald-200/80 rounded-xl">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">📦</span>
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-wider text-emerald-800">
-                        {cf.courierName || "Courier"} Shipment
-                      </p>
-                      <p className="text-xs font-bold text-slate-700">AWB: {rawAwb}</p>
+                <div className="flex flex-col gap-2 p-2.5 bg-emerald-50/70 border border-emerald-200/80 rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">📦</span>
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-wider text-emerald-800">
+                          {cf.courierName || "Courier"} Shipment
+                        </p>
+                        {isEditingAwb ? (
+                          <div className="flex items-center gap-1.5 mt-1" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="text"
+                              value={editedAwb}
+                              onChange={(e) => setEditedAwb(e.target.value)}
+                              placeholder="Enter new AWB"
+                              className="px-2 py-0.5 text-xs font-mono border border-emerald-400 rounded bg-white text-slate-800 outline-none w-36"
+                              autoFocus
+                            />
+                            <button
+                              type="button"
+                              disabled={savingAwb}
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (!editedAwb.trim()) {
+                                  toast.error("AWB cannot be blank");
+                                  return;
+                                }
+                                setSavingAwb(true);
+                                try {
+                                  const updatedCf = { ...cf, awbNumber: editedAwb.trim() };
+                                  const res = await fetch(`/api/tasks/${task.id}`, {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ customFields: updatedCf }),
+                                  });
+                                  if (!res.ok) throw new Error("Failed to update AWB");
+                                  toast.success("AWB updated successfully!");
+                                  setIsEditingAwb(false);
+                                  if (onUpdateTask) {
+                                    onUpdateTask(task.id, { customFields: updatedCf });
+                                  }
+                                } catch (err: any) {
+                                  toast.error(err.message || "Failed to update AWB");
+                                } finally {
+                                  setSavingAwb(false);
+                                }
+                              }}
+                              className="px-2 py-0.5 bg-emerald-600 text-white rounded text-[10px] font-bold hover:bg-emerald-700 transition cursor-pointer"
+                            >
+                              {savingAwb ? "Saving..." : "Save"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsEditingAwb(false);
+                              }}
+                              className="px-1.5 py-0.5 text-slate-500 hover:text-slate-700 text-xs cursor-pointer"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs font-bold text-slate-700">AWB: {rawAwb}</p>
+                            {isMaster && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditedAwb(rawAwb);
+                                  setIsEditingAwb(true);
+                                }}
+                                className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer"
+                                title="Edit AWB (Master/Admin Only)"
+                              >
+                                ✏️ Edit AWB
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowPrintLabelModal(true);
+                        }}
+                        className="px-2.5 py-1 bg-white border border-emerald-600 hover:bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm transition-colors cursor-pointer flex items-center gap-1"
+                        title="Print / Download Shipping Label directly"
+                      >
+                        <FaPrint size={10} />
+                        <span>Print Label</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowTrackingModal(true);
+                        }}
+                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm transition-colors cursor-pointer flex items-center gap-1"
+                      >
+                        <span>Track ↗</span>
+                      </button>
                     </div>
                   </div>
-                  <a
-                    href={`/dispatch/track?awb=${encodeURIComponent(rawAwb)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm transition-colors"
-                  >
-                    Track ↗
-                  </a>
                 </div>
               ) : (
                 <button
@@ -991,6 +1087,23 @@ export default function TaskDetailsCard({ task, isAdmin = false, isTL = false, o
                 });
               }
             }}
+          />
+        )}
+
+        {showTrackingModal && rawAwb && (
+          <TrackingModalPopup
+            isOpen={showTrackingModal}
+            onClose={() => setShowTrackingModal(false)}
+            awbNumber={rawAwb}
+            initialTask={task}
+          />
+        )}
+
+        {showPrintLabelModal && rawAwb && (
+          <PrintLabelModal
+            isOpen={showPrintLabelModal}
+            onClose={() => setShowPrintLabelModal(false)}
+            awbNumber={rawAwb}
           />
         )}
       </AnimatePresence>
